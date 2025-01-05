@@ -56,20 +56,18 @@ export const {
       if (token.sub && session.user) {
         session.user.id = token.sub;
       }
-    
+
       if (token.role && session.user) {
         session.user.role = token.role;
       }
-    
+
       if (session.user) {
         session.user.isOAuth = token.isOAuth;
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled;
-        session.user.username = token.username;
+        session.user.name = token.name;
         session.user.email = token.email;
       }
-    
-      console.log("Session User Data:", session.user); // Debug log
-    
+
       return session;
     },
 
@@ -84,7 +82,7 @@ export const {
 
       token.isOAuth = !!existingAccount;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
-      token.username = existingUser.username;
+      token.name = existingUser.name;
       token.email = existingUser.email;
       token.role = existingUser.role;
 
