@@ -5,19 +5,12 @@ import { Button } from "./ui/button";
 import { MobileMenu } from "./MobileMenu";
 import { auth } from "@/auth";
 import LoginButton from "./auth/login-button";
+import { getUserInfoForNav } from "@/actions/userActions";
 
 export async function Navbar() {
   const session = await auth();
-  const userInfo = session?.user
-    ? {
-        email: session?.user.email as string,
-        username: session?.user.username as string,
-        userImage:
-          session?.user.image ?? `https://avatar.vercel.sh/${session?.user.username}`,
-        role: session?.user.role,
-        id: session?.user.id as string,
-      }
-    : null;
+  const userInfo =
+    session?.user && (await getUserInfoForNav());
 
   return (
     <nav className="relative max-w-7xl w-full flex md:grid md:grid-cols-12 items-center px-4 md:px-8 mx-auto py-7">
