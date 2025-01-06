@@ -1,43 +1,34 @@
 "use server";
 
 import * as z from "zod";
-import bcrypt from "bcryptjs";
 
-import { RegisterSchema } from "@/schemas";
 import { db } from "@/lib/db";
+import { SellerApplicationSchema } from "@/schemas/SellerApplicationSchema";
 
-export const register = async (values: z.infer<typeof RegisterSchema>) => {
-  const validatedFields = RegisterSchema.safeParse(values);
+import { auth } from "@/auth"; // Adjust to your auth method
+
+export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
+  const validatedFields = SellerApplicationSchema.safeParse(values);
 
   if (!validatedFields.success) {
     return { error: "Invalid fields." };
   }
 
-  const { username, password, email } = validatedFields.data;
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const { craftingProcess, portfolio, interestInJoining } = validatedFields.data;
 
-  const existingUser = await getUserByEmail(email);
-
-  if (existingUser) {
-    return { error: "User email already exists." };
+  const session = await auth(); // Get the authenticated user session
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
   }
 
-  const existingUsername = await getUserByUsername(email);
-
-  if (existingUsername) {
-    return { error: "Username already exists." };
-  }
-
-  await db.user.create({
+  await db.sellerApplication.create({
     data: {
-      username,
-      email,
-      password: hashedPassword,
+      userId: session.user.id, // Associate with the logged-in user
+      craftingProcess,
+      portfolio,
+      interestInJoining,
     },
   });
 
-  const verificationToken = await generateVerificationToken(email);
-  await sendVerificationEmail(verificationToken.email, verificationToken.token);
-
-  return { success: "Successfully registered. Verify your email!" };
+  return { success: "Successfully submitted your seller application." };
 };

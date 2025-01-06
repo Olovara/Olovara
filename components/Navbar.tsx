@@ -4,8 +4,8 @@ import { UserNav } from "./UserNav";
 import { Button } from "./ui/button";
 import { MobileMenu } from "./MobileMenu";
 import { auth } from "@/auth";
-import LoginButton from "./auth/login-button";
 import { getUserInfoForNav } from "@/actions/userActions";
+import LoginButton from "./auth/login-button";
 
 export async function Navbar() {
   const session = await auth();

@@ -17,9 +17,9 @@ import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
+import { sellerApplication } from "@/actions/seller-application";
 
 const SellerApplicationForm = () => {
-  
   const isClient = useIsClient();
 
   const [error, setError] = useState<string>("");
@@ -38,7 +38,7 @@ const SellerApplicationForm = () => {
 
   const onSubmit = (values: z.infer<typeof SellerApplicationSchema>) => {
     startTransition(() => {
-      seller(values).then((data) => {
+      sellerApplication(values).then((data) => {
         if (data.success) setSuccess(data.success);
         if (data?.error) setError(data.error);
       });
@@ -52,7 +52,7 @@ const SellerApplicationForm = () => {
   if (!isClient) return <Spinner />;
 
   return (
-    <form action={formAction}>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <CardHeader>
         <CardTitle>Seller Application</CardTitle>
         <CardDescription>Please fill in the information below</CardDescription>
@@ -60,17 +60,29 @@ const SellerApplicationForm = () => {
       <CardContent className="flex flex-col gap-y-5">
         <div className="flex flex-col gap-y-2">
           <Label>What is your crafting process</Label>
-          <Input name="craftingProcess" type="string" />
+          <Input
+            {...form.register("craftingProcess")} // Link input to react-hook-form
+            disabled={isPending}
+            type="text"
+          />
         </div>
 
         <div className="flex flex-col gap-y-2">
           <Label>Portfolio</Label>
-          <Input name="portfolio" type="string" />
+          <Input
+            {...form.register("portfolio")} // Link input to react-hook-form
+            disabled={isPending}
+            type="text"
+          />
         </div>
 
         <div className="flex flex-col gap-y-2">
           <Label>What is your interest in joining</Label>
-          <Input name="interestInJoining" type="string" />
+          <Input
+            {...form.register("interestInJoining")} // Link input to react-hook-form
+            disabled={isPending}
+            type="text"
+          />
         </div>
       </CardContent>
       <CardFooter>
@@ -78,6 +90,6 @@ const SellerApplicationForm = () => {
       </CardFooter>
     </form>
   );
-}
+};
 
 export default SellerApplicationForm;

@@ -58,18 +58,45 @@ export async function getUsers({
 
 export async function getUnapprovedSellers() {
     try {
-        const role = await getUserRole();
-
-        if (role !== 'ADMIN') throw new Error('Forbidden');
-
-        return db.sellerApplication.findMany({
-            where: {
-                applicationApproved: false
-            }
-        })
-
+      return await db.sellerApplication.findMany({
+        where: {
+          applicationApproved: false,
+        },
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true,
+          applicationApproved: true,
+        },
+      });
     } catch (error) {
-        console.log(error);
-        throw error;
+      console.error("Error fetching seller applications:", error);
+      return [];
     }
-}
+  }
+
+export async function approveApplication(applicationId: string) {
+    try {
+      await db.sellerApplication.update({
+        where: { id: applicationId },
+        data: { applicationApproved: true },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error approving application:", error);
+      return { success: false, error: "Failed to approve application." };
+    }
+  }
+  
+  export async function rejectApplication(applicationId: string) {
+    try {
+      await db.sellerApplication.delete({
+        where: { id: applicationId },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error rejecting application:", error);
+      return { success: false, error: "Failed to reject application." };
+    }
+  }
+  
