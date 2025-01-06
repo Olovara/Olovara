@@ -15,8 +15,8 @@ export const {
   update,
 } = NextAuth({
   pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
+    signIn: "/login",
+    error: "/error",
   },
   events: {
     async linkAccount({ user }) {
@@ -64,7 +64,7 @@ export const {
       if (session.user) {
         session.user.isOAuth = token.isOAuth;
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled;
-        session.user.name = token.name;
+        session.user.username = token.username;
         session.user.email = token.email;
       }
 
@@ -82,7 +82,7 @@ export const {
 
       token.isOAuth = !!existingAccount;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
-      token.name = existingUser.name;
+      token.username = existingUser.username;
       token.email = existingUser.email;
       token.role = existingUser.role;
 
