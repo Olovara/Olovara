@@ -1,4 +1,3 @@
-import { Inter } from "next/font/google";
 import ShopDashboardSideNavbar from "./(components)/AdminDashboardSideNavbar";
 import ShopDashboardTopNavbar from "./(components)/AdminDashboardTopNavbar";
 

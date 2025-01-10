@@ -17,6 +17,10 @@ import {
 } from "@/components/ui/table";
 import { ApplicationActions } from "./ApplicationActions";
 
+export const metadata = {
+  title: "Seller Application",
+};
+
 export default async function AdminDashboardSellerApplications() {
   const applications = await getUnapprovedSellers();
 

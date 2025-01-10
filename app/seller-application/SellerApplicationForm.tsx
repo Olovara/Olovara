@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { sellerApplication } from "@/actions/seller-application";
+import { Textarea } from "@/components/ui/textarea";
 
 const SellerApplicationForm = () => {
   const isClient = useIsClient();
@@ -57,19 +58,18 @@ const SellerApplicationForm = () => {
         <CardTitle>Seller Application</CardTitle>
         <CardDescription>Please fill in the information below</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-y-5">
+      <CardContent className="flex flex-col gap-y-6">
         <div className="flex flex-col gap-y-2">
           <Label>What is your crafting process</Label>
-          <Input
+          <Textarea placeholder="Type your message here."
             {...form.register("craftingProcess")} // Link input to react-hook-form
             disabled={isPending}
-            type="text"
           />
         </div>
 
         <div className="flex flex-col gap-y-2">
           <Label>Portfolio</Label>
-          <Input
+          <Input placeholder="www.example.com"
             {...form.register("portfolio")} // Link input to react-hook-form
             disabled={isPending}
             type="text"
@@ -78,10 +78,9 @@ const SellerApplicationForm = () => {
 
         <div className="flex flex-col gap-y-2">
           <Label>What is your interest in joining</Label>
-          <Input
+          <Textarea placeholder="Type your message here."
             {...form.register("interestInJoining")} // Link input to react-hook-form
             disabled={isPending}
-            type="text"
           />
         </div>
       </CardContent>
