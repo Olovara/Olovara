@@ -3,100 +3,121 @@ import { User } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
 
 interface GetUsersParams {
-    role?: string;
-    status?: string;
-    pageNumber: string;
-    pageSize: string;
+  role?: string;
+  status?: string;
+  pageNumber: string;
+  pageSize: string;
 }
 
 interface PaginatedResponse<T> {
-    items: T[];
-    totalCount: number;
+  items: T[];
+  totalCount: number;
 }
 
 export async function getUsers({
-    role,
-    status,
-    pageNumber = '1',
-    pageSize = '12'
+  role,
+  status,
+  pageNumber = "1",
+  pageSize = "12",
 }: GetUsersParams): Promise<PaginatedResponse<User>> {
-    const userId = await getAuthUserId();
+  const userId = await getAuthUserId();
 
-    const page = isNaN(parseInt(pageNumber)) ? 1 : parseInt(pageNumber);
-    const limit = isNaN(parseInt(pageSize)) ? 12 : parseInt(pageSize);
-    const skip = (page - 1) * limit;
+  const page = isNaN(parseInt(pageNumber)) ? 1 : parseInt(pageNumber);
+  const limit = isNaN(parseInt(pageSize)) ? 12 : parseInt(pageSize);
+  const skip = (page - 1) * limit;
 
-    try {
-        // Dynamic WHERE filters based on parameters
-        const usersSelect = {
-            where: {
-                AND: [
-                    ...(role ? [{ role }] : []),
-                    ...(status ? [{ status }] : []),
-                    { id: { not: userId } },
-                ],
-            },
-        };
+  try {
+    // Dynamic WHERE filters based on parameters
+    const usersSelect = {
+      where: {
+        AND: [
+          ...(role ? [{ role }] : []),
+          ...(status ? [{ status }] : []),
+          { id: { not: userId } },
+        ],
+      },
+    };
 
-        const count = await db.user.count(usersSelect); // Using the global db client
-        const users = await db.user.findMany({
-            ...usersSelect,
-            skip,
-            take: limit,
-            orderBy: { createdAt: 'desc' },
-        });
+    const count = await db.user.count(usersSelect); // Using the global db client
+    const users = await db.user.findMany({
+      ...usersSelect,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    });
 
-        return {
-            items: users,
-            totalCount: count,
-        };
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        throw error; // Customize this error handling based on your needs
-    }
+    return {
+      items: users,
+      totalCount: count,
+    };
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error; // Customize this error handling based on your needs
+  }
 }
 
 export async function getUnapprovedSellers() {
-    try {
-      return await db.sellerApplication.findMany({
-        where: {
-          applicationApproved: false,
+  try {
+    const role = await getUserRole();
+
+    if (role !== "ADMIN") throw new Error("Forbidden");
+
+    return await db.sellerApplication.findMany({
+      where: {
+        applicationApproved: false,
+      },
+      select: {
+        id: true,
+        userId: true,
+        createdAt: true,
+        craftingProcess: true,
+        portfolio: true,
+        interestInJoining: true,
+        user: {
+          select: {
+            username: true,
+            email: true,
+          },
         },
-        select: {
-          id: true,
-          userId: true,
-          createdAt: true,
-          applicationApproved: true,
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching seller applications:", error);
-      return [];
-    }
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching seller applications:", error);
+    return [];
   }
+}
 
 export async function approveApplication(applicationId: string) {
-    try {
-      await db.sellerApplication.update({
-        where: { id: applicationId },
-        data: { applicationApproved: true },
-      });
-      return { success: true };
-    } catch (error) {
-      console.error("Error approving application:", error);
-      return { success: false, error: "Failed to approve application." };
-    }
+  try {
+
+    const role = await getUserRole();
+
+    if (role !== 'ADMIN') throw new Error('Forbidden');
+
+    await db.sellerApplication.update({
+      where: { id: applicationId },
+      data: { applicationApproved: true },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error approving application:", error);
+    return { success: false, error: "Failed to approve application." };
   }
-  
-  export async function rejectApplication(applicationId: string) {
-    try {
-      await db.sellerApplication.delete({
-        where: { id: applicationId },
-      });
-      return { success: true };
-    } catch (error) {
-      console.error("Error rejecting application:", error);
-      return { success: false, error: "Failed to reject application." };
-    }
+}
+
+export async function rejectApplication(applicationId: string) {
+  try {
+
+    const role = await getUserRole();
+
+    if (role !== 'ADMIN') throw new Error('Forbidden');
+
+    await db.sellerApplication.delete({
+      where: { id: applicationId },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error rejecting application:", error);
+    return { success: false, error: "Failed to reject application." };
   }
-  
+}

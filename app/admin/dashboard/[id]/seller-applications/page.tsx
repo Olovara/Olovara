@@ -44,7 +44,14 @@ export default async function AdminDashboardSellerApplications() {
             <TableBody>
               {applications.map((application) => (
                 <TableRow key={application.id}>
-                  <TableCell>{application.userId}</TableCell>
+                  <TableCell>
+                    <div className="font-medium">
+                      {application.user.username}
+                    </div>
+                    <div className="hidden text-sm text-muted-foreground md:inline">
+                      {application.user.email}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">Pending</Badge>
                   </TableCell>
@@ -52,8 +59,17 @@ export default async function AdminDashboardSellerApplications() {
                     {new Date(application.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {/* Render the Client Component */}
-                    <ApplicationActions applicationId={application.id} />
+                    <ApplicationActions
+                      application={{
+                        userId: application.userId,
+                        username: application.user.username,
+                        email: application.user.email,
+                        craftingProcess: application.craftingProcess,
+                        portfolio: application.portfolio,
+                        reason: application.interestInJoining,
+                        id: application.id, // Make sure this is the correct field for the application's ID
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

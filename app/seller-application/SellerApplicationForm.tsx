@@ -60,8 +60,8 @@ const SellerApplicationForm = () => {
       </CardHeader>
       <CardContent className="flex flex-col gap-y-6">
         <div className="flex flex-col gap-y-2">
-          <Label>What is your crafting process</Label>
-          <Textarea placeholder="Type your message here."
+          <Label>Crafting process</Label>
+          <Textarea placeholder="Tell us a little about your crafting process and what you make."
             {...form.register("craftingProcess")} // Link input to react-hook-form
             disabled={isPending}
           />
