@@ -29,13 +29,28 @@ export function UserNav({ userInfo }: iAppProps) {
   const router = useRouter();
 
   const dashboardRoute = {
-    ADMIN: `/admin/dashboard/${userInfo?.id}`,
-    SELLER: `/seller/dashboard/${userInfo?.id}`,
-    MEMBER: `/member/dashboard/${userInfo?.id}`,
+    ADMIN: `/admin/dashboard`,
+    SELLER: `/seller/dashboard`,
+    MEMBER: `/member/dashboard`,
   };
 
   const handleAccountClick = () => {
     const route = userInfo?.role ? dashboardRoute[userInfo.role] : null;
+    if (route) {
+      router.push(route);
+    } else {
+      console.error("Invalid role or route not defined.");
+    }
+  };
+
+  const settingsRoute = {
+    ADMIN: `/admin/dashboard/settings`,
+    SELLER: `/seller/dashboard/settings`,
+    MEMBER: `/member/dashboard/settings`,
+  };
+
+  const handleSettingsClick = () => {
+    const route = userInfo?.role ? settingsRoute[userInfo.role] : null;
     if (route) {
       router.push(route);
     } else {
@@ -69,8 +84,8 @@ export function UserNav({ userInfo }: iAppProps) {
           <DropdownMenuItem onClick={handleAccountClick}>
             Account
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">Settings</Link>
+          <DropdownMenuItem onClick={handleSettingsClick}>
+            Settings
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/my-products">My Products</Link>

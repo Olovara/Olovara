@@ -1,5 +1,5 @@
-import ShopDashboardSideNavbar from "./(components)/AdminDashboardSideNavbar";
-import ShopDashboardTopNavbar from "./(components)/AdminDashboardTopNavbar";
+import AdminDashboardSideNavbar from "./(components)/AdminDashboardSideNavbar";
+import AdminDashboardTopNavbar from "./(components)/AdminDashboardTopNavbar";
 
 export default function DashboadLayout({
   children,
@@ -8,10 +8,10 @@ export default function DashboadLayout({
 }) {
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-      <ShopDashboardSideNavbar />
-      <ShopDashboardTopNavbar>
+      <AdminDashboardSideNavbar />
+      <AdminDashboardTopNavbar>
         <main className="flex flex-col gap-4 p-4 lg:gap-6">{children}</main>
-      </ShopDashboardTopNavbar>
+      </AdminDashboardTopNavbar>
     </div>
   );
 }

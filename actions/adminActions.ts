@@ -89,15 +89,35 @@ export async function getUnapprovedSellers() {
 
 export async function approveApplication(applicationId: string) {
   try {
-
+    // Verify that the current user is an admin
     const role = await getUserRole();
+    if (role !== "ADMIN") {
+      throw new Error("Forbidden");
+    }
 
-    if (role !== 'ADMIN') throw new Error('Forbidden');
+    // Retrieve the seller application to get the userId
+    const sellerApplication = await db.sellerApplication.findUnique({
+      where: { id: applicationId },
+    });
 
+    if (!sellerApplication) {
+      throw new Error("Seller application not found.");
+    }
+
+    const { userId } = sellerApplication;
+
+    // Approve the seller application
     await db.sellerApplication.update({
       where: { id: applicationId },
       data: { applicationApproved: true },
     });
+
+    // Update the user's role to 'SELLER'
+    await db.user.update({
+      where: { id: userId },
+      data: { role: "SELLER" }, // Use the enum for role assignment
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Error approving application:", error);

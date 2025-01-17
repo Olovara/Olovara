@@ -108,7 +108,7 @@ model User {
   accounts              Account[]
   member                Member?
   seller                Seller?
-  status                AccountStatus?
+  status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
   isTwoFactorEnabled    Boolean @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
@@ -134,7 +134,7 @@ model Member {
 
 model Seller {
   id		                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId	                  String    @unique // Marked as @unique for one-to-one relation
+  userId	                  String    @unique
   shopName	                String
   stripeConnected	          Boolean		@default(false)
   totalSales	              Int
