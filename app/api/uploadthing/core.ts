@@ -11,6 +11,7 @@ export const ourFileRouter = {
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
       const session = await auth();
+      console.log(session); // Check if session is correctly fetched
 
       if (!session) throw new UploadThingError("Unauthorized");
 

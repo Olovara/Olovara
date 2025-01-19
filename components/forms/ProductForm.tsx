@@ -15,11 +15,22 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { QuillEditor } from "../QuillEditor";
-import { useState } from "react";
+import { startTransition, useState, useTransition } from "react";
 import { UploadDropzone } from "@/lib/uploadthing";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { Submitbutton } from "../SubmitButtons";
+import { useIsClient } from "@/hooks/use-is-client";
+import Spinner from "../spinner";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 
@@ -27,29 +38,72 @@ export function ProductForm() {
   const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] }); // Default to empty Delta JSON
   const [images, setImages] = useState<null | string[]>(null);
   const [productFile, SetProductFile] = useState<null | string>(null);
+  const isClient = useIsClient();
+  
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+  
+  const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Description JSON:", descriptionJson);
-    // Send `descriptionJson` to your backend or Prisma schema
-  };
+  const PrimaryCategories = [
+    { id: "ACCESORIES", name: "Accessories" },
+    { id: "CLOTHING", name: "Clothing" },
+    { id: "CRAFT_SUPPLIES", name: "Craft Supplies" },
+    { id: "PATTERNS", name: "Patterns" },
+    { id: "TOYS", name: "Toys" },
+  ];
+
+  const SecondaryCategories = [
+    { id: "AMIGURUMI", name: "Amigurumi" },
+    { id: "CROCHET", name: "Crochet" },
+    { id: "KINTTING", name: "Knitting" },
+    { id: "SEWING", name: "Sewing" },
+    { id: "TUNISIAN", name: "Tunisian" },
+  ];
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       isDigital: false,
+      primaryCategory: "", // Add this to match schema
     },
   });
 
-  const onSubmit = (data: ProductFormValues) => {
-    toast({
-      title: "Product Created Successfully!",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
+  const onSubmit = async (values: z.infer<typeof ProductSchema>) => {
+    const productData = {
+      ...values,
+      description: descriptionJson,  // Add the Quill description as part of the data
+    };
+  
+    startTransition(() => {
+      fetch("/api/products", {  // Use the correct API route
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productData),  // Send the form data as JSON
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            setSuccess(data.success);
+            form.reset(); // Reset form after successful submission
+            setDescriptionJson({ ops: [] }); // Reset Quill editor state
+          } else if (data.error) {
+            setError(data.error);
+          }
+        })
+        .catch((error) => {
+          setError("Something went wrong. Please try again.");
+          console.error("Error creating product:", error);
+        });
     });
-  };
+  
+    setSuccess("");
+    setError("");
+  };  
+
+  if (!isClient) return <Spinner />;
 
   return (
     <Form {...form}>
@@ -74,6 +128,70 @@ export function ProductForm() {
             {...form.register("price", { valueAsNumber: true })}
           />
         </div>
+
+        {/* Select Primary Category */}
+        <FormField
+          control={form.control}
+          name="primaryCategory"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Primary Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {PrimaryCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="secondaryCategory"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Secondary Categories</FormLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    {field.value && field.value.length > 0
+                      ? `Selected: ${field.value.length} categories`
+                      : "Select categories"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  {SecondaryCategories.map((category) => (
+                    <DropdownMenuCheckboxItem
+                      key={category.id}
+                      checked={field.value?.includes(category.id)}
+                      onCheckedChange={(checked) => {
+                        const current = field.value || [];
+                        if (checked) {
+                          field.onChange([...current, category.id]); // Add category
+                        } else {
+                          field.onChange(
+                            current.filter((c) => c !== category.id)
+                          ); // Remove category
+                        }
+                      }}
+                    >
+                      {category.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </FormItem>
+          )}
+        />
 
         {/* For images upload */}
         <div className="flex flex-col gap-y-2">
@@ -151,7 +269,7 @@ export function ProductForm() {
           </div>
         )}
 
-        <Button type="submit">Submit</Button>
+        <Submitbutton title="Submit" />
       </form>
     </Form>
   );
