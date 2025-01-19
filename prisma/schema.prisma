@@ -175,7 +175,7 @@ model Product {
   onSale            Boolean  @default(false)
   discount          Int?     // Only if the product is on sale
   primaryCategory   PrimaryCategoryTags
-  secondaryCategory SecondaryCategoryTags
+  secondaryCategory SecondaryCategoryTags[]
   tags              String[] // Array of tags for sorting and search
 
   createdAt     DateTime @default(now())

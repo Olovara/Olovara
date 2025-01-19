@@ -7,15 +7,32 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
+import { QuillEditor } from "../QuillEditor";
+import { useState } from "react";
+import { UploadDropzone } from "@/lib/uploadthing";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 
 export function ProductForm() {
+  const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] }); // Default to empty Delta JSON
+  const [images, setImages] = useState<null | string[]>(null);
+  const [productFile, SetProductFile] = useState<null | string>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Description JSON:", descriptionJson);
+    // Send `descriptionJson` to your backend or Prisma schema
+  };
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
@@ -43,13 +60,36 @@ export function ProductForm() {
         </div>
 
         <div className="flex flex-col gap-y-2">
-          <Label>Description</Label>
-          <Textarea placeholder="Product description" {...form.register("description")} />
+          <Label className="block text-sm font-medium">
+            Product Description
+          </Label>
+          <QuillEditor json={descriptionJson} setJson={setDescriptionJson} />
         </div>
 
         <div className="flex flex-col gap-y-2">
           <Label>Price</Label>
-          <Input type="number" placeholder="Price" {...form.register("price", { valueAsNumber: true })} />
+          <Input
+            type="number"
+            placeholder="Price"
+            {...form.register("price", { valueAsNumber: true })}
+          />
+        </div>
+
+        {/* For images upload */}
+        <div className="flex flex-col gap-y-2">
+          <input type="hidden" name="images" value={JSON.stringify(images)} />
+          <Label>Product Images</Label>
+          <UploadDropzone
+            endpoint="imageUploader"
+            onClientUploadComplete={(res) => {
+              const urls = res.map((item) => item.url);
+              setImages(urls);
+              form.setValue("images", urls); // Sync with form state
+            }}
+            onUploadError={(error: Error) => {
+              toast.error("Something went wrong, try again");
+            }}
+          />
         </div>
 
         <FormField
@@ -93,13 +133,20 @@ export function ProductForm() {
           </>
         )}
 
+        {/* For digital product file upload */}
         {form.watch("isDigital") && (
           <div className="flex flex-col gap-y-2">
-            <Label>Product File URL</Label>
-            <Input
-              type="url"
-              placeholder="URL to the product file"
-              {...form.register("productFile")}
+            <input type="hidden" name="productFile" value={productFile ?? ""} />
+            <Label>Product File</Label>
+            <UploadDropzone
+              onClientUploadComplete={(res) => {
+                SetProductFile(res[0].url);
+                toast.success("Your Product file has been uploaded!");
+              }}
+              endpoint="productFileUpload"
+              onUploadError={(error: Error) => {
+                toast.error("Something went wrong, try again");
+              }}
             />
           </div>
         )}

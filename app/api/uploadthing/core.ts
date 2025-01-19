@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/route";
+import { auth } from "@/auth";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
@@ -11,7 +10,7 @@ export const ourFileRouter = {
   imageUploader: f({ image: { maxFileSize: "4MB", maxFileCount: 5 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
-      const session = await getServerSession(authOptions);
+      const session = await auth();
 
       if (!session) throw new UploadThingError("Unauthorized");
 
@@ -27,10 +26,10 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId };
     }),
 
-  productFileUpload: f({ "application/zip": { maxFileCount: 1 } })
+  productFileUpload: f({ "application/pdf": { maxFileCount: 1 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
-      const session = await getServerSession(authOptions);
+      const session = await auth();
 
       if (!session) throw new UploadThingError("Unauthorized");
 
