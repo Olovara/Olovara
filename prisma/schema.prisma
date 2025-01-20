@@ -162,7 +162,7 @@ model SellerApplication {
 
 model Product {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String   @unique
+  userId            String
   name              String
   description       Json
   price             Float
