@@ -28,7 +28,7 @@ const Footer = () => {
                 <div className='absolute inset-0 overflow-hidden rounded-lg'>
                   <div
                     aria-hidden='true'
-                    className='absolute bg-zinc-50 inset-0 bg-gradient-to-br bg-opacity-90'
+                    className='absolute bg-purple-50 inset-0 bg-gradient-to-br bg-opacity-90'
                   />
                 </div>
 
@@ -41,7 +41,7 @@ const Footer = () => {
                     digital products, you can do so in
                     minutes.{' '}
                     <Link
-                      href='/sign-in?as=seller'
+                      href='/register'
                       className='whitespace-nowrap font-medium text-black hover:text-zinc-900'>
                       Get started &rarr;
                     </Link>
