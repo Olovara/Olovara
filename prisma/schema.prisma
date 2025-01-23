@@ -176,6 +176,7 @@ model Product {
   discount          Int?     // Only if the product is on sale
   primaryCategory   String
   secondaryCategory String[]
+  options           Json?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

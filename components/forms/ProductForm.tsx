@@ -27,7 +27,12 @@ import { ProductSchema } from "@/schemas/ProductSchema";
 import { QuillEditor } from "../QuillEditor";
 import { startTransition, useState, useTransition } from "react";
 import { UploadDropzone } from "@/lib/uploadthing";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
@@ -38,11 +43,14 @@ export function ProductForm() {
   const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] }); // Default to empty Delta JSON
   const [images, setImages] = useState<null | string[]>(null);
   const [productFile, SetProductFile] = useState<null | string>(null);
+  const [dropdownOptions, setDropdownOptions] = useState<
+    { label: string; values: string[] }[]
+  >([]);
   const isClient = useIsClient();
-  
+
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  
+
   const [isPending, startTransition] = useTransition();
 
   const PrimaryCategories = [
@@ -66,22 +74,58 @@ export function ProductForm() {
     defaultValues: {
       isDigital: false,
       primaryCategory: "", // Add this to match schema
+      secondaryCategory: [], // Add default array for dropdown
     },
   });
+
+  const addDropdownOption = () => {
+    setDropdownOptions((prev) => [...prev, { label: "", values: [""] }]);
+  };
+
+  const updateDropdownOption = (
+    index: number,
+    field: "label" | "values",
+    value: string | string[]
+  ) => {
+    setDropdownOptions((prev) =>
+      prev.map((option, i) =>
+        i === index
+          ? {
+              ...option,
+              [field]: field === "values" ? (value as string[]) : value,
+            }
+          : option
+      )
+    );
+  };
+
+  const addDropdownValue = (index: number) => {
+    setDropdownOptions((prev) =>
+      prev.map((option, i) =>
+        i === index ? { ...option, values: [...option.values, ""] } : option
+      )
+    );
+  };
+
+  const removeDropdownOption = (index: number) => {
+    setDropdownOptions((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const onSubmit = async (values: z.infer<typeof ProductSchema>) => {
     const productData = {
       ...values,
-      description: descriptionJson,  // Add the Quill description as part of the data
+      description: descriptionJson, // Add the Quill description as part of the data
+      options: dropdownOptions,
     };
-  
+
     startTransition(() => {
-      fetch("/api/products", {  // Use the correct API route
+      fetch("/api/products", {
+        // Use the correct API route
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(productData),  // Send the form data as JSON
+        body: JSON.stringify(productData), // Send the form data as JSON
       })
         .then((response) => response.json())
         .then((data) => {
@@ -89,6 +133,7 @@ export function ProductForm() {
             setSuccess(data.success);
             form.reset(); // Reset form after successful submission
             setDescriptionJson({ ops: [] }); // Reset Quill editor state
+            setDropdownOptions([]);
           } else if (data.error) {
             setError(data.error);
           }
@@ -98,10 +143,10 @@ export function ProductForm() {
           console.error("Error creating product:", error);
         });
     });
-  
+
     setSuccess("");
     setError("");
-  };  
+  };
 
   if (!isClient) return <Spinner />;
 
@@ -127,6 +172,55 @@ export function ProductForm() {
             placeholder="Price"
             {...form.register("price", { valueAsNumber: true })}
           />
+        </div>
+
+        {/* Dynamic Dropdown Options */}
+        <div>
+          <Label>Custom Dropdown Options</Label>
+          <Button variant="outline" type="button" onClick={addDropdownOption}>
+            Add Dropdown
+          </Button>
+          {dropdownOptions.map((option, index) => (
+            <div key={index} className="space-y-2 mt-4">
+              <div className="flex items-center gap-x-4">
+                <Input
+                  placeholder="Dropdown Label (e.g., Size)"
+                  value={option.label}
+                  onChange={(e) =>
+                    updateDropdownOption(index, "label", e.target.value)
+                  }
+                />
+                <Button
+                  variant="destructive"
+                  type="button"
+                  onClick={() => removeDropdownOption(index)}
+                >
+                  Remove
+                </Button>
+              </div>
+              {option.values.map((value, valueIndex) => (
+                <div key={valueIndex} className="flex items-center gap-x-4">
+                  <Input
+                    placeholder="Option Value (e.g., Small)"
+                    value={value}
+                    onChange={(e) => {
+                      const newValues = [...option.values];
+                      newValues[valueIndex] = e.target.value;
+                      updateDropdownOption(index, "values", newValues);
+                    }}
+                  />
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => addDropdownValue(index)}
+                className="mt-2"
+              >
+                Add Value
+              </Button>
+            </div>
+          ))}
         </div>
 
         {/* Select Primary Category */}

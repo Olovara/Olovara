@@ -5,6 +5,15 @@ export const ProductSchema = z.object({
     message: "Please enter your product's name, required.",
   }),
   description: z.any(),
+  options: z
+  .array(
+    z.object({
+      name: z.string().min(1, "Option name is required"),
+      value: z.string().min(1, "Option value is required"),
+    })
+  )
+  .nullable()
+  .optional(),
   price: z.number().min(1, {
     message: "Please enter your product's price, required",
   }),

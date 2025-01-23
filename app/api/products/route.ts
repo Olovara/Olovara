@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     // Now get the form data from the request body
     const data = await req.json();
-    const { name, price, description, primaryCategory, secondaryCategory, images, isDigital, shippingCost, stock, productFile } = data;
+    const { name, price, description, primaryCategory, secondaryCategory, options, images, isDigital, shippingCost, stock, productFile } = data;
 
     // Create product in the database
     const product = await prisma.product.create({
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
         description,
         primaryCategory,
         secondaryCategory,
+        options,
         images,
         isDigital,
         shippingCost,
