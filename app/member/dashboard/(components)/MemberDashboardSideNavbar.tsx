@@ -2,11 +2,11 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, User, Package, PackageOpen } from "lucide-react";
+import { HomeIcon, Mail, Settings, PackageOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function SellerDashboardSideNavbar() {
+export default function MemberDashboardSideNavbar() {
   const pathname = usePathname();
 
   return (
@@ -24,10 +24,10 @@ export default function SellerDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard",
+                    pathname === "/member/dashboard",
                 }
               )}
-              href="/seller/dashboard"
+              href="/member/dashboard"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
                 <HomeIcon className="h-3 w-3" />
@@ -39,40 +39,10 @@ export default function SellerDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard/products",
+                    pathname === "/member/dashboard/my-purchases",
                 }
               )}
-              href="/seller/dashboard/products"
-            >
-              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
-                <Package className="h-3 w-3" />
-              </div>
-              Products
-            </Link>
-            <Link
-              className={clsx(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-                {
-                  "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard/my-orders",
-                }
-              )}
-              href="/seller/dashboard/my-orders"
-            >
-              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
-                <Package className="h-3 w-3" />
-              </div>
-              My Orders
-            </Link>
-            <Link
-              className={clsx(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-                {
-                  "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard/my-purchases",
-                }
-              )}
-              href="/seller/dashboard/my-purchases"
+              href="/member/dashboard/my-purchases"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
                 <PackageOpen className="h-3 w-3" />
@@ -84,10 +54,10 @@ export default function SellerDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard/messages",
+                    pathname === "/member/dashboard/messages",
                 }
               )}
-              href="/seller/dashboard/messages"
+              href="/member/dashboard/messages"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
                 <Mail className="h-3 w-3" />
@@ -100,10 +70,10 @@ export default function SellerDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/seller/dashboard/settings",
+                    pathname === "/member/dashboard/settings",
                 }
               )}
-              href="/seller/dashboard/settings"
+              href="/member/dashboard/settings"
               id="onboarding"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">

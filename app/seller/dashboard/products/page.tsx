@@ -39,6 +39,12 @@ export default async function ProductsPage() {
 
   const products = await getSellerProducts(userId); // Fetch products dynamically
 
+  {products.length === 0 && (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-muted-foreground">No products found. Add a new product to get started.</p>
+    </div>
+  )}
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       {/* Header and breadcrumbs */}
