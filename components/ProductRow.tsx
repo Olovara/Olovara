@@ -9,60 +9,49 @@ interface iAppProps {
 }
 
 async function getData({ category }: iAppProps) {
-  const fiveDaysAgo = new Date();
-  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5); // Calculate the date 5 days ago
+  try {
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-  switch (category) {
-    case "ACCESORIES": {
-      const data = await db.product.findMany({
-        where: {
-          primaryCategory: "ACCESORIES",
-        },
-        select: {
-          price: true,
-          name: true,
-          description: true,
-          id: true,
-          images: true,
-        },
-        take: 5,
-      });
-
-      return {
-        data: data,
-        title: "Accessories",
-        link: "/products/accessories",
-      };
-    }
-    case "newest": {
-      const data = await db.product.findMany({
-        where: {
-          createdAt: {
-            gte: fiveDaysAgo, // Only products created in the past 5 days
+    switch (category) {
+      case "ACCESORIES": {
+        const data = await db.product.findMany({
+          where: { primaryCategory: "ACCESORIES" },
+          select: {
+            price: true,
+            name: true,
+            description: true,
+            id: true,
+            images: true,
           },
-        },
-        select: {
-          price: true,
-          name: true,
-          description: true,
-          id: true,
-          images: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 5,
-      });
+          take: 5,
+        });
 
-      return {
-        data: data,
-        title: "Newest Products",
-        link: "/products/all",
-      };
+        return { data, title: "Accessories", link: "/products/accessories" };
+      }
+      case "newest": {
+        const data = await db.product.findMany({
+          where: { createdAt: { gte: fiveDaysAgo } },
+          select: {
+            price: true,
+            name: true,
+            description: true,
+            id: true,
+            images: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        });
+
+        return { data, title: "Newest Products", link: "/products/all" };
+      }
+      default: {
+        return notFound();
+      }
     }
-    default: {
-      return notFound();
-    }
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    return { data: [], title: "Error", link: "#" };
   }
 }
 
@@ -76,12 +65,15 @@ export function ProductRow({ category }: iAppProps) {
   );
 }
 
-async function LoadRows({ category }: iAppProps) {
-  const data = await getData({ category: category });
+export async function LoadRows({ category }: iAppProps) {
+  const data = await getData({ category });
+
   return (
-    <>
+    <section className="mt-12">
       <div className="md:flex md:items-center md:justify-between">
-        <h2 className="text-2xl font-extrabold tracking-tighter ">{data.title}</h2>
+        <h2 className="text-2xl font-extrabold tracking-tighter">
+          {data.title}
+        </h2>
         <Link
           href={data.link}
           className="text-sm hidden font-medium text-primary hover:text-primary/90 md:block"
@@ -94,11 +86,11 @@ async function LoadRows({ category }: iAppProps) {
         {data.data.map((product) => (
           <ProductCard
             key={product.id}
-            product={product} // Pass entire product data
-            index={data.data.indexOf(product)} // Optional for staggered animation
+            product={product}
+            index={data.data.indexOf(product)}
           />
         ))}
       </div>
-    </>
+    </section>
   );
 }
