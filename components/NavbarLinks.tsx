@@ -3,28 +3,9 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SearchBar } from "./SearchBar";
 
 export const navbarLinks = [
-  {
-    id: 0,
-    name: "Home",
-    href: "/",
-  },
-  {
-    id: 1,
-    name: "Templates",
-    href: "/products/template",
-  },
-  {
-    id: 2,
-    name: "Ui Kits",
-    href: "/products/uikit",
-  },
-  {
-    id: 3,
-    name: "Icons",
-    href: "/products/icon",
-  },
   {
     id: 4,
     name: "Become a Seller",
@@ -37,6 +18,7 @@ export function NavbarLinks() {
 
   return (
     <div className="hidden md:flex justify-center items-center col-span-6 gap-x-2">
+      <SearchBar/>
       {navbarLinks.map((item) => (
         <Link
           href={item.href}
