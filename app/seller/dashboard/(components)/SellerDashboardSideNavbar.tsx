@@ -2,7 +2,7 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, User, Package, PackageOpen } from "lucide-react";
+import { HomeIcon, Mail, Settings, Package, PackageOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

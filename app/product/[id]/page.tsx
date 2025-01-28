@@ -42,6 +42,11 @@ async function getData(id: string) {
       price: true, // Fetch the product price
       description: true, // Fetch the product description
       options: true, // Fetch the product options
+      seller: {
+        select: {
+          shopName: true, // Fetch the shop name from the related seller
+        },
+      },
     },
   });
   return data;
@@ -77,6 +82,11 @@ export default async function ProductPage({
           <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
             {data.name}
           </h1>
+          {data.seller?.shopName && (
+            <p className="text-gray-700 text-sm">
+              Made by: <span className="font-medium">{data.seller.shopName}</span>
+            </p>
+          )}
 
           {/* Display Options if Available */}
           {data.options && data.options.length > 0 && (

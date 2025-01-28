@@ -88,7 +88,7 @@ export function UserNav({ userInfo }: iAppProps) {
             Settings
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/my-products">My Products</Link>
+            <Link href="/seller/dashboard/products">My Products</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/billing">Billing</Link>

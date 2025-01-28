@@ -3,9 +3,5 @@ export const metadata = {
 };
 
 export default function SellerMyOrders() {
-  return (
-    <div>
-      Hello from my orders page!
-    </div>
-  );
+  return <div>Hello from my orders page!</div>;
 }
