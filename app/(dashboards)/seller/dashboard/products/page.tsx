@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Ellipsis, Search } from "lucide-react";
+import { Ellipsis, PlusCircle, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -54,7 +54,7 @@ export default async function ProductsPage() {
   )}
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full flex-col">
       {/* Header and breadcrumbs */}
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <Breadcrumb className="hidden md:flex">
@@ -119,6 +119,14 @@ export default async function ProductsPage() {
                 Archived
               </TabsTrigger>
             </TabsList>
+            <Button size="sm" className="h-8 gap-1">
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <Link href="/seller/dashboard/products/create-product">
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Add Product
+                  </span>
+                  </Link>
+                </Button>
           </div>
           <TabsContent value="all">
             <Card>

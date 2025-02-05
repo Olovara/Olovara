@@ -1,7 +1,7 @@
 import SellerDashboardSideNavbar from "./(components)/SellerDashboardSideNavbar";
 import SellerDashboardTopNavbar from "./(components)/SellerDashboardTopNavbar";
 
-export default function DashboadLayout({
+export default function SellerDashboadLayout({
   children,
 }: {
   children: React.ReactNode;

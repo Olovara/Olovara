@@ -61,9 +61,9 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border font-sans; /* Ensure all elements use the font */
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans; /* Reinforce it in body */
   }
 }
