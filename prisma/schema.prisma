@@ -110,7 +110,7 @@ model User {
   seller                Seller?
   status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
-  suggestion            Suggestion?
+  suggestion            Suggestion[]
   isTwoFactorEnabled    Boolean @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
   role                  UserRole  @default(MEMBER)
@@ -135,8 +135,10 @@ model Seller {
   id		                    String    @id @default(auto()) @map("_id") @db.ObjectId
   userId	                  String    @unique
   shopName	                String
-  shopDescription           String
+  shopTagLine               String?
+  shopDescription           String?
   stripeConnected	          Boolean		@default(false)
+  connectedAccoundId        String    @unique
   totalSales	              Int       @default(0)
   totalProducts	            Int       @default(0)
   acceptsCustom             Boolean   @default(false)
