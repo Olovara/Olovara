@@ -43,7 +43,7 @@ async function getData({ category }: iAppProps) {
           take: 5,
         });
 
-        return { data, title: "Newest Products", link: "/products/all" };
+        return { data, title: "Newest Products", link: "/products" };
       }
       default: {
         return notFound();

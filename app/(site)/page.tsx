@@ -15,12 +15,12 @@ export default function Home() {
         <span className="text-purple-600">handcrafted goods</span>.
       </h1>
       <p className="mt-6 text-lg max-w-prose text-muted-foreground">
-        Welcome to Yarnnu. Every product on our platform is verified by our team
+        Welcome to Yarnnu. Every shop on our platform is verified by our team
         to ensure our highest quality standards.
       </p>
       <div className="flex flex-col sm:flex-row gap-4 mt-6">
         <Link href="/products" className={buttonVariants()}>
-          Browse Trending
+          Shop Now
         </Link>
         <Button variant="ghost">Our quality promise &rarr;</Button>
       </div>

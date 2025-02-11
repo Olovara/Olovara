@@ -41,7 +41,7 @@ const Footer = () => {
                   digital products, you can do so in
                   minutes.{' '}
                   <Link
-                    href='/register'
+                    href='/seller-application'
                     className='whitespace-nowrap font-medium text-black hover:text-zinc-900'>
                     Get started &rarr;
                   </Link>
@@ -62,19 +62,19 @@ const Footer = () => {
           {/* Links below the copyright */}
           <div className='mt-4 flex justify-center space-x-8'>
             <Link
-              href='#'
+              href='/terms-of-service'
               className='text-sm text-muted-foreground hover:text-gray-600'>
               Terms
             </Link>
             <Link
-              href='#'
+              href='/privacy-policy'
               className='text-sm text-muted-foreground hover:text-gray-600'>
               Privacy Policy
             </Link>
             <Link
-              href='#'
+              href='/handmade-guidelines'
               className='text-sm text-muted-foreground hover:text-gray-600'>
-              Cookie Policy
+              Handmade Guidelines
             </Link>
           </div>
         </div>
