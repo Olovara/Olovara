@@ -184,7 +184,7 @@ model Product {
   dropDate      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  seller        Seller?    @relation(fields: [userId], references: [id])
+  seller        Seller?    @relation(fields: [userId], references: [userId])
 }
 
 model Suggestion {

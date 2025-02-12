@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
+import Link from "next/link";
 
 // Dynamically import the ImageSlider component with SSR disabled
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -49,6 +50,7 @@ async function getData(id: string) {
       },
     },
   });
+
   return data;
 }
 
@@ -84,7 +86,15 @@ export default async function ProductPage({
           </h1>
           {data.seller?.shopName && (
             <p className="text-gray-700 text-sm">
-              Made by: <span className="font-medium">{data.seller.shopName}</span>
+              Made by:&nbsp;
+              <Link
+                href={`/shop/${encodeURIComponent(
+                  data.seller.shopName.replace(/\s+/g, "")
+                )}`}
+                className="font-medium text-purple-600 hover:underline"
+              >
+                {data.seller.shopName}
+              </Link>
             </p>
           )}
 

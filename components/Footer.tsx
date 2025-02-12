@@ -28,7 +28,7 @@ const Footer = () => {
               <div className='absolute inset-0 overflow-hidden rounded-lg'>
                 <div
                   aria-hidden='true'
-                  className='absolute bg-purple-50 inset-0 bg-gradient-to-br bg-opacity-90'
+                  className='absolute bg-purple-100 inset-0 bg-gradient-to-br bg-opacity-90'
                 />
               </div>
 
@@ -52,7 +52,7 @@ const Footer = () => {
         )}
       </div>
 
-      <div className='py-10 md:flex md:items-center md:justify-center'>
+      <div className='py-10 md:flex md:items-center md:justify-center bg-gray-100'>
         {/* Centered Copyright */}
         <div className='text-center'>
           <p className='text-sm text-muted-foreground'>

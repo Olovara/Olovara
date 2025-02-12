@@ -1,5 +1,5 @@
+import SellerApplicationForm from "@/components/forms/SellerApplicationForm";
 import React from "react";
-import SellerApplicationForm from "./SellerApplicationForm"
 
 export default function SellerApplication() {
     return (
