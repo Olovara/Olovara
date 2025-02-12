@@ -134,7 +134,8 @@ model Member {
 model Seller {
   id		                    String    @id @default(auto()) @map("_id") @db.ObjectId
   userId	                  String    @unique
-  shopName	                String
+  shopName	                String    @unique
+  shopNameSlug              String    @unique // URL-friendly shop name
   shopTagLine               String?
   shopDescription           String?
   stripeConnected	          Boolean		@default(false)
@@ -162,29 +163,32 @@ model SellerApplication {
 }
 
 model Product {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String
-  name              String
-  description       Json
-  price             Float
-  shippingCost      Float?   // Only required if product is physical
-  isDigital         Boolean
-  stock             Int?     // Only required if product is physical
-  images            String[] // Array of image URLs
-  productFile       String?  // Only required if product is digital
-  numberSold        Int?     // Only if product is digital
-  onSale            Boolean  @default(false)
-  discount          Int?     // Only if the product is on sale
-  primaryCategory   String
-  secondaryCategory String[]
-  options           Json?
-  productDrop       Boolean  @default(false)
-  NSFW              Boolean		@default(false)
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String
+  name                  String
+  description           Json
+  price                 Float
+  shippingCost          Float?   // Only required if product is physical
+  isDigital             Boolean
+  stock                 Int?     // Only required if product is physical
+  images                String[] // Array of image URLs
+  productFile           String?  // Only required if product is digital
+  numberSold            Int?     // Only if product is digital
+  onSale                Boolean  @default(false)
+  discount              Int?     // Only if the product is on sale
+  primaryCategory       String
+  secondaryCategory     String[]
+  options               Json?
+  inStockProcessingTime Int?
+  outStockLeadTime      Int?
+  productDrop           Boolean  @default(false)
+  NSFW                  Boolean		@default(false)
 
-  dropDate      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  seller        Seller?    @relation(fields: [userId], references: [userId])
+  dropDate        DateTime?
+  discountEndDate DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  seller          Seller?    @relation(fields: [userId], references: [userId])
 }
 
 model Suggestion {

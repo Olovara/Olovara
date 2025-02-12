@@ -24,3 +24,10 @@ export function formatPrice(
     maximumFractionDigits: 2,
   }).format(numericPrice)
 }
+
+export function shopNameSlugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, "") // Remove spaces
+    .replace(/[^\w-]+/g, ""); // Remove special characters
+}

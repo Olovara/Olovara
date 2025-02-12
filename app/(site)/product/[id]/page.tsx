@@ -46,6 +46,7 @@ async function getData(id: string) {
       seller: {
         select: {
           shopName: true, // Fetch the shop name from the related seller
+          shopNameSlug: true,
         },
       },
     },
@@ -88,12 +89,10 @@ export default async function ProductPage({
             <p className="text-gray-700 text-sm">
               Made by:&nbsp;
               <Link
-                href={`/shop/${encodeURIComponent(
-                  data.seller.shopName.replace(/\s+/g, "")
-                )}`}
+                href={`/shop/${data.seller.shopNameSlug}`} // Use slug instead of shopName
                 className="font-medium text-purple-600 hover:underline"
               >
-                {data.seller.shopName}
+                {data.seller.shopName} {/* Still displays properly */}
               </Link>
             </p>
           )}
