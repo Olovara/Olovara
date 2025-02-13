@@ -1,13 +1,14 @@
 import * as z from "zod";
 
 export const ContactUsSchema = z.object({
-  craftingProcess: z.string().min(30, {
-    message: "Please enter your crafting process, required.",
+  name: z.string().min(3, {
+    message: "Please enter your name, required.",
   }),
-  portfolio: z.string().min(6, {
-    message: "Please enter a link to your portfolio, required.",
+  email: z.string().min(6, {
+    message: "Please enter your email, required.",
   }),
-  interestInJoining: z.string().min(6, {
-    message: "Please enter the reason for your interest in joining, required",
+  reason: z.string(),
+  helpDescription: z.string().min(6, {
+    message: "Please let us know how we can help you, required",
   }),
 });
