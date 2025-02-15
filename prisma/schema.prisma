@@ -108,6 +108,7 @@ model User {
   accounts              Account[]
   member                Member?
   seller                Seller?
+  orders                Order[]
   status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
   suggestion            Suggestion[]
@@ -144,6 +145,7 @@ model Seller {
   totalProducts	            Int       @default(0)
   acceptsCustom             Boolean   @default(false)
   products	                Product[]
+  order                     Order[]
   user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt	      DateTime @default(now())
@@ -183,7 +185,7 @@ model Product {
   outStockLeadTime      Int?
   productDrop           Boolean  @default(false)
   NSFW                  Boolean		@default(false)
-
+  order                 Order[]
   dropDate        DateTime?
   discountEndDate DateTime?
   createdAt       DateTime @default(now())
@@ -211,4 +213,25 @@ model ContactUs {
   helpDescription   String
 
   createdAt         DateTime @default(now())
+}
+
+model Order {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   // Buyer ID
+  sellerId       String   // Seller ID
+  productId      String   // Product being ordered
+  quantity       Int      // How many were ordered
+  totalAmount    Float    // Final price including shipping and discounts
+  shippingCost   Float?   // Only if physical
+  discount       Int?     // Applied discount
+  isDigital      Boolean  // True if digital product
+  status         String   @default("pending") // Order status
+  paymentStatus  String   @default("unpaid")  // Payment status
+  shippingAddress Json?   // Only required for physical products
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id])
+  seller         Seller   @relation(fields: [sellerId], references: [userId])
+  product        Product  @relation(fields: [productId], references: [id])
 }

@@ -21,10 +21,13 @@ export const SecondaryCategories = [
  * Map Secondary Categories to Primary Categories
  */
 export const CategoryMapping: Record<string, string[]> = {
-  ACCESSORIES: ["CROCHET", "KNITTING", "SEWING"],
+  ART: ["CROCHET", "KNITTING", "SEWING"],
+  BATH: ["CROCHET", "KNITTING", "SEWING"],
+  BOOKS: ["CROCHET", "KNITTING", "SEWING"],
   CLOTHING: ["CROCHET", "KNITTING", "TUNISIAN"],
   CRAFT_SUPPLIES: ["SEWING"],
-  PATTERNS: ["CROCHET", "KNITTING", "SEWING", "TUNISIAN"],
+  HOME: ["CROCHET", "KNITTING", "SEWING", "TUNISIAN"],
+  JEWELRY: ["CROCHET", "KNITTING", "SEWING"],
   TOYS: ["AMIGURUMI", "CROCHET", "KNITTING"],
 };
 

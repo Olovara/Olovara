@@ -12,17 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu as MenuIcon } from "lucide-react";
 import { SearchBar } from "./SearchBar";
-
-// Example categories array (replace with dynamic data if needed)
-const categories = [
-  { id: 1, name: "Accessories", href: "/category/accessories" },
-  { id: 2, name: "Templates", href: "/category/templates" },
-  { id: 3, name: "UI Kits", href: "/category/uikits" },
-  { id: 4, name: "Icons", href: "/category/icons" },
-];
+import { CategoriesMap } from "@/data/categories"; // Adjust the import path as needed
 
 export function NavbarLinks() {
   const location = usePathname();
+  const primaryCategories = CategoriesMap.PRIMARY; // Get primary categories
 
   return (
     <div className="hidden md:flex justify-center items-center col-span-6 gap-x-4">
@@ -35,12 +29,12 @@ export function NavbarLinks() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-48">
-          {categories.map((category) => (
+          {primaryCategories.map((category) => (
             <DropdownMenuItem key={category.id} asChild>
               <Link
-                href={category.href}
+                href={`/category/${category.id.toLowerCase()}`}
                 className={cn(
-                  location === category.href
+                  location === `/category/${category.id.toLowerCase()}`
                     ? "font-semibold text-primary"
                     : "hover:text-primary"
                 )}
@@ -52,22 +46,21 @@ export function NavbarLinks() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <SearchBar/>
+      <SearchBar />
 
-      {/* Other Navbar Links */}
-      <div className="flex gap-x-2">
-        <Link
-          href="/seller-application"
-          className={cn(
-            location === "/seller-application"
-              ? "bg-muted"
-              : "hover:bg-muted hover:bg-opacity-75",
-            "group flex items-center px-2 py-2 font-medium rounded-md"
-          )}
-        >
-          Become a Seller
-        </Link>
-      </div>
+      {/* Become a Seller Button (Ensured One Line) */}
+      <Link
+        href="/seller-application"
+        className={cn(
+          location === "/seller-application"
+            ? "bg-muted"
+            : "hover:bg-muted hover:bg-opacity-75",
+          "px-4 py-2 font-medium rounded-md whitespace-nowrap"
+        )}
+      >
+        Become a Seller
+      </Link>
+
     </div>
   );
 }
