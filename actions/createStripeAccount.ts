@@ -1,36 +1,64 @@
+"use server";
+
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 export async function CreateStripeAccountLink() {
-  const session = await auth(); // Get session
-  const userId = session?.user?.id; // Extract userId from session
+  const session = await auth();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error();
+    throw new Error("User is not authenticated.");
   }
 
-  const data = await db.user.findUnique({
+  // Fetch seller data
+  const seller = await db.user.findUnique({
     where: { id: userId },
     select: {
       seller: {
         select: {
-          connectedAccoundId: true,
+          connectedAccountId: true,
         },
       },
     },
   });
 
+  let connectedAccountId = seller?.seller?.connectedAccountId;
+
+  // If the seller has no connected Stripe account, create one
+  if (!connectedAccountId) {
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "US", // Change based on your supported countries
+      email: session.user.email,
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+    });
+
+    // Store the new account ID in the database
+    await db.seller.update({
+      where: { userId },
+      data: { connectedAccountId: account.id },
+    });
+
+    connectedAccountId = account.id;
+  }
+
+  // Create the account link
   const accountLink = await stripe.accountLinks.create({
-    account: data?.connectedAccountId as string,
+    account: connectedAccountId,
     refresh_url:
       process.env.NODE_ENV === "development"
         ? `http://localhost:3000/billing`
         : `https://marshal-ui-yt.vercel.app/billing`,
     return_url:
       process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/return/${data?.connectedAccountId}`
-        : `https://marshal-ui-yt.vercel.app/return/${data?.connectedAccountId}`,
+        ? `http://localhost:3000/return/${connectedAccountId}`
+        : `https://marshal-ui-yt.vercel.app/return/${connectedAccountId}`,
     type: "account_onboarding",
   });
 

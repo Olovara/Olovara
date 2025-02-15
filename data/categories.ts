@@ -1,9 +1,12 @@
 export const PrimaryCategories = [
-  { id: "ACCESSORIES", name: "Accessories" },
-  { id: "CLOTHING", name: "Clothing" },
+  { id: "ART", name: "Art & Collectibles" },
+  { id: "BATH", name: "Bath & Beauty" },
+  { id: "BOOKS", name: "Books & Media" },
+  { id: "CLOTHING", name: "Clothing & Accessories" },
   { id: "CRAFT_SUPPLIES", name: "Craft Supplies" },
-  { id: "PATTERNS", name: "Patterns" },
-  { id: "TOYS", name: "Toys" },
+  { id: "HOME", name: "Home & Living" },
+  { id: "JEWELRY", name: "Jewelry" },
+  { id: "TOYS", name: "Toys & Games" },
 ];
 
 export const SecondaryCategories = [

@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
 import Link from "next/link";
+import QuantitySelector from "@/components/QuantitySelector";
 
 // Dynamically import the ImageSlider component with SSR disabled
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -96,6 +97,9 @@ export default async function ProductPage({
               </Link>
             </p>
           )}
+
+          {/* Quantity Selector (Client Component) */}
+          <QuantitySelector name="quantity" />
 
           {/* Display Options if Available */}
           {data.options && data.options.length > 0 && (

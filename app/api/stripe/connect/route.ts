@@ -1,6 +1,5 @@
-import prisma from "@/app/lib/db";
-import { stripe } from "@/app/lib/stripe";
-
+import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
 
 export async function POST(req: Request) {
@@ -24,7 +23,7 @@ export async function POST(req: Request) {
     case "account.updated": {
       const account = event.data.object;
 
-      const data = await prisma.user.update({
+      const data = await db.user.update({
         where: {
           connectedAccountId: account.id,
         },

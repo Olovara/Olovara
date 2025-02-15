@@ -139,7 +139,7 @@ model Seller {
   shopTagLine               String?
   shopDescription           String?
   stripeConnected	          Boolean		@default(false)
-  connectedAccoundId        String?    @unique // Optional, but required for selling
+  connectedAccountId        String?   @unique // Optional, but required for selling
   totalSales	              Int       @default(0)
   totalProducts	            Int       @default(0)
   acceptsCustom             Boolean   @default(false)
