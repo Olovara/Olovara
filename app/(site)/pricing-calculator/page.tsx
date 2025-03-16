@@ -1,112 +1,151 @@
 "use client";
 
 import { useState } from "react";
+import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+import MaterialsSection from "@/components/pricing-calculator/MaterialsSection";
+import LaborSection from "@/components/pricing-calculator/LaborSection";
+import PackagingSection from "@/components/pricing-calculator/PackagingSection";
+import CraftShowCostsSection from "@/components/pricing-calculator/CraftShowCostsSection";
+import PricingOverviewSection from "@/components/pricing-calculator/PricingOverviewSection";
+import PricingBreakdownSection from "@/components/pricing-calculator/PricingBreakdownSection";
+
+Chart.register(ArcElement, Tooltip, Legend);
+
 export default function PricingCalculator() {
+  const [materials, setMaterials] = useState([
+    { name: "", cost: "", size: "", quantity: "", total: 0 },
+  ]);
+  const [packaging, setPackaging] = useState([
+    { description: "", cost: "", size: "", quantity: "", total: 0 },
+  ]);
+  const [labor, setLabor] = useState([
+    { description: "", hourlyWage: "", time: "", total: 0 },
+  ]);
+  const [otherCosts, setOtherCosts] = useState([
+    { description: "", total: "" },
+  ]);
 
-  const [hours, setHours] = useState<number>(0);
-  const [wage, setWage] = useState(0);
-  const [materialCost, setMaterialCost] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [markup, setMarkup] = useState(0);
+  const [salesTax, setSalesTax] = useState(0);
+  const [transactionFeePercent, setTransactionFeePercent] = useState(2.9);
+  const [transactionFeeDollar, setTransactionFeeDollar] = useState(0.25);
+  const [boothFee, setBoothFee] = useState(0);
+  const [averageItemsSold, setAverageItemsSold] = useState(1);
 
-  const sellingPrice =
-    (hours * wage) + materialCost || 0;
-
-  function handleReset() {
-    setHours(0);
-    setWage(0);
-    setMaterialCost(0);
-  }
-
-  return (
-    <div className=" min-h-screen w-full bg-[hsl(185,41%,84%)] flex justify-center items-center flex-col gap-10 p-2">
-      <main className="bg-white  p-4 rounded-2xl flex flex-col md:flex-row gap-6 w-full max-w-[700px]">
-        <div className="flex flex-col gap-8  md:w-1/2">
-          <section className="flex gap-2 flex-col">
-            {/* Hours */}
-            <Label>Hours</Label>
-            <div className="relative flex ">
-              <input
-                onChange={(e) => setHours(e.target.valueAsNumber)}
-                className="text-right h-[32px] w-full bg-[hsl(189,41%,97%)] px-2 outline-strong-cyan rounded font-bold text-dark-cyan "
-                type="number"
-                value={hours}
-              />
-            </div>
-          </section>
-
-          <section className="flex gap-2 flex-col">
-            {/* Wage */}
-            <Label>Wage</Label>
-            <div className="relative flex ">
-              <input
-                onChange={(e) => setWage(e.target.valueAsNumber)}
-                className="text-right h-[32px] w-full bg-[hsl(189,41%,97%)] px-2 outline-strong-cyan rounded font-bold text-dark-cyan "
-                type="number"
-                value={wage}
-              />
-            </div>
-          </section>
-
-          <section className="flex gap-2 flex-col">
-            {/* CostOfMaterials */}
-            <Label>Cost of Materials</Label>
-            <div className="relative flex ">
-              <input
-                onChange={(e) => setMaterialCost(e.target.valueAsNumber)}
-                className="text-right h-[32px] w-full bg-[hsl(189,41%,97%)] px-2 outline-strong-cyan rounded font-bold text-dark-cyan "
-                type="number"
-                value={materialCost}
-              />
-            </div>
-          </section>
-        </div>
-
-        <div className="bg-dark-cyan flex-col flex md:w-1/2 rounded-xl px-5 pt-8 pb-6  justify-between gap-6">
-          <section className="flex flex-col gap-5">
-            <PersonBill
-              label="Selling Price"
-              total={sellingPrice.toFixed(2)}
-            />
-          </section>
-
-          {/* button  */}
-
-          <button
-            onClick={handleReset}
-            className="w-full text-dark-cyan bg-strong-cyan rounded font-bold h-[38px] hover:bg-very-light-grayish-cyan "
-          >
-            {" "}
-            RESET{" "}
-          </button>
-        </div>
-      </main>
-      {/* <p className=" text-dark-cyan">hello</p> */}
-    </div>
+  // Calculate total costs
+  const totalMaterialCost = materials.reduce(
+    (acc, item) => acc + (item.total || 0),
+    0
   );
-}
-
-function Label(props: React.HtmlHTMLAttributes<HTMLLabelElement>) {
-  return (
-    <label
-      {...props}
-      className="text-xs text-[hsl(186,14%,43%)] font-semibold "
-    />
+  const totalPackagingCost = packaging.reduce(
+    (acc, item) => acc + (item.total || 0),
+    0
   );
-}
+  const totalLaborCost = labor.reduce(
+    (acc, item) => acc + (item.total || 0),
+    0
+  );
+  const totalOtherCosts = otherCosts.reduce(
+    (acc, item) => acc + parseFloat(item.total || "0"),
+    0
+  );
 
-type PersonBillType = {
-  label: string;
-  total: string;
-};
+  // Calculate booth cost per item
+  const boothCostPerItem = boothFee / (averageItemsSold || 1);
+  const totalBoothFees = boothCostPerItem;
 
-function PersonBill(props: PersonBillType) {
+  // Calculate total cost before markup
+  const totalCost =
+    totalMaterialCost +
+    totalPackagingCost +
+    totalLaborCost +
+    totalOtherCosts +
+    totalBoothFees;
+
+  // Initial selling price before transaction fees (excludes transaction fees)
+  let sellingPrice =
+    totalCost *
+    (1 + markup / 100) *
+    (1 - discount / 100) *
+    (1 + salesTax / 100);
+
+  // Calculate transaction fees based on this initial selling price
+  const transactionFees =
+    (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
+
+  // Final selling price, including transaction fees
+  sellingPrice += transactionFees;
+
+  // Calculate profit
+  const profit = sellingPrice - (totalCost + transactionFees);
+
+  // Function to update costs dynamically
+  const updateField = (
+    setState: Function,
+    stateArray: any[],
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const updatedState = [...stateArray];
+    updatedState[index][field] = value;
+
+    if (setState === setLabor) {
+      const hourlyWage = parseFloat(updatedState[index].hourlyWage || "0");
+      const time = parseFloat(updatedState[index].time || "0");
+      updatedState[index].total = hourlyWage * time || 0;
+    } else {
+      const cost = parseFloat(updatedState[index].cost || "0");
+      const size = parseFloat(updatedState[index].size || "1");
+      const quantity = parseFloat(updatedState[index].quantity || "0");
+      updatedState[index].total = (cost / size) * quantity || 0;
+    }
+
+    setState(updatedState);
+  };
+
   return (
-    <div className="flex justify-between items-center">
-      {/* left */}
-      <div>
-        <p className="text-white">{props.label}</p>
-      </div>
-      {/* right */}
-      <p className="font-bold text-4xl text-strong-cyan">${props.total}</p>
+    <div className="p-4 space-y-6">
+      <MaterialsSection materials={materials} setMaterials={setMaterials} />
+
+      <LaborSection labor={labor} setLabor={setLabor} />
+
+      <PackagingSection packaging={packaging} setPackaging={setPackaging} />
+
+      <CraftShowCostsSection
+        transactionFeePercent={transactionFeePercent}
+        setTransactionFeePercent={setTransactionFeePercent}
+        transactionFeeDollar={transactionFeeDollar}
+        setTransactionFeeDollar={setTransactionFeeDollar}
+        boothFee={boothFee}
+        setBoothFee={setBoothFee}
+        averageItemsSold={averageItemsSold}
+        setAverageItemsSold={setAverageItemsSold}
+        transactionFees={transactionFees}
+        totalBoothFees={totalBoothFees}
+        updateField={updateField}
+      />
+
+      <PricingOverviewSection
+        markup={markup}
+        setMarkup={setMarkup}
+        discount={discount}
+        setDiscount={setDiscount}
+        salesTax={salesTax}
+        setSalesTax={setSalesTax}
+      />
+
+      <PricingBreakdownSection
+        totalMaterialCost={totalMaterialCost}
+        totalPackagingCost={totalPackagingCost}
+        totalLaborCost={totalLaborCost}
+        totalOtherCosts={totalOtherCosts}
+        totalBoothFees={totalBoothFees}
+        transactionFees={transactionFees}
+        totalCost={totalCost}
+        sellingPrice={sellingPrice}
+      />
     </div>
   );
 }

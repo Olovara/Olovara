@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { QuillEditor } from "../QuillEditor";
-import { startTransition, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { UploadDropzone } from "@/lib/uploadthing";
 import {
   DropdownMenu,
@@ -36,6 +36,7 @@ import {
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
+import { getSecondaryCategories } from "@/data/categories";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 
@@ -53,21 +54,11 @@ export function ProductForm() {
 
   const [isPending, startTransition] = useTransition();
 
-  const PrimaryCategories = [
-    { id: "ACCESORIES", name: "Accessories" },
-    { id: "CLOTHING", name: "Clothing" },
-    { id: "CRAFT_SUPPLIES", name: "Craft Supplies" },
-    { id: "PATTERNS", name: "Patterns" },
-    { id: "TOYS", name: "Toys" },
-  ];
+  const [selectedPrimary, setSelectedPrimary] = useState<string | null>(null);
 
-  const SecondaryCategories = [
-    { id: "AMIGURUMI", name: "Amigurumi" },
-    { id: "CROCHET", name: "Crochet" },
-    { id: "KINTTING", name: "Knitting" },
-    { id: "SEWING", name: "Sewing" },
-    { id: "TUNISIAN", name: "Tunisian" },
-  ];
+  // Watch primaryCategory changes to update secondary options
+  const primaryCategory = watch("primaryCategory");
+  const secondaryCategories = primaryCategory ? getSecondaryCategories(primaryCategory) : [];
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
@@ -237,7 +228,7 @@ export function ProductForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {PrimaryCategories.map((category) => (
+                  {primaryCategory.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
@@ -263,7 +254,7 @@ export function ProductForm() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  {SecondaryCategories.map((category) => (
+                  {secondaryCategories.map((category) => (
                     <DropdownMenuCheckboxItem
                       key={category.id}
                       checked={field.value?.includes(category.id)}

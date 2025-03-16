@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface iAppProps {
   userInfo: {
@@ -26,37 +25,21 @@ interface iAppProps {
 }
 
 export function UserNav({ userInfo }: iAppProps) {
-  const router = useRouter();
-
-  const dashboardRoute = {
-    ADMIN: `/admin/dashboard`,
-    SELLER: `/seller/dashboard`,
-    MEMBER: `/member/dashboard`,
+  const roleRoutes = {
+    ADMIN: "/admin/dashboard",
+    SELLER: "/seller/dashboard",
+    MEMBER: "/member/dashboard",
   };
 
-  const handleAccountClick = () => {
-    const route = userInfo?.role ? dashboardRoute[userInfo.role] : null;
-    if (route) {
-      router.push(route);
-    } else {
-      console.error("Invalid role or route not defined.");
-    }
+  const settingsRoutes = {
+    ADMIN: "/admin/dashboard/settings",
+    SELLER: "/seller/dashboard/settings",
+    MEMBER: "/member/dashboard/settings",
   };
 
-  const settingsRoute = {
-    ADMIN: `/admin/dashboard/settings`,
-    SELLER: `/seller/dashboard/settings`,
-    MEMBER: `/member/dashboard/settings`,
-  };
-
-  const handleSettingsClick = () => {
-    const route = userInfo?.role ? settingsRoute[userInfo.role] : null;
-    if (route) {
-      router.push(route);
-    } else {
-      console.error("Invalid role or route not defined.");
-    }
-  };
+  const dashboardRoute = userInfo?.role ? roleRoutes[userInfo.role] : null;
+  const settingsRoute = userInfo?.role ? settingsRoutes[userInfo.role] : null;
+  const isSeller = userInfo?.role === "SELLER";
 
   return (
     <DropdownMenu>
@@ -64,40 +47,47 @@ export function UserNav({ userInfo }: iAppProps) {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
             <AvatarImage src={userInfo?.image} alt="User Image" />
-            <AvatarFallback>{userInfo?.username?.slice(0, 1) || "U"}</AvatarFallback>
+            <AvatarFallback>{userInfo?.username?.[0] || "U"}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {userInfo?.username || "Guest"}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {userInfo?.email || "No email provided"}
-            </p>
+            <p className="text-sm font-medium">{userInfo?.username || "Guest"}</p>
+            <p className="text-xs text-muted-foreground">{userInfo?.email || "No email provided"}</p>
           </div>
         </DropdownMenuLabel>
+
         <DropdownMenuSeparator />
+
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handleAccountClick}>
-            Account
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleSettingsClick}>
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/seller/dashboard/products">My Products</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/billing">Billing</Link>
-          </DropdownMenuItem>
+          {dashboardRoute && (
+            <DropdownMenuItem asChild>
+              <Link href={dashboardRoute}>Account</Link>
+            </DropdownMenuItem>
+          )}
+          {settingsRoute && (
+            <DropdownMenuItem asChild>
+              <Link href={settingsRoute}>Settings</Link>
+            </DropdownMenuItem>
+          )}
+          {isSeller && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href="/seller/dashboard/products">My Products</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/seller/dashboard/settings">Billing</Link>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem color="danger" onClick={async () => logout()}>
-          Log Out
-        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={() => logout()}>Log Out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

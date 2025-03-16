@@ -76,7 +76,7 @@ const SellerForm = () => {
 
       </CardContent>
       <CardFooter>
-        <Submitbutton title="Submit" />
+        <Submitbutton title="Save" />
       </CardFooter>
     </form>
   );

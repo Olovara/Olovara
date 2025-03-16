@@ -85,7 +85,7 @@ const MemberForm = () => {
         </div>
       </CardContent>
       <CardFooter>
-        <Submitbutton title="Submit" />
+        <Submitbutton title="Save" />
       </CardFooter>
     </form>
   );
