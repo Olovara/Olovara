@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
 import { stripe } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
@@ -55,7 +56,7 @@ export async function BuyProduct(formData: FormData) {
     ],
     metadata: metadata,
     payment_intent_data: {
-      application_fee_amount: Math.round(data.price * 100 * 0.1), // 10% fee
+      application_fee_amount: Math.round(PLATFORM_FEE_PERCENT), // 10% fee
       transfer_data: {
         destination: data.seller?.connectedAccountId, // Transfer to seller's account
       },

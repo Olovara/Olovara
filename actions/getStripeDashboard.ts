@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 export async function GetStripeDashboardLink() {

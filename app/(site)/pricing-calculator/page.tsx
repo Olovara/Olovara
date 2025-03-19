@@ -107,6 +107,11 @@ export default function PricingCalculator() {
 
   return (
     <div className="p-4 space-y-6">
+      <h1>
+        A powerful tool to help take the guesswork out of pricing so you can
+        spend more time making
+      </h1>
+
       <MaterialsSection materials={materials} setMaterials={setMaterials} />
 
       <LaborSection labor={labor} setLabor={setLabor} />
@@ -145,6 +150,7 @@ export default function PricingCalculator() {
         transactionFees={transactionFees}
         totalCost={totalCost}
         sellingPrice={sellingPrice}
+        profit={profit}
       />
     </div>
   );

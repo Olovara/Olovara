@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
 import Link from "next/link";
 import QuantitySelector from "@/components/QuantitySelector";
+import CheckoutButton from "@/components/CheckoutButton";
 
 // Dynamically import the ImageSlider component with SSR disabled
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -39,6 +40,7 @@ async function getData(id: string) {
       id: id,
     },
     select: {
+      id: true, // Make sure you're selecting 'id' from the DB
       name: true, // Fetch the product name
       images: true, // Fetch the product images
       price: true, // Fetch the product price
@@ -136,10 +138,7 @@ export default async function ProductPage({
           )}
 
           {/* Buy Button */}
-          <form action={"/buy-product"} method="POST">
-            <input type="hidden" name="id" value={data.id} />
-            <BuyButton price={data.price as number} />
-          </form>
+          <CheckoutButton productId={data.id} quantity={1} />
         </div>
       </div>
 

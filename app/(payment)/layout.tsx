@@ -1,6 +1,6 @@
 import "../globals.css";
 
-export default function AuthLayout({
+export default function PaymentLayout({
     children,
   }: {
     children: React.ReactNode;
