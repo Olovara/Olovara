@@ -1,360 +1,236 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
-import { QuillEditor } from "../QuillEditor";
-import { useState, useTransition } from "react";
-import { UploadDropzone } from "@/lib/uploadthing";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+import { useState, useTransition, useEffect } from "react";
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
-import { getSecondaryCategories } from "@/data/categories";
+import { ProductInfoSection } from "../product/productInformation";
+import { ProductPhotosSection } from "../product/productPhotos";
+import { ProductOptionsSection } from "../product/productOptions";
+import { ProductShippingSection } from "../product/productShipping";
+import ProductFileSection from "../product/productFile";
+import { ProductDiscountSection } from "../product/productDiscount";
+import { ProductDropSection } from "../product/productDrop";
+import { ProductInventorySection } from "../product/productInventory";
+import { ProductHowItsMadeSection } from "../product/productHowMade";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
+type ProductFormProps = {
+  initialData?: ProductFormValues | null; // Null when creating
+};
+type DropdownOption = {
+  label: string;
+  values: { name: string; stock: number }[];
+};
 
-export function ProductForm() {
-  const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] }); // Default to empty Delta JSON
+export function ProductForm({ initialData }: ProductFormProps) {
+  const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] });
+  const [tags, setTags] = useState<string[]>([]);
+  const [materialTags, setMaterialTags] = useState<string[]>([]);
   const [images, setImages] = useState<null | string[]>(null);
-  const [productFile, SetProductFile] = useState<null | string>(null);
-  const [dropdownOptions, setDropdownOptions] = useState<
-    { label: string; values: string[] }[]
-  >([]);
+  const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([]);
   const isClient = useIsClient();
 
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
-
   const [isPending, startTransition] = useTransition();
-
-  const [selectedPrimary, setSelectedPrimary] = useState<string | null>(null);
-
-  // Watch primaryCategory changes to update secondary options
-  const primaryCategory = watch("primaryCategory");
-  const secondaryCategories = primaryCategory ? getSecondaryCategories(primaryCategory) : [];
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
-      isDigital: false,
-      primaryCategory: "", // Add this to match schema
-      secondaryCategory: [], // Add default array for dropdown
+      name: initialData?.name || "",
+      price: initialData?.price ?? 0,
+      description: initialData?.description || { ops: [] },
+      images: initialData?.images || [],
+      freeShipping: initialData?.freeShipping || false,
+      handlingFee: Number(initialData?.handlingFee ?? 0),
+      shippingCost: Number(initialData?.shippingCost ?? 0),
+      itemWeight: Number(initialData?.itemWeight ?? 0),
+      itemLength: Number(initialData?.itemLength ?? 0),
+      itemWidth: Number(initialData?.itemWidth ?? 0),
+      itemHeight: Number(initialData?.itemHeight ?? 0),
+      shippingNotes: initialData?.shippingNotes || "",
+      status: initialData?.status || "HIDDEN",
+      isDigital: initialData?.isDigital || false,
+      primaryCategory: initialData?.primaryCategory || "",
+      secondaryCategory: initialData?.secondaryCategory || "",
+      stock: Number(initialData?.stock ?? 0),
+      inStockProcessingTime: Number(initialData?.inStockProcessingTime ?? 0),
+      outStockLeadTime: Number(initialData?.outStockLeadTime ?? 0),
+      productDrop: initialData?.productDrop || false,
+      dropDate: initialData?.dropDate || null,
+      onSale: initialData?.onSale || false,
     },
   });
 
-  const addDropdownOption = () => {
-    setDropdownOptions((prev) => [...prev, { label: "", values: [""] }]);
-  };
+  // Add this console log to verify form initialization
+  console.log("Form initialized with:", form);
 
-  const updateDropdownOption = (
-    index: number,
-    field: "label" | "values",
-    value: string | string[]
-  ) => {
-    setDropdownOptions((prev) =>
-      prev.map((option, i) =>
-        i === index
-          ? {
-              ...option,
-              [field]: field === "values" ? (value as string[]) : value,
-            }
-          : option
-      )
-    );
-  };
+  const formState = form.formState;
+  console.log("Form state:", formState);
 
-  const addDropdownValue = (index: number) => {
-    setDropdownOptions((prev) =>
-      prev.map((option, i) =>
-        i === index ? { ...option, values: [...option.values, ""] } : option
-      )
-    );
-  };
+  const { setValue } = form;
 
-  const removeDropdownOption = (index: number) => {
-    setDropdownOptions((prev) => prev.filter((_, i) => i !== index));
-  };
+  // Add this useEffect to monitor form errors
+  useEffect(() => {
+    if (Object.keys(formState.errors).length > 0) {
+      console.log("Form errors:", formState.errors);
+    }
+  }, [formState.errors]);
 
-  const onSubmit = async (values: z.infer<typeof ProductSchema>) => {
-    const productData = {
-      ...values,
-      description: descriptionJson, // Add the Quill description as part of the data
-      options: dropdownOptions,
-    };
+  const onSubmit = async (values: ProductFormValues) => {
+    try {
+      console.log("1. Submit started with values:", values);
 
-    startTransition(() => {
-      fetch("/api/products", {
-        // Use the correct API route
+      // Pre-process the values
+      const processedValues = {
+        ...values,
+        images: images || [],
+        shippingCost: Number(values.shippingCost || 0),
+        handlingFee: Number(values.handlingFee || 0),
+        stock: Number(values.stock || 0),
+        inStockProcessingTime: Number(values.inStockProcessingTime || 0),
+        outStockLeadTime: Number(values.outStockLeadTime || 0),
+      };
+
+      console.log("2. Processed values:", processedValues);
+
+      const result = ProductSchema.safeParse(processedValues);
+
+      if (!result.success) {
+        console.error("3. Validation errors:", result.error.errors);
+        toast.error("Validation error. Check form inputs.");
+        return;
+      }
+
+      const payload = {
+        ...result.data, // Use the validated and transformed data
+        description: descriptionJson,
+        tags,
+        materialTags,
+        options: dropdownOptions,
+        howItsMade: values.howItsMade || "",
+      };
+
+      console.log("4. Final payload:", payload);
+
+      const response = await fetch("/api/products/create-product", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(productData), // Send the form data as JSON
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            setSuccess(data.success);
-            form.reset(); // Reset form after successful submission
-            setDescriptionJson({ ops: [] }); // Reset Quill editor state
-            setDropdownOptions([]);
-          } else if (data.error) {
-            setError(data.error);
-          }
-        })
-        .catch((error) => {
-          setError("Something went wrong. Please try again.");
-          console.error("Error creating product:", error);
-        });
-    });
+        body: JSON.stringify(payload),
+      });
 
-    setSuccess("");
-    setError("");
+      const data = await response.json();
+      console.log("Submit started with values:", data);
+
+      if (data.success) {
+        toast.success("Product created successfully!");
+        resetExternalStates();
+      } else {
+        toast.error(data.error || "Error creating product.");
+      }
+    } catch (error) {
+      console.error("7. Error in submission:", error);
+      toast.error("Something went wrong. Please try again.");
+    }
   };
+
+  const resetExternalStates = () => {
+    setDescriptionJson({ ops: [] });
+    setDropdownOptions([]);
+    setImages(null);
+    setTags([]);
+    setMaterialTags([]);
+    form.reset({
+      name: "",
+      price: 0,
+      description: { ops: [] },
+      images: [],
+      freeShipping: false,
+      handlingFee: 0,
+      shippingCost: 0,
+      itemWeight: 0,
+      itemLength: 0,
+      itemWidth: 0,
+      itemHeight: 0,
+      shippingNotes: "",
+      status: "HIDDEN",
+      isDigital: false,
+      primaryCategory: "",
+      secondaryCategory: "",
+      stock: 0,
+      inStockProcessingTime: 0,
+      outStockLeadTime: 0,
+      productDrop: false,
+      dropDate: null,
+    });
+  };
+
+  const freeShipping = useWatch({
+    control: form.control,
+    name: "freeShipping",
+  });
 
   if (!isClient) return <Spinner />;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex flex-col gap-y-2">
-          <Label>Product Name</Label>
-          <Input placeholder="Product name" {...form.register("name")} />
-        </div>
-
-        <div className="flex flex-col gap-y-2">
-          <Label className="block text-sm font-medium">
-            Product Description
-          </Label>
-          <QuillEditor json={descriptionJson} setJson={setDescriptionJson} />
-        </div>
-
-        <div className="flex flex-col gap-y-2">
-          <Label>Price</Label>
-          <Input
-            type="number"
-            placeholder="Price"
-            {...form.register("price", { valueAsNumber: true })}
-          />
-        </div>
-
-        {/* Dynamic Dropdown Options */}
-        <div>
-          <Label>Custom Dropdown Options</Label>
-          <Button variant="outline" type="button" onClick={addDropdownOption}>
-            Add Dropdown
-          </Button>
-          {dropdownOptions.map((option, index) => (
-            <div key={index} className="space-y-2 mt-4">
-              <div className="flex items-center gap-x-4">
-                <Input
-                  placeholder="Dropdown Label (e.g., Size)"
-                  value={option.label}
-                  onChange={(e) =>
-                    updateDropdownOption(index, "label", e.target.value)
-                  }
-                />
-                <Button
-                  variant="destructive"
-                  type="button"
-                  onClick={() => removeDropdownOption(index)}
-                >
-                  Remove
-                </Button>
-              </div>
-              {option.values.map((value, valueIndex) => (
-                <div key={valueIndex} className="flex items-center gap-x-4">
-                  <Input
-                    placeholder="Option Value (e.g., Small)"
-                    value={value}
-                    onChange={(e) => {
-                      const newValues = [...option.values];
-                      newValues[valueIndex] = e.target.value;
-                      updateDropdownOption(index, "values", newValues);
-                    }}
-                  />
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => addDropdownValue(index)}
-                className="mt-2"
-              >
-                Add Value
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        {/* Select Primary Category */}
-        <FormField
-          control={form.control}
-          name="primaryCategory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Primary Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {primaryCategory.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormItem>
-          )}
+        {/* Product Information Section */}
+        <ProductInfoSection
+          form={form}
+          descriptionJson={descriptionJson}
+          setDescriptionJson={setDescriptionJson}
+          tags={tags}
+          setTags={setTags}
+          materialTags={materialTags}
+          setMaterialTags={setMaterialTags}
         />
 
-        <FormField
-          control={form.control}
-          name="secondaryCategory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Secondary Categories</FormLabel>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    {field.value && field.value.length > 0
-                      ? `Selected: ${field.value.length} categories`
-                      : "Select categories"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-60 overflow-y-auto">
-                  {secondaryCategories.map((category) => (
-                    <DropdownMenuCheckboxItem
-                      key={category.id}
-                      checked={field.value?.includes(category.id)}
-                      onCheckedChange={(checked) => {
-                        const current = field.value || [];
-                        if (checked) {
-                          field.onChange([...current, category.id]); // Add category
-                        } else {
-                          field.onChange(
-                            current.filter((c) => c !== category.id)
-                          ); // Remove category
-                        }
-                      }}
-                    >
-                      {category.name}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </FormItem>
-          )}
+        {/* Product Photos Section */}
+        <ProductPhotosSection
+          images={images}
+          setImages={(newImages) => {
+            setImages(newImages);
+            setValue("images", newImages, { shouldValidate: true });
+          }}
         />
 
-        {/* For images upload */}
-        <div className="flex flex-col gap-y-2">
-          <input type="hidden" name="images" value={JSON.stringify(images)} />
-          <Label>Product Images</Label>
-          <UploadDropzone
-            endpoint="imageUploader"
-            onClientUploadComplete={(res) => {
-              const urls = res.map((item) => item.url);
-              setImages(urls);
-              form.setValue("images", urls); // Sync with form state
-            }}
-            onUploadError={(error: Error) => {
-              toast.error("Something went wrong, try again");
-            }}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="isDigital"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={(value) => field.onChange(value)}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Is this product digital?</FormLabel>
-              </div>
-            </FormItem>
-          )}
+        {/* Product Options Section */}
+        <ProductOptionsSection
+          dropdownOptions={dropdownOptions}
+          setDropdownOptions={setDropdownOptions}
         />
 
-        {/* Conditional Fields */}
-        {!form.watch("isDigital") && (
-          <>
-            <div className="flex flex-col gap-y-2">
-              <Label>Shipping Cost</Label>
-              <Input
-                type="number"
-                placeholder="Shipping cost"
-                {...form.register("shippingCost", { valueAsNumber: true })}
-              />
-            </div>
+        {/* Product Inventory Section */}
+        <ProductInventorySection form={form} />
 
-            <div className="flex flex-col gap-y-2">
-              <Label>Stock</Label>
-              <Input
-                type="number"
-                placeholder="Stock quantity"
-                {...form.register("stock", { valueAsNumber: true })}
-              />
-            </div>
-          </>
-        )}
+        {/* Product How It's Made Section */}
+        <ProductHowItsMadeSection form={form} />
 
-        {/* For digital product file upload */}
-        {form.watch("isDigital") && (
-          <div className="flex flex-col gap-y-2">
-            <input type="hidden" name="productFile" value={productFile ?? ""} />
-            <Label>Product File</Label>
-            <UploadDropzone
-              onClientUploadComplete={(res) => {
-                SetProductFile(res[0].url);
-                toast.success("Your Product file has been uploaded!");
-              }}
-              endpoint="productFileUpload"
-              onUploadError={(error: Error) => {
-                toast.error("Something went wrong, try again");
-              }}
-            />
-          </div>
-        )}
+        {/* Product Shipping Section */}
+        <ProductShippingSection form={form} freeShipping={freeShipping} />
 
-        <Submitbutton title="Submit" />
+        {/* Product File Section */}
+        <ProductFileSection form={form} />
+        {/* Add hidden input to capture product file */}
+        <input type="hidden" {...form.register("productFile")} />
+
+        {/* Product Discount Section */}
+        <ProductDiscountSection form={form} />
+
+        {/* Product Drop Section */}
+        <ProductDropSection form={form} />
+
+        {/* Submit Button */}
+        <Submitbutton title="Create Product" isPending={isPending} />
       </form>
     </Form>
   );

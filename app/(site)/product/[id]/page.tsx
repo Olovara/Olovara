@@ -7,20 +7,19 @@ import Link from "next/link";
 import QuantitySelector from "@/components/QuantitySelector";
 import CheckoutButton from "@/components/CheckoutButton";
 
-// Dynamically import the ImageSlider component with SSR disabled
+// Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
-  ssr: false, // Disable SSR for this component
+  ssr: false,
 });
 
-// Dynamically import the ProductDescription component with SSR disabled
 const ProductDescription = dynamic(
   () => import("@/components/ProductDescription"),
   {
-    ssr: false, // Disable SSR for this component
+    ssr: false,
   }
 );
 
-// Dynamically generate metadata
+// Generate metadata dynamically
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const { id } = params;
 
@@ -36,19 +35,33 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 // Fetch product data
 async function getData(id: string) {
   const data = await db.product.findUnique({
-    where: {
-      id: id,
-    },
+    where: { id: id },
     select: {
-      id: true, // Make sure you're selecting 'id' from the DB
-      name: true, // Fetch the product name
-      images: true, // Fetch the product images
-      price: true, // Fetch the product price
-      description: true, // Fetch the product description
-      options: true, // Fetch the product options
+      id: true,
+      name: true,
+      images: true,
+      price: true,
+      discount: true,
+      discountEndDate: true,
+      description: true,
+      status: true,
+      isDigital: true,
+      stock: true,
+      productFile: true,
+      handlingFee: true,
+      shippingCost: true,
+      itemWeight: true,
+      itemLength: true,
+      itemWidth: true,
+      itemHeight: true,
+      shippingNotes: true,
+      freeShipping: true,
+      inStockProcessingTime: true,
+      howItsMade: true,
+      tags: true,
       seller: {
         select: {
-          shopName: true, // Fetch the shop name from the related seller
+          shopName: true,
           shopNameSlug: true,
         },
       },
@@ -61,10 +74,10 @@ async function getData(id: string) {
 export default async function ProductPage({
   params,
 }: {
-  params: { id: string }; // Get the product ID from the URL
+  params: { id: string };
 }) {
   noStore();
-  const data = await getData(params.id); // Fetch product data
+  const data = await getData(params.id);
 
   if (!data || !data.images || data.images.length === 0) {
     return (
@@ -74,16 +87,23 @@ export default async function ProductPage({
     );
   }
 
+  // Calculate discounted price if applicable
+  const isOnSale =
+    data.discount &&
+    data.discountEndDate &&
+    new Date(data.discountEndDate) > new Date();
+  const finalPrice = isOnSale
+    ? data.price - data.price * (data.discount / 100)
+    : data.price;
+
   return (
     <section className="mx-auto px-4 lg:mt-10 max-w-7xl lg:px-8">
       {/* Product Image and Name Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Product Image (2/3 of the space on large screens) */}
         <div className="col-span-1 lg:col-span-2 w-full h-full bg-gray-100 rounded-lg overflow-hidden">
           <ImageSlider urls={data.images} />
         </div>
 
-        {/* Product Name and Buy Button (1/3 of the space on large screens) */}
         <div className="col-span-1 flex flex-col justify-center space-y-6">
           <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
             {data.name}
@@ -92,60 +112,107 @@ export default async function ProductPage({
             <p className="text-gray-700 text-sm">
               Made by:&nbsp;
               <Link
-                href={`/shop/${data.seller.shopNameSlug}`} // Use slug instead of shopName
+                href={`/shop/${data.seller.shopNameSlug}`}
                 className="font-medium text-purple-600 hover:underline"
               >
-                {data.seller.shopName} {/* Still displays properly */}
+                {data.seller.shopName}
               </Link>
             </p>
           )}
-
-          {/* Quantity Selector (Client Component) */}
-          <QuantitySelector name="quantity" />
-
-          {/* Display Options if Available */}
-          {data.options && data.options.length > 0 && (
-            <div className="mt-2">
-              {data.options.map(
-                (
-                  option: { label: string; values: string[] },
-                  index: number
-                ) => (
-                  <div key={index} className="mb-2">
-                    {/* Option Label */}
-                    <p className="font-medium text-gray-700">{option.label}:</p>
-                    {/* Option Values */}
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {Array.isArray(option.values) ? (
-                        option.values.map((val, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 text-sm border rounded-md bg-gray-100"
-                          >
-                            {val}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-gray-500 italic">
-                          No options available
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              )}
+          {!data.isDigital && data.stock > 0 && data.inStockProcessingTime && (
+            <div>
+              <p className="text-sm text-gray-500">
+                Ships in {data.inStockProcessingTime} days.
+              </p>
             </div>
           )}
 
-          {/* Buy Button */}
+          {/* Sale Price or Regular Price */}
+          <p className="text-xl font-semibold text-gray-800">
+            {isOnSale ? (
+              <>
+                <span className="line-through text-gray-500">
+                  ${data.price.toFixed(2)}
+                </span>{" "}
+                <span className="text-red-600">${finalPrice.toFixed(2)}</span>
+              </>
+            ) : (
+              <>${data.price.toFixed(2)}</>
+            )}
+          </p>
+
+          {/* Handling Fee and Shipping */}
+          {data.handlingFee && (
+            <p className="text-sm text-gray-600">
+              Handling Fee: ${data.handlingFee.toFixed(2)}
+            </p>
+          )}
+          {data.shippingCost && !data.freeShipping && (
+            <p className="text-sm text-gray-600">
+              Shipping: ${data.shippingCost.toFixed(2)}
+            </p>
+          )}
+          {data.freeShipping && (
+            <p className="text-sm text-green-600">Free Shipping Available</p>
+          )}
+
+          {/* Product Options and Quantity */}
+          <QuantitySelector name="quantity" />
           <CheckoutButton productId={data.id} quantity={1} />
+
+          {/* How It's Made Section */}
+          {data.howItsMade && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">How It&apos;s Made</h3>
+              <p className="text-gray-600">{data.howItsMade}</p>
+            </div>
+          )}
+
+          {/* Shipping Notes Section */}
+          {data.shippingNotes && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">Shipping Notes</h3>
+              <p className="text-gray-600">{data.shippingNotes}</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Product Description */}
-      <div className="mt-8 text-gray-700">
-        <ProductDescription content={data.description} />
+      {/* Additional Info Section */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="text-gray-700">
+          <ProductDescription content={data.description} />
+        </div>
+
+        {/* Shipping and Dimensions */}
+        {!data.isDigital && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold">Product Details</h3>
+            {data.itemWeight && <p>Weight: {data.itemWeight}g</p>}
+            {(data.itemLength || data.itemWidth || data.itemHeight) && (
+              <p>
+                Dimensions: {data.itemLength || 0} x {data.itemWidth || 0} x{" "}
+                {data.itemHeight || 0}
+              </p>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Digital Product Download */}
+      {data.isDigital && data.productFile && (
+        <div className="mt-8 bg-green-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Digital Download</h3>
+          <a
+            href={data.productFile}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            Download Now
+          </a>
+        </div>
+      )}
     </section>
   );
 }

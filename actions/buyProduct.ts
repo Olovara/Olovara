@@ -5,6 +5,8 @@ import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
 import { stripe } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
+//TODO delete this page as it is now handled in an api route verify that all information in the api is accurate
+
 export async function BuyProduct(formData: FormData) {
   const id = formData.get("id") as string;
 

@@ -4,20 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
-export function Submitbutton({ title }: { title: string }) {
-  const { pending } = useFormStatus();
-
+export function Submitbutton({
+  title,
+  isPending,
+}: {
+  title: string;
+  isPending: boolean;
+}) {
   return (
-    <>
-      {pending ? (
-        <Button disabled>
+    <Button type="submit" disabled={isPending}>
+      {isPending ? (
+        <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Please Wait
-        </Button>
+        </>
       ) : (
-        <Button type="submit">{title}</Button>
+        title
       )}
-    </>
+    </Button>
   );
 }
 

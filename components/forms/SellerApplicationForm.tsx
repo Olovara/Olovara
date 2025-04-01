@@ -85,7 +85,7 @@ const SellerApplicationForm = () => {
         </div>
       </CardContent>
       <CardFooter>
-        <Submitbutton title="Submit" />
+        <Submitbutton title="Submit" isPending={isPending} />
       </CardFooter>
     </form>
   );

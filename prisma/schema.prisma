@@ -19,6 +19,12 @@ enum AccountStatus {
   VACATION
 }
 
+enum ProductStatus {
+  ACTIVE
+  DISABLED
+  HIDDEN
+}
+
 enum SellerApplicationStatus {
   NOT_STARTED
   PENDING
@@ -170,26 +176,37 @@ model Product {
   name                  String
   description           Json
   price                 Float
+  status                String   @default("HIDDEN")
   shippingCost          Float?   // Only required if product is physical
+  handlingFee           Float?
+  itemWeight            Int?
+  itemLength            Int?
+  itemWidth             Int?
+  itemHeight            Int?
+  shippingNotes         String?
+  freeShipping          Boolean  @default(false)
   isDigital             Boolean
-  stock                 Int?     // Only required if product is physical
+  stock                 Int      @default(1)
   images                String[] // Array of image URLs
   productFile           String?  // Only required if product is digital
-  numberSold            Int?     // Only if product is digital
+  numberSold            Int      @default(0)
   onSale                Boolean  @default(false)
   discount              Int?     // Only if the product is on sale
   primaryCategory       String
-  secondaryCategory     String[]
+  secondaryCategory     String
+  tags                  String[]
+  materialTags          String[]
   options               Json?
   inStockProcessingTime Int?
   outStockLeadTime      Int?
+  howItsMade            String?
   productDrop           Boolean  @default(false)
   NSFW                  Boolean		@default(false)
   order                 Order[]
-  dropDate        DateTime?
-  discountEndDate DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  dropDate              DateTime?
+  discountEndDate       DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
   seller          Seller?    @relation(fields: [userId], references: [userId])
 }
 
@@ -199,7 +216,7 @@ model Suggestion {
   title             String
   description       String
   type              String   // e.g., "Feature", "Change", "Addition"
-  role        String   // "Seller" or "Member"
+  role              String   // "Seller" or "Member"
   
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])

@@ -17,6 +17,14 @@ export const SecondaryCategories = [
   { id: "TUNISIAN", name: "Tunisian" },
 ] as const;
 
+export const TertiaryCategories = [
+  { id: "AMIGURUMI", name: "Amigurumi" },
+  { id: "CROCHET", name: "Crochet" },
+  { id: "KNITTING", name: "Knitting" },
+  { id: "SEWING", name: "Sewing" },
+  { id: "TUNISIAN", name: "Tunisian" },
+] as const;
+
 // Extract IDs for strict typing
 type PrimaryCategoryID = (typeof PrimaryCategories)[number]["id"];
 type SecondaryCategoryID = (typeof SecondaryCategories)[number]["id"];

@@ -107,6 +107,7 @@ export default function PricingCalculator() {
 
   return (
     <div className="p-4 space-y-6">
+      <h1 className="text-2xl font-bold">Pricing Calculator</h1>
       <h1>
         A powerful tool to help take the guesswork out of pricing so you can
         spend more time making
