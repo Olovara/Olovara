@@ -79,12 +79,12 @@ export default async function SellerMyOrders() {
                   {orders.map((order) => (
                     <TableRow key={order.id}>
                       <TableCell>{order.id}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
+                      <TableCell>{order.buyerEmail}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{order.status}</Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        ${order.total.toFixed(2)}
+                      ${(order.totalAmount ?? 0).toFixed(2)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {new Date(order.createdAt).toLocaleString()}

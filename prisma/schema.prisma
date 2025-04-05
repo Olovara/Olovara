@@ -234,21 +234,25 @@ model ContactUs {
 
 model Order {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   // Buyer ID
+  userId         String?   // Buyer ID
+  buyerEmail     String
+  buyerName      String?
   sellerId       String   // Seller ID
   productId      String   // Product being ordered
+  productName    String
   quantity       Int      // How many were ordered
   totalAmount    Float    // Final price including shipping and discounts
   shippingCost   Float?   // Only if physical
   discount       Int?     // Applied discount
   isDigital      Boolean  // True if digital product
-  status         String   @default("pending") // Order status
-  paymentStatus  String   @default("unpaid")  // Payment status
+  status         String   @default("PENDING") // Order status
+  paymentStatus  String   @default("UNPAID")  // Payment status
   shippingAddress Json?   // Only required for physical products
+  stripeSessionId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user           User     @relation(fields: [userId], references: [id])
+  user           User?     @relation(fields: [userId], references: [id])
   seller         Seller   @relation(fields: [sellerId], references: [userId])
   product        Product  @relation(fields: [productId], references: [id])
 }

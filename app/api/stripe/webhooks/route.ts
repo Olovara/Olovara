@@ -1,44 +1,76 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { db } from "@/lib/db";
+import { headers } from "next/headers";
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export async function POST(req: Request) {
-  const sig = req.headers.get("stripe-signature")!;
-  const rawBody = await req.text();
+  const rawBody = await req.arrayBuffer();
+  const sig = headers().get("stripe-signature") as string;
 
   let event;
-
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    console.error("Webhook Error:", err);
-    return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 });
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err: any) {
+    console.error("❌ Stripe Webhook Error:", err.message);
+    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
+  // Handle only successful payment events
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
+    const session = event.data.object as any;
 
-    const { productId, buyerId, sellerId, quantity, totalAmount } = session.metadata;
+    const orderId = session.metadata?.orderId;
+    const quantity = parseInt(session.metadata?.quantity || "1", 10);
 
     try {
-      await prisma.order.create({
+      // 1. Fetch the order + product + seller
+      const order = await db.order.findUnique({
+        where: { id: orderId },
+        include: { product: true },
+      });
+
+      if (!order || !order.productId) throw new Error("Order not found");
+
+      // 2. Update product and seller stats
+      await db.product.update({
+        where: { id: order.productId },
         data: {
-          buyerId,
-          sellerId,
-          productId,
-          quantity: Number(quantity),
-          totalAmount: Number(totalAmount),
-          paymentStatus: "PAID",
-          orderStatus: "PROCESSING",
+          numberSold: { increment: quantity },
         },
       });
 
-      console.log(`Order created: Buyer ${buyerId} purchased ${quantity} of product ${productId}`);
-    } catch (error) {
-      console.error("Order Creation Error:", error);
+      await db.seller.update({
+        where: { id: order.sellerId },
+        data: {
+          totalSales: { increment: quantity },
+        },
+      });
+
+      // 3. Update order with buyerName, productName, and mark as PAID
+      await db.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: "PAID",
+          status: "PROCESSING",
+          buyerName: session.customer_details?.name || null,
+          productName: order.product.name,
+        },
+      });
+    } catch (err: any) {
+      console.error("🔥 Webhook handling failed:", err.message);
+      return new NextResponse("Webhook internal error", { status: 500 });
     }
   }
 
-  return NextResponse.json({ received: true });
+  return new NextResponse("Webhook received", { status: 200 });
 }

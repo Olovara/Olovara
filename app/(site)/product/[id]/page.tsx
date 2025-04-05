@@ -4,8 +4,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
 import Link from "next/link";
-import QuantitySelector from "@/components/QuantitySelector";
-import CheckoutButton from "@/components/CheckoutButton";
 import ProductActions from "@/components/ProductPageActions";
 
 // Dynamically import the ImageSlider component
