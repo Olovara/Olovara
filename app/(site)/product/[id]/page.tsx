@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import Link from "next/link";
 import QuantitySelector from "@/components/QuantitySelector";
 import CheckoutButton from "@/components/CheckoutButton";
+import ProductActions from "@/components/ProductPageActions";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -155,10 +156,16 @@ export default async function ProductPage({
           {data.freeShipping && (
             <p className="text-sm text-green-600">Free Shipping Available</p>
           )}
-
-          {/* Product Options and Quantity */}
-          <QuantitySelector name="quantity" />
-          <CheckoutButton productId={data.id} quantity={1} />
+          {/* Display Stock Quantity if it's a physical product */}
+          {!data.isDigital && (
+            <p className="text-sm text-gray-600">
+              {data.stock > 0
+                ? `In Stock: ${data.stock} available`
+                : "Out of Stock"}
+            </p>
+          )}
+          {/* Quantity Selector & Buy Now Button */}
+          <ProductActions productId={data.id} maxStock={data.stock} />
 
           {/* How It's Made Section */}
           {data.howItsMade && (

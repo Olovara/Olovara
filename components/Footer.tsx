@@ -28,7 +28,7 @@ const Footer = () => {
               <div className="relative text-center mx-auto max-w-sm">
                 <h3 className="font-semibold text-gray-900">Become a seller</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  If you&apos;d like to sell high-quality digital products, you
+                  If you&apos;d like to sell high-quality handmade products, you
                   can do so in minutes.{" "}
                   <Link
                     href="/seller-application"
@@ -51,7 +51,7 @@ const Footer = () => {
                   <ul className="mt-3 space-y-2">
                     <li>
                       <Link
-                        href="/shop"
+                        href="/products"
                         className="text-sm text-muted-foreground hover:text-gray-600"
                       >
                         Browse Products

@@ -3,6 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
+  Card,
   CardContent,
   CardDescription,
   CardFooter,
@@ -53,41 +54,50 @@ const SellerApplicationForm = () => {
   if (!isClient) return <Spinner />;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <CardHeader>
-        <CardTitle>Seller Application</CardTitle>
-        <CardDescription>Please fill in the information below</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-y-6">
-        <div className="flex flex-col gap-y-2">
-          <Label>Crafting process</Label>
-          <Textarea placeholder="Tell us a little about your crafting process and what you make."
-            {...form.register("craftingProcess")} // Link input to react-hook-form
-            disabled={isPending}
-          />
-        </div>
+    <div className="w-full flex justify-center pt-10 pb-10">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Card className="max-w-2xl w-full mx-auto shadow-lg p-8 rounded-lg bg-purple-50">
+          <CardHeader>
+            <CardTitle>Seller Application</CardTitle>
+            <CardDescription>
+              Please fill in the information below
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-y-6">
+            <div className="flex flex-col gap-y-2">
+              <Label>Crafting process</Label>
+              <Textarea
+                placeholder="Tell us a little about your crafting process and what you make."
+                {...form.register("craftingProcess")} // Link input to react-hook-form
+                disabled={isPending}
+              />
+            </div>
 
-        <div className="flex flex-col gap-y-2">
-          <Label>Portfolio</Label>
-          <Input placeholder="www.example.com"
-            {...form.register("portfolio")} // Link input to react-hook-form
-            disabled={isPending}
-            type="text"
-          />
-        </div>
+            <div className="flex flex-col gap-y-2">
+              <Label>Portfolio</Label>
+              <Input
+                placeholder="www.example.com"
+                {...form.register("portfolio")} // Link input to react-hook-form
+                disabled={isPending}
+                type="text"
+              />
+            </div>
 
-        <div className="flex flex-col gap-y-2">
-          <Label>What is your interest in joining</Label>
-          <Textarea placeholder="Type your message here."
-            {...form.register("interestInJoining")} // Link input to react-hook-form
-            disabled={isPending}
-          />
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Submitbutton title="Submit" isPending={isPending} />
-      </CardFooter>
-    </form>
+            <div className="flex flex-col gap-y-2">
+              <Label>What is your interest in joining</Label>
+              <Textarea
+                placeholder="Type your message here."
+                {...form.register("interestInJoining")} // Link input to react-hook-form
+                disabled={isPending}
+              />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Submitbutton title="Submit" isPending={isPending} />
+          </CardFooter>
+        </Card>
+      </form>
+    </div>
   );
 };
 

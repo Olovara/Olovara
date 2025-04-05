@@ -31,10 +31,13 @@ const ContactUsForm = () => {
 
   const Reason = [
     { id: "BILLING", name: "Billing Questions" },
-    { id: "GENERAL", name: "General Questions" },
-    { id: "ACCOUNT", name: "Membership Questions" },
-    { id: "SUGGESTION", name: "Feature Request or Suggestion" },
+    { id: "GENERAL", name: "General Inquiry" },
+    { id: "LISTING", name: "Listing Issue" },
+    { id: "ACCOUNT", name: "Account Support" },
+    { id: "PAYMENT", name: "Payment Problem" },
+    { id: "FEATURE", name: "Feature Request" },
     { id: "BUG", name: "Report a Bug" },
+    { id: "OTHER", name: "Other" },
   ];
 
   const form = useForm<z.infer<typeof ContactUsSchema>>({

@@ -10,7 +10,7 @@ export const config = {
 };
 
 export async function POST(req: Request) {
-  console.log("API HIT: /api/products/create-product");
+  //console.log("API HIT: /api/products/create-product");
 
   try {
     const session = await auth();
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     // Get the form data from the request body
     const data = await req.json();
-    console.log("Received data:", data);
+    //console.log("Received data:", data);
 
     const {
       name,
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("Creating product with sanitized data...");
+    //console.log("Creating product with sanitized data...");
 
     // Create product in the database
     const product = await prisma.product.create({
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("Product created successfully:", product);
+    //console.log("Product created successfully:", product);
 
     return new Response(
       JSON.stringify({ success: "Product created successfully", product }),

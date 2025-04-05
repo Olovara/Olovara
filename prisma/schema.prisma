@@ -252,3 +252,9 @@ model Order {
   seller         Seller   @relation(fields: [sellerId], references: [userId])
   product        Product  @relation(fields: [productId], references: [id])
 }
+
+model HandmadeGuidelines {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  updatedAt DateTime @updatedAt
+}
