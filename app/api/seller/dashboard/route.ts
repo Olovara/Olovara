@@ -8,23 +8,16 @@ const fetchSellerData = async (
   startDate?: string,
   endDate?: string
 ) => {
-  // Parse dates properly to avoid timezone mismatch
   const parsedStartDate = startDate ? new Date(startDate) : undefined;
   const parsedEndDate = endDate ? new Date(endDate) : undefined;
 
+  //console.log("User ID:", userId);
+  //console.log("Parsed Start Date:", parsedStartDate);
+  //console.log("Parsed End Date:", parsedEndDate);
+
   const seller = await db.seller.findUnique({
-    where: {
-      userId, // Find the seller based on the userId
-    },
+    where: { userId },
     include: {
-      order: {
-        where: {
-          createdAt: {
-            gte: parsedStartDate || undefined, // If no start date, use undefined to not apply filtering
-            lte: parsedEndDate || undefined, // Same for end date
-          },
-        },
-      },
       products: true,
     },
   });
@@ -33,18 +26,40 @@ const fetchSellerData = async (
     throw new Error("Seller not found");
   }
 
-  const totalSales = seller.totalSales;
+  let createdAtFilter = undefined;
+
+  if (parsedStartDate && parsedEndDate) {
+    createdAtFilter = {
+      gte: parsedStartDate,
+      lte: parsedEndDate,
+    };
+  } else if (parsedStartDate) {
+    createdAtFilter = {
+      gte: parsedStartDate,
+    };
+  } else if (parsedEndDate) {
+    createdAtFilter = {
+      lte: parsedEndDate,
+    };
+  }
+
+  const orders = await db.order.findMany({
+    where: {
+      sellerId: seller.id,
+      ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+    },
+  });
+
+  //console.log("Found Seller:", !!seller);
+  //console.log("Total Orders Returned:", orders?.length);
+  //console.log("Orders:", orders);
+
+  const totalSales = seller.totalSales ?? 0;
   const totalProducts = seller.products.length;
   const mostPopularProduct =
     seller.products.length > 0 ? seller.products[0].name : "No products";
 
-  let totalRevenue = 0;
-  if (seller.order && seller.order.length > 0) {
-    totalRevenue = seller.order.reduce(
-      (acc, order) => acc + order.totalAmount,
-      0
-    );
-  }
+    let totalRevenue = orders.reduce((acc, order) => acc + (order.totalAmount ?? 0), 0);
 
   return {
     totalRevenue,
@@ -76,8 +91,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(sellerData);
   } catch (error) {
+    console.error("Error in /api/seller/dashboard:", error); // 👈 log full error
     return NextResponse.json(
-      { error: error.message || "Error fetching seller data" },
+      { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
