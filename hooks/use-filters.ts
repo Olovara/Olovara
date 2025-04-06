@@ -1,28 +1,45 @@
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useEffect, ChangeEvent, useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import usePaginationStore from "./use-pagination-store";
 import useFilterStore from "./use-filter-store";
 import { CategoriesMap } from "@/data/categories";
 
-export const useFilters = () => {
+interface UseFiltersProps {
+  initialCategory?: string;  // Optional initial category for category pages
+  showPriceFilter?: boolean;
+  showCategoryFilter?: boolean;
+  showOrderFilter?: boolean;
+}
+
+export const useFilters = ({
+  initialCategory,
+  showPriceFilter = true,
+  showCategoryFilter = true,
+  showOrderFilter = true,
+}: UseFiltersProps = {}) => {
   const pathname = usePathname();
   const router = useRouter();
 
-  const { filters, setFilters } = useFilterStore();
-
-  const { pageNumber, pageSize, setPage, totalCount } = usePaginationStore(
-    (state) => ({
-      pageNumber: state.pagination.pageNumber,
-      pageSize: state.pagination.pageSize,
-      setPage: state.setPage,
-      totalCount: state.pagination.totalCount,
-    })
-  );
+  const { filters, setFilters, resetFilters } = useFilterStore();
+  const { pageNumber, pageSize, setPage, totalCount } = usePaginationStore();
 
   const { category, priceRange, orderBy } = filters;
-
   const [isPending, startTransition] = useTransition();
+
+  // Set initial category if provided
+  useEffect(() => {
+    if (initialCategory && !category.includes(initialCategory)) {
+      setFilters("category", [initialCategory]);
+    }
+  }, [initialCategory]);
+
+  // Reset filters when leaving the page
+  useEffect(() => {
+    return () => {
+      if (!initialCategory) resetFilters();
+    };
+  }, []);
 
   useEffect(() => {
     if (category || priceRange || orderBy) {
@@ -34,7 +51,7 @@ export const useFilters = () => {
     startTransition(() => {
       const searchParams = new URLSearchParams();
 
-      if (category) searchParams.set("gender", category.join(","));
+      if (category.length > 0) searchParams.set("category", category.join(","));
       if (priceRange) searchParams.set("priceRange", priceRange.toString());
       if (orderBy) searchParams.set("orderBy", orderBy);
       if (pageSize) searchParams.set("pageSize", pageSize.toString());
@@ -42,20 +59,13 @@ export const useFilters = () => {
 
       router.replace(`${pathname}?${searchParams}`);
     });
-  }, [
-    priceRange,
-    orderBy,
-    category,
-    router,
-    pathname,
-    pageNumber,
-    pageSize,
-  ]);
+  }, [priceRange, orderBy, category, router, pathname, pageNumber, pageSize]);
 
   const orderByList = [
-    { label: "Lowest Price", value: "updated" },
-    { label: "Highest Price", value: "created" },
-    { label: "Newest", value: "created" },
+    { label: "Newest", value: "updatedAt_desc" },
+    { label: "Oldest", value: "updatedAt_asc" },
+    { label: "Price (Low to High)", value: "price_asc" },
+    { label: "Price (High to Low)", value: "price_desc" },
   ];
 
   const categoryList = CategoriesMap.PRIMARY.map((category) => ({
@@ -67,29 +77,28 @@ export const useFilters = () => {
     setFilters("priceRange", value);
   };
 
-  const handleOrderSelect = (value: Selection) => {
-    if (value instanceof Set) {
-      setFilters("orderBy", value.values().next().value);
-    }
+  const handleOrderSelect = (value: string) => {
+    setFilters("orderBy", value);
   };
 
   const handleCategorySelect = (value: string) => {
     if (category.includes(value))
-      setFilters(
-        "category",
-        category.filter((categoryValue) => categoryValue !== value)
-      );
-    else setFilters("category", [...category, value]);
+      setFilters("category", category.filter((v) => v !== value));
+    else
+      setFilters("category", [...category, value]);
   };
 
   return {
     orderByList,
     categoryList,
     selectPrice: handlePriceSelect,
-    selectGender: handleCategorySelect,
+    selectCategory: handleCategorySelect,
     selectOrder: handleOrderSelect,
     filters,
     totalCount,
     isPending,
+    showPriceFilter,
+    showCategoryFilter,
+    showOrderFilter,
   };
 };

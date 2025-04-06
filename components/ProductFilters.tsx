@@ -15,6 +15,7 @@ export default function Filters() {
     orderByList,
     categoryList,
     selectOrder,
+    selectCategory,
     selectPrice,
     filters,
     totalCount,
@@ -76,22 +77,29 @@ export default function Filters() {
                   minValue={5}
                   maxValue={1000}
                   value={selectedPriceRange}
-                  aria-label="Price range slider"
-                  color="foreground"
                   onChangeEnd={(value) => selectPrice(value as number[])}
                 />
               </div>
 
+              {/* Category Filter */}
+              <div>
+                <Select value={category[0]} onValueChange={selectCategory}>
+                  <SelectTrigger>
+                    <div>Select Category</div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryList.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Order By Filter */}
               <div>
-                <Select
-                  label="Order by"
-                  variant="bordered"
-                  color="default"
-                  aria-label="Order by selector"
-                  selectedKeys={new Set([orderBy])}
-                  onSelectionChange={selectOrder}
-                >
+                <Select value={orderBy} onValueChange={selectOrder}>
                   <SelectTrigger>
                     <div>Select Order</div>
                   </SelectTrigger>

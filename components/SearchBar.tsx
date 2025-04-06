@@ -12,7 +12,7 @@ export function SearchBar() {
 
     // Redirect to search results page with query as a URL parameter
     if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+      router.push(`/products?q=${encodeURIComponent(query.trim())}`);
     }
   };
 
