@@ -20,6 +20,7 @@ import { ProductDiscountSection } from "../product/productDiscount";
 import { ProductDropSection } from "../product/productDrop";
 import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
+import { useRouter } from "next/navigation";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 type ProductFormProps = {
@@ -31,40 +32,51 @@ type DropdownOption = {
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
-  const [descriptionJson, setDescriptionJson] = useState<any>({ ops: [] });
-  const [tags, setTags] = useState<string[]>([]);
-  const [materialTags, setMaterialTags] = useState<string[]>([]);
-  const [images, setImages] = useState<null | string[]>(null);
-  const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([]);
+  const [descriptionJson, setDescriptionJson] = useState<any>(
+    initialData?.description || { ops: [] }
+  );
+  const [tags, setTags] = useState<string[]>(
+    initialData?.tags || []
+  );
+  const [materialTags, setMaterialTags] = useState<string[]>(
+    initialData?.materialTags || []
+  );
+  const [images, setImages] = useState<string[]>(
+    initialData?.images || []
+  );
+  const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(
+    initialData?.options || []
+  );
   const isClient = useIsClient();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      price: initialData?.price ?? 0,
-      description: initialData?.description || { ops: [] },
-      images: initialData?.images || [],
-      freeShipping: initialData?.freeShipping || false,
-      handlingFee: Number(initialData?.handlingFee ?? 0),
-      shippingCost: Number(initialData?.shippingCost ?? 0),
-      itemWeight: Number(initialData?.itemWeight ?? 0),
-      itemLength: Number(initialData?.itemLength ?? 0),
-      itemWidth: Number(initialData?.itemWidth ?? 0),
-      itemHeight: Number(initialData?.itemHeight ?? 0),
-      shippingNotes: initialData?.shippingNotes || "",
-      status: initialData?.status || "HIDDEN",
-      isDigital: initialData?.isDigital || false,
-      primaryCategory: initialData?.primaryCategory || "",
-      secondaryCategory: initialData?.secondaryCategory || "",
-      stock: Number(initialData?.stock ?? 0),
-      inStockProcessingTime: Number(initialData?.inStockProcessingTime ?? 0),
-      outStockLeadTime: Number(initialData?.outStockLeadTime ?? 0),
-      productDrop: initialData?.productDrop || false,
-      dropDate: initialData?.dropDate || null,
-      onSale: initialData?.onSale || false,
+    defaultValues: initialData || {
+      name: "",
+      price: 0,
+      description: { ops: [] },
+      images: [],
+      freeShipping: false,
+      handlingFee: 0,
+      shippingCost: 0,
+      itemWeight: 0,
+      itemLength: 0,
+      itemWidth: 0,
+      itemHeight: 0,
+      shippingNotes: "",
+      status: "HIDDEN",
+      isDigital: false,
+      primaryCategory: "",
+      secondaryCategory: "",
+      stock: 0,
+      inStockProcessingTime: 0,
+      outStockLeadTime: 0,
+      productDrop: false,
+      dropDate: null,
     },
   });
 
@@ -83,69 +95,48 @@ export function ProductForm({ initialData }: ProductFormProps) {
     }
   }, [formState.errors]);
 
-  const onSubmit = async (values: ProductFormValues) => {
+  const onSubmit = async (data: z.infer<typeof ProductSchema>) => {
     try {
-      console.log("1. Submit started with values:", values);
-
-      // Pre-process the values
-      const processedValues = {
-        ...values,
-        images: images || [],
-        shippingCost: Number(values.shippingCost || 0),
-        handlingFee: Number(values.handlingFee || 0),
-        stock: Number(values.stock || 0),
-        inStockProcessingTime: Number(values.inStockProcessingTime || 0),
-        outStockLeadTime: Number(values.outStockLeadTime || 0),
-      };
-
-      console.log("2. Processed values:", processedValues);
-
-      const result = ProductSchema.safeParse(processedValues);
-
-      if (!result.success) {
-        console.error("3. Validation errors:", result.error.errors);
-        toast.error("Validation error. Check form inputs.");
-        return;
+      setIsLoading(true);
+      
+      const endpoint = initialData 
+        ? "/api/products/edit-product"
+        : "/api/products/create-product";
+      
+      const method = initialData ? "PATCH" : "POST";
+      
+      // If editing, include the product ID
+      if (initialData) {
+        data.id = initialData.id;
       }
 
-      const payload = {
-        ...result.data, // Use the validated and transformed data
-        description: descriptionJson,
-        tags,
-        materialTags,
-        options: dropdownOptions,
-        howItsMade: values.howItsMade || "",
-      };
-
-      console.log("4. Final payload:", payload);
-
-      const response = await fetch("/api/products/create-product", {
-        method: "POST",
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
-      console.log("Submit started with values:", data);
-
-      if (data.success) {
-        toast.success("Product created successfully!");
-        resetExternalStates();
-      } else {
-        toast.error(data.error || "Error creating product.");
+      if (!response.ok) {
+        throw new Error("Failed to save product");
       }
+
+      router.push("/seller/dashboard/products");
+      router.refresh();
+      
+      toast.success(initialData ? "Product updated" : "Product created");
     } catch (error) {
-      console.error("7. Error in submission:", error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error("Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const resetExternalStates = () => {
     setDescriptionJson({ ops: [] });
     setDropdownOptions([]);
-    setImages(null);
+    setImages([]);
     setTags([]);
     setMaterialTags([]);
     form.reset({
@@ -230,7 +221,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
         <ProductDropSection form={form} />
 
         {/* Submit Button */}
-        <Submitbutton title="Create Product" isPending={isPending} />
+        <Submitbutton 
+          title={initialData ? "Update Product" : "Create Product"} 
+          isPending={isLoading} 
+        />
       </form>
     </Form>
   );

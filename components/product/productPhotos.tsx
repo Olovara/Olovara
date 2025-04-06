@@ -18,8 +18,11 @@ export function ProductPhotosSection({
   images,
   setImages,
 }: ProductPhotosProps) {
+  // Make sure images is always an array
+  const imageArray = Array.isArray(images) ? images : [];
+
   const handleRemoveImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
+    const newImages = imageArray.filter((_, i) => i !== index);
     setImages(newImages);
   };
 
@@ -27,22 +30,10 @@ export function ProductPhotosSection({
     <div className="flex flex-col gap-y-4">
       <Label>Product Photos</Label>
 
-      {/* Upload Section */}
-      <UploadDropzone
-        endpoint="imageUploader"
-        onClientUploadComplete={(res) => {
-          const urls = res.map((item) => item.url);
-          setImages(urls); // Update the local state
-        }}
-        onUploadError={(error: Error) => {
-          toast.error("Something went wrong, try again");
-        }}
-      />
-
       {/* Preview Images */}
-      {images && images.length > 0 && (
+      {imageArray.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-4">
-          {images.map((url, index) => (
+          {imageArray.map((url, index) => (
             <div key={index} className="relative w-24 h-24">
               <Image
                 fill
@@ -64,6 +55,19 @@ export function ProductPhotosSection({
           ))}
         </div>
       )}
+
+      {/* Upload Section */}
+      <UploadDropzone
+        endpoint="imageUploader"
+        onClientUploadComplete={(res) => {
+          const urls = res.map((item) => item.url);
+          // Append new images to existing ones
+          setImages([...imageArray, ...urls]);
+        }}
+        onUploadError={(error: Error) => {
+          toast.error("Something went wrong, try again");
+        }}
+      />
     </div>
   );
 }

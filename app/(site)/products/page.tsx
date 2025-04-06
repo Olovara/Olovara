@@ -1,3 +1,7 @@
+import {
+  PaginationControlsAndSizeSelector,
+  PaginationInfoAndSizeSelector,
+} from "@/components/PaginationComponent";
 import ProductCard from "@/components/ProductCard";
 import Filters from "@/components/ProductFilters";
 import { db } from "@/lib/db";
@@ -28,7 +32,7 @@ export default async function Products({
   // Calculate skip for pagination
   const skip = (pageNumber - 1) * pageSize;
 
-  // Build where clause
+  // Build where clause for filtering
   const where = {
     AND: [
       {
@@ -57,14 +61,14 @@ export default async function Products({
       : "desc";
 
   // Fallback to a valid field if the field is invalid
-  const validFields = ["price", "name", "createdAt", "updatedAt", "numberSold"]; // add whatever you support
+  const validFields = ["price", "name", "createdAt", "updatedAt", "numberSold"];
   const safeField = validFields.includes(field) ? field : "updatedAt";
 
   const orderByClause = {
     [safeField]: direction,
   };
 
-  // Fetch products with filters and pagination
+  // Fetch products and total count
   const [products, total] = await Promise.all([
     db.product.findMany({
       where,
@@ -88,11 +92,20 @@ export default async function Products({
   return (
     <div className="container mx-auto p-5">
       <h1 className="text-2xl font-bold mb-4">Marketplace Products</h1>
+
+      {/* Top pagination info */}
+      <PaginationInfoAndSizeSelector
+        totalCount={total}
+        pageNumber={pageNumber}
+        pageSize={pageSize}
+      />
+
       <Filters />
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.length > 0 ? (
-          products.map((product, index) => (
-            <ProductCard key={product.id} product={product} index={index} />
+          products.map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))
         ) : (
           <p className="col-span-full text-center text-gray-500">
@@ -100,6 +113,14 @@ export default async function Products({
           </p>
         )}
       </div>
+
+      {/* Bottom pagination controls */}
+      <PaginationControlsAndSizeSelector
+        totalCount={total}
+        pageNumber={pageNumber}
+        pageSize={pageSize}
+        totalPages={Math.ceil(total / pageSize)}
+      />
     </div>
   );
 }
