@@ -41,7 +41,7 @@ export const ProductSchema = z
       .optional()
       .nullable()
       .transform((stock) => (stock === null ? undefined : stock)),
-    productFile: z.string().optional(),
+    productFile: z.string().nullable().optional(),
     numberSold: z.number().int().optional().default(0),
     primaryCategory: z.string(),
     secondaryCategory: z.string(),

@@ -17,7 +17,11 @@ const ProductFileSection = ({ form }) => {
             onClientUploadComplete={(res) => {
               if (res && res.length > 0) {
                 const fileUrl = res[0].url;
-                form.setValue("productFile", fileUrl);
+                form.setValue("productFile", fileUrl, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true
+                });
                 toast.success("Your product file has been uploaded!");
               } else {
                 toast.error("No file uploaded. Please try again.");
@@ -28,6 +32,13 @@ const ProductFileSection = ({ form }) => {
               toast.error("Something went wrong, try again.");
             }}
           />
+          
+          {/* Show current file if it exists */}
+          {form.watch("productFile") && (
+            <div className="text-sm text-muted-foreground">
+              Current file: {form.watch("productFile")}
+            </div>
+          )}
         </div>
       )}
     </div>

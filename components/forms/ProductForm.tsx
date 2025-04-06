@@ -20,7 +20,7 @@ import { ProductDiscountSection } from "../product/productDiscount";
 import { ProductDropSection } from "../product/productDrop";
 import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 type ProductFormProps = {
@@ -49,35 +49,40 @@ export function ProductForm({ initialData }: ProductFormProps) {
   );
   const isClient = useIsClient();
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
+  const [tempImages, setTempImages] = useState<string[]>([]); // Track new uploads
 
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
-    defaultValues: initialData || {
-      name: "",
-      price: 0,
-      description: { ops: [] },
-      images: [],
-      freeShipping: false,
-      handlingFee: 0,
-      shippingCost: 0,
-      itemWeight: 0,
-      itemLength: 0,
-      itemWidth: 0,
-      itemHeight: 0,
-      shippingNotes: "",
-      status: "HIDDEN",
-      isDigital: false,
-      primaryCategory: "",
-      secondaryCategory: "",
-      stock: 0,
-      inStockProcessingTime: 0,
-      outStockLeadTime: 0,
-      productDrop: false,
-      dropDate: null,
-    },
+    defaultValues: {
+      ...(initialData || {
+        name: "",
+        price: 0,
+        description: { ops: [] },
+        images: [],
+        freeShipping: false,
+        handlingFee: 0,
+        shippingCost: 0,
+        itemWeight: 0,
+        itemLength: 0,
+        itemWidth: 0,
+        itemHeight: 0,
+        shippingNotes: "",
+        status: "HIDDEN",
+        isDigital: false,
+        primaryCategory: "",
+        secondaryCategory: "",
+        stock: 0,
+        inStockProcessingTime: 0,
+        outStockLeadTime: 0,
+        productDrop: false,
+        dropDate: null,
+      }),
+      productFile: initialData?.productFile || null,
+    }
   });
 
   // Add this console log to verify form initialization
@@ -95,6 +100,42 @@ export function ProductForm({ initialData }: ProductFormProps) {
     }
   }, [formState.errors]);
 
+  // Add this useEffect to sync images with form state
+  useEffect(() => {
+    setValue('images', images);
+  }, [images, setValue]);
+
+  // Replace the route change effect with this
+  useEffect(() => {
+    const handleCleanup = () => {
+      if (tempImages.length > 0) {
+        cleanupTempImages();
+      }
+    };
+
+    // Cleanup on component unmount
+    return () => {
+      handleCleanup();
+    };
+  }, [tempImages]);
+
+  // Update the beforeunload handler
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty || tempImages.length > 0) {
+        e.preventDefault();
+        const message = "You have unsaved changes. Are you sure you want to leave?";
+        e.returnValue = message;
+        return message;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [form.formState.isDirty, tempImages]);
+
   const onSubmit = async (data: z.infer<typeof ProductSchema>) => {
     try {
       setIsLoading(true);
@@ -104,32 +145,84 @@ export function ProductForm({ initialData }: ProductFormProps) {
         : "/api/products/create-product";
       
       const method = initialData ? "PATCH" : "POST";
-      
-      // If editing, include the product ID
-      if (initialData) {
-        data.id = initialData.id;
-      }
+
+      // Add console logs to track the process
+      console.log('Starting submission with:', {
+        endpoint,
+        method,
+        initialData: !!initialData,
+        images,
+        data
+      });
+
+      // Include all necessary data
+      const submissionData = {
+        ...data,
+        id: initialData?.id,
+        description: descriptionJson,
+        images: images,
+        tags: tags,
+        materialTags: materialTags,
+        options: dropdownOptions,
+        productFile: data.productFile || null,
+      };
+
+      console.log('Submitting data:', submissionData);
 
       const response = await fetch(endpoint, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submissionData),
+      });
+
+      // Add response debugging
+      const responseData = await response.json();
+      console.log('Response:', {
+        ok: response.ok,
+        status: response.status,
+        data: responseData
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save product");
+        throw new Error(responseData.error || "Failed to save product");
       }
 
-      router.push("/seller/dashboard/products");
+      // Only navigate if the update was successful
+      router.replace("/seller/dashboard/products");
       router.refresh();
       
       toast.success(initialData ? "Product updated" : "Product created");
     } catch (error) {
+      console.error('Form submission error:', error);
       toast.error("Something went wrong");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Update the cleanupTempImages function to be synchronous
+  const cleanupTempImages = async () => {
+    if (tempImages.length === 0) return;
+
+    try {
+      const response = await fetch("/api/upload/cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ images: tempImages }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to cleanup images");
+        return;
+      }
+
+      setTempImages([]);
+    } catch (error) {
+      console.error("Failed to cleanup temporary images:", error);
     }
   };
 
@@ -192,6 +285,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
             setImages(newImages);
             setValue("images", newImages, { shouldValidate: true });
           }}
+          setTempImages={setTempImages}
+          tempImages={tempImages}
+          form={form}
         />
 
         {/* Product Options Section */}

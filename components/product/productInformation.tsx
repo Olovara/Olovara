@@ -117,7 +117,14 @@ export const ProductInfoSection = ({
       {/* Product Description */}
       <div className="flex flex-col gap-y-2">
         <Label>Product Description</Label>
-        <QuillEditor json={descriptionJson} setJson={setDescriptionJson} />
+        <QuillEditor 
+          json={descriptionJson} 
+          setJson={(newJson) => {
+            setDescriptionJson(newJson);
+            // Also update the form value
+            form.setValue("description", newJson);
+          }} 
+        />
       </div>
 
       {/* Price */}
