@@ -44,14 +44,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Stripe expects prices in cents
-    const totalAmountInCents = Math.round(product.price * 100) * quantity;
-
-    // Calculate 10% platform fee in cents
-    const platformFee = Math.round(
-      totalAmountInCents * (PLATFORM_FEE_PERCENT / 100)
-    );
-
     // Clean up HTML tags from description if present
     const cleanDescription =
       typeof product.description === "string"
@@ -61,7 +53,21 @@ export async function POST(req: Request) {
             .trim()
         : "No description available";
 
-    const shippingAddress = "123 Anyroad, Anytown";
+    // Calculate combined shipping and handling cost
+    const shippingAndHandlingCost = product.isDigital 
+      ? 0 
+      : (product.shippingCost || 0) + (product.handlingFee || 0);
+    
+    // Calculate total amount including shipping and handling
+    const totalAmountWithShipping = (product.price * quantity) + shippingAndHandlingCost;
+    
+    // Stripe expects prices in cents
+    const totalAmountInCents = Math.round(totalAmountWithShipping * 100);
+
+    // Calculate 10% platform fee in cents (only on product price, not shipping)
+    const platformFee = Math.round(
+      (product.price * quantity * 100) * (PLATFORM_FEE_PERCENT / 100)
+    );
 
     // Create pending order in DB before payment
     const order = await db.order.create({
@@ -72,19 +78,22 @@ export async function POST(req: Request) {
         productId: product.id,
         productName: product.name,
         quantity,
-        totalAmount: product.price * quantity, // store in dollars
-        shippingCost: 0, // you can update this if needed
+        totalAmount: totalAmountWithShipping, // store in dollars
+        shippingCost: shippingAndHandlingCost, // store combined shipping and handling
         discount: 0, // update if needed
         isDigital: product.isDigital,
         paymentStatus: "PENDING",
         status: "UNPAID",
-        shippingAddress: shippingAddress,
+        shippingAddress: null, // Will be updated after checkout completion
       },
     });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
+      shipping_address_collection: {
+        allowed_countries: ['US', 'CA', 'GB'], // Customize based on where your sellers ship to
+      },
       line_items: [
         {
           price_data: {
@@ -98,9 +107,20 @@ export async function POST(req: Request) {
           },
           quantity,
         },
+        // Add shipping and handling as a separate line item if it's a physical product
+        ...(product.isDigital ? [] : [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Shipping & Handling",
+            },
+            unit_amount: Math.round(shippingAndHandlingCost * 100),
+          },
+          quantity: 1,
+        }]),
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/order-cancelled`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancel`,
       customer_email: buyerEmail,
       payment_intent_data: {
         application_fee_amount: platformFee,
@@ -111,11 +131,12 @@ export async function POST(req: Request) {
       metadata: {
         productId,
         quantity,
-        totalAmount: product.price * quantity, // still in dollars for display
+        totalAmount: totalAmountWithShipping, // still in dollars for display
         buyerId: isGuestCheckout ? "guest" : sessionUser?.user?.id || "unknown",
         sellerId: product.seller.id,
         isGuestCheckout: isGuestCheckout ? "true" : "false",
         orderId: order.id,
+        isDigital: product.isDigital ? "true" : "false",
       },
     });
 

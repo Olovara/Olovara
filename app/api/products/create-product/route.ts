@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
 export const config = {
   api: {
@@ -120,6 +121,39 @@ export async function POST(req: Request) {
           : undefined,
       },
     });
+
+    // Associate uploaded files with the product
+    if (product.id) {
+      // Update image uploads
+      if (images.length > 0) {
+        await db.temporaryUpload.updateMany({
+          where: {
+            fileUrl: {
+              in: images
+            },
+            userId: userId,
+            productId: null
+          },
+          data: {
+            productId: product.id
+          }
+        });
+      }
+
+      // Update product file upload if it exists
+      if (productFile) {
+        await db.temporaryUpload.updateMany({
+          where: {
+            fileUrl: productFile,
+            userId: userId,
+            productId: null
+          },
+          data: {
+            productId: product.id
+          }
+        });
+      }
+    }
 
     //console.log("Product created successfully:", product);
 

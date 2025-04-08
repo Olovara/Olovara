@@ -262,3 +262,15 @@ model HandmadeGuidelines {
   content   Json
   updatedAt DateTime @updatedAt
 }
+
+model TemporaryUpload {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileKey   String
+  fileUrl   String
+  userId    String
+  createdAt DateTime @default(now())
+  productId String?  // Optional, will be set when the file is associated with a product
+
+  @@index([createdAt]) // Add index for better query performance
+  @@index([userId])    // Add index for user queries
+}

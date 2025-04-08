@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   let event;
   try {
     event = stripe.webhooks.constructEvent(
-      rawBody,
+      Buffer.from(rawBody),
       sig,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
 
     const orderId = session.metadata?.orderId;
     const quantity = parseInt(session.metadata?.quantity || "1", 10);
+    const isDigital = session.metadata?.isDigital === "true";
 
     try {
       // 1. Fetch the order + product + seller
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
         },
       });
 
-      // 3. Update order with buyerName, productName, and mark as PAID
+      // 3. Update order with buyerName, productName, shipping address, and mark as PAID
       await db.order.update({
         where: { id: orderId },
         data: {
@@ -64,6 +65,10 @@ export async function POST(req: Request) {
           status: "PROCESSING",
           buyerName: session.customer_details?.name || null,
           productName: order.product.name,
+          // Save shipping address for physical products
+          ...(isDigital ? {} : {
+            shippingAddress: session.shipping_details?.address || null,
+          }),
         },
       });
     } catch (err: any) {

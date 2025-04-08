@@ -1,6 +1,5 @@
 import { getSellerProducts } from "@/actions/product";
-import { auth } from "@/auth"; // Adjust to your auth file path
-import { Badge } from "@/components/ui/badge";
+import { auth } from "@/auth";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,61 +8,50 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Ellipsis, PlusCircle, Search } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { ProductSearch } from "./ProductSearch";
+import { ProductTable } from "./ProductTable";
+import { PaginationControls } from "./PaginationControls";
+import { redirect } from "next/navigation";
 
-export default async function ProductsPage() {
-  const session = await auth(); // Get session
-  const userId = session?.user?.id; // Extract userId from session
-  const userRole = session?.user?.role; // Extract user role from session
-
-  if (!userId) {
-    return <p>You must be logged in to view this page.</p>; // Simple fallback for unauthenticated users
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "SELLER") {
+    redirect("/auth/signin");
   }
 
-  if (userRole != "SELLER") {
-    return <p>You must be a seller to view this page.</p>; // Simple fallback for unauthenticated users
-  }
+  const activeTab = (searchParams.tab as string) || "all";
+  const search = (searchParams.search as string) || "";
+  const page = Number(searchParams.page) || 1;
+  const pageSize = 10;
 
-  const products = await getSellerProducts(userId); // Fetch products dynamically
+  // Get products based on active tab and search
+  const { products, totalItems, totalPages } = await getSellerProducts(
+    session.user.id,
+    activeTab === "all" ? undefined : activeTab,
+    search,
+    pageSize,
+    page
+  );
 
-  {
-    products.length === 0 && (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">
-          No products found. Add a new product to get started.
-        </p>
-      </div>
-    );
-  }
+  // Helper function to generate tab URLs while preserving search and pagination
+  const getTabUrl = (tab: string) => {
+    const params = new URLSearchParams();
+    params.set("tab", tab);
+    params.set("page", "1"); // Reset to first page when changing tabs
+    if (search) {
+      params.set("search", search);
+    }
+    return `?${params.toString()}`;
+  };
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="space-y-6">
       {/* Header and breadcrumbs */}
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
         <Breadcrumb className="hidden md:flex">
@@ -81,127 +69,151 @@ export default async function ProductsPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
-        {/* Search Bar & Create Product Button (Stacked) */}
-        <div className="ml-auto flex flex-col gap-2">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
-            />
-          </div>
-        </div>
       </header>
 
       {/* Main Content */}
       <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-        <Tabs defaultValue="all">
-          <div className="flex items-center">
+        <Tabs defaultValue={activeTab} className="space-y-4">
+          <div className="flex items-center justify-between">
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="draft">Draft</TabsTrigger>
-              <TabsTrigger value="archived" className="hidden sm:flex">
-                Archived
+              <TabsTrigger value="all" asChild>
+                <Link href={getTabUrl("all")}>All</Link>
+              </TabsTrigger>
+              <TabsTrigger value="active" asChild>
+                <Link href={getTabUrl("active")}>Active</Link>
+              </TabsTrigger>
+              <TabsTrigger value="hidden" asChild>
+                <Link href={getTabUrl("hidden")}>Hidden</Link>
+              </TabsTrigger>
+              <TabsTrigger value="disabled" asChild>
+                <Link href={getTabUrl("disabled")}>Disabled</Link>
               </TabsTrigger>
             </TabsList>
-            <div className="ml-auto">
-              <Button size="sm" className="h-8 gap-1">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <Link href="/seller/dashboard/products/create-product">
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Product
-                  </span>
-                </Link>
-              </Button>
-            </div>
+            <ProductSearch initialQuery={search} />
           </div>
-          <TabsContent value="all">
-            <Card>
-              <CardHeader>
-                <CardTitle>Products</CardTitle>
-                <CardDescription>
-                  Manage your products and view their sales performance.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="hidden sm:table-cell">
-                        Image
-                      </TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Price
-                      </TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Total Sales
-                      </TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Created at
-                      </TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="hidden sm:table-cell">
-                          <Image
-                            alt={product.name}
-                            src={product.images[0] || "/placeholder.svg"}
-                            width={64}
-                            height={64}
-                            className="rounded-md"
-                          />
-                        </TableCell>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {product.isDigital ? "Digital" : "Physical"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          ${product.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {product.numberSold || 0}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {new Date(product.createdAt).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="icon" variant="ghost">
-                                <Ellipsis className="h-5 w-5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem asChild>
-                                <Link
-                                  href={`/seller/dashboard/products/edit/${product.id}`}
-                                  className="w-full"
-                                >
-                                  Edit
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+
+          <TabsContent
+            key={`all-${page}-${search}`}
+            value="all"
+            className="space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  All Products
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {search
+                    ? `Search results for "${search}"`
+                    : "Manage all your products"}
+                </p>
+              </div>
+              <Link href="/seller/dashboard/products/create-product">
+                <Button>Add Product</Button>
+              </Link>
+            </div>
+            <ProductTable products={products} />
+            <PaginationControls
+              totalPages={totalPages}
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              activeTab={activeTab}
+              searchQuery={search}
+            />
+          </TabsContent>
+
+          <TabsContent
+            key={`active-${page}-${search}`}
+            value="active"
+            className="space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Active Products
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {search
+                    ? `Search results for "${search}"`
+                    : "Products currently visible to customers"}
+                </p>
+              </div>
+              <Link href="/seller/dashboard/products/new">
+                <Button>Add Product</Button>
+              </Link>
+            </div>
+            <ProductTable products={products} />
+            <PaginationControls
+              totalPages={totalPages}
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              activeTab={activeTab}
+              searchQuery={search}
+            />
+          </TabsContent>
+
+          <TabsContent
+            key={`hidden-${page}-${search}`}
+            value="hidden"
+            className="space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Hidden Products
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {search
+                    ? `Search results for "${search}"`
+                    : "Products temporarily hidden from customers"}
+                </p>
+              </div>
+              <Link href="/seller/dashboard/products/new">
+                <Button>Add Product</Button>
+              </Link>
+            </div>
+            <ProductTable products={products} />
+            <PaginationControls
+              totalPages={totalPages}
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              activeTab={activeTab}
+              searchQuery={search}
+            />
+          </TabsContent>
+
+          <TabsContent
+            key={`disabled-${page}-${search}`}
+            value="disabled"
+            className="space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Disabled Products
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {search
+                    ? `Search results for "${search}"`
+                    : "Products that are not available for sale"}
+                </p>
+              </div>
+              <Link href="/seller/dashboard/products/new">
+                <Button>Add Product</Button>
+              </Link>
+            </div>
+            <ProductTable products={products} />
+            <PaginationControls
+              totalPages={totalPages}
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              activeTab={activeTab}
+              searchQuery={search}
+            />
           </TabsContent>
         </Tabs>
       </main>

@@ -62,23 +62,102 @@ export async function PATCH(req: Request) {
       data: cleanData,
     });
 
+    // Handle file associations
+    if (updatedProduct.id) {
+      // Get the current product to compare with updated data
+      const currentProduct = await db.product.findUnique({
+        where: { id },
+        select: {
+          images: true,
+          productFile: true
+        }
+      });
+
+      if (currentProduct) {
+        // Handle image changes
+        if (updateData.images && Array.isArray(updateData.images)) {
+          // Disassociate removed images
+          const removedImages = currentProduct.images.filter(
+            (img: string) => !updateData.images.includes(img)
+          );
+          
+          if (removedImages.length > 0) {
+            await db.temporaryUpload.updateMany({
+              where: {
+                fileUrl: {
+                  in: removedImages
+                },
+                productId: id
+              },
+              data: {
+                productId: null
+              }
+            });
+          }
+
+          // Associate new images
+          const newImages = updateData.images.filter(
+            (img: string) => !currentProduct.images.includes(img)
+          );
+          
+          if (newImages.length > 0) {
+            await db.temporaryUpload.updateMany({
+              where: {
+                fileUrl: {
+                  in: newImages
+                },
+                userId: session.user.id,
+                productId: null
+              },
+              data: {
+                productId: id
+              }
+            });
+          }
+        }
+
+        // Handle product file changes
+        if (updateData.productFile !== currentProduct.productFile) {
+          // If there was a previous file, disassociate it
+          if (currentProduct.productFile) {
+            await db.temporaryUpload.updateMany({
+              where: {
+                fileUrl: currentProduct.productFile,
+                productId: id
+              },
+              data: {
+                productId: null
+              }
+            });
+          }
+
+          // If there's a new file, associate it
+          if (updateData.productFile) {
+            await db.temporaryUpload.updateMany({
+              where: {
+                fileUrl: updateData.productFile,
+                userId: session.user.id,
+                productId: null
+              },
+              data: {
+                productId: id
+              }
+            });
+          }
+        }
+      }
+    }
+
     console.log('Product updated successfully:', updatedProduct);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Product updated successfully",
-        product: updatedProduct 
-      }),
+      JSON.stringify({ success: true, product: updatedProduct }),
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating product:", error);
+    console.error('Error updating product:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Internal Server Error" 
-      }),
+      JSON.stringify({ success: false, error: "Internal Server Error" }),
       { status: 500 }
     );
   }

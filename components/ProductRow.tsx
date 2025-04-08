@@ -16,7 +16,10 @@ async function getData({ category }: iAppProps) {
     switch (category) {
       case "ACCESORIES": {
         const data = await db.product.findMany({
-          where: { primaryCategory: "ACCESORIES" },
+          where: { 
+            primaryCategory: "ACCESORIES",
+            status: "ACTIVE"
+          },
           select: {
             price: true,
             name: true,
@@ -31,7 +34,10 @@ async function getData({ category }: iAppProps) {
       }
       case "newest": {
         const data = await db.product.findMany({
-          where: { createdAt: { gte: fiveDaysAgo } },
+          where: { 
+            createdAt: { gte: fiveDaysAgo },
+            status: "ACTIVE"
+          },
           select: {
             price: true,
             name: true,

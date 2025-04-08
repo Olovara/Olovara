@@ -15,12 +15,12 @@ import { ProductInfoSection } from "../product/productInformation";
 import { ProductPhotosSection } from "../product/productPhotos";
 import { ProductOptionsSection } from "../product/productOptions";
 import { ProductShippingSection } from "../product/productShipping";
-import ProductFileSection from "../product/productFile";
 import { ProductDiscountSection } from "../product/productDiscount";
 import { ProductDropSection } from "../product/productDrop";
 import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
+import { ProductFileSection } from "../product/productFile";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 type ProductFormProps = {
@@ -107,15 +107,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Replace the route change effect with this
   useEffect(() => {
-    const handleCleanup = () => {
-      if (tempImages.length > 0) {
-        cleanupTempImages();
-      }
-    };
 
     // Cleanup on component unmount
     return () => {
-      handleCleanup();
+      if (tempImages.length > 0) {
+        cleanupTempImages();
+      }
     };
   }, [tempImages]);
 
@@ -194,9 +191,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
       router.refresh();
       
       toast.success(initialData ? "Product updated" : "Product created");
+      setTempImages([]); // Mark all temp images as committed
     } catch (error) {
       console.error('Form submission error:', error);
       toast.error("Something went wrong");
+      await cleanupTempImages();
     } finally {
       setIsLoading(false);
     }
@@ -308,7 +307,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
         {/* Product File Section */}
         <ProductFileSection form={form} />
         {/* Add hidden input to capture product file */}
-        <input type="hidden" {...form.register("productFile")} />
 
         {/* Product Discount Section */}
         <ProductDiscountSection form={form} />

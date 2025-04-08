@@ -7,10 +7,15 @@ interface ShopPageProps {
 
 // Fetch seller and products
 async function getShopData(shopNameSlug: string) {
-
   const seller = await db.seller.findUnique({
     where: { shopNameSlug }, // Fetch using the slug
-    include: { products: true },
+    include: { 
+      products: {
+        where: {
+          status: "ACTIVE" // Only include active products
+        }
+      }
+    },
   });
 
   return seller;

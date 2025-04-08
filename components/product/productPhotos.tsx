@@ -6,8 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
-import { Form } from "react-hook-form";
 
 type ProductPhotosProps = {
   images: string[];
@@ -29,11 +27,10 @@ export function ProductPhotosSection({
   const handleRemoveImage = (index: number) => {
     const removedImage = imageArray[index];
     const newImages = imageArray.filter((_, i) => i !== index);
-    
-    // Update the images state
+  
     setImages(newImages);
-
-    // Clean up the removed image from storage, regardless of whether it's temp or not
+    form.setValue("images", newImages, { shouldValidate: true }); // <-- critical
+  
     fetch("/api/upload/cleanup", {
       method: "POST",
       headers: {
@@ -41,17 +38,16 @@ export function ProductPhotosSection({
       },
       body: JSON.stringify({ images: [removedImage] }),
     }).catch(console.error);
-
-    // If it was a temp image, also remove it from tempImages state
+  
     if (tempImages.includes(removedImage)) {
-      setTempImages(prev => prev.filter(img => img !== removedImage));
+      setTempImages((prev) => prev.filter((img) => img !== removedImage));
     }
 
     // Force form to recognize change and mark as dirty
-    form.setValue('images', newImages, {
+    form.setValue("images", newImages, {
       shouldDirty: true,
       shouldTouch: true,
-      shouldValidate: true
+      shouldValidate: true,
     });
   };
 
@@ -90,18 +86,23 @@ export function ProductPhotosSection({
       <UploadDropzone
         endpoint="imageUploader"
         onClientUploadComplete={(res) => {
-          const urls = res.map((item) => item.url);
-          const newImages = [...imageArray, ...urls];
-          
-          // Update both states
-          setTempImages(prev => [...prev, ...urls]);
-          setImages(newImages);
-          
+          if (!res || res.length === 0) {
+            toast.error("Image upload failed.");
+            return;
+          }
+        
+          const urls = res.map((file) => file.url);
+          setImages([...images, ...urls]);
+          form.setValue("images", [...images, ...urls], { shouldValidate: true });
+        
+          // Track uploaded files as temp
+          setTempImages((prev) => [...prev, ...urls]);
+
           // Force form to recognize change
-          form.setValue('images', newImages, {
+          form.setValue("images", images, {
             shouldDirty: true,
             shouldTouch: true,
-            shouldValidate: true
+            shouldValidate: true,
           });
         }}
         onUploadError={(error: Error) => {

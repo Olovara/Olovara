@@ -41,6 +41,9 @@ export default async function Products({
           lte: priceRange[1],
         },
       },
+      {
+        status: "ACTIVE", // Only show active products
+      },
       ...(categories.length > 0
         ? [
             {

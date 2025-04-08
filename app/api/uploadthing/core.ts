@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
+import { db } from "@/lib/db";
 
 const f = createUploadthing();
 
@@ -20,8 +21,22 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       // This code RUNS ON YOUR SERVER after upload
       console.log("Upload complete for userId:", metadata.userId);
-
       console.log("file url", file.url);
+
+      // Record the upload in the TemporaryUpload table
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.url,
+            userId: metadata.userId,
+            // productId will be null until associated with a product
+          },
+        });
+        console.log("Temporary upload recorded:", file.key);
+      } catch (error) {
+        console.error("Failed to record temporary upload:", error);
+      }
 
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
       return { uploadedBy: metadata.userId };
@@ -39,8 +54,22 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       // This code RUNS ON YOUR SERVER after upload
       console.log("Upload complete for userId:", metadata.userId);
-
       console.log("file url", file.url);
+
+      // Record the upload in the TemporaryUpload table
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.url,
+            userId: metadata.userId,
+            // productId will be null until associated with a product
+          },
+        });
+        console.log("Temporary upload recorded:", file.key);
+      } catch (error) {
+        console.error("Failed to record temporary upload:", error);
+      }
 
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
       return { uploadedBy: metadata.userId };

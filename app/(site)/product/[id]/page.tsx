@@ -1,4 +1,3 @@
-import { BuyButton } from "@/components/SubmitButtons";
 import { db } from "@/lib/db";
 import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
@@ -76,7 +75,21 @@ export default async function ProductPage({
   params: { id: string };
 }) {
   noStore();
+
   const data = await getData(params.id);
+
+  // If product doesn't exist or is not active, show not found
+  if (!data || data.status !== "ACTIVE") {
+    return (
+      <div className="container mx-auto p-5">
+        <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+        <p>This product may have been removed or is no longer available.</p>
+        <Link href="/products" className="text-primary hover:underline mt-4 inline-block">
+          Return to Products
+        </Link>
+      </div>
+    );
+  }
 
   if (!data || !data.images || data.images.length === 0) {
     return (

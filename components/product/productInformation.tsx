@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { CategoriesMap } from "@/data/categories";
 
 type ProductInfoSectionProps = {
   form: UseFormReturn<any>;
@@ -33,20 +34,6 @@ type ProductInfoSectionProps = {
   setMaterialTags: (tags: string[]) => void;
 };
 
-const CategoriesMap = {
-  PRIMARY: [
-    { id: "yarn", name: "Yarn" },
-    { id: "patterns", name: "Patterns" },
-    { id: "tools", name: "Tools" },
-  ],
-};
-
-const secondaryCategories = [
-  { id: "crochet", name: "Crochet" },
-  { id: "knitting", name: "Knitting" },
-  { id: "supplies", name: "Supplies" },
-];
-
 export const ProductInfoSection = ({
   form,
   descriptionJson,
@@ -56,10 +43,20 @@ export const ProductInfoSection = ({
   materialTags,
   setMaterialTags,
 }: ProductInfoSectionProps) => {
-  const { register, control, setValue } = useFormContext();
+  const { register, control, setValue, watch } = useFormContext();
 
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
+
+  // Watch the primary category value
+  const selectedPrimaryCategory = watch("primaryCategory");
+
+  // Get secondary categories based on selected primary category
+  const availableSecondaryCategories = selectedPrimaryCategory 
+    ? CategoriesMap.SECONDARY.filter(category => 
+        CategoriesMap.MAPPING[selectedPrimaryCategory as keyof typeof CategoriesMap.MAPPING]?.includes(category.id)
+      )
+    : [];
 
   // Add tag
   const addTag = () => {
@@ -178,14 +175,15 @@ export const ProductInfoSection = ({
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value || ""}
+              disabled={!selectedPrimaryCategory}
             >
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select secondary category" />
+                  <SelectValue placeholder={selectedPrimaryCategory ? "Select secondary category" : "Select a primary category first"} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {secondaryCategories.map((category) => (
+                {availableSecondaryCategories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
