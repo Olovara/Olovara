@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
@@ -21,14 +21,26 @@ import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
 import { ProductFileSection } from "../product/productFile";
+import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 
-type ProductFormValues = z.infer<typeof ProductSchema>;
+type ProductFormValues = z.infer<typeof ProductSchema> & {
+  id?: string;
+};
+
 type ProductFormProps = {
   initialData?: ProductFormValues | null; // Null when creating
 };
+
+// This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
   values: { name: string; stock: number }[];
+};
+
+// This is the type defined in the schema
+type SchemaOption = {
+  name: string;
+  value: string;
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
@@ -41,17 +53,41 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [materialTags, setMaterialTags] = useState<string[]>(
     initialData?.materialTags || []
   );
-  const [images, setImages] = useState<string[]>(
-    initialData?.images || []
-  );
+  const [images, setImages] = useState<string[]>([]);
+  const [tempImages, setTempImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Add state to track when temporary uploads are created
+  const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  
+  // Convert schema options to dropdown options format
+  const convertOptions = (schemaOptions: SchemaOption[] | null | undefined): DropdownOption[] => {
+    if (!schemaOptions) return [];
+    
+    // Group options by name
+    const groupedOptions = schemaOptions.reduce((acc, option) => {
+      if (!acc[option.name]) {
+        acc[option.name] = [];
+      }
+      acc[option.name].push({ name: option.value, stock: 0 });
+      return acc;
+    }, {} as Record<string, { name: string; stock: number }[]>);
+    
+    // Convert to DropdownOption format
+    return Object.entries(groupedOptions).map(([label, values]) => ({
+      label,
+      values
+    }));
+  };
+  
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(
-    initialData?.options || []
+    convertOptions(initialData?.options as SchemaOption[] | null | undefined)
   );
   const isClient = useIsClient();
   const router = useRouter();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
-  const [tempImages, setTempImages] = useState<string[]>([]); // Track new uploads
+  const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
 
   const [isPending, startTransition] = useTransition();
 
@@ -105,16 +141,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
     setValue('images', images);
   }, [images, setValue]);
 
-  // Replace the route change effect with this
-  useEffect(() => {
-
-    // Cleanup on component unmount
-    return () => {
-      if (tempImages.length > 0) {
-        cleanupTempImages();
+  const cleanupTempImages = useCallback(async () => {
+    if (tempImages.length > 0) {
+      try {
+        // For component unmount cleanup, we don't have a product ID yet
+        const result = await cleanupTempUploads("", tempImages);
+        console.log('[DEBUG] Cleanup result:', result);
+        setTempImages([]); // Clear the temp images after cleanup
+      } catch (error) {
+        console.error('Error cleaning up temporary images:', error);
       }
-    };
+    }
   }, [tempImages]);
+
+  useEffect(() => {
+    return () => {
+      void cleanupTempImages();
+    };
+  }, [cleanupTempImages]);
 
   // Update the beforeunload handler
   useEffect(() => {
@@ -135,6 +179,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const onSubmit = async (data: z.infer<typeof ProductSchema>) => {
     try {
+      // Check if we have temporary uploads that haven't been created yet
+      if ((tempImages.length > 0 || tempFiles.length > 0) && !tempUploadsCreated) {
+        toast.error("Please wait for all uploads to complete before submitting");
+        return;
+      }
+      
       setIsLoading(true);
       
       const endpoint = initialData 
@@ -143,28 +193,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
       
       const method = initialData ? "PATCH" : "POST";
 
-      // Add console logs to track the process
-      console.log('Starting submission with:', {
-        endpoint,
-        method,
-        initialData: !!initialData,
-        images,
-        data
-      });
+      // Convert dropdownOptions back to schema format
+      const schemaOptions = dropdownOptions.flatMap(option => 
+        option.values.map(value => ({
+          name: option.label,
+          value: value.name
+        }))
+      );
 
       // Include all necessary data
       const submissionData = {
         ...data,
-        id: initialData?.id,
+        ...(initialData && { id: initialData.id }),
         description: descriptionJson,
         images: images,
         tags: tags,
         materialTags: materialTags,
-        options: dropdownOptions,
+        options: schemaOptions,
         productFile: data.productFile || null,
       };
-
-      console.log('Submitting data:', submissionData);
 
       const response = await fetch(endpoint, {
         method,
@@ -174,16 +221,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
         body: JSON.stringify(submissionData),
       });
 
-      // Add response debugging
       const responseData = await response.json();
-      console.log('Response:', {
-        ok: response.ok,
-        status: response.status,
-        data: responseData
-      });
 
       if (!response.ok) {
         throw new Error(responseData.error || "Failed to save product");
+      }
+
+      // After successful product creation/update, call the cleanup server action
+      if (responseData.product && responseData.product.id) {
+        console.log('[DEBUG] Product created/updated successfully, cleaning up temporary uploads');
+        
+        // Prepare the URLs for cleanup
+        const urlsToCleanup = [...images];
+        if (data.productFile) {
+          urlsToCleanup.push(data.productFile);
+        }
+        
+        // Call the cleanup server action with the product ID
+        const cleanupResult = await cleanupTempUploads(responseData.product.id, urlsToCleanup);
+        console.log('[DEBUG] Cleanup result:', cleanupResult);
+        
+        if (!cleanupResult.success) {
+          console.error('[ERROR] Cleanup failed:', cleanupResult.error);
+        }
       }
 
       // Only navigate if the update was successful
@@ -191,37 +251,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       router.refresh();
       
       toast.success(initialData ? "Product updated" : "Product created");
-      setTempImages([]); // Mark all temp images as committed
+      setTempImages([]); // Clear temp images after successful submission
     } catch (error) {
       console.error('Form submission error:', error);
       toast.error("Something went wrong");
-      await cleanupTempImages();
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Update the cleanupTempImages function to be synchronous
-  const cleanupTempImages = async () => {
-    if (tempImages.length === 0) return;
-
-    try {
-      const response = await fetch("/api/upload/cleanup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ images: tempImages }),
-      });
-
-      if (!response.ok) {
-        console.error("Failed to cleanup images");
-        return;
-      }
-
-      setTempImages([]);
-    } catch (error) {
-      console.error("Failed to cleanup temporary images:", error);
     }
   };
 
@@ -280,13 +315,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
         {/* Product Photos Section */}
         <ProductPhotosSection
           images={images}
-          setImages={(newImages) => {
-            setImages(newImages);
-            setValue("images", newImages, { shouldValidate: true });
-          }}
+          setImages={setImages}
           setTempImages={setTempImages}
           tempImages={tempImages}
           form={form}
+          setTempUploadsCreated={setTempUploadsCreated}
         />
 
         {/* Product Options Section */}
@@ -305,8 +338,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
         <ProductShippingSection form={form} freeShipping={freeShipping} />
 
         {/* Product File Section */}
-        <ProductFileSection form={form} />
-        {/* Add hidden input to capture product file */}
+        <ProductFileSection 
+          form={form} 
+          tempFiles={tempFiles} 
+          setTempFiles={setTempFiles}
+          setTempUploadsCreated={setTempUploadsCreated}
+        />
 
         {/* Product Discount Section */}
         <ProductDiscountSection form={form} />

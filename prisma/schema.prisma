@@ -265,7 +265,7 @@ model HandmadeGuidelines {
 
 model TemporaryUpload {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  fileKey   String
+  fileKey   String   @unique
   fileUrl   String
   userId    String
   createdAt DateTime @default(now())

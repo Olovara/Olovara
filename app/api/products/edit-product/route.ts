@@ -1,5 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { UTApi } from "uploadthing/server";
+
+const utapi = new UTApi();
 
 export async function PATCH(req: Request) {
   try {
@@ -13,7 +16,7 @@ export async function PATCH(req: Request) {
     }
 
     const data = await req.json();
-    console.log('Received update data:', data);
+    console.log('[API INPUT] Received update data:', data);
 
     const { id, ...updateData } = data;
 
@@ -24,134 +27,106 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // Verify the user owns this product
-    const existingProduct = await db.product.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+    // --- Step 1: Fetch CURRENT product state BEFORE update --- 
+    const currentProduct = await db.product.findUnique({
+      where: { id: id, userId: session.user.id }, // Also verify ownership here
+      select: { images: true, productFile: true }
     });
 
-    if (!existingProduct) {
+    if (!currentProduct) {
       return new Response(
-        JSON.stringify({ success: false, error: "Product not found" }),
+        JSON.stringify({ success: false, error: "Product not found or not owned by user" }),
         { status: 404 }
       );
     }
+    console.log('[DEBUG] currentProduct.images (before update):', currentProduct.images);
 
-    // Clean up the update data
+    // --- Step 2: Handle Image Deletion --- 
+    if (updateData.images && Array.isArray(updateData.images)) {
+      console.log('[DEBUG] updateData.images (incoming):', updateData.images);
+      
+      const removedImages = currentProduct.images.filter(
+        (img: string) => !updateData.images.includes(img)
+      );
+      console.log('[DEBUG] Calculated removedImages:', removedImages);
+
+      if (removedImages.length > 0) {
+        try {
+          const removedFileKeys = removedImages.map(url => url.substring(url.lastIndexOf('/') + 1));
+          console.log('[DEBUG] Attempting to delete fileKeys:', removedFileKeys);
+          await utapi.deleteFiles(removedFileKeys);
+          console.log('[DEBUG] Successfully deleted files from UploadThing');
+          
+          // Delete the TemporaryUpload records for removed images
+          await db.temporaryUpload.deleteMany({
+            where: {
+              fileUrl: { in: removedImages },
+              userId: session.user.id
+            }
+          });
+          console.log('[DEBUG] Successfully deleted TemporaryUpload records for removed images');
+        } catch (deleteError) {
+          console.error("[ERROR] Failed to delete files from UploadThing:", deleteError);
+          // Optional: Decide if you want to return an error here if deletion fails
+        }
+      }
+    } 
+    
+    // Handle productFile deletion if needed
+    if (updateData.productFile !== currentProduct.productFile) {
+      if (currentProduct.productFile) {
+        try {
+          const removedFileKey = currentProduct.productFile.substring(currentProduct.productFile.lastIndexOf('/') + 1);
+          console.log('[DEBUG] Attempting to delete productFile:', removedFileKey);
+          await utapi.deleteFiles([removedFileKey]);
+          console.log('[DEBUG] Successfully deleted productFile from UploadThing');
+          
+          // Delete the TemporaryUpload record for the removed productFile
+          await db.temporaryUpload.deleteMany({
+            where: {
+              fileUrl: currentProduct.productFile,
+              userId: session.user.id
+            }
+          });
+          console.log('[DEBUG] Successfully deleted TemporaryUpload record for removed productFile');
+        } catch (deleteError) {
+          console.error("[ERROR] Failed to delete productFile from UploadThing:", deleteError);
+        }
+      }
+    }
+
+    // --- Step 3: Prepare clean data for update (including CORRECT images array) --- 
     const cleanData = {
       ...updateData,
+      // Ensure images array from the input data is used for the update
+      images: updateData.images, 
       dropDate: updateData.dropDate ? new Date(updateData.dropDate) : null,
       discountEndDate: updateData.discountEndDate 
         ? new Date(updateData.discountEndDate) 
         : null,
-      // Ensure these fields are properly formatted
       price: Number(updateData.price),
       stock: Number(updateData.stock),
       shippingCost: Number(updateData.shippingCost),
       handlingFee: Number(updateData.handlingFee),
       discount: updateData.discount ? Number(updateData.discount) : null,
+      // Explicitly exclude fields that shouldn't be directly updated if necessary
     };
+    console.log('[PRE-UPDATE] Data prepared for db.product.update:', cleanData);
 
-    console.log('Updating product with data:', cleanData);
 
-    // Update the product
-    const updatedProduct = await db.product.update({
-      where: { id },
-      data: cleanData,
-    });
-
-    // Handle file associations
-    if (updatedProduct.id) {
-      // Get the current product to compare with updated data
-      const currentProduct = await db.product.findUnique({
+    // --- Step 4: Update the product in the database ---
+    const result = await db.$transaction(async (tx) => {
+      const product = await tx.product.update({
         where: { id },
-        select: {
-          images: true,
-          productFile: true
-        }
+        data: cleanData,
       });
 
-      if (currentProduct) {
-        // Handle image changes
-        if (updateData.images && Array.isArray(updateData.images)) {
-          // Disassociate removed images
-          const removedImages = currentProduct.images.filter(
-            (img: string) => !updateData.images.includes(img)
-          );
-          
-          if (removedImages.length > 0) {
-            await db.temporaryUpload.updateMany({
-              where: {
-                fileUrl: {
-                  in: removedImages
-                },
-                productId: id
-              },
-              data: {
-                productId: null
-              }
-            });
-          }
-
-          // Associate new images
-          const newImages = updateData.images.filter(
-            (img: string) => !currentProduct.images.includes(img)
-          );
-          
-          if (newImages.length > 0) {
-            await db.temporaryUpload.updateMany({
-              where: {
-                fileUrl: {
-                  in: newImages
-                },
-                userId: session.user.id,
-                productId: null
-              },
-              data: {
-                productId: id
-              }
-            });
-          }
-        }
-
-        // Handle product file changes
-        if (updateData.productFile !== currentProduct.productFile) {
-          // If there was a previous file, disassociate it
-          if (currentProduct.productFile) {
-            await db.temporaryUpload.updateMany({
-              where: {
-                fileUrl: currentProduct.productFile,
-                productId: id
-              },
-              data: {
-                productId: null
-              }
-            });
-          }
-
-          // If there's a new file, associate it
-          if (updateData.productFile) {
-            await db.temporaryUpload.updateMany({
-              where: {
-                fileUrl: updateData.productFile,
-                userId: session.user.id,
-                productId: null
-              },
-              data: {
-                productId: id
-              }
-            });
-          }
-        }
-      }
-    }
-
-    console.log('Product updated successfully:', updatedProduct);
+      console.log('[DEBUG] Product updated successfully:', product.id);
+      return product;
+    });
 
     return new Response(
-      JSON.stringify({ success: true, product: updatedProduct }),
+      JSON.stringify({ success: true, product: result }),
       { status: 200 }
     );
   } catch (error) {

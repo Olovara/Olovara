@@ -25,6 +25,7 @@ interface Product {
   name: string;
   description: string | { ops: any[] };
   price: number;
+  isDigital: boolean;
   status: string;
   images: string[];
   createdAt: Date | string;
@@ -80,13 +81,14 @@ export function ProductTable({ products }: ProductTableProps) {
   };
 
   // Debug log to check the data
-  console.log('Products data:', JSON.stringify(products, null, 2));
+  //console.log('Products data:', JSON.stringify(products, null, 2));
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Product</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Price</TableHead>
           <TableHead>Sold</TableHead>
@@ -97,7 +99,7 @@ export function ProductTable({ products }: ProductTableProps) {
       <TableBody>
         {products.map((product) => {
           // Debug log for each product
-          console.log('Processing product:', product);
+          //console.log('Processing product:', product);
           
           return (
             <TableRow key={product.id}>
@@ -118,6 +120,19 @@ export function ProductTable({ products }: ProductTableProps) {
                     </div>
                   </div>
                 </div>
+              </TableCell>
+              <TableCell>
+                <Badge
+                  variant={
+                    product.isDigital === false
+                      ? "default"
+                      : product.isDigital === true
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
+                  {product.isDigital || "UNKNOWN"}
+                </Badge>
               </TableCell>
               <TableCell>
                 <Badge
@@ -148,15 +163,15 @@ export function ProductTable({ products }: ProductTableProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
-                      <Link href={`/seller/dashboard/products/${product.id}`}>
+                      <Link href={`/seller/dashboard/products/edit/${product.id}`}>
                         Edit
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    {/*TODO readd when analytics are added<DropdownMenuItem asChild>
                       <Link href={`/seller/dashboard/products/${product.id}/analytics`}>
                         Analytics
                       </Link>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

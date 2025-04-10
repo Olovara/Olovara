@@ -65,22 +65,6 @@ const Footer = () => {
                         Categories
                       </Link>
                     </li>
-                    <li>
-                      <Link
-                        href="/custom-orders"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Custom Orders
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/gift-cards"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Gift Cards
-                      </Link>
-                    </li>
                   </ul>
                 </div>
 
@@ -90,22 +74,6 @@ const Footer = () => {
                     Support
                   </h4>
                   <ul className="mt-3 space-y-2">
-                    <li>
-                      <Link
-                        href="/help-center"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Help Center
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/shipping"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Shipping Info
-                      </Link>
-                    </li>
                     <li>
                       <Link
                         href="/pricing-calculator"
@@ -139,30 +107,14 @@ const Footer = () => {
                         About Us
                       </Link>
                     </li>
-                    <li>
+                    {/*<li>
                       <Link
                         href="/blog"
                         className="text-sm text-muted-foreground hover:text-gray-600"
                       >
                         Blog
                       </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/careers"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Careers
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/affiliates"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
-                      >
-                        Affiliate Program
-                      </Link>
-                    </li>
+                    </li>*/}
                   </ul>
                 </div>
               </div>

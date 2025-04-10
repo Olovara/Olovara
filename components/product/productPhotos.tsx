@@ -6,13 +6,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import Image from "next/image";
+import { Dispatch, SetStateAction } from "react";
 
 type ProductPhotosProps = {
   images: string[];
-  setImages: (images: string[]) => void;
+  setImages: Dispatch<SetStateAction<string[]>>;
   tempImages: string[];
-  setTempImages: (images: string[]) => void;
+  setTempImages: Dispatch<SetStateAction<string[]>>;
   form: any;
+  setTempUploadsCreated?: (created: boolean) => void;
 };
 
 export function ProductPhotosSection({
@@ -21,26 +23,22 @@ export function ProductPhotosSection({
   tempImages,
   setTempImages,
   form,
+  setTempUploadsCreated,
 }: ProductPhotosProps) {
   const imageArray = Array.isArray(images) ? images : [];
 
   const handleRemoveImage = (index: number) => {
     const removedImage = imageArray[index];
     const newImages = imageArray.filter((_, i) => i !== index);
-  
+
     setImages(newImages);
     form.setValue("images", newImages, { shouldValidate: true }); // <-- critical
-  
-    fetch("/api/upload/cleanup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ images: [removedImage] }),
-    }).catch(console.error);
-  
+
     if (tempImages.includes(removedImage)) {
-      setTempImages((prev) => prev.filter((img) => img !== removedImage));
+      const updatedTempImages = tempImages.filter(
+        (img: string) => img !== removedImage
+      );
+      setTempImages(updatedTempImages);
     }
 
     // Force form to recognize change and mark as dirty
@@ -49,6 +47,22 @@ export function ProductPhotosSection({
       shouldTouch: true,
       shouldValidate: true,
     });
+  };
+
+  const onRemove = (urlToRemove: string) => {
+    setImages(images.filter((url) => url !== urlToRemove));
+    // Remove from tempImages if it's a temporary image
+    setTempImages(tempImages.filter(url => url !== urlToRemove));
+  };
+
+  const onUploadSuccess = (url: string) => {
+    setImages(prev => [...prev, url]);
+    setTempImages(prev => [...prev, url]);
+    toast.success("Image uploaded successfully");
+  };
+
+  const onUploadError = (error: Error) => {
+    toast.error(`Error uploading image: ${error.message}`);
   };
 
   return (
@@ -90,16 +104,26 @@ export function ProductPhotosSection({
             toast.error("Image upload failed.");
             return;
           }
-        
+
           const urls = res.map((file) => file.url);
-          setImages([...images, ...urls]);
-          form.setValue("images", [...images, ...urls], { shouldValidate: true });
-        
+          const updatedImages = [...images, ...urls];
+
+          setImages(updatedImages);
+          form.setValue("images", updatedImages, {
+            shouldValidate: true,
+          });
+
           // Track uploaded files as temp
-          setTempImages((prev) => [...prev, ...urls]);
+          const updatedTempImages = [...tempImages, ...urls];
+          setTempImages(updatedTempImages);
+
+          // Mark that temporary uploads have been created
+          if (setTempUploadsCreated) {
+            setTempUploadsCreated(true);
+          }
 
           // Force form to recognize change
-          form.setValue("images", images, {
+          form.setValue("images", updatedImages, {
             shouldDirty: true,
             shouldTouch: true,
             shouldValidate: true,

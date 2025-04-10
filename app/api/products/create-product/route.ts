@@ -1,11 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "10mb", // Increase limit to 10 MB
+      sizeLimit: "10mb",
     },
   },
 };
@@ -28,7 +27,7 @@ export async function POST(req: Request) {
 
     // Get the form data from the request body
     const data = await req.json();
-    //console.log("Received data:", data);
+    console.log('[API INPUT] Received product data:', data);
 
     const {
       name,
@@ -82,83 +81,55 @@ export async function POST(req: Request) {
 
     //console.log("Creating product with sanitized data...");
 
-    // Create product in the database
-    const product = await prisma.product.create({
-      data: {
-        userId,
-        name,
-        price: parseFloat(price), // Ensure price is parsed correctly
-        description: description || "",
-        status,
-        shippingCost: parseFloat(shippingCost),
-        handlingFee: parseFloat(handlingFee),
-        itemWeight: parseFloat(itemWeight) || 0,
-        itemLength: parseFloat(itemLength) || 0,
-        itemWidth: parseFloat(itemWidth) || 0,
-        itemHeight: parseFloat(itemHeight) || 0,
-        shippingNotes: shippingNotes || "",
-        freeShipping,
-        isDigital,
-        stock: parseInt(stock) || (isDigital ? 0 : 1),
-        images,
-        productFile: productFile || null,
-        numberSold,
-        onSale,
-        discount: parseInt(discount) || 0,
-        primaryCategory,
-        secondaryCategory,
-        tags,
-        materialTags,
-        options,
-        inStockProcessingTime: parseInt(inStockProcessingTime) || 0,
-        outStockLeadTime: parseInt(outStockLeadTime) || 0,
-        howItsMade: howItsMade || "",
-        productDrop,
-        NSFW,
-        dropDate: dropDate ? new Date(dropDate) : undefined,
-        discountEndDate: discountEndDate
-          ? new Date(discountEndDate)
-          : undefined,
-      },
+    // --- Step 1: Prepare clean data for product creation ---
+    const cleanData = {
+      userId,
+      name,
+      price: Number(price),
+      description: description || "",
+      status,
+      shippingCost: Number(shippingCost),
+      handlingFee: Number(handlingFee),
+      itemWeight: parseFloat(itemWeight) || 0,
+      itemLength: parseFloat(itemLength) || 0,
+      itemWidth: parseFloat(itemWidth) || 0,
+      itemHeight: parseFloat(itemHeight) || 0,
+      shippingNotes: shippingNotes || "",
+      freeShipping,
+      isDigital,
+      stock: Number(stock),
+      images,
+      productFile: productFile || null,
+      numberSold,
+      onSale,
+      discount: discount ? Number(discount) : null,
+      primaryCategory,
+      secondaryCategory,
+      tags,
+      materialTags,
+      options,
+      inStockProcessingTime: parseInt(inStockProcessingTime) || 0,
+      outStockLeadTime: parseInt(outStockLeadTime) || 0,
+      howItsMade: howItsMade || "",
+      productDrop,
+      NSFW,
+      dropDate: dropDate ? new Date(dropDate) : null,
+      discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
+    };
+    console.log('[PRE-CREATE] Data prepared for db.product.create:', cleanData);
+
+    // --- Step 2: Create the product in the database ---
+    const result = await db.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: cleanData,
+      });
+
+      console.log('[DEBUG] Product created successfully:', product.id);
+      return product;
     });
 
-    // Associate uploaded files with the product
-    if (product.id) {
-      // Update image uploads
-      if (images.length > 0) {
-        await db.temporaryUpload.updateMany({
-          where: {
-            fileUrl: {
-              in: images
-            },
-            userId: userId,
-            productId: null
-          },
-          data: {
-            productId: product.id
-          }
-        });
-      }
-
-      // Update product file upload if it exists
-      if (productFile) {
-        await db.temporaryUpload.updateMany({
-          where: {
-            fileUrl: productFile,
-            userId: userId,
-            productId: null
-          },
-          data: {
-            productId: product.id
-          }
-        });
-      }
-    }
-
-    //console.log("Product created successfully:", product);
-
     return new Response(
-      JSON.stringify({ success: "Product created successfully", product }),
+      JSON.stringify({ success: true, product: result }),
       { status: 200 }
     );
   } catch (error) {

@@ -5,15 +5,21 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { Form } from "react-hook-form";
+import { Form, UseFormReturn } from "react-hook-form";
 
 type ProductFileProps = {
-  form: any;
-  tempFiles: string[];
-  setTempFiles: (files: string[]) => void;
+  form: UseFormReturn<any>;
+  tempFiles?: string[];
+  setTempFiles?: (files: string[]) => void;
+  setTempUploadsCreated?: (created: boolean) => void;
 };
 
-export function ProductFileSection({ form, tempFiles, setTempFiles }: ProductFileProps) {
+export function ProductFileSection({
+  form,
+  tempFiles = [],
+  setTempFiles = (files: string[]) => {},
+  setTempUploadsCreated,
+}: ProductFileProps) {
   const currentFile = form.watch("productFile");
 
   const handleRemoveFile = () => {
@@ -29,14 +35,17 @@ export function ProductFileSection({ form, tempFiles, setTempFiles }: ProductFil
 
       // If it was a temp file, remove from temp state
       if (tempFiles.includes(currentFile)) {
-        setTempFiles(prev => prev.filter(file => file !== currentFile));
+        const updatedFiles = tempFiles.filter(
+          (file: string) => file !== currentFile
+        );
+        setTempFiles(updatedFiles);
       }
 
       // Clear the form value and mark as dirty
       form.setValue("productFile", null, {
         shouldDirty: true,
         shouldTouch: true,
-        shouldValidate: true
+        shouldValidate: true,
       });
     }
   };
@@ -69,14 +78,21 @@ export function ProductFileSection({ form, tempFiles, setTempFiles }: ProductFil
               onClientUploadComplete={(res) => {
                 if (res && res.length > 0) {
                   const fileUrl = res[0].url;
-                  
+                  const updatedFiles = [...tempFiles, fileUrl];
+
                   // Update both states
-                  setTempFiles(prev => [...prev, fileUrl]);
+                  setTempFiles(updatedFiles);
                   form.setValue("productFile", fileUrl, {
                     shouldDirty: true,
                     shouldTouch: true,
-                    shouldValidate: true
+                    shouldValidate: true,
                   });
+
+                  // Mark that temporary uploads have been created
+                  if (setTempUploadsCreated) {
+                    setTempUploadsCreated(true);
+                  }
+
                   toast.success("Your product file has been uploaded!");
                 }
               }}
