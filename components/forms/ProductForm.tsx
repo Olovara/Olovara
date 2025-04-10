@@ -44,6 +44,8 @@ type SchemaOption = {
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
+  console.log('[DEBUG] ProductForm - Initial data:', initialData);
+  
   const [descriptionJson, setDescriptionJson] = useState<any>(
     initialData?.description || { ops: [] }
   );
@@ -53,12 +55,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [materialTags, setMaterialTags] = useState<string[]>(
     initialData?.materialTags || []
   );
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(
+    initialData?.images || []
+  );
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  
+  // Update images state when initialData changes
+  useEffect(() => {
+    if (initialData?.images && Array.isArray(initialData.images)) {
+      console.log('[DEBUG] Updating images state with initialData.images:', initialData.images);
+      setImages(initialData.images);
+    }
+  }, [initialData]);
   
   // Convert schema options to dropdown options format
   const convertOptions = (schemaOptions: SchemaOption[] | null | undefined): DropdownOption[] => {
@@ -123,6 +135,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Add this console log to verify form initialization
   console.log("Form initialized with:", form);
+  console.log("Form default values:", form.getValues());
 
   const formState = form.formState;
   console.log("Form state:", formState);
@@ -138,6 +151,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Add this useEffect to sync images with form state
   useEffect(() => {
+    console.log('[DEBUG] ProductForm - Current images state:', images);
     setValue('images', images);
   }, [images, setValue]);
 
