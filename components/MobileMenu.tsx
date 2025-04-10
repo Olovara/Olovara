@@ -9,14 +9,14 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { CategoriesMap } from "@/data/categories";
 
-// Example categories (replace with dynamic data if needed)
-const categories = [
-  { id: 1, name: "Accessories", href: "/category/accessories" },
-  { id: 2, name: "Templates", href: "/category/templates" },
-  { id: 3, name: "UI Kits", href: "/category/uikits" },
-  { id: 4, name: "Icons", href: "/category/icons" },
-];
+// Use the same categories as the desktop navigation
+const categories = CategoriesMap.PRIMARY.map(category => ({
+  id: category.id,
+  name: category.name,
+  href: `/category/${category.id.toLowerCase()}`
+}));
 
 export function MobileMenu() {
   const location = usePathname();

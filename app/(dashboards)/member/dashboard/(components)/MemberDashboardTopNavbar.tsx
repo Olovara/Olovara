@@ -11,7 +11,7 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Package, Settings, ShoppingCart } from "lucide-react";
+import { HomeIcon, Mail, Settings, PackageOpen } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function MemberDashboardTopNavbar({
@@ -25,7 +25,7 @@ export default function MemberDashboardTopNavbar({
         <Dialog>
           <SheetTrigger className="min-[1024px]:hidden p-2 transition">
             <HamburgerMenuIcon />
-            <span className="sr-only">Home</span>
+            <span className="sr-only">Menu</span>
           </SheetTrigger>
           <SheetContent side="left">
             <SheetHeader>
@@ -35,7 +35,7 @@ export default function MemberDashboardTopNavbar({
             </SheetHeader>
             <div className="flex flex-col space-y-3 mt-[1rem]">
               <DialogClose asChild>
-                <Link href="/shop-dashboard">
+                <Link href="/member/dashboard">
                   <Button variant="outline" className="w-full">
                     <HomeIcon className="mr-2 h-4 w-4" />
                     Dashboard
@@ -43,24 +43,24 @@ export default function MemberDashboardTopNavbar({
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link href="/shop-dashboard/orders">
+                <Link href="/member/dashboard/my-purchases">
                   <Button variant="outline" className="w-full">
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Orders
+                    <PackageOpen className="mr-2 h-4 w-4" />
+                    My Purchases
                   </Button>
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link href="/shop-dashboard/products">
+                <Link href="/member/dashboard/messages">
                   <Button variant="outline" className="w-full">
-                    <Package className="mr-2 h-4 w-4" />
-                    Products
+                    <Mail className="mr-2 h-4 w-4" />
+                    Messages
                   </Button>
                 </Link>
               </DialogClose>
               <Separator className="my-3" />
               <DialogClose asChild>
-                <Link href="/shop-dashboard/settings">
+                <Link href="/member/dashboard/settings">
                   <Button variant="outline" className="w-full">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings

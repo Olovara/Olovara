@@ -11,7 +11,7 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Package, Settings, ShoppingCart } from "lucide-react";
+import { HomeIcon, Mail, Settings, FileQuestion, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function AdminDashboardTopNavbar({
@@ -25,7 +25,7 @@ export default function AdminDashboardTopNavbar({
         <Dialog>
           <SheetTrigger className="min-[1024px]:hidden p-2 transition">
             <HamburgerMenuIcon />
-            <span className="sr-only">Home</span>
+            <span className="sr-only">Menu</span>
           </SheetTrigger>
           <SheetContent side="left">
             <SheetHeader>
@@ -35,7 +35,7 @@ export default function AdminDashboardTopNavbar({
             </SheetHeader>
             <div className="flex flex-col space-y-3 mt-[1rem]">
               <DialogClose asChild>
-                <Link href="/shop-dashboard">
+                <Link href="/admin/dashboard">
                   <Button variant="outline" className="w-full">
                     <HomeIcon className="mr-2 h-4 w-4" />
                     Dashboard
@@ -43,24 +43,32 @@ export default function AdminDashboardTopNavbar({
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link href="/shop-dashboard/orders">
+                <Link href="/admin/dashboard/seller-applications">
                   <Button variant="outline" className="w-full">
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Orders
+                    <FileQuestion className="mr-2 h-4 w-4" />
+                    Seller Applications
                   </Button>
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link href="/shop-dashboard/products">
+                <Link href="/admin/dashboard/users">
                   <Button variant="outline" className="w-full">
-                    <Package className="mr-2 h-4 w-4" />
-                    Products
+                    <User className="mr-2 h-4 w-4" />
+                    Users
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/messages">
+                  <Button variant="outline" className="w-full">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Messages
                   </Button>
                 </Link>
               </DialogClose>
               <Separator className="my-3" />
               <DialogClose asChild>
-                <Link href="/shop-dashboard/settings">
+                <Link href="/admin/dashboard/settings">
                   <Button variant="outline" className="w-full">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
