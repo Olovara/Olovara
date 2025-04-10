@@ -11,27 +11,22 @@ export async function cleanupTempUploads(productId: string, fileUrls: string[]) 
       console.error('[ERROR] Unauthorized cleanup attempt');
       return { success: false, error: "Unauthorized" };
     }
-    
-    if (!fileUrls || !Array.isArray(fileUrls)) {
-      console.error('[ERROR] Invalid cleanup data:', { productId, fileUrls });
-      return { success: false, error: "Invalid request data" };
-    }
-    
-    console.log('[DEBUG] Cleanup request received for product:', productId);
-    console.log('[DEBUG] File URLs to process:', fileUrls);
-    console.log('[DEBUG] User ID:', session.user.id);
-    
-    // First try to find records by fileUrl
-    let tempUploads = await db.temporaryUpload.findMany({
+
+    const userId = session.user.id;
+    console.log('[DEBUG] cleanupTempUploads - User ID:', userId);
+
+    // Find all temporary uploads for the user
+    const tempUploads = await db.temporaryUpload.findMany({
       where: {
-        fileUrl: { in: fileUrls },
-        userId: session.user.id
+        userId: userId,
+        fileUrl: {
+          in: fileUrls
+        }
       }
     });
-    
-    console.log('[DEBUG] Found TemporaryUpload records by fileUrl:', tempUploads);
-    
-    // If no records found by fileUrl, try a more direct approach
+
+    console.log('[DEBUG] cleanupTempUploads - Found temp uploads:', tempUploads);
+
     if (tempUploads.length === 0) {
       console.log('[DEBUG] No TemporaryUpload records found for files');
       
@@ -74,7 +69,7 @@ export async function cleanupTempUploads(productId: string, fileUrls: string[]) 
     
     return { success: true };
   } catch (error) {
-    console.error('[ERROR] Cleanup failed:', error);
-    return { success: false, error: "Internal Server Error" };
+    console.error('[ERROR] cleanupTempUploads - Unexpected error:', error);
+    return { success: false, error: 'Failed to clean up temporary uploads' };
   }
 } 

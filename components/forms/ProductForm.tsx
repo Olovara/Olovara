@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
@@ -63,6 +63,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  
+  // Add a ref to track if form was submitted successfully
+  const formSubmittedRef = useRef(false);
   
   // Update images state when initialData changes
   useEffect(() => {
@@ -156,7 +159,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
   }, [images, setValue]);
 
   const cleanupTempImages = useCallback(async () => {
-    if (tempImages.length > 0) {
+    // Only clean up if the form was submitted successfully
+    if (tempImages.length > 0 && formSubmittedRef.current) {
       try {
         // For component unmount cleanup, we don't have a product ID yet
         const result = await cleanupTempUploads("", tempImages);
@@ -244,6 +248,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // After successful product creation/update, call the cleanup server action
       if (responseData.product && responseData.product.id) {
         console.log('[DEBUG] Product created/updated successfully, cleaning up temporary uploads');
+        
+        // Set the flag to indicate successful submission
+        formSubmittedRef.current = true;
         
         // Prepare the URLs for cleanup
         const urlsToCleanup = [...images];
