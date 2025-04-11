@@ -51,14 +51,8 @@ export async function CreateStripeAccountLink() {
   // Create the account link
   const accountLink = await stripe.accountLinks.create({
     account: connectedAccountId,
-    refresh_url:
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/billing`
-        : `https://marshal-ui-yt.vercel.app/billing`,
-    return_url:
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:3000/return/${connectedAccountId}`
-        : `https://marshal-ui-yt.vercel.app/return/${connectedAccountId}`,
+    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard/billing`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${connectedAccountId}`,
     type: "account_onboarding",
   });
 

@@ -1,3 +1,5 @@
+"use server";
+
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
@@ -16,14 +18,14 @@ export async function GetStripeDashboardLink() {
     select: {
       seller: {
         select: {
-          connectedAccoundId: true,
+          connectedAccountId: true,
         },
       },
     },
   });
 
   const loginLink = await stripe.accounts.createLoginLink(
-    data?.connectedAccountId as string
+    data?.seller?.connectedAccountId as string
   );
 
   return redirect(loginLink.url);

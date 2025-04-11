@@ -23,18 +23,26 @@ export async function POST(req: Request) {
     case "account.updated": {
       const account = event.data.object;
 
-      const data = await db.user.update({
+      // Find the seller with this connectedAccountId
+      const seller = await db.seller.findUnique({
         where: {
           connectedAccountId: account.id,
         },
-        data: {
-          stripeConnectedLinked:
-            account.capabilities?.transfers === "pending" ||
-            account.capabilities?.transfers === "inactive"
-              ? false
-              : true,
-        },
       });
+
+      if (seller) {
+        // Update the stripeConnected field on the Seller model
+        await db.seller.update({
+          where: {
+            id: seller.id,
+          },
+          data: {
+            stripeConnected:
+              account.capabilities?.transfers === "active" &&
+              account.capabilities?.card_payments === "active",
+          },
+        });
+      }
       break;
     }
     default: {
