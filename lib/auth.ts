@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { getSession } from "next-auth/react";
 
 export const currentUser = async () => {
   const session = await auth();
@@ -10,7 +9,7 @@ export const currentUser = async () => {
 // A utility function to get the current role of the user
 export const currentRole = async () => {
   try {
-    const session = await getSession(); // Retrieve the session
+    const session = await auth(); // Retrieve the session
 
     if (!session) {
       throw new Error("No session found"); // You can throw an error if there's no session
