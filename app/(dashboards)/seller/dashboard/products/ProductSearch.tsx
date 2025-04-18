@@ -42,7 +42,7 @@ export function ProductSearch({ initialQuery = "" }: ProductSearchProps) {
       params.set("page", "1");
     }
     router.push(`${pathname}?${params.toString()}`);
-  }, [debouncedQuery]);
+  }, [debouncedQuery, pathname, router, searchParams]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

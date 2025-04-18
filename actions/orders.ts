@@ -19,7 +19,7 @@ export async function getBuyerOrders(userId: string) {
     throw new Error("You must be logged in!");
   }
 
-  // First, get all orders for this user
+  // Get all orders for this user without including the seller relation
   const orders = await db.order.findMany({
     where: { userId: userId },
     orderBy: { createdAt: "desc" },
@@ -28,33 +28,20 @@ export async function getBuyerOrders(userId: string) {
     },
   });
 
-  // Then, for each order, get the seller information separately
-  const ordersWithSellers = await Promise.all(
-    orders.map(async (order) => {
-      try {
-        // Find the seller by userId (which is stored in sellerId field of the order)
-        const seller = await db.seller.findFirst({
-          where: { userId: order.sellerId },
-          select: {
-            userId: true,
-            shopName: true,
-            id: true,
-          },
-        });
-
-        return {
-          ...order,
-          seller: seller || { userId: order.sellerId, shopName: "Unknown Seller", id: order.sellerId },
-        };
-      } catch (error) {
-        console.error(`Error fetching seller for order ${order.id}:`, error);
-        return {
-          ...order,
-          seller: { userId: order.sellerId, shopName: "Unknown Seller", id: order.sellerId },
-        };
+  // Map the orders to include a seller object with the shopName from the order
+  const ordersWithSellers = orders.map(order => {
+    // Use type assertion to access the shopName property
+    const orderWithShopName = order as any;
+    
+    return {
+      ...order,
+      seller: {
+        id: order.sellerId,
+        userId: order.sellerId,
+        shopName: orderWithShopName.shopName || "Unknown Seller"
       }
-    })
-  );
+    };
+  });
 
   return ordersWithSellers;
 }

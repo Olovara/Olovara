@@ -27,14 +27,13 @@ export function ApplicationActions({
   application: Application;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false); // State for loading
+  const [error, setError] = useState<string | null>(null); // State for error message
+  const [success, setSuccess] = useState<boolean | null>(null); // State for success message
 
   if (!application) {
     return null; // Ensure we don't render if `application` is undefined
   }
-
-  const [loading, setLoading] = useState(false); // State for loading
-  const [error, setError] = useState<string | null>(null); // State for error message
-  const [success, setSuccess] = useState<boolean | null>(null); // State for success message
 
   const handleApprove = async () => {
     setLoading(true); // Set loading to true while the request is being processed

@@ -1,5 +1,6 @@
 import React from "react";
 import { db } from "@/lib/db";
+import Image from "next/image";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -86,11 +87,14 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   key={product.id}
                   className="border p-4 rounded-lg shadow-sm"
                 >
-                  <img
-                    src={product.images[0] || "/placeholder.jpg"}
-                    alt={product.name}
-                    className="w-full h-40 object-cover rounded-md"
-                  />
+                  <div className="relative w-full h-40">
+                    <Image
+                      src={product.images[0] || "/placeholder.jpg"}
+                      alt={product.name}
+                      fill
+                      className="object-cover rounded-md"
+                    />
+                  </div>
                   <h3 className="text-sm font-medium mt-2">{product.name}</h3>
                   <p className="text-xs text-gray-500">
                     ${product.price.toFixed(2)}

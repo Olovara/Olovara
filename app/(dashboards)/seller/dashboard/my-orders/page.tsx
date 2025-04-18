@@ -77,7 +77,12 @@ export default async function SellerMyOrders() {
                   {orders.map((order) => (
                     <TableRow key={order.id}>
                       <TableCell>{order.id}</TableCell>
-                      <TableCell>{order.buyerEmail}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{order.buyerName || 'Anonymous'}</span>
+                          <span className="text-sm text-muted-foreground">{order.buyerEmail}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">{order.status}</Badge>
                       </TableCell>
