@@ -3,11 +3,8 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const rawBody = await req.arrayBuffer();

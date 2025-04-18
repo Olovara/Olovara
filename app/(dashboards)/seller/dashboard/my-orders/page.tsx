@@ -2,11 +2,9 @@ import { getSellerOrders } from "@/actions/orders";
 import { auth } from "@/auth"; // Adjust to your auth file path
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Ellipsis } from "lucide-react";
+import { OrderActions } from "./OrderActions";
 import Link from "next/link";
 
 export const metadata = {
@@ -90,22 +88,7 @@ export default async function SellerMyOrders() {
                         {new Date(order.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost">
-                              <Ellipsis className="h-5 w-5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
-                              <Link href={`/seller/dashboard/orders/${order.id}`}>
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>Cancel Order</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <OrderActions order={order} />
                       </TableCell>
                     </TableRow>
                   ))}
