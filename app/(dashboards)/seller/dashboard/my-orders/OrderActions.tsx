@@ -21,6 +21,7 @@ interface Order {
   id: string;
   buyerEmail: string;
   buyerName?: string | null;
+  shopName: string;
   productName: string;
   quantity: number;
   totalAmount: number;

@@ -75,6 +75,7 @@ export async function POST(req: Request) {
         userId: sessionUser?.user?.id || null,
         buyerEmail,
         sellerId: product.seller.id,
+        shopName: product.seller.shopName,
         productId: product.id,
         productName: product.name,
         quantity,

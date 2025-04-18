@@ -32,7 +32,6 @@ interface OrderDetailsModalProps {
     id: string;
     buyerEmail: string;
     buyerName?: string | null;
-    shopName: string;
     productName: string;
     quantity: number;
     totalAmount: number;
@@ -208,10 +207,6 @@ export function OrderDetailsModal({
                   <div>
                     <p className="text-sm text-muted-foreground">Quantity</p>
                     <p className="font-medium">{order.quantity}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Shop Name</p>
-                    <p className="font-medium">{order.shopName}</p>
                   </div>
                 </div>
               </div>

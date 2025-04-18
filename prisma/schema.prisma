@@ -238,6 +238,7 @@ model Order {
   buyerEmail     String
   buyerName      String?
   sellerId       String   // Seller ID
+  shopName       String   // Store the shop name for display purposes
   productId      String   // Product being ordered
   productName    String
   quantity       Int      // How many were ordered

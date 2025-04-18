@@ -1,11 +1,127 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { PurchaseActions } from "@/app/(dashboards)/member/dashboard/my-purchases/PurchaseActions";
+import { formatPrice } from "@/lib/utils";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { getBuyerOrders } from "@/actions/orders";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Link from "next/link";
+
 export const metadata = {
-    title: "Seller - My Purchases",
-  };
+  title: "Seller - My Purchases",
+};
+
+export default async function MyPurchasesPage() {
+  const session = await auth();
   
-  export default function MyPurchases() {
-    return (
-      <div>
-        Hello from my purchases page!
-      </div>
-    );
+  if (!session?.user) {
+    redirect("/login");
   }
+
+  const purchases = await getBuyerOrders(session.user.id);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return "bg-yellow-500";
+      case "PROCESSING":
+        return "bg-blue-500";
+      case "SHIPPED":
+        return "bg-purple-500";
+      case "DELIVERED":
+        return "bg-green-500";
+      case "CANCELLED":
+        return "bg-red-500";
+      case "REFUNDED":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      {/* Header and breadcrumbs */}
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+        <Breadcrumb className="hidden md:flex">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/seller/dashboard">Dashboard</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/seller/dashboard/my-purchases">My Purchases</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
+
+      {/* Main Content */}
+      <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>My Purchases</CardTitle>
+            <CardDescription>
+              View and manage your purchase history.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {purchases.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-muted-foreground">You haven&apos;t made any purchases yet.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Seller</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden md:table-cell">Total</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {purchases.map((purchase) => (
+                    <TableRow key={purchase.id}>
+                      <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{purchase.product.name}</TableCell>
+                      <TableCell>{purchase.seller.shopName}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(purchase.status)}>
+                          {purchase.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatPrice(
+                          purchase.totalAmount +
+                            (purchase.shippingCost || 0) -
+                            (purchase.discount || 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {format(new Date(purchase.createdAt), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        <PurchaseActions purchase={purchase} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

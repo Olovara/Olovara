@@ -17,6 +17,12 @@ export default auth((req) => {
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+  const isStripeWebhook = nextUrl.pathname.startsWith('/api/stripe/webhooks');
+
+  // Allow Stripe webhooks without authentication
+  if (isStripeWebhook) {
+    return null;
+  }
 
   if (isApiAuthRoute) {
     return null;

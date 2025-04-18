@@ -14,10 +14,17 @@ export async function POST(req: Request) {
   let event;
 
   try {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_SECRET_WEBHOOK;
+    
+    if (!webhookSecret) {
+      console.error("❌ No webhook secret found in environment variables");
+      return new Response("Server configuration error", { status: 500 });
+    }
+    
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_SECRET_WEBHOOK as string
+      webhookSecret
     );
   } catch (error: unknown) {
     return new Response("webhook error", { status: 400 });
