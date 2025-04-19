@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
+import { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
 import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Seller Dashboard - Yarnnu",
+  title: "Dashboard",
+  description: "Dashboard for managing your account",
 };
 
 export default function DashboardLayout({
@@ -18,7 +19,7 @@ export default function DashboardLayout({
   return (
     <div className={cn("relative flex flex-col min-h-screen", inter.className)}>
       <main className="flex-grow">{children}</main>
-      <Toaster position="top-center" richColors />
+      <Toaster />
     </div>
   );
 }
