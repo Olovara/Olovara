@@ -19,7 +19,7 @@ export default function DashboardLayout({
   return (
     <div className={cn("relative flex flex-col min-h-screen", inter.className)}>
       <main className="flex-grow">{children}</main>
-      <Toaster />
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
