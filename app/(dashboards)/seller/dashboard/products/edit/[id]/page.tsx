@@ -74,9 +74,22 @@ async function getProduct(id: string) {
 export default async function EditProduct({ params }: { params: { id: string } }) {
   const product = await getProduct(params.id);
 
+  // Transform the product data to match the expected types
+  const transformedProduct = {
+    ...product,
+    dropDate: product.dropDate ? product.dropDate.toISOString() : null,
+    discountEndDate: product.discountEndDate ? new Date(product.discountEndDate) : undefined,
+    options: Array.isArray(product.options) 
+      ? product.options.map((option: any) => ({
+          name: option.name || '',
+          value: option.value || ''
+        }))
+      : []
+  };
+
   return (
     <div className="flex items-center justify-center vertical-center">
-      <ProductForm initialData={product} />
+      <ProductForm initialData={transformedProduct} />
     </div>
   );
 }
