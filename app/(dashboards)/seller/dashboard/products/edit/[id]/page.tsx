@@ -43,7 +43,7 @@ async function getProduct(id: string) {
       NSFW: true,
       dropDate: true,
       discountEndDate: true,
-    }
+    },
   });
 
   if (!product) {
@@ -53,6 +53,9 @@ async function getProduct(id: string) {
   // Convert any null values to appropriate defaults
   return {
     ...product,
+    description: product.description
+      ? { ops: [{ insert: product.description as string }] }
+      : { ops: [{ insert: "" }] },
     shippingCost: product.shippingCost || 0,
     handlingFee: product.handlingFee || 0,
     itemWeight: product.itemWeight || 0,
@@ -60,36 +63,38 @@ async function getProduct(id: string) {
     itemWidth: product.itemWidth || 0,
     itemHeight: product.itemHeight || 0,
     shippingNotes: product.shippingNotes || "",
-    stock: product.stock || 0,
+    stock: product.stock ?? null,
     discount: product.discount || 0,
+    numberSold: product.numberSold || 0,
     inStockProcessingTime: product.inStockProcessingTime || 0,
     outStockLeadTime: product.outStockLeadTime || 0,
     howItsMade: product.howItsMade || "",
     tags: product.tags || [],
     materialTags: product.materialTags || [],
-    options: product.options || [],
+    options: Array.isArray(product.options)
+      ? product.options
+          .map((opt: any) =>
+            typeof opt === "object" && "name" in opt && "value" in opt
+              ? { name: String(opt.name), value: String(opt.value) }
+              : null
+          )
+          .filter((opt): opt is { name: string; value: string } => opt !== null)
+      : [],
+    dropDate: product.dropDate ? product.dropDate.toISOString() : null,
+    discountEndDate: product.discountEndDate ?? undefined,
   };
 }
 
-export default async function EditProduct({ params }: { params: { id: string } }) {
+export default async function EditProduct({
+  params,
+}: {
+  params: { id: string };
+}) {
   const product = await getProduct(params.id);
-
-  // Transform the product data to match the expected types
-  const transformedProduct = {
-    ...product,
-    dropDate: product.dropDate ? product.dropDate.toISOString() : null,
-    discountEndDate: product.discountEndDate ? new Date(product.discountEndDate) : undefined,
-    options: Array.isArray(product.options) 
-      ? product.options.map((option: any) => ({
-          name: option.name || '',
-          value: option.value || ''
-        }))
-      : []
-  };
 
   return (
     <div className="flex items-center justify-center vertical-center">
-      <ProductForm initialData={transformedProduct} />
+      <ProductForm initialData={product} />
     </div>
   );
 }

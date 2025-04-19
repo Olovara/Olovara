@@ -60,7 +60,8 @@ const SellerForm = () => {
       <CardContent className="flex flex-col gap-y-6">
         <div className="flex flex-col gap-y-2">
           <Label>Shop Name</Label>
-          <Input placeholder="Shop Name"
+          <Input
+            placeholder="Shop Name"
             {...form.register("shopName")} // Link input to react-hook-form
             disabled={isPending}
           />
@@ -68,15 +69,15 @@ const SellerForm = () => {
 
         <div className="flex flex-col gap-y-2">
           <Label>Shop Description</Label>
-          <Textarea placeholder="Please give your shop a description."
+          <Textarea
+            placeholder="Please give your shop a description."
             {...form.register("shopDescription")} // Link input to react-hook-form
             disabled={isPending}
           />
         </div>
-
       </CardContent>
       <CardFooter>
-        <Submitbutton title="Save" />
+        <Submitbutton title="Save" isPending={isPending} />
       </CardFooter>
     </form>
   );

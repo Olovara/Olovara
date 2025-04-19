@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 import MaterialsSection from "@/components/pricing-calculator/MaterialsSection";
 import LaborSection from "@/components/pricing-calculator/LaborSection";
+import { LaborCostItem } from "@/components/pricing-calculator/LaborSection";
 import PackagingSection from "@/components/pricing-calculator/PackagingSection";
 import CraftShowCostsSection from "@/components/pricing-calculator/CraftShowCostsSection";
 import PricingOverviewSection from "@/components/pricing-calculator/PricingOverviewSection";
@@ -18,7 +19,7 @@ export default function PricingCalculator() {
   const [packaging, setPackaging] = useState([
     { description: "", cost: "", size: "", quantity: "", total: 0 },
   ]);
-  const [labor, setLabor] = useState([
+  const [labor, setLabor] = useState<LaborCostItem[]>([
     { description: "", hourlyWage: "", time: "", total: 0 },
   ]);
   const [otherCosts, setOtherCosts] = useState([

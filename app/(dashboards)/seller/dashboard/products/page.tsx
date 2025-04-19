@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { ProductSearch } from "./ProductSearch";
 import { ProductTable } from "./ProductTable";
-import { PaginationControls } from "./PaginationControls";
 import { redirect } from "next/navigation";
+import SuspendedPaginationControls from "./PaginationControls";
 
 export default async function ProductsPage({
   searchParams,
@@ -121,7 +121,7 @@ export default async function ProductsPage({
               </Link>
             </div>
             <ProductTable products={transformedProducts} />
-            <PaginationControls
+            <SuspendedPaginationControls
               totalPages={totalPages}
               currentPage={page}
               totalItems={totalItems}
@@ -152,7 +152,7 @@ export default async function ProductsPage({
               </Link>
             </div>
             <ProductTable products={transformedProducts} />
-            <PaginationControls
+            <SuspendedPaginationControls
               totalPages={totalPages}
               currentPage={page}
               totalItems={totalItems}
@@ -183,7 +183,7 @@ export default async function ProductsPage({
               </Link>
             </div>
             <ProductTable products={transformedProducts} />
-            <PaginationControls
+            <SuspendedPaginationControls
               totalPages={totalPages}
               currentPage={page}
               totalItems={totalItems}
@@ -214,7 +214,7 @@ export default async function ProductsPage({
               </Link>
             </div>
             <ProductTable products={transformedProducts} />
-            <PaginationControls
+            <SuspendedPaginationControls
               totalPages={totalPages}
               currentPage={page}
               totalItems={totalItems}

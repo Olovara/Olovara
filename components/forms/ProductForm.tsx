@@ -310,6 +310,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       outStockLeadTime: 0,
       productDrop: false,
       dropDate: null,
+      discountEndDate: undefined,
+      productFile: null,
     });
   };
 

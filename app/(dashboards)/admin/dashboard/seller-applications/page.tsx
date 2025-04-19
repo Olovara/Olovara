@@ -21,6 +21,8 @@ export const metadata = {
   title: "Seller Application",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardSellerApplications() {
   const applications = await getUnapprovedSellers();
 

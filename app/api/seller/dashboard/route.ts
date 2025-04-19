@@ -11,10 +11,6 @@ const fetchSellerData = async (
   const parsedStartDate = startDate ? new Date(startDate) : undefined;
   const parsedEndDate = endDate ? new Date(endDate) : undefined;
 
-  //console.log("User ID:", userId);
-  //console.log("Parsed Start Date:", parsedStartDate);
-  //console.log("Parsed End Date:", parsedEndDate);
-
   const seller = await db.seller.findUnique({
     where: { userId },
     include: {
@@ -83,8 +79,8 @@ export async function GET(req: Request) {
   const userId = session.user.id; // Get the logged-in user's ID (assuming it's stored in the session)
 
   const url = new URL(req.url); // Parse URL
-  const startDate = url.searchParams.get("startDate");
-  const endDate = url.searchParams.get("endDate");
+  const startDate = url.searchParams.get("startDate") ?? undefined;
+  const endDate = url.searchParams.get("endDate") ?? undefined;
 
   try {
     const sellerData = await fetchSellerData(userId, startDate, endDate);

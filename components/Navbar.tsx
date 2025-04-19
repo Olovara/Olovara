@@ -9,8 +9,7 @@ import LoginButton from "./auth/login-button";
 
 export async function Navbar() {
   const session = await auth();
-  const userInfo =
-    session?.user && (await getUserInfoForNav());
+  const userInfo = session?.user && (await getUserInfoForNav());
 
   return (
     <nav className="relative max-w-7xl w-full flex md:grid md:grid-cols-12 items-center px-4 md:px-8 mx-auto py-7">
@@ -28,13 +27,15 @@ export async function Navbar() {
         ) : (
           <>
             <LoginButton mode="redirect">
-              <Button variant="bordered" className="text-black">
+              <Button variant="outline" className="text-black">
                 Login
               </Button>
             </LoginButton>
-            <Button as={Link} href="/register" variant="bordered" className="text-black">
-              Register
-            </Button>
+            <Link href="/register" passHref>
+              <Button variant="outline" className="text-black">
+                Register
+              </Button>
+            </Link>
           </>
         )}
 

@@ -1,5 +1,4 @@
-// Corrected use-filter-store.ts
-import { ProductFilters } from '@/types'
+import { ProductFilters } from '@/types';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 

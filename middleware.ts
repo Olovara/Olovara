@@ -21,18 +21,18 @@ export default auth((req) => {
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
-    return null;
+    return;
   }
 
   if (isApiAuthRoute) {
-    return null;
+    return;
   }
 
   if (isAuthRoute) {
     if (isAuthorized) {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
-    return null;
+    return;
   }
 
   if (!isAuthorized && !isPublicRoute) {
@@ -49,7 +49,7 @@ export default auth((req) => {
     );
   }
 
-  return null;
+  return;
 });
 
 // Optionally, don't invoke Middleware on some paths

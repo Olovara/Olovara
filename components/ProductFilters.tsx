@@ -71,13 +71,14 @@ export default function Filters() {
 
               {/* Price Range Filter */}
               <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Price Range
+                </label>
                 <Slider
-                  label="Price Range"
-                  size="sm"
-                  minValue={5}
-                  maxValue={1000}
+                  min={5}
+                  max={1000}
                   value={selectedPriceRange}
-                  onChangeEnd={(value) => selectPrice(value as number[])}
+                  onValueChange={(value) => selectPrice(value as number[])}
                 />
               </div>
 

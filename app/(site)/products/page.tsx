@@ -76,14 +76,41 @@ export default async function Products({
     db.product.findMany({
       where,
       select: {
-        price: true,
+        id: true,
+        userId: true,
         name: true,
         description: true,
-        id: true,
-        images: true,
-        primaryCategory: true,
-        isDigital: true,
+        price: true,
         status: true,
+        shippingCost: true,
+        handlingFee: true,
+        itemWeight: true,
+        itemLength: true,
+        itemWidth: true,
+        itemHeight: true,
+        shippingNotes: true,
+        freeShipping: true,
+        isDigital: true,
+        stock: true,
+        images: true,
+        productFile: true,
+        numberSold: true,
+        onSale: true,
+        discount: true,
+        primaryCategory: true,
+        secondaryCategory: true,
+        tags: true,
+        materialTags: true,
+        options: true,
+        inStockProcessingTime: true,
+        outStockLeadTime: true,
+        howItsMade: true,
+        productDrop: true,
+        NSFW: true,
+        dropDate: true,
+        discountEndDate: true,
+        createdAt: true,
+        updatedAt: true,
       },
       orderBy: orderByClause,
       skip,
@@ -104,11 +131,11 @@ export default async function Products({
       />
 
       <Filters />
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.length > 0 ? (
-          products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          products.map((product, index) => (
+            <ProductCard key={product.id} product={product} index={index} />
           ))
         ) : (
           <p className="col-span-full text-center text-gray-500">

@@ -22,7 +22,10 @@ export const useFilters = ({
   const router = useRouter();
 
   const { filters, setFilters, resetFilters } = useFilterStore();
-  const { pageNumber, pageSize, setPage, totalCount } = usePaginationStore();
+  const {
+    pagination: { pageNumber, pageSize, totalCount },
+    setPage,
+  } = usePaginationStore();
 
   const { category, priceRange, orderBy } = filters;
   const [isPending, startTransition] = useTransition();

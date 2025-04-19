@@ -12,7 +12,6 @@ export const {
   auth,
   signIn,
   signOut,
-  update,
 } = NextAuth({
   pages: {
     signIn: "/login",
@@ -20,16 +19,28 @@ export const {
   },
   events: {
     async linkAccount({ user }) {
-      await db.user.update({
-        where: { id: user.id },
-        data: { emailVerified: new Date() },
-      });
+      if (user.id) {
+        // Ensure user.id is defined and valid before updating
+        await db.user.update({
+          where: { id: user.id }, // Proceed if user.id is valid
+          data: { emailVerified: new Date() },
+        });
+      } else {
+        console.error("User ID is undefined.");
+        // Optionally handle the case where user.id is undefined
+      }
     },
   },
   callbacks: {
     async signIn({ user, account }) {
       // Allow OAuth without email verification
       if (account?.provider !== "credentials") return true;
+
+      // Ensure user.id is valid before proceeding
+      if (!user.id) {
+        console.error("User ID is undefined");
+        return false; // Or handle the error as needed
+      }
 
       const existingUser = await getUserById(user.id);
 
@@ -54,7 +65,7 @@ export const {
 
     async session({ token, session }) {
       if (!token || !session.user) return session;
-    
+
       // Assign values to session.user
       session.user.id = token.sub || session.user.id;
       session.user.role = token.role || session.user.role;
@@ -62,28 +73,28 @@ export const {
       session.user.isTwoFactorEnabled = token.isTwoFactorEnabled ?? false;
       session.user.username = token.username || session.user.username;
       session.user.email = token.email || session.user.email;
-    
+
       return session;
     },
 
     async jwt({ token }) {
       if (!token.sub) return token;
-    
+
       try {
         // Fetch user details
         const existingUser = await getUserById(token.sub);
         if (!existingUser) return token;
-    
+
         // Fetch account details to check if OAuth
         const existingAccount = await getAccountByUserId(existingUser.id);
-    
+
         // Add properties to the token
         token.isOAuth = !!existingAccount;
         token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled ?? false;
         token.username = existingUser.username || "";
         token.email = existingUser.email || "";
         token.role = existingUser.role;
-    
+
         return token;
       } catch (error) {
         console.error("Error in JWT callback:", error);

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-interface LaborCostItem {
+export interface LaborCostItem {
   description: string;
   hourlyWage: string;
   time: string;
@@ -23,24 +23,23 @@ interface LaborSectionProps {
   setLabor: (labor: LaborCostItem[]) => void;
 }
 
+type EditableLaborField = Extract<keyof LaborCostItem, "description" | "hourlyWage" | "time">;
+
 export default function LaborSection({ labor, setLabor }: LaborSectionProps) {
-    const [miscCost, setMiscCost] = useState<string>(""); // State for Miscellaneous Cost
+  const [miscCost, setMiscCost] = useState<string>(""); // State for Miscellaneous Cost
 
   const updateLabor = (
     index: number,
-    field: keyof LaborCostItem,
+    field: EditableLaborField,
     value: string
   ) => {
     const updatedLabor = [...labor];
     updatedLabor[index][field] = value;
-
-    // Convert hourly wage and time to numbers for calculation
+  
     const hourlyWage = parseFloat(updatedLabor[index].hourlyWage || "0");
-    const time = parseFloat(updatedLabor[index].time || "1");
-
-    // Calculate total cost
+    const time = parseFloat(updatedLabor[index].time || "0");
     updatedLabor[index].total = hourlyWage * time;
-
+  
     setLabor(updatedLabor);
   };
 

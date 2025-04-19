@@ -61,7 +61,8 @@ const MemberForm = () => {
       <CardContent className="flex flex-col gap-y-6">
         <div className="flex flex-col gap-y-2">
           <Label>First Name</Label>
-          <Input placeholder="First Name"
+          <Input
+            placeholder="First Name"
             {...form.register("firstName")} // Link input to react-hook-form
             disabled={isPending}
           />
@@ -69,7 +70,8 @@ const MemberForm = () => {
 
         <div className="flex flex-col gap-y-2">
           <Label>Last Name</Label>
-          <Input placeholder="Last Name"
+          <Input
+            placeholder="Last Name"
             {...form.register("lastName")} // Link input to react-hook-form
             disabled={isPending}
             type="text"
@@ -78,14 +80,15 @@ const MemberForm = () => {
 
         <div className="flex flex-col gap-y-2">
           <Label>Member Bio</Label>
-          <Textarea placeholder="Type your bio here."
+          <Textarea
+            placeholder="Type your bio here."
             {...form.register("userBio")} // Link input to react-hook-form
             disabled={isPending}
           />
         </div>
       </CardContent>
       <CardFooter>
-        <Submitbutton title="Save" />
+        <Submitbutton title="Save" isPending={isPending} />
       </CardFooter>
     </form>
   );

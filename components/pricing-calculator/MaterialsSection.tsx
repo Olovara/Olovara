@@ -34,7 +34,7 @@ export default function MaterialsSection({ materials, setMaterials }: Props) {
     value: string
   ) => {
     const updatedMaterials = [...materials];
-    updatedMaterials[index][field] = value;
+    (updatedMaterials[index] as any)[field] = value;
 
     const cost = parseFloat(updatedMaterials[index].cost || "0");
     const size = parseFloat(updatedMaterials[index].size || "1");

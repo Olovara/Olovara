@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 
 interface PaginationControlsProps {
   totalPages: number;
@@ -85,5 +86,13 @@ export function PaginationControls({
         )}
       </div>
     </div>
+  );
+}
+
+export default function SuspendedPaginationControls(props: PaginationControlsProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PaginationControls {...props} />
+    </Suspense>
   );
 }
