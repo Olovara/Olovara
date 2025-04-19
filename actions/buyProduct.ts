@@ -34,45 +34,29 @@ export async function BuyProduct(formData: FormData) {
     throw new Error("Product not found");
   }
 
+  if (!data.seller?.connectedAccountId) {
+    throw new Error("Seller's Stripe account not connected");
+  }
+
   // If the product is digital, ensure the product file is provided in metadata
   const metadata = {
     link: data.productFile || "", // Only set link if productFile exists
   };
 
-  // Create a checkout session with Stripe
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          unit_amount: Math.round(data.price * 100), // Convert price to cents
-          product_data: {
-            name: data.name,
-            description: data.description,
-            images: data.images,
-          },
-        },
-        quantity: 1, // For now, assuming quantity is 1
-      },
-    ],
+  // Create a payment intent with Stripe
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(data.price * 100), // Convert price to cents
+    currency: "usd",
+    payment_method_types: ["card"],
     metadata: metadata,
-    payment_intent_data: {
-      application_fee_amount: Math.round(PLATFORM_FEE_PERCENT), // 10% fee
-      transfer_data: {
-        destination: data.seller?.connectedAccountId, // Transfer to seller's account
-      },
+    application_fee_amount: Math.round(PLATFORM_FEE_PERCENT), // 10% fee
+    transfer_data: {
+      destination: data.seller.connectedAccountId, // Now we know this exists
     },
-    success_url:
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000/payment/success"
-        : "https://www.yarnnu.com/payment/success",
-    cancel_url:
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000/payment/cancel"
-        : "https://www.yarnnu.com/payment/cancel",
+    automatic_payment_methods: {
+      enabled: true,
+    },
   });
 
-  // Redirect to Stripe Checkout session
-  return redirect(session.url as string);
+  return { clientSecret: paymentIntent.client_secret };
 }
