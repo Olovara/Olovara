@@ -1,16 +1,17 @@
 import { currentRole } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
 
-export default async function roleCheck(req, res) {
+export async function GET(req: NextRequest) {
   try {
     // Retrieve the current user role from the session
     const role = await currentRole();
 
     if (!role) {
       // If no role is found (user is not authenticated), return 403
-      return res.status(403).json({ allowed: false, message: "Unauthorized" });
+      return NextResponse.json({ allowed: false, message: "Unauthorized" }, { status: 403 });
     }
 
-    const { pathname } = req.nextUrl; // Directly get pathname from req.nextUrl
+    const pathname = req.nextUrl.pathname;
 
     // Define route prefixes for role-based access
     const routeRoles = {
@@ -23,18 +24,18 @@ export default async function roleCheck(req, res) {
     for (const [routePrefix, requiredRole] of Object.entries(routeRoles)) {
       if (pathname.startsWith(routePrefix)) {
         if (role === requiredRole) {
-          return res.status(200).json({ allowed: true });
+          return NextResponse.json({ allowed: true }, { status: 200 });
         } else {
-          return res.status(403).json({ allowed: false, message: "Access denied" });
+          return NextResponse.json({ allowed: false, message: "Access denied" }, { status: 403 });
         }
       }
     }
 
     // If no matching role route found, return forbidden
-    return res.status(403).json({ allowed: false, message: "Access denied" });
+    return NextResponse.json({ allowed: false, message: "Access denied" }, { status: 403 });
     
   } catch (error) {
     console.error("Error in role-check API:", error);
-    return res.status(500).json({ allowed: false, message: "Internal server error" });
+    return NextResponse.json({ allowed: false, message: "Internal server error" }, { status: 500 });
   }
 }
