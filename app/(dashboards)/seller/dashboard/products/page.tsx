@@ -39,6 +39,14 @@ export default async function ProductsPage({
     page
   );
 
+  // Transform the products data to match the expected types
+  const transformedProducts = products.map(product => ({
+    ...product,
+    description: typeof product.description === 'string' 
+      ? product.description 
+      : { ops: Array.isArray(product.description) ? product.description : [] }
+  }));
+
   // Helper function to generate tab URLs while preserving search and pagination
   const getTabUrl = (tab: string) => {
     const params = new URLSearchParams();
@@ -112,7 +120,7 @@ export default async function ProductsPage({
                 <Button>Add Product</Button>
               </Link>
             </div>
-            <ProductTable products={products} />
+            <ProductTable products={transformedProducts} />
             <PaginationControls
               totalPages={totalPages}
               currentPage={page}
@@ -143,7 +151,7 @@ export default async function ProductsPage({
                 <Button>Add Product</Button>
               </Link>
             </div>
-            <ProductTable products={products} />
+            <ProductTable products={transformedProducts} />
             <PaginationControls
               totalPages={totalPages}
               currentPage={page}
@@ -174,7 +182,7 @@ export default async function ProductsPage({
                 <Button>Add Product</Button>
               </Link>
             </div>
-            <ProductTable products={products} />
+            <ProductTable products={transformedProducts} />
             <PaginationControls
               totalPages={totalPages}
               currentPage={page}
@@ -205,7 +213,7 @@ export default async function ProductsPage({
                 <Button>Add Product</Button>
               </Link>
             </div>
-            <ProductTable products={products} />
+            <ProductTable products={transformedProducts} />
             <PaginationControls
               totalPages={totalPages}
               currentPage={page}
