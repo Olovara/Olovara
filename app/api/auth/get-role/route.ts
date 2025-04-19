@@ -8,5 +8,6 @@ export async function GET() {
     return NextResponse.json({ role: null });
   }
 
+  // Return the role as a string to maintain compatibility with client-side code
   return NextResponse.json({ role: session.user.role });
 }

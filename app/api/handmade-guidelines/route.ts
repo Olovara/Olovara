@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { UserRole } from "@prisma/client";
 
 export async function GET() {
   const guidelines = await db.handmadeGuidelines.findFirst();
@@ -9,7 +10,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== "admin") {
+  if (!session || session.user.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 

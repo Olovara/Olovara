@@ -18,7 +18,7 @@ export default function HandmadeGuidelines() {
       // Fetch user role from API
       const roleRes = await fetch("/api/auth/get-role");
       const roleData = await roleRes.json();
-      setIsAdmin(roleData.role === "admin");
+      setIsAdmin(roleData.role === "ADMIN");
     };
 
     fetchData();

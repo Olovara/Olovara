@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { UserRole } from "@prisma/client";
 
 export async function getAuthUserId() {
     const session = await auth();
@@ -18,10 +19,10 @@ export async function getAuthUserId() {
     return userId;
 }
 
-export async function getUserRole() {
+export async function getUserRole(): Promise<UserRole> {
     const session = await auth();
 
-    const role = session?.user.role;
+    const role = session?.user.role as UserRole;
 
     if (!role) throw new Error('Not in role');
 

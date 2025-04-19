@@ -1,10 +1,10 @@
 import { db } from "@/lib/db"; // Use the global Prisma instance
-import { User } from "@prisma/client";
+import { User, UserRole, AccountStatus } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
 
 interface GetUsersParams {
-  role?: string;
-  status?: string;
+  role?: UserRole;
+  status?: AccountStatus;
   pageNumber: string;
   pageSize: string;
 }
@@ -60,7 +60,7 @@ export async function getUnapprovedSellers() {
   try {
     const role = await getUserRole();
 
-    if (role !== "ADMIN") throw new Error("Forbidden");
+    if (role !== UserRole.ADMIN) throw new Error("Forbidden");
 
     return await db.sellerApplication.findMany({
       where: {
@@ -91,7 +91,7 @@ export async function approveApplication(applicationId: string) {
   try {
     // Verify that the current user is an admin
     const role = await getUserRole();
-    if (role !== "ADMIN") {
+    if (role !== UserRole.ADMIN) {
       throw new Error("Forbidden");
     }
 
