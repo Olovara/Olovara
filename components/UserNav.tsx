@@ -18,7 +18,7 @@ interface iAppProps {
   userInfo: {
     email: string | null;
     username: string | null;
-    image: string | undefined;
+    image: string | null;
     role: "ADMIN" | "SELLER" | "MEMBER" | null;
     id: string;
   } | null;
@@ -46,7 +46,7 @@ export function UserNav({ userInfo }: iAppProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={userInfo?.image} alt="User Image" />
+            <AvatarImage src={userInfo?.image || undefined} alt="User Image" />
             <AvatarFallback>{userInfo?.username?.[0] || "U"}</AvatarFallback>
           </Avatar>
         </Button>
