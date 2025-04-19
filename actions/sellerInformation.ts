@@ -23,9 +23,15 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
 
   await db.seller.create({
     data: {
-      userId: session.user.id, // Associate with the logged-in user
+      userId: session.user.id,
       shopName,
+      shopNameSlug: shopName.toLowerCase().replace(/\s+/g, '-'),
       shopDescription,
+      user: {
+        connect: {
+          id: session.user.id
+        }
+      }
     },
   });
 
