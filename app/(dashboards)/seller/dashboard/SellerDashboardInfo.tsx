@@ -107,10 +107,21 @@ const SellerDashboardInfo = () => {
 
         {/* Display Dashboard Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-          <DashboardCard title="Total Sales" value={sellerData.totalSales} />
-          <DashboardCard title="Total Revenue" value={`$${sellerData.totalRevenue.toFixed(2)}`} />
-          <DashboardCard title="Total Products" value={sellerData.totalProducts} />
-          <DashboardCard title="Most Popular Product" value={sellerData.mostPopularProduct} />
+          {sellerData ? (
+            <>
+              <DashboardCard title="Total Sales" value={sellerData.totalSales} />
+              <DashboardCard title="Total Revenue" value={`$${sellerData.totalRevenue.toFixed(2)}`} />
+              <DashboardCard title="Total Products" value={sellerData.totalProducts} />
+              <DashboardCard title="Most Popular Product" value={sellerData.mostPopularProduct} />
+            </>
+          ) : (
+            <div className="col-span-full flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading seller data...</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
