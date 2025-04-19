@@ -14,11 +14,13 @@ import {
 
 interface Application {
   id: string;
+  userId: string;
   username: string;
   email: string;
-  craftingProcess?: string;
-  portfolio?: string;
-  reason?: string;
+  craftingProcess: string;
+  portfolio: string;
+  interestInJoining: string;
+  applicationApproved: boolean;
 }
 
 export function ApplicationActions({
@@ -118,7 +120,7 @@ export function ApplicationActions({
             <strong>Portfolio:</strong> {application.portfolio || "N/A"}
           </div>
           <div>
-            <strong>Reason for Joining:</strong> {application.reason || "N/A"}
+            <strong>Interest in Joining:</strong> {application.interestInJoining || "N/A"}
           </div>
         </div>
 

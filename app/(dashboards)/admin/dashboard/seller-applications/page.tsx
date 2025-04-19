@@ -46,10 +46,10 @@ export default async function AdminDashboardSellerApplications() {
                 <TableRow key={application.id}>
                   <TableCell>
                     <div className="font-medium">
-                      {application.user.username}
+                      {application.user.username || "No username"}
                     </div>
                     <div className="hidden text-sm text-muted-foreground md:inline">
-                      {application.user.email}
+                      {application.user.email || "No email"}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -61,13 +61,14 @@ export default async function AdminDashboardSellerApplications() {
                   <TableCell>
                     <ApplicationActions
                       application={{
+                        id: application.id,
                         userId: application.userId,
-                        username: application.user.username,
-                        email: application.user.email,
+                        username: application.user.username || "No username",
+                        email: application.user.email || "No email",
                         craftingProcess: application.craftingProcess,
                         portfolio: application.portfolio,
-                        reason: application.interestInJoining,
-                        id: application.id, // Make sure this is the correct field for the application's ID
+                        interestInJoining: application.interestInJoining,
+                        applicationApproved: application.applicationApproved,
                       }}
                     />
                   </TableCell>

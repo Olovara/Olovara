@@ -73,6 +73,7 @@ export async function getUnapprovedSellers() {
         craftingProcess: true,
         portfolio: true,
         interestInJoining: true,
+        applicationApproved: true,
         user: {
           select: {
             username: true,
