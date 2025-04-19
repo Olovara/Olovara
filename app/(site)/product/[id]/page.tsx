@@ -10,11 +10,9 @@ const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
   ssr: false,
 });
 
-const ProductDescription = dynamic(
-  () => import("@/components/ProductDescription"),
-  {
-    ssr: false,
-  }
+const ProtectedProductDescription = dynamic(
+  () => import("@/components/ProtectedProductDescription"),
+  { ssr: false }
 );
 
 // Generate metadata dynamically
@@ -57,6 +55,7 @@ async function getData(id: string) {
       inStockProcessingTime: true,
       howItsMade: true,
       tags: true,
+      NSFW: true,
       seller: {
         select: {
           shopName: true,
@@ -84,7 +83,10 @@ export default async function ProductPage({
       <div className="container mx-auto p-5">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
         <p>This product may have been removed or is no longer available.</p>
-        <Link href="/products" className="text-primary hover:underline mt-4 inline-block">
+        <Link
+          href="/products"
+          className="text-primary hover:underline mt-4 inline-block"
+        >
           Return to Products
         </Link>
       </div>
@@ -104,8 +106,9 @@ export default async function ProductPage({
     data.discount &&
     data.discountEndDate &&
     new Date(data.discountEndDate) > new Date();
+  const discount = data.discount ?? 0;
   const finalPrice = isOnSale
-    ? data.price - data.price * (data.discount / 100)
+    ? data.price - data.price * (discount / 100)
     : data.price;
 
   return (
@@ -199,7 +202,10 @@ export default async function ProductPage({
       {/* Additional Info Section */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="text-gray-700">
-          <ProductDescription content={data.description} />
+          <ProtectedProductDescription
+            content={typeof data.description === "string" ? JSON.parse(data.description) : {}}
+            NSFW={Boolean(data.NSFW)}
+          />
         </div>
 
         {/* Shipping and Dimensions */}

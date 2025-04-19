@@ -3,15 +3,11 @@
 import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Quill from "quill";
+import type { Delta, Op } from 'quill';
 
 interface ProductDescriptionProps {
-  content: Record<string, any>; // Quill's Delta JSON format
+  content: Delta;
 }
-
-// Dynamically import the ProductDescription component with SSR disabled
-const ProductDescription = dynamic(() => import('@/components/ProductDescription'), {
-  ssr: false, // Disable SSR for this component
-});
 
 export function ProductDescriptionComponent({ content }: ProductDescriptionProps) {
   const editorRef = useRef<HTMLDivElement>(null);

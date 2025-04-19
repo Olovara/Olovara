@@ -1,11 +1,22 @@
 import * as z from "zod";
 
+const quillDeltaSchema = z.object({
+  ops: z.array(
+    z.object({
+      insert: z.string(),
+      attributes: z.object({}).catchall(z.any()).optional(),
+    })
+  ),
+});
+
 export const ProductSchema = z
   .object({
     name: z.string().min(1, {
       message: "Please enter your product's name, required.",
     }),
-    description: z.any(),
+    description: quillDeltaSchema.nullable().refine((val) => !!val, {
+      message: "Product description is required.",
+    }),
     options: z
       .array(
         z.object({
