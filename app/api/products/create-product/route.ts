@@ -1,8 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
-// Replace the deprecated config export with the new route segment config
-export const runtime = "edge";
+// Remove the Edge Runtime configuration
+// export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 seconds timeout
 

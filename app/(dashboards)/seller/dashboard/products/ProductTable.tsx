@@ -131,7 +131,7 @@ export function ProductTable({ products }: ProductTableProps) {
                       : "destructive"
                   }
                 >
-                  {product.isDigital || "UNKNOWN"}
+                  {product.isDigital === true ? "Digital" : product.isDigital === false ? "Physical" : "Unknown"}
                 </Badge>
               </TableCell>
               <TableCell>
