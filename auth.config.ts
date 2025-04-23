@@ -37,9 +37,7 @@ export default {
       },
     }),
   ],
-  trustHost: process.env.NODE_ENV === 'development' 
-    ? true 
-    : ['yarnnu.com', 'www.yarnnu.com'].includes(process.env.NEXTAUTH_URL || ''),
+  trustHost: true,
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",

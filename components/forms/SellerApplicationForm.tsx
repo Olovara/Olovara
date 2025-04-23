@@ -22,6 +22,7 @@ import { sellerApplication } from "@/actions/seller-application";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 const SellerApplicationForm = () => {
   const isClient = useIsClient();
@@ -67,49 +68,80 @@ const SellerApplicationForm = () => {
   if (!isClient) return <Spinner />;
 
   return (
-    <div className="w-full flex justify-center pt-10 pb-10">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Card className="max-w-2xl w-full mx-auto shadow-lg p-8 rounded-lg bg-purple-50">
-          <CardHeader>
-            <CardTitle>Seller Application</CardTitle>
-            <CardDescription>
+    <div className="w-full flex justify-center py-16 px-4">
+      <motion.form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="space-y-6 w-full max-w-4xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="w-full mx-auto shadow-xl p-8 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+          <CardHeader className="space-y-4">
+            <CardTitle className="text-3xl font-bold text-purple-900">Seller Application</CardTitle>
+            <CardDescription className="text-lg text-purple-700">
               Please fill in the information below to start selling on Yarnnu
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-y-6">
-            <div className="flex flex-col gap-y-2">
-              <Label>Crafting process</Label>
+          <CardContent className="flex flex-col gap-y-8">
+            <motion.div 
+              className="flex flex-col gap-y-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Label className="text-lg font-semibold text-purple-800">Crafting process</Label>
               <Textarea
                 placeholder="Tell us about your crafting process and what you make. This helps us understand your unique style and products."
                 {...form.register("craftingProcess")}
                 disabled={isPending}
+                className="min-h-[150px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
               />
-            </div>
+            </motion.div>
 
-            <div className="flex flex-col gap-y-2">
-              <Label>Portfolio</Label>
+            <motion.div 
+              className="flex flex-col gap-y-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Label className="text-lg font-semibold text-purple-800">Portfolio</Label>
               <Input
                 placeholder="Share a link to your portfolio, Etsy shop, or social media"
                 {...form.register("portfolio")}
                 disabled={isPending}
                 type="text"
+                className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
               />
-            </div>
+            </motion.div>
 
-            <div className="flex flex-col gap-y-2">
-              <Label>What is your interest in joining Yarnnu?</Label>
+            <motion.div 
+              className="flex flex-col gap-y-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Label className="text-lg font-semibold text-purple-800">What is your interest in joining Yarnnu?</Label>
               <Textarea
                 placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
                 {...form.register("interestInJoining")}
                 disabled={isPending}
+                className="min-h-[150px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
               />
-            </div>
+            </motion.div>
           </CardContent>
-          <CardFooter>
-            <Submitbutton title="Start Selling" isPending={isPending} />
+          <CardFooter className="pt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="w-full"
+            >
+              <Submitbutton title="Start Selling" isPending={isPending} />
+            </motion.div>
           </CardFooter>
         </Card>
-      </form>
+      </motion.form>
     </div>
   );
 };

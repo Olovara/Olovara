@@ -145,6 +145,7 @@ model Seller {
   shopNameSlug              String    @unique // URL-friendly shop name
   shopTagLine               String?
   shopDescription           String?
+  applicationAccepted       Boolean   @default(false)
   stripeConnected	          Boolean		@default(false)
   connectedAccountId        String?   @unique // Optional, but required for selling
   totalSales	              Int       @default(0)
