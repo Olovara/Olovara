@@ -1,20 +1,20 @@
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+"use client";
 
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import CardWrapper from "./card-wrapper";
 
-const ErrorCard = () => {
+export const ErrorCard = () => {
   return (
     <CardWrapper
-      headerLabel="Oops! Something went wrong!"
+      title="Oops! Something went wrong!"
+      subtitle="Please try again"
       backButtonHref="/auth/login"
       backButtonLabel="Back to login"
     >
       <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive">
         <ExclamationTriangleIcon className="h-4 w-4 flex-none" />
-        <p className="">Authentication with your auth provider failed!</p>
+        <p className="">An error occurred during authentication!</p>
       </div>
     </CardWrapper>
   );
 };
-
-export default ErrorCard;

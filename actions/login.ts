@@ -97,7 +97,8 @@ export const login = async (
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      switch (error.type) {
+      const authError = error as AuthError & { type?: string };
+      switch (authError.type) {
         case "CredentialsSignin":
           return { error: "Invalid credentials!" };
         default:

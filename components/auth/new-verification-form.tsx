@@ -49,7 +49,8 @@ const NewVerificationForm = () => {
 
   return (
     <CardWrapper
-      headerLabel="Confirming your verification"
+      title="Confirming your verification"
+      subtitle="Please wait while we verify your email"
       backButtonLabel="Back to login"
       backButtonHref="/login"
     >

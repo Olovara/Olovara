@@ -14,7 +14,7 @@
     "@auth/mongodb-adapter": "^3.5.0",
     "@auth/prisma-adapter": "^2.5.3",
     "@hookform/resolvers": "^3.9.0",
-    "@prisma/client": "^6.1.0",
+    "@prisma/client": "^6.6.0",
     "@prisma/extension-accelerate": "^1.2.1",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -113,7 +113,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "postcss": "^8",
-    "prisma": "^6.1.0",
+    "prisma": "^6.6.0",
     "tailwindcss": "^3.4.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5"
