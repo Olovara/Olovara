@@ -15,6 +15,24 @@ interface SearchParams {
   pageNumber?: string;
 }
 
+interface ProductListing {
+  id: string;
+  name: string;
+  price: number;
+  images: string[];
+  primaryCategory: string;
+  secondaryCategory: string;
+  isDigital: boolean;
+  freeShipping: boolean;
+  onSale: boolean;
+  discount: number | null;
+  numberSold: number;
+  seller: {
+    shopName: string;
+    shopNameSlug: string;
+  } | null;
+}
+
 export default async function Products({
   searchParams,
 }: {
@@ -22,11 +40,9 @@ export default async function Products({
 }) {
   // Parse search params
   const categories = searchParams.category?.split(",") || [];
-  const priceRange = searchParams.priceRange?.split(",").map(Number) || [
-    5, 1000,
-  ];
+  const priceRange = searchParams.priceRange?.split(",").map(Number) || [5, 1000];
   const orderBy = searchParams.orderBy || "updatedAt_desc";
-  const pageSize = Number(searchParams.pageSize) || 12;
+  const pageSize = Math.min(Number(searchParams.pageSize) || 12, 24); // Cap page size
   const pageNumber = Number(searchParams.pageNumber) || 1;
 
   // Calculate skip for pagination
@@ -58,10 +74,7 @@ export default async function Products({
 
   // Parse orderBy value correctly
   const [field, dir] = orderBy.split("_");
-  const direction =
-    dir?.toLowerCase() === "asc" || dir?.toLowerCase() === "desc"
-      ? dir.toLowerCase()
-      : "desc";
+  const direction = dir?.toLowerCase() === "asc" ? "asc" : "desc";
 
   // Fallback to a valid field if the field is invalid
   const validFields = ["price", "name", "createdAt", "updatedAt", "numberSold"];
@@ -71,46 +84,28 @@ export default async function Products({
     [safeField]: direction,
   };
 
-  // Fetch products and total count
+  // Fetch products with minimal data first
   const [products, total] = await Promise.all([
     db.product.findMany({
       where,
       select: {
         id: true,
-        userId: true,
         name: true,
-        description: true,
         price: true,
-        status: true,
-        shippingCost: true,
-        handlingFee: true,
-        itemWeight: true,
-        itemLength: true,
-        itemWidth: true,
-        itemHeight: true,
-        shippingNotes: true,
-        freeShipping: true,
-        isDigital: true,
-        stock: true,
         images: true,
-        productFile: true,
-        numberSold: true,
-        onSale: true,
-        discount: true,
         primaryCategory: true,
         secondaryCategory: true,
-        tags: true,
-        materialTags: true,
-        options: true,
-        inStockProcessingTime: true,
-        outStockLeadTime: true,
-        howItsMade: true,
-        productDrop: true,
-        NSFW: true,
-        dropDate: true,
-        discountEndDate: true,
-        createdAt: true,
-        updatedAt: true,
+        isDigital: true,
+        freeShipping: true,
+        onSale: true,
+        discount: true,
+        numberSold: true,
+        seller: {
+          select: {
+            shopName: true,
+            shopNameSlug: true,
+          },
+        },
       },
       orderBy: orderByClause,
       skip,
@@ -119,38 +114,40 @@ export default async function Products({
     db.product.count({ where }),
   ]);
 
+  const totalPages = Math.ceil(total / pageSize);
+
   return (
-    <div className="container mx-auto p-5">
-      <h1 className="text-2xl font-bold mb-4">Marketplace Products</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Filters */}
+        <div className="w-full md:w-1/4">
+          <Filters />
+        </div>
 
-      {/* Top pagination info */}
-      <PaginationInfoAndSizeSelector
-        totalCount={total}
-        pageNumber={pageNumber}
-        pageSize={pageSize}
-      />
+        {/* Products Grid */}
+        <div className="w-full md:w-3/4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product: ProductListing, index: number) => (
+              <ProductCard key={product.id} product={product as any} index={index} />
+            ))}
+          </div>
 
-      <Filters />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.length > 0 ? (
-          products.map((product, index) => (
-            <ProductCard key={product.id} product={product} index={index} />
-          ))
-        ) : (
-          <p className="col-span-full text-center text-gray-500">
-            No products available.
-          </p>
-        )}
+          {/* Pagination */}
+          <div className="mt-8">
+            <PaginationInfoAndSizeSelector
+              totalCount={total}
+              pageSize={pageSize}
+              pageNumber={pageNumber}
+            />
+            <PaginationControlsAndSizeSelector
+              totalCount={total}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              pageNumber={pageNumber}
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Bottom pagination controls */}
-      <PaginationControlsAndSizeSelector
-        totalCount={total}
-        pageNumber={pageNumber}
-        pageSize={pageSize}
-        totalPages={Math.ceil(total / pageSize)}
-      />
     </div>
   );
 }

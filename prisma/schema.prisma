@@ -265,6 +265,12 @@ model HandmadeGuidelines {
   updatedAt DateTime @updatedAt
 }
 
+model PrivacyPolicy {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  updatedAt DateTime @updatedAt
+}
+
 model TemporaryUpload {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   fileKey   String   @unique
