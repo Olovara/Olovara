@@ -107,16 +107,19 @@ export async function approveApplication(applicationId: string) {
 
     const { userId } = sellerApplication;
 
-    // Approve the seller application
-    await db.sellerApplication.update({
-      where: { id: applicationId },
-      data: { applicationApproved: true },
-    });
+    // Update all three in a transaction to ensure consistency
+    await db.$transaction(async (tx) => {
+      // Approve the seller application
+      await tx.sellerApplication.update({
+        where: { id: applicationId },
+        data: { applicationApproved: true },
+      });
 
-    // Update the user's role to 'SELLER'
-    await db.user.update({
-      where: { id: userId },
-      data: { role: "SELLER" }, // Use the enum for role assignment
+      // Update the seller's applicationAccepted status
+      await tx.seller.update({
+        where: { userId },
+        data: { applicationAccepted: true },
+      });
     });
 
     return { success: true };

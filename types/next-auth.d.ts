@@ -10,14 +10,16 @@ interface User extends NextAuthUser {
 declare module "next-auth" {
   interface Session {
     user: {
-      role: UserRole; // Add role here
+      id: string;
+      role: UserRole;
       isTwoFactorEnabled: boolean;
       isOAuth: boolean;
     } & DefaultSession["user"];
   }
 
   interface JWT {
-    role: UserRole; // Add role here
+    id?: string;
+    role: UserRole;
     isTwoFactorEnabled: boolean;
     isOAuth: boolean;
   }

@@ -21,8 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CategoriesMap } from "@/data/categories";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
 type ProductInfoSectionProps = {
   form: UseFormReturn<any>;
@@ -44,6 +46,27 @@ export const ProductInfoSection = ({
   setMaterialTags,
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = useFormContext();
+  const [isSellerApproved, setIsSellerApproved] = useState(false);
+
+  useEffect(() => {
+    const checkSellerApproval = async () => {
+      try {
+        const session = await auth();
+        if (!session?.user) return;
+
+        const seller = await db.seller.findUnique({
+          where: { userId: session.user.id },
+          select: { applicationAccepted: true }
+        });
+
+        setIsSellerApproved(seller?.applicationAccepted || false);
+      } catch (error) {
+        console.error("Error checking seller approval:", error);
+      }
+    };
+
+    void checkSellerApproval();
+  }, []);
 
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
@@ -195,28 +218,63 @@ export const ProductInfoSection = ({
       />
 
       {/* Product Status */}
-      <FormField
-        control={control}
-        name="status"
-        render={({ field }) => (
-          <RadioGroup
-            value={field.value}
-            onValueChange={field.onChange}
-            className="flex flex-col gap-y-2"
-          >
-            {["ACTIVE", "DISABLED", "HIDDEN"].map((status) => (
-              <FormItem key={status} className="flex items-center space-x-2">
-                <FormControl>
-                  <RadioGroupItem value={status} id={status.toLowerCase()} />
-                </FormControl>
-                <Label htmlFor={status.toLowerCase()}>
-                  {status.charAt(0) + status.slice(1).toLowerCase()}
-                </Label>
-              </FormItem>
-            ))}
-          </RadioGroup>
-        )}
-      />
+      <div className="space-y-4">
+        <Label className="text-lg font-semibold">Product Status</Label>
+        <RadioGroup
+          defaultValue="HIDDEN"
+          onValueChange={(value) => form.setValue("status", value)}
+          className="flex flex-col space-y-2"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem
+              value="HIDDEN"
+              id="hidden"
+              className="text-purple-600"
+            />
+            <Label htmlFor="hidden" className="text-base">
+              Hidden
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem
+              value="ACTIVE"
+              id="active"
+              className="text-purple-600"
+              disabled={!isSellerApproved}
+            />
+            <Label 
+              htmlFor="active" 
+              className={`text-base ${!isSellerApproved ? 'text-gray-400' : ''}`}
+            >
+              Active
+              {!isSellerApproved && (
+                <span className="ml-2 text-sm text-gray-500">
+                  (Available after approval)
+                </span>
+              )}
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem
+              value="DISABLED"
+              id="disabled"
+              className="text-purple-600"
+              disabled={!isSellerApproved}
+            />
+            <Label 
+              htmlFor="disabled" 
+              className={`text-base ${!isSellerApproved ? 'text-gray-400' : ''}`}
+            >
+              Disabled
+              {!isSellerApproved && (
+                <span className="ml-2 text-sm text-gray-500">
+                  (Available after approval)
+                </span>
+              )}
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
 
       {/* Is Product Digital or Physical */}
       <FormField

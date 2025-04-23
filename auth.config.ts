@@ -45,9 +45,12 @@ export default {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const typedUser = user as { role?: UserRole };
+        const typedUser = user as { role?: UserRole; id?: string };
         if (typedUser.role) {
           token.role = typedUser.role;
+        }
+        if (typedUser.id) {
+          token.id = typedUser.id;
         }
       }
       return token;
@@ -55,6 +58,7 @@ export default {
     async session({ session, token }) {
       if (session?.user) {
         session.user.role = token.role as UserRole;
+        session.user.id = token.id as string;
       }
       return session;
     },
