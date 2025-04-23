@@ -18,6 +18,7 @@ export default auth((req) => {
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
   const isStripeWebhook = nextUrl.pathname.startsWith('/api/stripe/webhooks');
+  const isLogoutRedirect = nextUrl.pathname === '/login' && nextUrl.searchParams.get('callbackUrl')?.includes('/login');
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
@@ -36,6 +37,11 @@ export default auth((req) => {
   }
 
   if (!isAuthorized && !isPublicRoute) {
+    // If this is a logout redirect, send to home page
+    if (isLogoutRedirect) {
+      return Response.redirect(new URL('/', nextUrl));
+    }
+
     let callbackUrl = nextUrl.pathname;
 
     if (nextUrl.search) {
@@ -45,7 +51,7 @@ export default auth((req) => {
     const encodedCallbackUrl = encodeURIComponent(callbackUrl);
 
     return Response.redirect(
-      new URL(`/auth/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
+      new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
     );
   }
 
