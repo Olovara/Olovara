@@ -23,8 +23,7 @@ import { Checkbox } from "../ui/checkbox";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { CategoriesMap } from "@/data/categories";
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { checkSellerApproval } from "@/actions/check-seller-approval";
 
 type ProductInfoSectionProps = {
   form: UseFormReturn<any>;
@@ -49,23 +48,12 @@ export const ProductInfoSection = ({
   const [isSellerApproved, setIsSellerApproved] = useState(false);
 
   useEffect(() => {
-    const checkSellerApproval = async () => {
-      try {
-        const session = await auth();
-        if (!session?.user) return;
-
-        const seller = await db.seller.findUnique({
-          where: { userId: session.user.id },
-          select: { applicationAccepted: true }
-        });
-
-        setIsSellerApproved(seller?.applicationAccepted || false);
-      } catch (error) {
-        console.error("Error checking seller approval:", error);
-      }
+    const checkApproval = async () => {
+      const approved = await checkSellerApproval();
+      setIsSellerApproved(approved);
     };
 
-    void checkSellerApproval();
+    void checkApproval();
   }, []);
 
   const [tagInput, setTagInput] = useState("");
