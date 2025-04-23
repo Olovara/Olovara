@@ -84,10 +84,11 @@ const LoginForm = () => {
 
   return (
     <CardWrapper
-      headerLabel="Welcome back!"
       backButtonLabel="Don't have an account?"
       backButtonHref="/register"
       showSocial
+      title="Welcome back"
+      subtitle="Sign in to your account"
     >
       <Form {...form}>
         <form

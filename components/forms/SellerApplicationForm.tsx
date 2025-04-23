@@ -20,9 +20,12 @@ import { useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { sellerApplication } from "@/actions/seller-application";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const SellerApplicationForm = () => {
   const isClient = useIsClient();
+  const router = useRouter();
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
@@ -41,8 +44,18 @@ const SellerApplicationForm = () => {
   const onSubmit = (values: z.infer<typeof SellerApplicationSchema>) => {
     startTransition(() => {
       sellerApplication(values).then((data) => {
-        if (data.success) setSuccess(data.success);
-        if (data?.error) setError(data.error);
+        if (data.success) {
+          setSuccess(data.success);
+          toast.success(data.success);
+          // Redirect to seller dashboard after a short delay
+          setTimeout(() => {
+            router.push("/seller/dashboard");
+          }, 1500);
+        }
+        if (data?.error) {
+          setError(data.error);
+          toast.error(data.error);
+        }
       });
     });
 
@@ -60,15 +73,15 @@ const SellerApplicationForm = () => {
           <CardHeader>
             <CardTitle>Seller Application</CardTitle>
             <CardDescription>
-              Please fill in the information below
+              Please fill in the information below to start selling on Yarnnu
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-y-6">
             <div className="flex flex-col gap-y-2">
               <Label>Crafting process</Label>
               <Textarea
-                placeholder="Tell us a little about your crafting process and what you make."
-                {...form.register("craftingProcess")} // Link input to react-hook-form
+                placeholder="Tell us about your crafting process and what you make. This helps us understand your unique style and products."
+                {...form.register("craftingProcess")}
                 disabled={isPending}
               />
             </div>
@@ -76,24 +89,24 @@ const SellerApplicationForm = () => {
             <div className="flex flex-col gap-y-2">
               <Label>Portfolio</Label>
               <Input
-                placeholder="www.example.com"
-                {...form.register("portfolio")} // Link input to react-hook-form
+                placeholder="Share a link to your portfolio, Etsy shop, or social media"
+                {...form.register("portfolio")}
                 disabled={isPending}
                 type="text"
               />
             </div>
 
             <div className="flex flex-col gap-y-2">
-              <Label>What is your interest in joining</Label>
+              <Label>What is your interest in joining Yarnnu?</Label>
               <Textarea
-                placeholder="Type your message here."
-                {...form.register("interestInJoining")} // Link input to react-hook-form
+                placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
+                {...form.register("interestInJoining")}
                 disabled={isPending}
               />
             </div>
           </CardContent>
           <CardFooter>
-            <Submitbutton title="Submit" isPending={isPending} />
+            <Submitbutton title="Start Selling" isPending={isPending} />
           </CardFooter>
         </Card>
       </form>

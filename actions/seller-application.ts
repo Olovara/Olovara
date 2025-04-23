@@ -1,11 +1,10 @@
 "use server";
 
 import * as z from "zod";
-
 import { db } from "@/lib/db";
 import { SellerApplicationSchema } from "@/schemas/SellerApplicationSchema";
-
-import { auth } from "@/auth"; // Adjust to your auth method
+import { auth } from "@/auth";
+import { UserRole } from "@prisma/client";
 
 export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
   const validatedFields = SellerApplicationSchema.safeParse(values);
@@ -16,19 +15,38 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
   const { craftingProcess, portfolio, interestInJoining } = validatedFields.data;
 
-  const session = await auth(); // Get the authenticated user session
+  const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
   }
 
-  await db.sellerApplication.create({
-    data: {
-      userId: session.user.id, // Associate with the logged-in user
-      craftingProcess,
-      portfolio,
-      interestInJoining,
-    },
+  // Check if user already has a pending application
+  const existingApplication = await db.sellerApplication.findUnique({
+    where: { userId: session.user.id }
   });
 
-  return { success: "Successfully submitted your seller application." };
+  if (existingApplication) {
+    return { error: "You already have a pending application." };
+  }
+
+  // Create the application and update user role in a transaction
+  await db.$transaction(async (tx) => {
+    // Create the seller application
+    await tx.sellerApplication.create({
+      data: {
+        userId: session.user.id,
+        craftingProcess,
+        portfolio,
+        interestInJoining,
+      },
+    });
+
+    // Update user role to SELLER
+    await tx.user.update({
+      where: { id: session.user.id },
+      data: { role: UserRole.SELLER },
+    });
+  });
+
+  return { success: "Successfully submitted your seller application. You can now access your seller dashboard!" };
 };

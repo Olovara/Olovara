@@ -60,10 +60,11 @@ const RegisterForm = () => {
 
   return (
     <CardWrapper
-      headerLabel="Register an account to get started!"
       backButtonLabel="Have an account already?"
       backButtonHref="/auth/login"
       showSocial
+      title="Create an account"
+      subtitle="Join our community today"
     >
       <Form {...form}>
         <form

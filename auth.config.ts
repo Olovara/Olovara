@@ -3,6 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
+import { UserRole } from "@prisma/client";
 
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
@@ -36,4 +37,28 @@ export default {
       },
     }),
   ],
+  trustHost: process.env.NODE_ENV === 'development' 
+    ? true 
+    : ['yarnnu.com', 'www.yarnnu.com'].includes(process.env.NEXTAUTH_URL || ''),
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        const typedUser = user as { role?: UserRole };
+        if (typedUser.role) {
+          token.role = typedUser.role;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.role = token.role as UserRole;
+      }
+      return session;
+    },
+  },
 } satisfies NextAuthConfig;

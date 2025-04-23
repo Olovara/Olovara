@@ -1,10 +1,17 @@
+import { auth } from "@/auth";
 import SellerApplicationForm from "@/components/forms/SellerApplicationForm";
-import React from "react";
+import { redirect } from "next/navigation";
 
-export default function SellerApplication() {
-    return (
-      <div className="flex items-center justify-center vertical-center">
-        <SellerApplicationForm />
-      </div>
-    );
+export default async function SellerApplication() {
+  const session = await auth();
+  
+  if (!session?.user) {
+    redirect("/auth/register?callbackUrl=/seller-application");
   }
+
+  return (
+    <div className="flex items-center justify-center vertical-center">
+      <SellerApplicationForm />
+    </div>
+  );
+}

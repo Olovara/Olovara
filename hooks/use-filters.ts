@@ -6,7 +6,7 @@ import useFilterStore from "./use-filter-store";
 import { CategoriesMap } from "@/data/categories";
 
 interface UseFiltersProps {
-  initialCategory?: string;  // Optional initial category for category pages
+  initialCategory?: string; // Optional initial category for category pages
   showPriceFilter?: boolean;
   showCategoryFilter?: boolean;
   showOrderFilter?: boolean;
@@ -35,14 +35,14 @@ export const useFilters = ({
     if (initialCategory && !category.includes(initialCategory)) {
       setFilters("category", [initialCategory]);
     }
-  }, [initialCategory]);
+  }, [initialCategory, category, setFilters]);
 
   // Reset filters when leaving the page
   useEffect(() => {
     return () => {
       if (!initialCategory) resetFilters();
     };
-  }, []);
+  }, [initialCategory, resetFilters]);
 
   useEffect(() => {
     if (category || priceRange || orderBy) {
@@ -86,9 +86,11 @@ export const useFilters = ({
 
   const handleCategorySelect = (value: string) => {
     if (category.includes(value))
-      setFilters("category", category.filter((v) => v !== value));
-    else
-      setFilters("category", [...category, value]);
+      setFilters(
+        "category",
+        category.filter((v) => v !== value)
+      );
+    else setFilters("category", [...category, value]);
   };
 
   return {
