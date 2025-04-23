@@ -7,7 +7,17 @@ export const publicRoutes = [
   "/", 
   "/new-verification", 
   "/api/uploadthing", 
-  "/api/stripe/webhooks"
+  "/api/stripe/webhooks",
+  "/handmade-guidelines",
+  "/contact",
+  "/products",
+  "/product/[id]",
+  "/privacy-policy",
+  "/about",
+  "/pricing-calculator",
+  "/shop/[shopNameSlug]",
+  "/suggestions",
+  "/terms-of-service",
 ];
 
 /**
