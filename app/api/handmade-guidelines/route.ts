@@ -15,11 +15,22 @@ export async function POST(req: Request) {
   }
 
   const { content } = await req.json();
-  const updatedGuidelines = await db.handmadeGuidelines.upsert({
-    where: { id: "guidelines_id" },
-    update: { content },
-    create: { content },
-  });
-
-  return NextResponse.json(updatedGuidelines);
+  
+  // First, try to find existing guidelines
+  const existingGuidelines = await db.handmadeGuidelines.findFirst();
+  
+  if (existingGuidelines) {
+    // Update existing guidelines
+    const updatedGuidelines = await db.handmadeGuidelines.update({
+      where: { id: existingGuidelines.id },
+      data: { content }
+    });
+    return NextResponse.json(updatedGuidelines);
+  } else {
+    // Create new guidelines if none exist
+    const newGuidelines = await db.handmadeGuidelines.create({
+      data: { content }
+    });
+    return NextResponse.json(newGuidelines);
+  }
 }
