@@ -138,6 +138,25 @@ model Member {
   updatedAt	        DateTime @updatedAt
 }
 
+model Address {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  streetAddress String
+  streetAddress2 String?  // For apartment numbers, suite numbers, etc.
+  city          String
+  state         String?   // Optional for countries without states
+  province      String?   // Alternative to state for some countries
+  postalCode    String    // Can handle various formats (ZIP, PIN, etc.)
+  country       String
+  isDefault     Boolean  @default(true)
+  sellerId      String
+  seller        Seller   @relation(fields: [sellerId], references: [userId])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sellerId])
+}
+
 model Seller {
   id		                    String    @id @default(auto()) @map("_id") @db.ObjectId
   userId	                  String    @unique
@@ -153,6 +172,7 @@ model Seller {
   acceptsCustom             Boolean   @default(false)
   products	                Product[]
   order                     Order[]
+  addresses                 Address[]
   user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt	      DateTime @default(now())

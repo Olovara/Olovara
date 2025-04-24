@@ -11,4 +11,8 @@ export const ContactUsSchema = z.object({
   helpDescription: z.string().min(6, {
     message: "Please let us know how we can help you, required",
   }),
+  // Honeypot field - should be empty
+  website: z.string().max(0, {}),
+  // reCAPTCHA token
+  recaptchaToken: z.string().optional(),
 });
