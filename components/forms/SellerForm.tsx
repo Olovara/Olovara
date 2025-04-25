@@ -19,6 +19,8 @@ import Spinner from "@/components/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { SellerSchema } from "@/schemas/SellerSchema";
 import { sellerInformation } from "@/actions/sellerInformation";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 
 const SellerForm = () => {
   const isClient = useIsClient();
@@ -33,6 +35,13 @@ const SellerForm = () => {
     defaultValues: {
       shopName: "",
       shopDescription: "",
+      isWomanOwned: false,
+      isMinorityOwned: false,
+      isLGBTQOwned: false,
+      isVeteranOwned: false,
+      isSustainable: false,
+      isCharitable: false,
+      valuesPreferNotToSay: false,
     },
   });
 
@@ -62,7 +71,7 @@ const SellerForm = () => {
           <Label>Shop Name</Label>
           <Input
             placeholder="Shop Name"
-            {...form.register("shopName")} // Link input to react-hook-form
+            {...form.register("shopName")}
             disabled={isPending}
           />
         </div>
@@ -71,9 +80,84 @@ const SellerForm = () => {
           <Label>Shop Description</Label>
           <Textarea
             placeholder="Please give your shop a description."
-            {...form.register("shopDescription")} // Link input to react-hook-form
+            {...form.register("shopDescription")}
             disabled={isPending}
           />
+        </div>
+
+        <Separator className="my-4" />
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Shop Values</h3>
+          <p className="text-sm text-muted-foreground">
+            Let customers know what makes your shop special. This helps
+            customers find and support businesses that align with their values.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isWomanOwned"
+                {...form.register("isWomanOwned")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isWomanOwned">Woman-Owned Business</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isMinorityOwned"
+                {...form.register("isMinorityOwned")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isMinorityOwned">Minority-Owned Business</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isLGBTQOwned"
+                {...form.register("isLGBTQOwned")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isLGBTQOwned">LGBTQ+-Owned Business</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isVeteranOwned"
+                {...form.register("isVeteranOwned")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isVeteranOwned">Veteran-Owned Business</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isSustainable"
+                {...form.register("isSustainable")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isSustainable">Sustainable Practices</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isCharitable"
+                {...form.register("isCharitable")}
+                disabled={isPending}
+              />
+              <Label htmlFor="isCharitable">Charitable Business</Label>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="valuesPreferNotToSay"
+              {...form.register("valuesPreferNotToSay")}
+              disabled={isPending}
+            />
+            <Label htmlFor="valuesPreferNotToSay">Prefer not to say</Label>
+          </div>
         </div>
       </CardContent>
       <CardFooter>

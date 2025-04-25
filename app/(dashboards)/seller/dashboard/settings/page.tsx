@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import MemberForm from "@/components/forms/MemberForm";
 import SellerForm from "@/components/forms/SellerForm";
 import {

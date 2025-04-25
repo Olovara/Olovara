@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import ProductCard from "./ProductCard";
 
 interface iAppProps {
-  category: "newest" | "templates" | "uikits" | "ACCESORIES";
+  category: "newest" | "templates" | "uikits" | "ACCESORIES" | "random";
 }
 
 async function getData({ category }: iAppProps) {
@@ -14,6 +14,57 @@ async function getData({ category }: iAppProps) {
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
     switch (category) {
+      case "random": {
+        const data = await db.product.findMany({
+          where: { 
+            status: "ACTIVE"
+          },
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            description: true,
+            price: true,
+            status: true,
+            shippingCost: true,
+            handlingFee: true,
+            itemWeight: true,
+            itemLength: true,
+            itemWidth: true,
+            itemHeight: true,
+            shippingNotes: true,
+            freeShipping: true,
+            isDigital: true,
+            stock: true,
+            images: true,
+            productFile: true,
+            numberSold: true,
+            onSale: true,
+            discount: true,
+            primaryCategory: true,
+            secondaryCategory: true,
+            tags: true,
+            materialTags: true,
+            options: true,
+            inStockProcessingTime: true,
+            outStockLeadTime: true,
+            howItsMade: true,
+            productDrop: true,
+            NSFW: true,
+            dropDate: true,
+            discountEndDate: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: { id: 'desc' }, // This will be randomized in the application
+          take: 4,
+        });
+
+        // Shuffle the array to get random products
+        const shuffledData = data.sort(() => Math.random() - 0.5);
+
+        return { data: shuffledData, title: "Featured Products", link: "/products" };
+      }
       case "ACCESORIES": {
         const data = await db.product.findMany({
           where: { 
@@ -106,7 +157,7 @@ async function getData({ category }: iAppProps) {
             updatedAt: true,
           },
           orderBy: { createdAt: "desc" },
-          take: 5,
+          take: 4,
         });
 
         return { data, title: "Newest Products", link: "/products" };
@@ -134,6 +185,11 @@ export function ProductRow({ category }: iAppProps) {
 export async function LoadRows({ category }: iAppProps) {
   const data = await getData({ category });
 
+  // Hide the section if there are no products
+  if (data.data.length === 0) {
+    return null;
+  }
+
   return (
     <section className="mt-12">
       <div className="md:flex md:items-center md:justify-between">
@@ -148,7 +204,7 @@ export async function LoadRows({ category }: iAppProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 sm:grid-cols-2 mt-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
         {data.data.map((product) => (
           <ProductCard
             key={product.id}

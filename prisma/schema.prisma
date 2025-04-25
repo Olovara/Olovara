@@ -170,6 +170,13 @@ model Seller {
   totalSales	              Int       @default(0)
   totalProducts	            Int       @default(0)
   acceptsCustom             Boolean   @default(false)
+  isWomanOwned             Boolean   @default(false)
+  isMinorityOwned          Boolean   @default(false)
+  isLGBTQOwned             Boolean   @default(false)
+  isVeteranOwned           Boolean   @default(false)
+  isSustainable            Boolean   @default(false)
+  isCharitable             Boolean   @default(false)
+  valuesPreferNotToSay     Boolean   @default(false)
   products	                Product[]
   order                     Order[]
   addresses                 Address[]
