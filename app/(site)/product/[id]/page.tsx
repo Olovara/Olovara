@@ -127,7 +127,7 @@ export default async function ProductPage({
             <p className="text-gray-700 text-sm">
               Made by:&nbsp;
               <Link
-                href={`/shop/${data.seller.shopNameSlug}`}
+                href={`/shops/${data.seller.shopNameSlug}`}
                 className="font-medium text-purple-600 hover:underline"
               >
                 {data.seller.shopName}

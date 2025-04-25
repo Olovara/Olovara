@@ -1,6 +1,6 @@
 "use client";
 
-import ProductFilters from "@/components/ProductFilters";
+import { ProductFilters } from "@/components/ProductFilters";
 
 export interface SearchParams {
   category?: string;

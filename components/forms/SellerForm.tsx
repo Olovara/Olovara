@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Submitbutton } from "@/components/SubmitButtons";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useIsClient } from "@/hooks/use-is-client";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,16 +19,16 @@ import Spinner from "@/components/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { SellerSchema } from "@/schemas/SellerSchema";
 import { sellerInformation } from "@/actions/sellerInformation";
+import { getSellerData } from "@/actions/getSellerData";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 
 const SellerForm = () => {
   const isClient = useIsClient();
-
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-
   const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof SellerSchema>>({
     resolver: zodResolver(SellerSchema),
@@ -45,20 +45,85 @@ const SellerForm = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof SellerSchema>) => {
-    startTransition(() => {
-      sellerInformation(values).then((data) => {
-        if (data.success) setSuccess(data.success);
-        if (data?.error) setError(data.error);
-      });
-    });
+  // Watch the prefer not to say checkbox
+  const preferNotToSay = form.watch("valuesPreferNotToSay");
 
-    form.reset();
-    setSuccess("");
-    setError("");
+  // Handle prefer not to say checkbox change
+  const handlePreferNotToSayChange = (checked: boolean) => {
+    if (checked) {
+      // Uncheck all other boxes when prefer not to say is checked
+      form.setValue("isWomanOwned", false);
+      form.setValue("isMinorityOwned", false);
+      form.setValue("isLGBTQOwned", false);
+      form.setValue("isVeteranOwned", false);
+      form.setValue("isSustainable", false);
+      form.setValue("isCharitable", false);
+    }
+    form.setValue("valuesPreferNotToSay", checked);
   };
 
-  if (!isClient) return <Spinner />;
+  useEffect(() => {
+    const fetchSellerData = async () => {
+      try {
+        const result = await getSellerData();
+        if (result.error) {
+          setError(result.error);
+        } else if (result.data) {
+          // Ensure boolean values are properly set
+          const formattedData = {
+            ...result.data,
+            isWomanOwned: Boolean(result.data.isWomanOwned),
+            isMinorityOwned: Boolean(result.data.isMinorityOwned),
+            isLGBTQOwned: Boolean(result.data.isLGBTQOwned),
+            isVeteranOwned: Boolean(result.data.isVeteranOwned),
+            isSustainable: Boolean(result.data.isSustainable),
+            isCharitable: Boolean(result.data.isCharitable),
+            valuesPreferNotToSay: Boolean(result.data.valuesPreferNotToSay),
+          };
+          form.reset(formattedData);
+        }
+      } catch (error) {
+        setError("Failed to load seller data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSellerData();
+  }, [form]);
+
+  const onSubmit = async (values: z.infer<typeof SellerSchema>) => {
+    startTransition(async () => {
+      try {
+        const result = await sellerInformation(values);
+        if (result.success) {
+          setSuccess(result.success);
+          // Fetch updated data after successful save
+          const updatedData = await getSellerData();
+          if (updatedData.data) {
+            const formattedData = {
+              ...updatedData.data,
+              isWomanOwned: Boolean(updatedData.data.isWomanOwned),
+              isMinorityOwned: Boolean(updatedData.data.isMinorityOwned),
+              isLGBTQOwned: Boolean(updatedData.data.isLGBTQOwned),
+              isVeteranOwned: Boolean(updatedData.data.isVeteranOwned),
+              isSustainable: Boolean(updatedData.data.isSustainable),
+              isCharitable: Boolean(updatedData.data.isCharitable),
+              valuesPreferNotToSay: Boolean(updatedData.data.valuesPreferNotToSay),
+            };
+            form.reset(formattedData);
+          }
+        }
+        if (result.error) {
+          setError(result.error);
+        }
+      } catch (error) {
+        setError("Failed to save seller information");
+      }
+    });
+  };
+
+  if (!isClient || isLoading) return <Spinner />;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -98,62 +163,99 @@ const SellerForm = () => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isWomanOwned"
-                {...form.register("isWomanOwned")}
-                disabled={isPending}
+                checked={form.watch("isWomanOwned")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isWomanOwned", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isWomanOwned">Woman-Owned Business</Label>
+              <Label htmlFor="isWomanOwned" className={preferNotToSay ? "opacity-50" : ""}>
+                Woman-Owned Business
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isMinorityOwned"
-                {...form.register("isMinorityOwned")}
-                disabled={isPending}
+                checked={form.watch("isMinorityOwned")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isMinorityOwned", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isMinorityOwned">Minority-Owned Business</Label>
+              <Label htmlFor="isMinorityOwned" className={preferNotToSay ? "opacity-50" : ""}>
+                Minority-Owned Business
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isLGBTQOwned"
-                {...form.register("isLGBTQOwned")}
-                disabled={isPending}
+                checked={form.watch("isLGBTQOwned")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isLGBTQOwned", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isLGBTQOwned">LGBTQ+-Owned Business</Label>
+              <Label htmlFor="isLGBTQOwned" className={preferNotToSay ? "opacity-50" : ""}>
+                LGBTQ+-Owned Business
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isVeteranOwned"
-                {...form.register("isVeteranOwned")}
-                disabled={isPending}
+                checked={form.watch("isVeteranOwned")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isVeteranOwned", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isVeteranOwned">Veteran-Owned Business</Label>
+              <Label htmlFor="isVeteranOwned" className={preferNotToSay ? "opacity-50" : ""}>
+                Veteran-Owned Business
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isSustainable"
-                {...form.register("isSustainable")}
-                disabled={isPending}
+                checked={form.watch("isSustainable")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isSustainable", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isSustainable">Sustainable Practices</Label>
+              <Label htmlFor="isSustainable" className={preferNotToSay ? "opacity-50" : ""}>
+                Sustainable Practices
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isCharitable"
-                {...form.register("isCharitable")}
-                disabled={isPending}
+                checked={form.watch("isCharitable")}
+                onCheckedChange={(checked) => {
+                  form.setValue("isCharitable", Boolean(checked));
+                }}
+                disabled={isPending || preferNotToSay}
+                className={preferNotToSay ? "opacity-50" : ""}
               />
-              <Label htmlFor="isCharitable">Charitable Business</Label>
+              <Label htmlFor="isCharitable" className={preferNotToSay ? "opacity-50" : ""}>
+                Charitable Business
+              </Label>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
             <Checkbox
               id="valuesPreferNotToSay"
-              {...form.register("valuesPreferNotToSay")}
+              checked={preferNotToSay}
+              onCheckedChange={handlePreferNotToSayChange}
               disabled={isPending}
             />
             <Label htmlFor="valuesPreferNotToSay">Prefer not to say</Label>

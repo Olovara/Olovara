@@ -65,6 +65,14 @@ const Footer = () => {
                         Categories
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/shops"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Browse Shops
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 

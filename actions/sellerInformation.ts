@@ -14,26 +14,45 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
     return { error: "Invalid fields." };
   }
 
-  const { shopName, shopDescription } = validatedFields.data;
-
   const session = await auth(); // Get the authenticated user session
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
   }
 
-  await db.seller.create({
-    data: {
-      userId: session.user.id,
-      shopName,
-      shopNameSlug: shopName.toLowerCase().replace(/\s+/g, '-'),
-      shopDescription,
-      user: {
-        connect: {
-          id: session.user.id
-        }
-      }
-    },
-  });
+  try {
+    // Check if seller exists
+    const existingSeller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+    });
 
-  return { success: "Successfully added your shop information." };
+    if (existingSeller) {
+      // Update existing seller
+      await db.seller.update({
+        where: { userId: session.user.id },
+        data: {
+          ...validatedFields.data,
+          shopNameSlug: validatedFields.data.shopName.toLowerCase().replace(/\s+/g, '-'),
+        },
+      });
+    } else {
+      // Create new seller
+      await db.seller.create({
+        data: {
+          userId: session.user.id,
+          ...validatedFields.data,
+          shopNameSlug: validatedFields.data.shopName.toLowerCase().replace(/\s+/g, '-'),
+          user: {
+            connect: {
+              id: session.user.id
+            }
+          }
+        },
+      });
+    }
+
+    return { success: "Successfully saved your shop information." };
+  } catch (error) {
+    console.error("Error saving seller information:", error);
+    return { error: "Failed to save seller information." };
+  }
 };

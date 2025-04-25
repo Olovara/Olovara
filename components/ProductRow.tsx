@@ -15,6 +15,16 @@ async function getData({ category }: iAppProps) {
 
     switch (category) {
       case "random": {
+        // First get the total count of active products
+        const totalProducts = await db.product.count({
+          where: { 
+            status: "ACTIVE"
+          }
+        });
+
+        // Calculate a random offset
+        const randomOffset = Math.floor(Math.random() * Math.max(0, totalProducts - 4));
+
         const data = await db.product.findMany({
           where: { 
             status: "ACTIVE"
@@ -56,14 +66,11 @@ async function getData({ category }: iAppProps) {
             createdAt: true,
             updatedAt: true,
           },
-          orderBy: { id: 'desc' }, // This will be randomized in the application
+          skip: randomOffset,
           take: 4,
         });
 
-        // Shuffle the array to get random products
-        const shuffledData = data.sort(() => Math.random() - 0.5);
-
-        return { data: shuffledData, title: "Featured Products", link: "/products" };
+        return { data, title: "Featured Products", link: "/products" };
       }
       case "ACCESORIES": {
         const data = await db.product.findMany({

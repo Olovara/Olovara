@@ -1,122 +1,289 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Spinner from "./spinner";
-import { Slider } from "./ui/slider";
-import { Select, SelectItem, SelectContent, SelectTrigger } from "./ui/select";
-import { useFilters } from "@/hooks/use-filters";
-import { X } from "lucide-react"; // Close icon
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { CategoriesMap } from "@/data/categories";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { useEffect, useState } from "react";
+import { getPriceRange } from "@/actions/getPriceRange";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
-export default function Filters() {
-  const [isOpen, setIsOpen] = useState(false); // State for sidebar visibility
+const values = [
+  {
+    id: "isWomanOwned",
+    name: "Woman-Owned",
+  },
+  {
+    id: "isMinorityOwned",
+    name: "Minority-Owned",
+  },
+  {
+    id: "isLGBTQOwned",
+    name: "LGBTQ+ Owned",
+  },
+  {
+    id: "isVeteranOwned",
+    name: "Veteran-Owned",
+  },
+  {
+    id: "isSustainable",
+    name: "Sustainable",
+  },
+  {
+    id: "isCharitable",
+    name: "Charitable",
+  },
+];
 
-  const {
-    orderByList,
-    categoryList,
-    selectOrder,
-    selectCategory,
-    selectPrice,
-    filters,
-    totalCount,
-    isPending,
-  } = useFilters();
+type PrimaryCategoryID = (typeof CategoriesMap.PRIMARY)[number]["id"];
+type SecondaryCategoryID = (typeof CategoriesMap.SECONDARY)[number]["id"];
 
-  const { category, priceRange: selectedPriceRange, orderBy } = filters;
+export function ProductFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
+  const [currentPriceRange, setCurrentPriceRange] = useState([0, 1000]);
+  const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
+  const selectedCategory = searchParams.get("category")?.split(",")[0];
+
+  useEffect(() => {
+    const fetchPriceRange = async () => {
+      const range = await getPriceRange(selectedCategory);
+      setPriceRange(range);
+      setCurrentPriceRange([range.min, range.max]);
+    };
+    fetchPriceRange();
+  }, [selectedCategory]);
+
+  const handleFilterChange = (key: string, value: string | string[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        params.set(key, value.join(","));
+      } else {
+        params.delete(key);
+      }
+    } else {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    }
+    
+    params.set("page", "1"); // Reset to first page when changing filters
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handlePriceChange = (values: number[]) => {
+    handleFilterChange("priceRange", values.join(","));
+  };
+
+  const handleValueChange = (valueId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentValues: string[] = searchParams.get("values")?.split(",") || [];
+    const newValues: string[] = currentValues.includes(valueId)
+      ? currentValues.filter((v) => v !== valueId)
+      : [...currentValues, valueId];
+
+    if (newValues.length > 0) {
+      params.set("values", newValues.join(","));
+    } else {
+      params.delete("values");
+    }
+    params.set("page", "1"); // Reset to first page when changing filters
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleSortChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sortBy", value);
+    params.set("page", "1"); // Reset to first page when changing sort
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleCategoryToggle = (categoryId: PrimaryCategoryID) => {
+    const newOpenCategories = new Set(openCategories);
+    if (newOpenCategories.has(categoryId)) {
+      newOpenCategories.delete(categoryId);
+    } else {
+      newOpenCategories.add(categoryId);
+    }
+    setOpenCategories(newOpenCategories);
+  };
+
+  const handleCategoryChange = (categoryId: PrimaryCategoryID | SecondaryCategoryID, isPrimary: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (isPrimary) {
+      // For primary categories, we need to handle both the primary and its subcategories
+      const subcategories = CategoriesMap.MAPPING[categoryId as PrimaryCategoryID];
+      const newCategories = new Set(selectedCategories);
+      
+      if (newCategories.has(categoryId)) {
+        // Remove primary category and its subcategories
+        newCategories.delete(categoryId);
+        subcategories.forEach(sub => newCategories.delete(sub));
+      } else {
+        // Add primary category and its subcategories
+        newCategories.add(categoryId);
+        subcategories.forEach(sub => newCategories.add(sub));
+      }
+      
+      if (newCategories.size === 0) {
+        params.delete("category");
+      } else {
+        params.set("category", Array.from(newCategories).join(","));
+      }
+    } else {
+      // For secondary categories, just toggle the specific category
+      const newCategories = new Set(selectedCategories);
+      if (newCategories.has(categoryId)) {
+        newCategories.delete(categoryId);
+      } else {
+        newCategories.add(categoryId);
+      }
+      
+      if (newCategories.size === 0) {
+        params.delete("category");
+      } else {
+        params.set("category", Array.from(newCategories).join(","));
+      }
+    }
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const selectedCategories = searchParams.get("category")?.split(",") || [];
+  const selectedValues = searchParams.get("values")?.split(",") || [];
+  const sortBy = searchParams.get("sortBy") || "newest";
 
   return (
-    <>
-      {/* Filter Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed top-4 left-4 z-20 bg-black text-white px-4 py-2 rounded-lg shadow-md"
-      >
-        Filters
-      </button>
+    <div className="space-y-6">
+      {/* Sort By */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Sort By</h3>
+        <Select
+          value={sortBy}
+          onValueChange={(value) => handleSortChange(value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select sort option" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="price-asc">Price: Low to High</SelectItem>
+            <SelectItem value="price-desc">Price: High to Low</SelectItem>
+            <SelectItem value="popular">Most Popular</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Overlay when sidebar is open */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      <Separator />
 
-      {/* Sidebar - Animate with Framer Motion */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 z-20 h-full w-72 bg-white p-4 shadow-lg"
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-black"
+      {/* Categories */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Categories</h3>
+        <div className="space-y-0 divide-y divide-border">
+          {CategoriesMap.PRIMARY.map((primaryCategory) => (
+            <Collapsible
+              key={primaryCategory.id}
+              open={openCategories.has(primaryCategory.id)}
+              onOpenChange={() => handleCategoryToggle(primaryCategory.id)}
+              className="py-3"
             >
-              <X size={24} />
-            </button>
-
-            {/* Sidebar Content */}
-            <div className="space-y-6 mt-10">
-              {/* Results Count */}
-              <div className="flex gap-2 items-center">
-                <div className="text-default font-semibold text-xl">
-                  Results: {isPending ? <Spinner /> : totalCount}
-                </div>
-              </div>
-
-              {/* Price Range Filter */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Price Range
-                </label>
-                <Slider
-                  min={5}
-                  max={1000}
-                  value={selectedPriceRange}
-                  onValueChange={(value) => selectPrice(value as number[])}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={primaryCategory.id}
+                  checked={selectedCategories.includes(primaryCategory.id)}
+                  onCheckedChange={() => handleCategoryChange(primaryCategory.id, true)}
                 />
+                <label
+                  htmlFor={primaryCategory.id}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                >
+                  {primaryCategory.name}
+                </label>
+                <CollapsibleTrigger className="ml-2">
+                  {openCategories.has(primaryCategory.id) ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </CollapsibleTrigger>
               </div>
+              <CollapsibleContent className="pl-6">
+                <div className="space-y-4 mt-4">
+                  {CategoriesMap.SECONDARY.filter(
+                    (sub) => sub.primaryCategoryId === primaryCategory.id
+                  ).map((subcategory) => (
+                    <div key={subcategory.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={subcategory.id}
+                        checked={selectedCategories.includes(subcategory.id)}
+                        onCheckedChange={() => handleCategoryChange(subcategory.id, false)}
+                      />
+                      <label
+                        htmlFor={subcategory.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {subcategory.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
+        </div>
+      </div>
 
-              {/* Category Filter */}
-              <div>
-                <Select value={category[0]} onValueChange={selectCategory}>
-                  <SelectTrigger>
-                    <div>Select Category</div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryList.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* Price Range */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Price Range</h3>
+        <div className="px-2">
+          <Slider
+            min={priceRange.min}
+            max={priceRange.max}
+            step={1}
+            value={currentPriceRange}
+            onValueChange={(values) => {
+              setCurrentPriceRange(values);
+            }}
+            onValueCommit={handlePriceChange}
+            minStepsBetweenThumbs={1}
+            className="my-4"
+          />
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>${currentPriceRange[0]}</span>
+            <span>${currentPriceRange[1]}</span>
+          </div>
+        </div>
+      </div>
 
-              {/* Order By Filter */}
-              <div>
-                <Select value={orderBy} onValueChange={selectOrder}>
-                  <SelectTrigger>
-                    <div>Select Order</div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orderByList.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <Separator />
+
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Shop Values</h2>
+        <div className="space-y-2">
+          {values.map((value) => (
+            <div key={value.id} className="flex items-center space-x-2">
+              <Checkbox
+                id={value.id}
+                checked={selectedValues.includes(value.id)}
+                onCheckedChange={() => handleValueChange(value.id)}
+              />
+              <Label htmlFor={value.id}>{value.name}</Label>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

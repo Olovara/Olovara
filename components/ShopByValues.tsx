@@ -1,122 +1,80 @@
-import { db } from "@/lib/db";
 import Link from "next/link";
-import Image from "next/image";
+import { Button } from "./ui/button";
+import { HandHeart, Heart, Leaf, Rainbow, Star, Trophy, Users } from "lucide-react";
 
-const valueCategories = [
+const values = [
   {
-    id: "woman-owned",
-    title: "Woman-Owned",
+    name: "Woman-Owned",
+    icon: Heart,
     description: "Support women entrepreneurs",
-    query: { isWomanOwned: true },
+    value: "isWomanOwned",
   },
   {
-    id: "minority-owned",
-    title: "Minority-Owned",
-    description: "Support minority-owned businesses",
-    query: { isMinorityOwned: true },
+    name: "Minority-Owned",
+    icon: Users,
+    description: "Support minority entrepreneurs",
+    value: "isMinorityOwned",
   },
   {
-    id: "lgbtq-owned",
-    title: "LGBTQ+-Owned",
-    description: "Support LGBTQ+-owned businesses",
-    query: { isLGBTQOwned: true },
+    name: "LGBTQ+ Owned",
+    icon: Rainbow,
+    description: "Support LGBTQ+ businesses",
+    value: "isLGBTQOwned",
   },
   {
-    id: "veteran-owned",
-    title: "Veteran-Owned",
-    description: "Support veteran-owned businesses",
-    query: { isVeteranOwned: true },
+    name: "Veteran-Owned",
+    icon: Trophy,
+    description: "Support veteran entrepreneurs",
+    value: "isVeteranOwned",
   },
   {
-    id: "sustainable",
-    title: "Sustainable",
-    description: "Shop eco-friendly products",
-    query: { isSustainable: true },
+    name: "Sustainable",
+    icon: Leaf,
+    description: "Eco-friendly practices",
+    value: "isSustainable",
   },
   {
-    id: "charitable",
-    title: "Charitable",
-    description: "Support businesses that give back",
-    query: { isCharitable: true },
+    name: "Charitable",
+    icon: HandHeart,
+    description: "Businesses that give back",
+    value: "isCharitable",
   },
 ];
 
-export async function ShopByValues() {
-  const valueSections = await Promise.all(
-    valueCategories.map(async (category) => {
-      const sellers = await db.seller.findMany({
-        where: {
-          ...category.query,
-          valuesPreferNotToSay: false,
-          applicationAccepted: true,
-        },
-        select: {
-          userId: true,
-        },
-      });
-
-      const sellerIds = sellers.map((seller) => seller.userId);
-
-      const products = await db.product.findMany({
-        where: {
-          userId: { in: sellerIds },
-          status: "ACTIVE",
-        },
-        take: 4,
-        orderBy: { createdAt: "desc" },
-      });
-
-      return {
-        ...category,
-        products,
-      };
-    })
-  );
-
+export function ShopByValues() {
   return (
-    <section className="mt-12">
+    <section className="py-12">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          Shop by Your Values
-        </h2>
-        <p className="mt-4 text-lg text-muted-foreground">
-          Discover and support businesses that align with your values
+        <h2 className="text-3xl font-bold mb-2">Shop by Your Values</h2>
+        <p className="text-muted-foreground">
+          Support businesses that align with what matters to you
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {valueSections.map((category) => (
-          <Link
-            key={category.id}
-            href={`/products?values=${category.id}`}
-            className="group relative overflow-hidden rounded-lg border bg-background p-2 hover:shadow-md transition-shadow"
-          >
-            <div className="flex flex-col h-full">
-              <div className="flex-1 p-4">
-                <h3 className="font-semibold text-lg">{category.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {category.description}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        {values.map((value) => {
+          const Icon = value.icon;
+          return (
+            <Link
+              key={value.value}
+              href={`/shops?values=${value.value}`}
+              className="group"
+            >
+              <div className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow h-full flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-purple-500/40 transition-colors">
+                  <Icon className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">{value.name}</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  {value.description}
                 </p>
+                <Button variant="ghost" className="mt-auto">
+                  Shop {value.name}
+                </Button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {category.products.slice(0, 2).map((product) => (
-                  <div
-                    key={product.id}
-                    className="relative aspect-square overflow-hidden rounded-md"
-                  >
-                    <Image
-                      src={product.images[0] || "/placeholder.jpg"}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
