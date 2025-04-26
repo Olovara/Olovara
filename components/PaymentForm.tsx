@@ -11,7 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY as string);
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY) {
+  throw new Error("Missing NEXT_PUBLIC_STRIPE_PUBLIC_KEY environment variable");
+}
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY);
 
 interface PaymentFormProps {
   clientSecret: string;

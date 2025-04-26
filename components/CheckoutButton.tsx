@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import PaymentForm from "@/components/PaymentForm";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const CheckoutButton = ({ productId, quantity }: { productId: string; quantity: number }) => {
   const [loading, setLoading] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -23,12 +20,11 @@ const CheckoutButton = ({ productId, quantity }: { productId: string; quantity: 
 
       const data = await response.json();
 
-      if (response.ok && data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setShowPaymentForm(true);
+      if (response.ok && data.url) {
+        window.location.href = data.url;
       } else {
-        console.error("Payment initialization failed:", data.error);
-        toast.error(data.error || "Failed to initialize payment.");
+        console.error("Checkout initialization failed:", data.error);
+        toast.error(data.error || "Failed to initialize checkout.");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -38,39 +34,14 @@ const CheckoutButton = ({ productId, quantity }: { productId: string; quantity: 
     }
   };
 
-  const handlePaymentSuccess = () => {
-    setShowPaymentForm(false);
-    window.location.href = "/checkout/success";
-  };
-
-  const handlePaymentError = (error: string) => {
-    toast.error(error);
-  };
-
   return (
-    <>
-      <button
-        onClick={handleCheckout}
-        disabled={loading}
-        className={`w-full bg-purple-500 text-white p-2 rounded-md ${
-          loading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-      >
-        {loading ? "Processing..." : "Buy Now"}
-      </button>
-
-      <Dialog open={showPaymentForm} onOpenChange={setShowPaymentForm}>
-        <DialogContent className="sm:max-w-[425px]">
-          {clientSecret && (
-            <PaymentForm
-              clientSecret={clientSecret}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button
+      onClick={handleCheckout}
+      disabled={loading}
+      className="w-full"
+    >
+      {loading ? "Processing..." : "Buy Now"}
+    </Button>
   );
 };
 

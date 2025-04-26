@@ -32,20 +32,17 @@ enum SellerApplicationStatus {
   REJECTED
 }
 
-enum PrimaryCategoryTags {
-  ACCESORIES
-  TOYS
-  CLOTHING
-  CRAFT_SUPPLIES
-  PATTERNS
+enum OrderStatus {
+  PROCESSING
+  COMPLETED
+  PENDING_TRANSFER
+  FAILED
 }
 
-enum SecondaryCategoryTags {
-  AMIGURUMI
-  CROCHET
-  KINTTING
-  TUNISIAN
-  SEWING
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
 }
 
 model Account {
@@ -121,6 +118,8 @@ model User {
   isTwoFactorEnabled    Boolean @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
   role                  UserRole  @default(MEMBER)
+  reviewsGiven          Review[] @relation("Reviewer")
+  reviewsReceived       Review[] @relation("Reviewed")
 
   createdAt	        DateTime @default(now())
   updatedAt	        DateTime @updatedAt
@@ -233,6 +232,7 @@ model Product {
   order                 Order[]
   dropDate              DateTime?
   discountEndDate       DateTime?
+  reviews               Review[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   seller          Seller?    @relation(fields: [userId], references: [userId])
@@ -261,29 +261,33 @@ model ContactUs {
 }
 
 model Order {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String?   // Buyer ID
-  buyerEmail     String
-  buyerName      String?
-  sellerId       String   // Seller ID
-  shopName       String   // Store the shop name for display purposes
-  productId      String   // Product being ordered
-  productName    String
-  quantity       Int      // How many were ordered
-  totalAmount    Float    // Final price including shipping and discounts
-  shippingCost   Float?   // Only if physical
-  discount       Int?     // Applied discount
-  isDigital      Boolean  // True if digital product
-  status         String   @default("PENDING") // Order status
-  paymentStatus  String   @default("UNPAID")  // Payment status
-  shippingAddress Json?   // Only required for physical products
-  stripeSessionId String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user           User?     @relation(fields: [userId], references: [id])
-  seller         Seller   @relation(fields: [sellerId], references: [userId])
-  product        Product  @relation(fields: [productId], references: [id])
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  buyerEmail       String
+  buyerName         String
+  sellerId          String
+  shopName          String
+  productId         String
+  productName       String
+  quantity          Int
+  totalAmount       Float
+  productPrice      Float
+  shippingCost      Float
+  stripeFee         Float     @default(0)
+  isDigital         Boolean   @default(false)
+  status            OrderStatus
+  paymentStatus     PaymentStatus
+  stripeSessionId   String
+  stripeTransferId  String?
+  shippingAddress   Json?
+  discount          Json?
+  reviews           Review[]
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id])
+  seller            Seller    @relation(fields: [sellerId], references: [userId])
+  product           Product   @relation(fields: [productId], references: [id])
 }
 
 model HandmadeGuidelines {
@@ -308,4 +312,28 @@ model TemporaryUpload {
 
   @@index([createdAt]) // Add index for better query performance
   @@index([userId])    // Add index for user queries
+}
+
+model Review {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId           String   @db.ObjectId
+  reviewerId        String   @db.ObjectId
+  reviewedId        String   @db.ObjectId
+  productId         String?  @db.ObjectId  // Only for product reviews
+  rating            Int      // 1-5 stars
+  comment           String?
+  type              String   // "PRODUCT", "SELLER", "BUYER"
+  status            String   @default("PENDING") // "PENDING", "PUBLISHED", "EXPIRED"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  expiresAt         DateTime // 2 weeks from order completion
+  order             Order    @relation(fields: [orderId], references: [id])
+  reviewer          User     @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewed          User     @relation("Reviewed", fields: [reviewedId], references: [id])
+  product           Product? @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([reviewerId])
+  @@index([reviewedId])
+  @@index([productId])
 }
