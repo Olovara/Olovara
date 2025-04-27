@@ -19,19 +19,33 @@ import {
 
 interface Order {
   id: string;
+  userId: string | null;
   buyerEmail: string;
-  buyerName?: string | null;
-  shopName: string;
+  buyerName: string | null;
+  sellerId: string;
+  productId: string;
   productName: string;
   quantity: number;
   totalAmount: number;
-  shippingCost?: number | null;
-  discount?: number | null;
+  shippingCost: number | null;
+  discount: any; // Allow any type for JsonValue
   isDigital: boolean;
   status: string;
   paymentStatus: string;
-  shippingAddress?: any | null;
+  shippingAddress: any | null;
   createdAt: Date;
+  updatedAt: Date;
+  shopName: string;
+  product: {
+    id: string;
+    name: string;
+    images: string[];
+  };
+  seller: {
+    id: string;
+    userId: string;
+    shopName: string;
+  };
 }
 
 export function OrderActions({
@@ -155,7 +169,10 @@ export function OrderActions({
       </DropdownMenu>
 
       <OrderDetailsModal 
-        order={order} 
+        order={{
+          ...order,
+          shopName: order.seller.shopName
+        }} 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />

@@ -37,12 +37,15 @@ enum OrderStatus {
   COMPLETED
   PENDING_TRANSFER
   FAILED
+  CANCELLED
+  REFUNDED
 }
 
 enum PaymentStatus {
   PAID
   PENDING
   FAILED
+  REFUNDED
 }
 
 model Account {

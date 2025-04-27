@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 export async function POST(
   request: NextRequest,
@@ -40,10 +41,17 @@ export async function POST(
       );
     }
 
-    // Check if the order has been paid
-    if (order.paymentStatus !== "PAID") {
+    // Check if the order is already refunded or cancelled
+    if (order.status === OrderStatus.REFUNDED) {
       return NextResponse.json(
-        { error: "Cannot refund an unpaid order." },
+        { error: "This order is already refunded." },
+        { status: 400 }
+      );
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      return NextResponse.json(
+        { error: "Cannot refund a cancelled order." },
         { status: 400 }
       );
     }
@@ -84,9 +92,9 @@ export async function POST(
       // Update the order status to REFUNDED
       await db.order.update({
         where: { id: params.orderId },
-        data: { 
-          status: "REFUNDED",
-          paymentStatus: "REFUNDED"
+        data: {
+          status: OrderStatus.REFUNDED,
+          paymentStatus: PaymentStatus.REFUNDED
         },
       });
 

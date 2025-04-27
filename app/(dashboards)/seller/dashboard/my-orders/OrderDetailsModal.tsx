@@ -238,23 +238,23 @@ export function OrderDetailsModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Subtotal</p>
-                    <p className="font-medium">${(order.totalAmount - (order.shippingCost || 0)).toFixed(2)}</p>
+                    <p className="font-medium">${((order.totalAmount - (order.shippingCost || 0)) / 100).toFixed(2)}</p>
                   </div>
                   {!order.isDigital && (
                     <div>
                       <p className="text-sm text-muted-foreground">Shipping Cost</p>
-                      <p className="font-medium">${order.shippingCost?.toFixed(2) || "0.00"}</p>
+                      <p className="font-medium">${((order.shippingCost || 0) / 100).toFixed(2)}</p>
                     </div>
                   )}
                   {order.discount && order.discount > 0 && (
                     <div>
                       <p className="text-sm text-muted-foreground">Discount</p>
-                      <p className="font-medium">-${order.discount.toFixed(2)}</p>
+                      <p className="font-medium">-${(order.discount / 100).toFixed(2)}</p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">Total Amount</p>
-                    <p className="font-medium">${order.totalAmount.toFixed(2)}</p>
+                    <p className="font-medium">${(order.totalAmount / 100).toFixed(2)}</p>
                   </div>
                 </div>
               </div>

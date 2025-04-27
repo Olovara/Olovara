@@ -87,13 +87,21 @@ export default async function SellerMyOrders() {
                         <Badge variant="outline">{order.status}</Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                      ${(order.totalAmount ?? 0).toFixed(2)}
+                        ${(order.totalAmount / 100).toFixed(2)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {new Date(order.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <OrderActions order={order} />
+                        <OrderActions order={{
+                          ...order,
+                          shopName: order.seller?.shopName || "Unknown Shop",
+                          seller: {
+                            id: order.seller?.id || "",
+                            userId: order.seller?.userId || "",
+                            shopName: order.seller?.shopName || "Unknown Shop",
+                          },
+                        }} />
                       </TableCell>
                     </TableRow>
                   ))}

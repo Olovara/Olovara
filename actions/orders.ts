@@ -11,7 +11,14 @@ export async function getSellerOrders(userId: string) {
     include: {
       product: true,
     },
-  });
+  }).then(orders => orders.map(order => ({
+    ...order,
+    seller: {
+      id: order.sellerId,
+      userId: order.sellerId,
+      shopName: order.shopName || "Unknown Seller"
+    }
+  })));
 }
 
 export async function getBuyerOrders(userId: string) {

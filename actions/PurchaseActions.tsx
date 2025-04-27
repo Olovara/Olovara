@@ -28,7 +28,7 @@ interface Purchase {
   quantity: number;
   totalAmount: number;
   shippingCost: number | null;
-  discount: number | null;
+  discount: any; // Allow any type for JsonValue
   isDigital: boolean;
   status: string;
   paymentStatus: string;

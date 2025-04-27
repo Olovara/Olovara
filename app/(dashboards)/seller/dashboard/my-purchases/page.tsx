@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { PurchaseActions } from "@/app/(dashboards)/member/dashboard/my-purchases/PurchaseActions";
+import { PurchaseActions } from "@/actions/PurchaseActions";
 import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -103,13 +103,16 @@ export default async function MyPurchasesPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatPrice(
-                          purchase.totalAmount +
-                            (purchase.shippingCost || 0) -
-                            (purchase.discount || 0)
+                          (purchase.totalAmount -
+                            (() => {
+                              if (typeof purchase.discount === 'number') return purchase.discount;
+                              if (typeof purchase.discount === 'string') return parseFloat(purchase.discount) || 0;
+                              return 0;
+                            })()) / 100
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {format(new Date(purchase.createdAt), "MMM d, yyyy")}
+                      {new Date(purchase.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <PurchaseActions purchase={purchase} />

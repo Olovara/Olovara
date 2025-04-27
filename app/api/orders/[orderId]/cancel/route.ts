@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { OrderStatus } from "@prisma/client";
 
 export async function POST(
   request: NextRequest,
@@ -39,15 +40,15 @@ export async function POST(
       );
     }
 
-    // Check if the order is already cancelled or completed
-    if (order.status === "CANCELLED") {
+    // Check if the order is already failed or completed
+    if (order.status === OrderStatus.CANCELLED) {
       return NextResponse.json(
         { error: "This order is already cancelled." },
         { status: 400 }
       );
     }
 
-    if (order.status === "COMPLETED") {
+    if (order.status === OrderStatus.COMPLETED) {
       return NextResponse.json(
         { error: "Cannot cancel a completed order." },
         { status: 400 }
@@ -57,7 +58,7 @@ export async function POST(
     // Update the order status to CANCELLED
     await db.order.update({
       where: { id: params.orderId },
-      data: { status: "CANCELLED" },
+      data: { status: OrderStatus.CANCELLED },
     });
 
     return NextResponse.json({ success: "Order cancelled successfully." });

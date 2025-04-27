@@ -39,7 +39,7 @@ export default function CheckoutSuccessClient({ userRole }: CheckoutSuccessClien
   // Determine the orders page URL based on user role
   const getOrdersPageUrl = () => {
     if (userRole === "SELLER") {
-      return "/seller/dashboard/my-orders";
+      return "/seller/dashboard/my-purchases";
     } else {
       return "/member/dashboard/my-purchases";
     }
@@ -81,7 +81,7 @@ export default function CheckoutSuccessClient({ userRole }: CheckoutSuccessClien
             <Link href="/">Continue Shopping</Link>
           </Button>
           <Button asChild>
-            <Link href={getOrdersPageUrl()}>View Orders</Link>
+            <Link href={getOrdersPageUrl()}>View Purchases</Link>
           </Button>
         </CardFooter>
       </Card>

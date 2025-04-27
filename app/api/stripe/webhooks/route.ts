@@ -210,15 +210,23 @@ export async function POST(req: Request) {
 
         // Update product/seller stats
         try {
+          // Update product stats
           await db.product.update({
             where: { id: session.metadata.productId },
             data: {
               numberSold: {
                 increment: parseInt(session.metadata.quantity || "1"),
               },
+              // Only reduce stock if it's a physical product
+              ...(product.isDigital === false && {
+                stock: {
+                  decrement: parseInt(session.metadata.quantity || "1"),
+                },
+              }),
             },
           });
 
+          // Update seller stats
           await db.seller.update({
             where: { id: session.metadata.sellerId },
             data: {
@@ -227,6 +235,8 @@ export async function POST(req: Request) {
               },
             },
           });
+
+          console.log(`✅ Updated product and seller stats for order ${order.id}`);
         } catch (statsError) {
           console.error("⚠️ Error updating product/seller stats:", statsError);
         }
