@@ -54,7 +54,7 @@ export function PaginationControls({
       </div>
       <div className="flex items-center space-x-2">
         {currentPage > 1 ? (
-          <Link href={getPageUrl(currentPage - 1)} passHref>
+          <Link href={getPageUrl(currentPage - 1)}>
             <Button variant="outline" size="sm">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">Previous Page</span>
@@ -72,7 +72,7 @@ export function PaginationControls({
         </div>
 
         {currentPage < totalPages ? (
-          <Link href={getPageUrl(currentPage + 1)} passHref>
+          <Link href={getPageUrl(currentPage + 1)}>
             <Button variant="outline" size="sm">
               <ChevronRight className="h-4 w-4" />
               <span className="sr-only">Next Page</span>

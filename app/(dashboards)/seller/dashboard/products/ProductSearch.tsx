@@ -36,10 +36,10 @@ export function ProductSearch({ initialQuery = "" }: ProductSearchProps) {
     const params = new URLSearchParams(searchParams.toString());
     if (debouncedQuery) {
       params.set("search", debouncedQuery);
-      params.set("page", "1"); // Reset to first page
+      params.set("page", "1"); // Reset to first page when searching
     } else {
       params.delete("search");
-      params.set("page", "1");
+      // Don't reset page when clearing search
     }
     router.push(`${pathname}?${params.toString()}`);
   }, [debouncedQuery, pathname, router, searchParams]);

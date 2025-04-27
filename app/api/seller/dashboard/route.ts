@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { Order, Product } from "@prisma/client";
 
 // Function to fetch total sales and revenue for a seller
 const fetchSellerData = async (
@@ -44,24 +45,52 @@ const fetchSellerData = async (
       sellerId: seller.id,
       ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     },
+    include: {
+      product: true
+    },
   });
 
   //console.log("Found Seller:", !!seller);
   //console.log("Total Orders Returned:", orders?.length);
   //console.log("Orders:", orders);
 
-  const totalSales = seller.totalSales ?? 0;
-  const totalProducts = seller.products.length;
-  const mostPopularProduct =
-    seller.products.length > 0 ? seller.products[0].name : "No products";
+  // Calculate most popular product
+  const productSales = new Map<string, { name: string, count: number }>();
+  
+  orders.forEach(order => {
+    const productId = order.productId;
+    const current = productSales.get(productId) || { name: order.productName, count: 0 };
+    productSales.set(productId, {
+      name: current.name,
+      count: current.count + order.quantity
+    });
+  });
 
-    let totalRevenue = orders.reduce((acc, order) => acc + (order.totalAmount ?? 0), 0);
+  const mostPopularProduct = Array.from(productSales.entries())
+    .sort((a, b) => b[1].count - a[1].count)[0]?.[1].name || "No products";
+
+  let totalRevenue = orders.reduce((acc, order) => acc + (order.totalAmount ?? 0), 0);
+  
+  // Calculate average order value
+  const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+
+  // Get product status counts
+  const activeProducts = seller.products.filter(p => p.status === "ACTIVE").length;
+  const hiddenProducts = seller.products.filter(p => p.status === "HIDDEN").length;
+  const disabledProducts = seller.products.filter(p => p.status === "DISABLED").length;
+  const soldOutProducts = seller.products.filter(p => p.stock === 0).length;
+  const totalProducts = seller.products.length;
 
   return {
-    totalRevenue,
-    totalSales,
+    totalOrders: orders.length,
+    totalSales: totalRevenue,
     totalProducts,
+    activeProducts,
+    hiddenProducts,
+    disabledProducts,
+    soldOutProducts,
     mostPopularProduct,
+    averageOrderValue,
   };
 };
 
