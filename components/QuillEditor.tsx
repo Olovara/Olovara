@@ -1,75 +1,48 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import "react-quill/dist/quill.snow.css"; // Import Quill's default styling
 
 // Dynamically import ReactQuill with SSR disabled and proper fallback
-const ReactQuill = dynamic(() => import("react-quill"), {
+const ReactQuill = dynamic(() => import("react-quill").then(mod => mod.default), {
   ssr: false,
-  loading: () => <div>Loading editor...</div>, // Show loading fallback while ReactQuill is loading
+  loading: () => (
+    <div className="h-[200px] flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Loading editor...</div>
+    </div>
+  ),
 });
 
-// Define the Quill toolbar options
-const toolbarOptions = [
-  [{ header: [1, 2, 3, false] }],
-  ["bold", "italic", "underline", "strike"],
-  [{ list: "ordered" }, { list: "bullet" }],
-  ["blockquote", "code-block"],
-  [{ align: [] }],
-  ["link"],
-  ["clean"],
-];
+interface QuillEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
 
-export function QuillEditor({
-  setJson,
-  json,
-}: {
-  setJson: (value: any) => void;
-  json: any;
-}) {
-  const [editorContent, setEditorContent] = useState(json || { ops: [] });
-
-  useEffect(() => {
-    setJson(editorContent);
-  }, [editorContent, setJson]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const targetNode = document.querySelector(".ql-editor");
-
-      if (targetNode) {
-        const observer = new MutationObserver(() => {
-          // Mutation handling logic if needed
-        });
-
-        observer.observe(targetNode, {
-          childList: true,
-          subtree: true,
-        });
-
-        return () => observer.disconnect(); // Cleanup observer
-      }
-    }
-  }, []);
-
-  // Render fallback if ReactQuill fails to load
-  if (!ReactQuill) {
-    return <div>Failed to load editor. Please refresh the page.</div>;
-  }
+export function QuillEditor({ value, onChange, placeholder }: QuillEditorProps) {
+  const modules = useMemo(
+    () => ({
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["link", "image"],
+        ["clean"],
+      ],
+    }),
+    []
+  );
 
   return (
-    <div className="mt-2">
+    <div className="quill-editor">
       <ReactQuill
-        value={editorContent}
-        onChange={(content, delta, source, editor) => {
-          setEditorContent(editor.getContents()); // Get content in Delta format
-        }}
-        modules={{
-          toolbar: toolbarOptions,
-        }}
         theme="snow"
-        className="rounded-lg border p-2 min-h-[150px]"
+        value={value}
+        onChange={onChange}
+        modules={modules}
+        placeholder={placeholder}
+        className="min-h-[200px]"
       />
     </div>
   );

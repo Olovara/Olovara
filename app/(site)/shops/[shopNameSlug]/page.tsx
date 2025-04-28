@@ -1,6 +1,7 @@
 import React from "react";
 import { db } from "@/lib/db";
 import Image from "next/image";
+import ContactSellerButton from "@/components/ContactSellerButton";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -44,6 +45,12 @@ export default async function ShopPage({ params }: ShopPageProps) {
         {seller.shopDescription && (
           <p className="text-sm text-gray-500 mt-2">{seller.shopDescription}</p>
         )}
+        <div className="mt-4 max-w-xs mx-auto">
+          <ContactSellerButton 
+            sellerId={seller.id} 
+            sellerName={seller.shopName} 
+          />
+        </div>
       </section>
 
       <div className="grid grid-cols-12 gap-6">

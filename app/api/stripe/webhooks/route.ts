@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import type { Stripe } from "stripe";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 // Remove edge runtime to avoid potential issues
 // export const runtime = 'edge';
@@ -88,8 +89,9 @@ export async function POST(req: Request) {
           shippingCost: parseInt(session.metadata.shippingAndHandling || "0"),
           stripeFee: 0, // Placeholder
           isDigital: product.isDigital || false,
-          status: "PROCESSING" as const,
-          paymentStatus: "PAID" as const,
+          // Set initial status based on product type
+          status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
+          paymentStatus: PaymentStatus.PAID,
           stripeSessionId: session.id,
           stripeTransferId: null,
           shippingAddress: session.shipping_details?.address
@@ -103,7 +105,7 @@ export async function POST(req: Request) {
               }
             : null,
           discount: null,
-          completedAt: null,
+          completedAt: product.isDigital ? new Date() : null,
         };
 
         const order = await db.order.create({ data: preliminaryOrderData });
@@ -202,8 +204,8 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: {
             stripeTransferId: transfer.id,
-            status: "COMPLETED",
-            paymentStatus: "PAID",
+            status: OrderStatus.COMPLETED,
+            paymentStatus: PaymentStatus.PAID,
             completedAt: new Date(),
           },
         });
