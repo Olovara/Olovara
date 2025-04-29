@@ -1,7 +1,7 @@
 import React from "react";
 import { db } from "@/lib/db";
 import Image from "next/image";
-import ContactSellerButton from "@/components/ContactSellerButton";
+import ContactSellerButton from "@/components/shared/ContactSellerButton";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };

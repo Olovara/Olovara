@@ -4,15 +4,8 @@ import { useState, useEffect } from "react";
 import "react-quill/dist/quill.snow.css";
 import { QuillEditor } from "@/components/QuillEditor";
 
-interface QuillContent {
-  ops: Array<{
-    insert: string;
-    attributes?: Record<string, any>;
-  }>;
-}
-
 export default function HandmadeGuidelines() {
-  const [content, setContent] = useState<QuillContent>({ ops: [] });
+  const [content, setContent] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,7 +15,7 @@ export default function HandmadeGuidelines() {
         // Fetch guidelines
         const res = await fetch("/api/handmade-guidelines");
         const data = await res.json();
-        setContent(data.content);
+        setContent(data.content?.ops?.map((op: any) => op.insert).join('') || '');
 
         // Try to fetch user role from API (optional)
         try {
@@ -50,7 +43,7 @@ export default function HandmadeGuidelines() {
       await fetch("/api/handmade-guidelines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: { ops: [{ insert: content }] } }),
       });
       alert("Guidelines updated!");
     } catch (error) {
@@ -68,12 +61,15 @@ export default function HandmadeGuidelines() {
       <h1 className="text-2xl font-bold mb-4">Handmade Guidelines</h1>
 
       {/* Always display content */}
-      <div className="ql-editor" dangerouslySetInnerHTML={{ __html: content.ops?.map(op => op.insert).join('') || '' }} />
+      <div className="ql-editor" dangerouslySetInnerHTML={{ __html: content }} />
 
       {/* Show editor and save button only for admin */}
       {isAdmin && (
         <>
-          <QuillEditor setJson={setContent} json={content} />
+          <QuillEditor 
+            value={content}
+            onChange={setContent}
+          />
           <button
             className="mt-4 p-2 bg-purple-600 text-white rounded"
             onClick={handleSave}

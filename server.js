@@ -6,22 +6,22 @@ const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const port = 3000;
+const hostname = process.env.HOSTNAME || "localhost";
+const port = parseInt(process.env.PORT || "3000", 10);
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
 let onlineUsers = [];
 const prisma = new PrismaClient();
 
-const addUser = (username, socketId) => {
-  console.log("Adding user:", { username, socketId });
+const addUser = (userId, socketId) => {
+  console.log("Adding user:", { userId, socketId });
   const isExist = onlineUsers.find((user) => user.socketId === socketId);
   if (!isExist) {
-    onlineUsers.push({ username, socketId });
+    onlineUsers.push({ userId, socketId });
     console.log("User added successfully. Current online users:", onlineUsers);
   } else {
-    console.log("User already exists:", username);
+    console.log("User already exists:", userId);
   }
 };
 
@@ -31,26 +31,38 @@ const removeUser = (socketId) => {
   console.log("User removed. Remaining online users:", onlineUsers);
 };
 
-const getUser = (username) => {
-  return onlineUsers.find((user) => user.username === username);
+const getUser = (userId) => {
+  return onlineUsers.find((user) => user.userId === userId);
 };
 
 app.prepare().then(() => {
   const httpServer = createServer(handler);
-  const io = new Server(httpServer);
+  
+  // Configure Socket.IO with CORS and secure options
+  const io = new Server(httpServer, {
+    cors: {
+      origin: process.env.NODE_ENV === 'production' 
+        ? `https://${process.env.HOSTNAME}`
+        : "http://localhost:3000",
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
+  });
 
   io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
 
-    socket.on("newUser", (username) => {
-      console.log("Received newUser event:", { username, socketId: socket.id });
-      addUser(username, socket.id);
+    socket.on("newUser", (userId) => {
+      console.log("Received newUser event:", { userId, socketId: socket.id });
+      addUser(userId, socket.id);
       console.log("Broadcasting updated online users:", onlineUsers);
       io.emit("getOnlineUsers", onlineUsers);
     });
 
-    socket.on("sendMessage", async ({ senderId, recipientId, text }) => {
-      console.log("Received message:", { senderId, recipientId, text });
+    socket.on("sendMessage", async ({ senderId, conversationId, content }) => {
+      console.log("Received message:", { senderId, conversationId, content });
       try {
         // Get sender details
         const sender = await prisma.user.findUnique({
@@ -66,36 +78,67 @@ app.prepare().then(() => {
         // Create message in database first
         const message = await prisma.message.create({
           data: {
-            text,
-            senderId: sender.id,
-            recipientId: recipientId, // Store the email directly
+            content,
+            conversation: {
+              connect: {
+                id: conversationId
+              }
+            },
+            sender: {
+              connect: {
+                id: senderId
+              }
+            }
           },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                email: true,
+                username: true
+              }
+            }
+          }
         });
 
         console.log("Created message:", message);
 
-        // Find recipient's socket ID from onlineUsers
-        const recipientSocket = onlineUsers.find(user => user.username === recipientId);
-        console.log("Recipient socket:", recipientSocket);
-        
-        if (recipientSocket) {
-          // Send message to specific recipient
-          io.to(recipientSocket.socketId).emit("getMessage", {
-            id: message.id,
-            text: message.text,
-            sender: sender.email,
-            receiver: recipientId,
-            createdAt: message.created,
-          });
+        // Update conversation's updatedAt timestamp
+        await prisma.conversation.update({
+          where: { id: conversationId },
+          data: { updatedAt: new Date() }
+        });
+
+        // Get all users in the conversation
+        const conversation = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: {
+            users: {
+              select: {
+                userId: true
+              }
+            }
+          }
+        });
+
+        if (!conversation) {
+          console.error("Conversation not found");
+          return;
         }
 
-        // Also send to sender for their own UI
-        socket.emit("getMessage", {
-          id: message.id,
-          text: message.text,
-          sender: sender.email,
-          receiver: recipientId,
-          createdAt: message.created,
+        // Send message to all users in the conversation
+        conversation.users.forEach(user => {
+          const userSocket = onlineUsers.find(u => u.userId === user.userId);
+          if (userSocket) {
+            io.to(userSocket.socketId).emit("newMessage", {
+              id: message.id,
+              content: message.content,
+              sender: message.sender.username || message.sender.email || "Unknown User",
+              senderId: message.sender.id,
+              createdAt: message.createdAt,
+              conversationId: conversationId
+            });
+          }
         });
       } catch (error) {
         console.error("Error sending message:", error);
@@ -105,7 +148,6 @@ app.prepare().then(() => {
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
       removeUser(socket.id);
-      console.log("Broadcasting updated online users after disconnect:", onlineUsers);
       io.emit("getOnlineUsers", onlineUsers);
     });
   });
@@ -116,6 +158,6 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> Ready on ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${hostname}:${port}`);
     });
 });

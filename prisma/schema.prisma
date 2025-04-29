@@ -123,8 +123,9 @@ model User {
   role                  UserRole  @default(MEMBER)
   reviewsGiven          Review[] @relation("Reviewer")
   reviewsReceived       Review[] @relation("Reviewed")
-    sentMessages          Message[]              @relation("sender")
-  receivedMessages      Message[]              @relation("recipient")
+  sessions              Session[]
+  conversations         UserConversation[]
+  sentMessages          Message[] @relation("MessageSender")
 
   createdAt	        DateTime @default(now())
   updatedAt	        DateTime @updatedAt
@@ -321,10 +322,10 @@ model TemporaryUpload {
 
 model Review {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  orderId           String   @db.ObjectId
-  reviewerId        String   @db.ObjectId
-  reviewedId        String   @db.ObjectId
-  productId         String?  @db.ObjectId  // Only for product reviews
+  orderId           String   
+  reviewerId        String   
+  reviewedId        String   
+  productId         String?  
   rating            Int      // 1-5 stars
   comment           String?
   type              String   // "PRODUCT", "SELLER", "BUYER"
@@ -344,16 +345,41 @@ model Review {
 }
 
 model Message {
-  id               String    @id @default(auto()) @map("_id") @db.ObjectId
-  text             String
-  created          DateTime  @default(now())
-  senderId         String?
-  recipientId      String?
-  sender           User?     @relation("sender", fields: [senderId], references: [id], onDelete: SetNull)
-  recipient        User?     @relation("recipient", fields: [recipientId], references: [id], onDelete: SetNull)
-  dateRead         DateTime?
-  senderDeleted    Boolean   @default(false)
-  recipientDeleted Boolean   @default(false)
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  content        String
+  senderId       String       
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  conversationId String       
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
 
-  @@index([senderId])
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  users     UserConversation[]
+  messages  Message[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model UserConversation {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String       
+  user           User         @relation(fields: [userId], references: [id])
+  conversationId String       
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, conversationId])
 }

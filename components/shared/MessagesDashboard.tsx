@@ -1,25 +1,36 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { socket } from "@/src/socket";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { io, Socket } from "socket.io-client";
 
 interface Message {
   id: string;
-  text: string;
+  content: string;
   sender: string;
-  receiver: string;
+  senderId: string;
   createdAt: Date;
+  conversationId?: string;
 }
 
-interface OnlineUser {
-  username: string;
-  socketId: string;
+interface Conversation {
+  id: string;
+  lastMessage: string;
+  lastMessageTime: Date;
+  otherUser: {
+    id: string;
+    email: string;
+    name: string;
+  };
 }
 
 interface MessagesDashboardProps {
-  session: {
+  userType: "seller" | "member";
+  session?: {
     user: {
       id: string;
       name: string | null;
@@ -28,187 +39,268 @@ interface MessagesDashboardProps {
     };
     expires: string;
   } | null;
-  userType: "seller" | "member";
 }
 
-export default function MessagesDashboard({ session, userType }: MessagesDashboardProps) {
+export default function MessagesDashboard({ userType, session: serverSession }: MessagesDashboardProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [selectedUser, setSelectedUser] = useState("");
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Debug session data
-  console.log("Full session data:", session);
-  console.log("User data:", session?.user);
-  console.log("User name:", session?.user?.name);
-  
-  // Use email as username if name is not available
-  const currentUser = session?.user?.name || session?.user?.email || "";
-  console.log("Current user (using email as fallback):", currentUser);
+  const socketRef = useRef<Socket | null>(null);
+  const { data: clientSession, status } = useSession();
+
+  // Use server session if available, otherwise use client session
+  const session = serverSession || clientSession;
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Get the socket URL from environment variable
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? `wss://${window.location.host}`
+        : 'ws://localhost:3001');
+
+    // Initialize socket connection
+    socketRef.current = io(socketUrl, {
+      query: {
+        userId: session.user.id
+      },
+      // Add secure connection options
+      secure: process.env.NODE_ENV === 'production',
+      rejectUnauthorized: false,
+      transports: ['websocket', 'polling'],
+      upgrade: true,
+      rememberUpgrade: true
+    });
+
+    // Register user with socket server
+    socketRef.current.emit("newUser", session.user.id);
+
+    // Listen for new messages
+    socketRef.current.on("newMessage", (message: Message) => {
+      // Check if we already have this message (from optimistic update)
+      setMessages(prev => {
+        const isDuplicate = prev.some(m => 
+          m.content === message.content && 
+          m.senderId === message.senderId && 
+          Math.abs(new Date(m.createdAt).getTime() - new Date(message.createdAt).getTime()) < 1000
+        );
+        
+        if (isDuplicate) {
+          // Replace the optimistic message with the real one
+          return prev.map(m => 
+            m.content === message.content && 
+            m.senderId === message.senderId && 
+            Math.abs(new Date(m.createdAt).getTime() - new Date(message.createdAt).getTime()) < 1000
+              ? message
+              : m
+          );
+        }
+        
+        return [...prev, message];
+      });
+      
+      // Update conversation list if the message is from the current conversation
+      if (message.conversationId === selectedConversation) {
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === message.conversationId) {
+            return {
+              ...conv,
+              lastMessage: message.content,
+              lastMessageTime: message.createdAt
+            };
+          }
+          return conv;
+        }));
+      }
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [session?.user?.id, selectedConversation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Fetch existing messages when selectedUser changes
+  // Fetch conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      if (!session?.user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/messages/conversations");
+        if (!response.ok) {
+          throw new Error("Failed to fetch conversations");
+        }
+        const data = await response.json();
+        setConversations(data);
+      } catch (error) {
+        console.error("Error fetching conversations:", error);
+        toast.error("Failed to load conversations");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, [session?.user?.id]);
+
+  // Fetch messages when conversation is selected
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!selectedUser || !currentUser) return;
+      if (!selectedConversation || !session?.user?.id) return;
       
       try {
-        const response = await fetch(`/api/messages?user=${selectedUser}`);
-        if (!response.ok) throw new Error('Failed to fetch messages');
+        setIsLoading(true);
+        const response = await fetch(`/api/messages?conversation=${selectedConversation}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch messages");
+        }
         const data = await response.json();
         setMessages(data);
       } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error("Error fetching messages:", error);
+        toast.error("Failed to load messages");
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchMessages();
-  }, [selectedUser, currentUser]);
+  }, [selectedConversation, session?.user?.id]);
 
-  useEffect(() => {
-    console.log("Current user:", currentUser);
-    console.log("Socket connected:", socket.connected);
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation || !session?.user?.id) return;
 
-    if (currentUser) {
-      console.log("Emitting newUser event with:", currentUser);
-      socket.emit("newUser", currentUser);
-    } else {
-      console.log("No current user, cannot emit newUser event");
-    }
-
-    socket.on("connect", () => {
-      console.log("Socket connected!");
-      if (currentUser) {
-        console.log("Re-emitting newUser after connect");
-        socket.emit("newUser", currentUser);
+    try {
+      // Emit the new message through WebSocket
+      if (socketRef.current) {
+        socketRef.current.emit("sendMessage", {
+          content: newMessage,
+          conversationId: selectedConversation,
+          senderId: session.user.id
+        });
+        
+        // Clear the input field
+        setNewMessage("");
+      } else {
+        throw new Error("WebSocket connection not available");
       }
-    });
-
-    socket.on("getMessage", (message: Message) => {
-      console.log("Received message:", message);
-      setMessages((prev) => {
-        // Check if message already exists to avoid duplicates
-        if (prev.some(m => m.id === message.id)) {
-          return prev;
-        }
-        // Only add if it's relevant to the current conversation
-        if (message.sender === selectedUser || message.receiver === selectedUser) {
-          return [...prev, message];
-        }
-        return prev;
-      });
-    });
-
-    socket.on("getOnlineUsers", (users: OnlineUser[]) => {
-      console.log("Received online users:", users);
-      // Filter out the current user and update the list
-      const otherUsers = users.filter(user => user.username !== currentUser);
-      console.log("Filtered online users:", otherUsers);
-      setOnlineUsers(otherUsers);
-    });
-
-    return () => {
-      socket.off("connect");
-      socket.off("getMessage");
-      socket.off("getOnlineUsers");
-    };
-  }, [currentUser, selectedUser]);
-
-  const sendMessage = () => {
-    if (!newMessage.trim() || !selectedUser || !session?.user?.id) return;
-
-    console.log("Sending message:", {
-      senderId: session.user.id,
-      recipientId: selectedUser,
-      text: newMessage,
-    });
-
-    socket.emit("sendMessage", {
-      senderId: session.user.id,
-      recipientId: selectedUser,
-      text: newMessage,
-    });
-
-    setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    }
   };
 
-  return (
-    <div className="flex h-[600px] border rounded-lg">
-      {/* Online Users List */}
-      <div className="w-1/4 border-r p-4">
-        <h2 className="font-bold mb-4">Online Users</h2>
-        <div className="space-y-2">
-          {onlineUsers.length === 0 ? (
-            <div className="text-gray-500">No users online</div>
-          ) : (
-            onlineUsers.map((user) => (
-              <div
-                key={user.socketId}
-                className={`p-2 rounded cursor-pointer ${
-                  selectedUser === user.username ? "bg-blue-100" : "hover:bg-gray-100"
-                }`}
-                onClick={() => setSelectedUser(user.username)}
-              >
-                {user.username}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+  if (status === "loading" || isLoading) {
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
+  }
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 p-4 overflow-y-auto">
-          {messages
-            .filter(
-              (msg) =>
-                (msg.sender === selectedUser && msg.receiver === currentUser) ||
-                (msg.sender === currentUser && msg.receiver === selectedUser)
-            )
-            .map((message) => (
+  if (!session?.user?.id) {
+    return <div className="flex items-center justify-center h-full">Please sign in to view messages</div>;
+  }
+
+  return (
+    <div className="flex h-full">
+      {/* Conversations List */}
+      <div className="w-1/3 border-r p-4">
+        <h2 className="text-lg font-semibold mb-4">Conversations</h2>
+        {conversations.length === 0 ? (
+          <p className="text-gray-500">No conversations yet</p>
+        ) : (
+          <div className="space-y-2">
+            {conversations.map((conversation) => (
               <div
-                key={message.id}
-                className={`mb-4 ${
-                  message.sender === currentUser ? "text-right" : "text-left"
+                key={conversation.id}
+                className={`p-3 rounded-lg cursor-pointer ${
+                  selectedConversation === conversation.id
+                    ? "bg-blue-100"
+                    : "hover:bg-gray-100"
                 }`}
+                onClick={() => setSelectedConversation(conversation.id)}
               >
-                <div
-                  className={`inline-block p-2 rounded-lg ${
-                    message.sender === currentUser
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
-                  }`}
-                >
-                  {message.text}
+                <div className="font-medium">{conversation.otherUser.name}</div>
+                <div className="text-sm text-gray-500">
+                  {conversation.lastMessage}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {new Date(message.createdAt).toLocaleTimeString()}
+                <div className="text-xs text-gray-400">
+                  {formatDistanceToNow(new Date(conversation.lastMessageTime), {
+                    addSuffix: true,
+                  })}
                 </div>
               </div>
             ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Message Input */}
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-              disabled={!selectedUser}
-            />
-            <Button onClick={sendMessage} disabled={!selectedUser}>
-              Send
-            </Button>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Messages Area */}
+      <div className="flex-1 flex flex-col">
+        {selectedConversation ? (
+          <>
+            <div className="flex-1 overflow-y-auto p-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`mb-4 ${
+                    message.senderId === session.user.id
+                      ? "text-right"
+                      : "text-left"
+                  }`}
+                >
+                  <div
+                    className={`inline-block p-3 rounded-lg ${
+                      message.senderId === session.user.id
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200"
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {formatDistanceToNow(new Date(message.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="border-t p-4">
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      sendMessage();
+                    }
+                  }}
+                />
+                <Button onClick={sendMessage}>Send</Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Select a conversation to start messaging
+          </div>
+        )}
       </div>
     </div>
   );
