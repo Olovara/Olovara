@@ -22,6 +22,7 @@ import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
 import { ProductFileSection } from "../product/productFile";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
+import { checkSellerApproval } from "@/actions/check-seller-approval";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -103,6 +104,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
   const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
+  const [isSellerApproved, setIsSellerApproved] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -195,6 +197,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [form.formState.isDirty, tempImages]);
+
+  useEffect(() => {
+    const checkApproval = async () => {
+      const approved = await checkSellerApproval();
+      setIsSellerApproved(approved);
+    };
+
+    void checkApproval();
+  }, []);
 
   const onSubmit = async (data: z.infer<typeof ProductSchema>) => {
     try {
@@ -321,6 +332,17 @@ export function ProductForm({ initialData }: ProductFormProps) {
   });
 
   if (!isClient) return <Spinner />;
+
+  if (!isSellerApproved) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <h2 className="text-2xl font-bold text-gray-900">Application Pending</h2>
+        <p className="text-gray-600 text-center max-w-md">
+          Your seller application is still pending approval. You can set up your shop profile, but you won&apos;t be able to create products until your application is approved.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>

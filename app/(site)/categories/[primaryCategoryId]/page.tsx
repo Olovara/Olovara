@@ -26,7 +26,7 @@ export async function generateMetadata({
   params,
 }: PrimaryCategoryPageProps): Promise<Metadata> {
   const primaryCategory = CategoriesMap.PRIMARY.find(
-    (cat) => cat.id === params.primaryCategoryId
+    (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
   );
 
   if (!primaryCategory) {
@@ -47,7 +47,7 @@ export default async function PrimaryCategoryPage({
   searchParams,
 }: PrimaryCategoryPageProps) {
   const primaryCategory = CategoriesMap.PRIMARY.find(
-    (cat) => cat.id === params.primaryCategoryId
+    (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
   );
 
   if (!primaryCategory) {

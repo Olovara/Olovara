@@ -8,8 +8,14 @@ import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
 function quillDeltaToPlainText(delta: any): string {
   if (!delta || !delta.ops) return "";
   return delta.ops
-    .map((op: any) => op.insert)
+    .map((op: any) => {
+      if (typeof op.insert === 'string') {
+        return op.insert;
+      }
+      return '';
+    })
     .join("")
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/\n/g, " ")
     .trim();
 }

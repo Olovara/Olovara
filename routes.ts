@@ -18,6 +18,7 @@ export const publicRoutes = [
   "/shop/[shopNameSlug]",
   "/suggestions",
   "/terms-of-service",
+  "/seller-application",
 ];
 
 /**
@@ -34,11 +35,33 @@ export const authRoutes = [
 ];
 
 /**
- * An array of routes that are accessible to authenticated users
- * These routes require authentication
+ * An array of routes that are accessible to admin users
+ * These routes require admin role
  * @type {string[]}
  */
-// export const privateRoutes = [""]; All routes are private by default, is defined the middleware.ts
+export const adminRoutes = [
+  "/admin",
+];
+
+/**
+ * An array of routes that are accessible to seller users
+ * These routes require seller role
+ * @type {string[]}
+ */
+export const sellerRoutes = [
+  "/seller",
+  "/seller/dashboard/messages",
+];
+
+/**
+ * An array of routes that are accessible to member users
+ * These routes require member role
+ * @type {string[]}
+ */
+export const memberRoutes = [
+  "/member",
+  "/member/dashboard/messages",
+];
 
 /**
  * The prefix for API authentication routes

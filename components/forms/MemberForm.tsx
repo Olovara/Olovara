@@ -20,7 +20,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { MemberSchema } from "@/schemas/MemberSchema";
 import { memberInformation } from "@/actions/memberInformation";
 
-const MemberForm = () => {
+interface MemberFormProps {
+  initialData: {
+    firstName: string;
+    lastName: string;
+    userBio: string;
+    email: string;
+    image: string;
+  };
+}
+
+const MemberForm = ({ initialData }: MemberFormProps) => {
   const isClient = useIsClient();
 
   const [error, setError] = useState<string>("");
@@ -31,9 +41,10 @@ const MemberForm = () => {
   const form = useForm<z.infer<typeof MemberSchema>>({
     resolver: zodResolver(MemberSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      userBio: "",
+      firstName: initialData.firstName,
+      lastName: initialData.lastName,
+      userBio: initialData.userBio,
+      image: initialData.image,
     },
   });
 
@@ -63,7 +74,7 @@ const MemberForm = () => {
           <Label>First Name</Label>
           <Input
             placeholder="First Name"
-            {...form.register("firstName")} // Link input to react-hook-form
+            {...form.register("firstName")}
             disabled={isPending}
           />
         </div>
@@ -72,7 +83,7 @@ const MemberForm = () => {
           <Label>Last Name</Label>
           <Input
             placeholder="Last Name"
-            {...form.register("lastName")} // Link input to react-hook-form
+            {...form.register("lastName")}
             disabled={isPending}
             type="text"
           />
@@ -82,7 +93,7 @@ const MemberForm = () => {
           <Label>Member Bio</Label>
           <Textarea
             placeholder="Type your bio here."
-            {...form.register("userBio")} // Link input to react-hook-form
+            {...form.register("userBio")}
             disabled={isPending}
           />
         </div>

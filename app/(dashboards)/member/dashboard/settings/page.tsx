@@ -1,5 +1,4 @@
 import MemberForm from "@/components/forms/MemberForm";
-import SellerForm from "@/components/forms/SellerForm";
 import {
   Card,
   CardContent,
@@ -11,12 +10,12 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getMemberData } from "@/actions/getMemberData";
 
 export const metadata = {
-  title: "Seller - Settings",
+  title: "Member - Settings",
 };
 
-export default async function SellerSettings() {
+export default async function MemberSettings() {
   noStore();
-
+  
   // Fetch member data
   const memberData = await getMemberData();
   
@@ -37,7 +36,7 @@ export default async function SellerSettings() {
       <Tabs defaultValue="personal" className="space-y-4">
         <TabsList>
           <TabsTrigger value="personal">Personal</TabsTrigger>
-          <TabsTrigger value="shop">Shop</TabsTrigger>
+          {/*<TabsTrigger value="preferences">Preferences</TabsTrigger>  TODO add later*/}
         </TabsList>
         <div className="flex-1 pt-2">
           <Card className="w-full">
@@ -50,9 +49,15 @@ export default async function SellerSettings() {
                 <MemberForm initialData={initialData} />
               </TabsContent>
 
-              {/* Shop Settings */}
-              <TabsContent value="shop">
-                <SellerForm />
+              {/* Preferences Settings */}
+              <TabsContent value="preferences">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Notification Preferences</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your notification settings and preferences.
+                  </p>
+                  {/* Add notification preferences form here */}
+                </div>
               </TabsContent>
             </CardContent>
           </Card>

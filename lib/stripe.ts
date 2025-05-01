@@ -8,22 +8,22 @@ function getStripeKey(key: string, isTest: boolean = false) {
   return process.env[key]!; // Use production key
 }
 
-// Checkout instance - for customer payments
-export const stripeCheckout = new Stripe(getStripeKey('STRIPE_CHECKOUT_KEY'), {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+// Create Stripe instances with different keys for different purposes
+export const stripeWebhook = new Stripe(process.env.STRIPE_WEBHOOK_KEY!, {
+  apiVersion: "2025-02-24.acacia",
 });
 
-// Connect instance - for seller onboarding and payouts
-export const stripeConnect = new Stripe(getStripeKey('STRIPE_CONNECT_KEY'), {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+export const stripeCheckout = new Stripe(process.env.STRIPE_CHECKOUT_KEY!, {
+  apiVersion: "2025-02-24.acacia",
 });
 
-// Webhook instance - for handling webhooks
-export const stripeWebhook = new Stripe(getStripeKey('STRIPE_WEBHOOK_KEY'), {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+export const stripeConnect = new Stripe(process.env.STRIPE_CONNECT_KEY!, {
+  apiVersion: "2025-02-24.acacia",
+});
+
+// Add secret key instance for balance operations
+export const stripeSecret = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia",
 });
 
 // Helper function to get the appropriate Stripe instance based on operation

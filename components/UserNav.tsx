@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Link from "next/link";
+import { ProtectedLink } from "./shared/ProtectedLink";
 
 interface iAppProps {
   userInfo: {
@@ -65,24 +65,24 @@ export function UserNav({ userInfo }: iAppProps) {
         <DropdownMenuGroup>
           {dashboardRoute && (
             <DropdownMenuItem asChild>
-              <Link href={dashboardRoute}>Account</Link>
+              <ProtectedLink href={dashboardRoute}>Account</ProtectedLink>
             </DropdownMenuItem>
           )}
           {settingsRoute && (
             <DropdownMenuItem asChild>
-              <Link href={settingsRoute}>Settings</Link>
+              <ProtectedLink href={settingsRoute}>Settings</ProtectedLink>
             </DropdownMenuItem>
           )}
           {isSeller && (
             <>
               <DropdownMenuItem asChild>
-                <Link href="/seller/dashboard/products">My Products</Link>
+                <ProtectedLink href="/seller/dashboard/products">My Products</ProtectedLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/seller/dashboard/my-orders">My Orders</Link>
+                <ProtectedLink href="/seller/dashboard/my-orders">My Orders</ProtectedLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/seller/dashboard/billing">Billing</Link>
+                <ProtectedLink href="/seller/dashboard/billing">Billing</ProtectedLink>
               </DropdownMenuItem>
             </>
           )}

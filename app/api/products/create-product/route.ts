@@ -35,6 +35,22 @@ export async function POST(req: Request) {
 
     const userId = session.user.id;
 
+    // Check if seller is approved
+    const seller = await db.seller.findUnique({
+      where: { userId },
+      select: { applicationAccepted: true }
+    });
+
+    if (!seller?.applicationAccepted) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Your seller application is still pending approval. You cannot create products until your application is approved." 
+        }),
+        { status: 403 }
+      );
+    }
+
     // Get the form data from the request body
     const data = await req.json();
     console.log("[API INPUT] Received product data:", data);

@@ -44,14 +44,14 @@ const fetchSellerData = async (
       sellerId: seller.id,
       ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     },
-    include: {
-      product: true
+    select: {
+      id: true,
+      productId: true,
+      productName: true,
+      quantity: true,
+      totalAmount: true,
     },
   });
-
-  //console.log("Found Seller:", !!seller);
-  //console.log("Total Orders Returned:", orders?.length);
-  //console.log("Orders:", orders);
 
   // Calculate most popular product
   const productSales = new Map<string, { name: string, count: number }>();
@@ -66,7 +66,7 @@ const fetchSellerData = async (
   });
 
   const mostPopularProduct = Array.from(productSales.entries())
-    .sort((a, b) => b[1].count - a[1].count)[0]?.[1].name || "No products";
+    .sort((a, b) => b[1].count - a[1].count)[0]?.[1].name || "No products sold yet";
 
   let totalRevenue = orders.reduce((acc, order) => acc + (order.totalAmount ?? 0), 0);
   
@@ -95,7 +95,7 @@ const fetchSellerData = async (
 
 // This handles the GET request for the seller dashboard data
 export async function GET(req: Request) {
-  const session = await auth(); // Get the session (this assumes you're using NextAuth.js for authentication)
+  const session = await auth();
 
   if (!session || !session.user || !session.user.id) {
     return NextResponse.json(
@@ -104,9 +104,9 @@ export async function GET(req: Request) {
     );
   }
 
-  const userId = session.user.id; // Get the logged-in user's ID (assuming it's stored in the session)
+  const userId = session.user.id;
 
-  const url = new URL(req.url); // Parse URL
+  const url = new URL(req.url);
   const startDate = url.searchParams.get("startDate") ?? undefined;
   const endDate = url.searchParams.get("endDate") ?? undefined;
 
@@ -115,7 +115,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(sellerData);
   } catch (error) {
-    console.error("Error in /api/seller/dashboard:", error); // 👈 log full error
+    console.error("Error in /api/seller/dashboard:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

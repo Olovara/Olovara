@@ -12,11 +12,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu as MenuIcon } from "lucide-react";
 import { SearchBar } from "./SearchBar";
-import { CategoriesMap } from "@/data/categories"; // Adjust the import path as needed
+import { CategoriesMap } from "@/data/categories";
+import { ProtectedLink } from "./shared/ProtectedLink";
 
 export function NavbarLinks() {
   const location = usePathname();
-  const primaryCategories = CategoriesMap.PRIMARY; // Get primary categories
+  const primaryCategories = CategoriesMap.PRIMARY;
 
   return (
     <div className="hidden md:flex justify-center items-center col-span-6 gap-x-4">
@@ -32,9 +33,9 @@ export function NavbarLinks() {
           {primaryCategories.map((category) => (
             <DropdownMenuItem key={category.id} asChild>
               <Link
-                href={`/category/${category.id.toLowerCase()}`}
+                href={`/categories/${category.id.toLowerCase()}`}
                 className={cn(
-                  location === `/category/${category.id.toLowerCase()}`
+                  location === `/categories/${category.id.toLowerCase()}`
                     ? "font-semibold text-primary"
                     : "hover:text-primary"
                 )}
@@ -48,8 +49,8 @@ export function NavbarLinks() {
 
       <SearchBar />
 
-      {/* Become a Seller Button (Ensured One Line) */}
-      <Link
+      {/* Become a Seller Button */}
+      <ProtectedLink
         href="/seller-application"
         className={cn(
           location === "/seller-application"
@@ -59,8 +60,7 @@ export function NavbarLinks() {
         )}
       >
         Become a Seller
-      </Link>
-
+      </ProtectedLink>
     </div>
   );
 }

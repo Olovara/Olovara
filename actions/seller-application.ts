@@ -48,5 +48,5 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
     });
   });
 
-  return { success: "Successfully submitted your seller application. You can now access your seller dashboard!" };
+  return { success: "Successfully submitted your seller application. You can now access your seller dashboard to start setting up your shop!" };
 };

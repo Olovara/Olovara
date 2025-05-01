@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 
 import authConfig from "@/auth.config";
 import {
@@ -6,6 +7,9 @@ import {
   apiAuthPrefix,
   authRoutes,
   publicRoutes,
+  adminRoutes,
+  sellerRoutes,
+  memberRoutes,
 } from "@/routes";
 
 const { auth } = NextAuth(authConfig);
@@ -13,12 +17,18 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
+  const userRole = req.auth?.user?.role;
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
   const isStripeWebhook = nextUrl.pathname.startsWith('/api/stripe/webhooks');
   const isLogoutRedirect = nextUrl.pathname === '/login' && nextUrl.searchParams.get('callbackUrl')?.includes('/login');
+
+  // Check role-based access
+  const isAdminRoute = adminRoutes.some((route: string) => nextUrl.pathname.startsWith(route));
+  const isSellerRoute = sellerRoutes.some((route: string) => nextUrl.pathname.startsWith(route)) && !nextUrl.pathname.startsWith('/seller-application');
+  const isMemberRoute = memberRoutes.some((route: string) => nextUrl.pathname.startsWith(route));
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
@@ -34,6 +44,19 @@ export default auth((req) => {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
     return;
+  }
+
+  // Role-based access control
+  if (isAuthorized) {
+    if (isAdminRoute && userRole !== 'ADMIN') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+    if (isSellerRoute && userRole !== 'SELLER') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+    if (isMemberRoute && userRole !== 'MEMBER') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
   }
 
   if (!isAuthorized && !isPublicRoute) {

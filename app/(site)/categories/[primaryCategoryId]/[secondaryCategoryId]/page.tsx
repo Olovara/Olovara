@@ -47,10 +47,10 @@ export default async function SecondaryCategoryPage({
   const { primaryCategoryId, secondaryCategoryId } = params;
 
   const primaryCategory = CategoriesMap.PRIMARY.find(
-    (c) => c.id === primaryCategoryId
+    (c) => c.id.toLowerCase() === primaryCategoryId.toLowerCase()
   );
   const secondaryCategory = CategoriesMap.SECONDARY.find(
-    (c) => c.id === secondaryCategoryId
+    (c) => c.id.toLowerCase() === secondaryCategoryId.toLowerCase()
   );
 
   if (!primaryCategory || !secondaryCategory) {

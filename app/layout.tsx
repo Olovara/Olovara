@@ -41,10 +41,10 @@ export default async function RootLayout({
         className={cn("relative h-full font-sans antialiased", inter.className)}
       >
         <SessionProvider session={session}>
-        <main>
-          <div>{children}</div>
-        </main>
-        <Toaster position="top-center" richColors />
+          <main>
+            <div>{children}</div>
+          </main>
+          <Toaster position="top-center" richColors />
         </SessionProvider>
       </body>
     </html>

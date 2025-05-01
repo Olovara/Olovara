@@ -38,7 +38,7 @@ export default function CategoriesPage() {
                 ).map((subcategory) => (
                   <Link
                     key={subcategory.id}
-                    href={`/categories/${category.id}/${subcategory.id}`}
+                    href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}`}
                     className="block text-primary hover:text-primary/80 transition-colors"
                   >
                     {subcategory.name}
@@ -47,7 +47,7 @@ export default function CategoriesPage() {
               </div>
 
               <Link
-                href={`/categories/${category.id}`}
+                href={`/categories/${category.id.toLowerCase()}`}
                 className="mt-4 inline-block text-sm font-medium text-primary hover:text-primary/80"
               >
                 View all {category.name} →
