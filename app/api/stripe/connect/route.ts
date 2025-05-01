@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripeConnect } from "@/lib/stripe";
 import { headers } from "next/headers";
 
 export async function POST(req: Request) {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = stripeConnect.webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_CONNECT_WEBHOOK_SECRET as string

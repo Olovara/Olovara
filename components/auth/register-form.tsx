@@ -161,7 +161,7 @@ const RegisterForm = () => {
           <Button
             type="submit"
             disabled={isPending}
-            className="w-full hover:bg-sky-400"
+            className="w-full hover:bg-purple-400"
           >
             Register
           </Button>

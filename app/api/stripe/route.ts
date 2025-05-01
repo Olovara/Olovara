@@ -35,10 +35,16 @@ export async function POST(req: Request) {
       const session = event.data.object;
 
       const link = session.metadata?.link;
+      const customerEmail = session.customer_email;
+
+      if (!customerEmail) {
+        console.error("No customer email found in session");
+        return new Response("No customer email found", { status: 400 });
+      }
 
       const { data, error } = await resend.emails.send({
-        from: "Yarnnu <onboarding@resend.dev>",
-        to: ["your_email"],
+        from: "Yarnnu <noreply@yarnnu.com>",
+        to: [customerEmail],
         subject: "Your Product from Yarnnu",
         react: ProductEmail({
           link: link as string,

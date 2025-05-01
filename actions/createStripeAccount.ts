@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripeConnect } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 export async function CreateStripeAccountLink() {
@@ -29,7 +29,7 @@ export async function CreateStripeAccountLink() {
 
   // If the seller has no connected Stripe account, create one
   if (!connectedAccountId) {
-    const account = await stripe.accounts.create({
+    const account = await stripeConnect.accounts.create({
       type: "express",
       country: "US", // Change based on your supported countries
       email: session.user.email,
@@ -49,7 +49,7 @@ export async function CreateStripeAccountLink() {
   }
 
   // Create the account link
-  const accountLink = await stripe.accountLinks.create({
+  const accountLink = await stripeConnect.accountLinks.create({
     account: connectedAccountId,
     refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard/billing`,
     return_url: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${connectedAccountId}`,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripeCheckout } from "@/lib/stripe";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 export async function POST(
@@ -66,7 +66,7 @@ export async function POST(
 
     try {
       // Get the Stripe session to find the payment intent
-      const stripeSession = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+      const stripeSession = await stripeCheckout.checkout.sessions.retrieve(order.stripeSessionId);
       
       if (!stripeSession.payment_intent) {
         return NextResponse.json(
@@ -76,7 +76,7 @@ export async function POST(
       }
 
       // Process the refund through Stripe
-      const refund = await stripe.refunds.create({
+      const refund = await stripeCheckout.refunds.create({
         payment_intent: stripeSession.payment_intent as string,
         amount: Math.round(order.totalAmount * 100), // Convert to cents
         reason: "requested_by_customer",

@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { Order, Product } from "@prisma/client";
 
 // Function to fetch total sales and revenue for a seller
 const fetchSellerData = async (

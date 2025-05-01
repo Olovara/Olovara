@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripeWebhook } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import type { Stripe } from "stripe";
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = stripeWebhook.webhooks.constructEvent(
       Buffer.from(rawBody),
       sig,
       webhookSecret
@@ -112,10 +112,10 @@ export async function POST(req: Request) {
         console.log(`✅ Created preliminary order: ${order.id}`);
 
         // Retrieve Charge and Balance Transaction to get the exact fee
-        const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
+        const paymentIntent = await stripeWebhook.paymentIntents.retrieve(session.payment_intent as string);
         if (!paymentIntent.latest_charge) throw new Error("Charge ID missing from Payment Intent");
 
-        let charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+        let charge = await stripeWebhook.charges.retrieve(paymentIntent.latest_charge as string);
 
         // Check charge status - should be succeeded
         if (charge.status !== 'succeeded') {
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         // If balance_transaction ID is missing, try listing balance transactions by source (charge ID)
         if (!balanceTransactionId) {
           console.warn(`⚠️ Charge ${charge.id} status is 'succeeded', but balance_transaction ID initially missing. Trying list fallback.`);
-          const btList = await stripe.balanceTransactions.list({
+          const btList = await stripeWebhook.balanceTransactions.list({
             source: charge.id,
             limit: 1 // We only expect one balance transaction per charge
           });
@@ -140,7 +140,7 @@ export async function POST(req: Request) {
             // Optional: Add a small delay and retry the list once more, as a final check
             console.warn(`⚠️ Fallback list failed for charge ${charge.id}. Waiting 1 second and retrying list.`);
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-            const finalList = await stripe.balanceTransactions.list({ source: charge.id, limit: 1 });
+            const finalList = await stripeWebhook.balanceTransactions.list({ source: charge.id, limit: 1 });
             if (finalList.data.length > 0) {
               balanceTransactionId = finalList.data[0].id;
               console.log(`✅ Fallback successful on retry: Found balance transaction ${balanceTransactionId} via list.`);
@@ -158,7 +158,7 @@ export async function POST(req: Request) {
         }
 
         // Retrieve the Balance Transaction using the obtained ID
-        const balanceTransaction = await stripe.balanceTransactions.retrieve(balanceTransactionId);
+        const balanceTransaction = await stripeWebhook.balanceTransactions.retrieve(balanceTransactionId);
         const stripeFee = balanceTransaction.fee; // Actual fee in cents
         console.log(`💰 Stripe fee from balance transaction: ${stripeFee} cents`);
 
@@ -186,7 +186,7 @@ export async function POST(req: Request) {
         console.log(`- Amount to seller: ${amountToSeller}`);
 
         // Create transfer to seller
-        const transfer = await stripe.transfers.create({
+        const transfer = await stripeWebhook.transfers.create({
           amount: amountToSeller,
           currency: "usd",
           destination: product.seller.connectedAccountId,

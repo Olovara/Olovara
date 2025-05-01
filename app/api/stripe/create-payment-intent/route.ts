@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripeCheckout } from "@/lib/stripe";
 import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
 
 // Helper function to convert Quill delta to plain text
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     const plainTextDescription = quillDeltaToPlainText(product.description) || "No description available";
 
     // Create a checkout session
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await stripeCheckout.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [
