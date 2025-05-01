@@ -6,7 +6,9 @@ export const metadata = {
 };
 
 export default function NewVerificationPage() {
-  <Suspense fallback={<div>Loading...</div>}>
-    return <NewVerificationForm />;
-  </Suspense>;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewVerificationForm />
+    </Suspense>
+  );
 }
