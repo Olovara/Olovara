@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import "react-quill/dist/quill.snow.css"; // Import Quill's default styling
 
 // Dynamically import ReactQuill with SSR disabled and proper fallback
@@ -30,9 +30,23 @@ export function QuillEditor({ value, onChange, placeholder }: QuillEditorProps) 
         ["link", "image"],
         ["clean"],
       ],
+      clipboard: {
+        matchVisual: false,
+      },
     }),
     []
   );
+
+  // Clean up Quill instance on unmount
+  useEffect(() => {
+    return () => {
+      // Remove Quill stylesheet when component unmounts
+      const quillStylesheet = document.querySelector('link[href*="quill.snow.css"]');
+      if (quillStylesheet) {
+        quillStylesheet.remove();
+      }
+    };
+  }, []);
 
   return (
     <div className="quill-editor">

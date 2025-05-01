@@ -1,44 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "react-quill/dist/quill.snow.css";
-import { QuillEditor } from "@/components/QuillEditor";
+import dynamic from "next/dynamic";
+
+// Dynamically import QuillEditor with SSR disabled
+const QuillEditor = dynamic(
+  () => import("@/components/QuillEditor").then((mod) => mod.QuillEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[200px] flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading editor...</div>
+      </div>
+    ),
+  }
+);
 
 export default function HandmadeGuidelines() {
   const [content, setContent] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch guidelines
-        const res = await fetch("/api/handmade-guidelines");
-        const data = await res.json();
-        setContent(data.content?.ops?.map((op: any) => op.insert).join('') || '');
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch guidelines
+      const res = await fetch("/api/handmade-guidelines");
+      const data = await res.json();
+      setContent(data.content?.ops?.map((op: any) => op.insert).join('') || '');
 
-        // Try to fetch user role from API (optional)
-        try {
-          const roleRes = await fetch("/api/auth/get-role");
-          if (roleRes.ok) {
-            const roleData = await roleRes.json();
-            setIsAdmin(roleData.role === "ADMIN");
-          }
-        } catch (error) {
-          // Ignore role fetch errors for non-logged-in users
-          console.log("User not logged in or role fetch failed");
+      // Try to fetch user role from API (optional)
+      try {
+        const roleRes = await fetch("/api/auth/get-role");
+        if (roleRes.ok) {
+          const roleData = await roleRes.json();
+          setIsAdmin(roleData.role === "ADMIN");
         }
       } catch (error) {
-        console.error("Error fetching guidelines:", error);
-      } finally {
-        setIsLoading(false);
+        // Ignore role fetch errors for non-logged-in users
+        console.log("User not logged in or role fetch failed");
       }
-    };
-
-    fetchData();
+    } catch (error) {
+      console.error("Error fetching guidelines:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const handleSave = async () => {
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = useCallback(async () => {
     try {
       await fetch("/api/handmade-guidelines", {
         method: "POST",
@@ -50,7 +63,7 @@ export default function HandmadeGuidelines() {
       console.error("Error saving guidelines:", error);
       alert("Failed to update guidelines");
     }
-  };
+  }, [content]);
 
   if (isLoading) {
     return <div className="p-6">Loading...</div>;

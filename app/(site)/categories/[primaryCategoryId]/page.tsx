@@ -135,9 +135,16 @@ export default async function PrimaryCategoryPage({
   const transformedProducts = products.map(product => ({
     ...product,
     imageUrl: product.images[0] || "", // Use the first image as the main image
-    seller: {
-      name: product.seller?.shopName || "Unknown Seller"
-    }
+    seller: product.seller ? {
+      shopName: product.seller.shopName,
+      shopNameSlug: product.seller.shopNameSlug,
+      isWomanOwned: product.seller.isWomanOwned,
+      isMinorityOwned: product.seller.isMinorityOwned,
+      isLGBTQOwned: product.seller.isLGBTQOwned,
+      isVeteranOwned: product.seller.isVeteranOwned,
+      isSustainable: product.seller.isSustainable,
+      isCharitable: product.seller.isCharitable
+    } : null
   }));
 
   return (

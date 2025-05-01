@@ -42,6 +42,7 @@ export async function POST(req: Request) {
         subject: "Your Product from Yarnnu",
         react: ProductEmail({
           link: link as string,
+          isDigital: true,
         }),
       });
 

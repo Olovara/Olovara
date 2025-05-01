@@ -106,7 +106,17 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     orderBy,
     skip: (currentPage - 1) * pageSize,
     take: pageSize,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      images: true,
+      primaryCategory: true,
+      secondaryCategory: true,
+      status: true,
+      isDigital: true,
+      onSale: true,
+      discount: true,
       seller: {
         select: {
           shopName: true,
