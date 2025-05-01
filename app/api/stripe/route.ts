@@ -1,5 +1,5 @@
 import ProductEmail from "@/components/emails/ProductEmail";
-import { stripe } from "@/lib/stripe";
+import { stripeWebhook } from "@/lib/stripe";
 
 import { headers } from "next/headers";
 import { Resend } from "resend";
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return new Response("Server configuration error", { status: 500 });
     }
     
-    event = stripe.webhooks.constructEvent(
+    event = stripeWebhook.webhooks.constructEvent(
       body,
       signature,
       webhookSecret

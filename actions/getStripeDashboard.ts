@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripeConnect } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 export async function GetStripeDashboardLink() {
@@ -24,7 +24,7 @@ export async function GetStripeDashboardLink() {
     },
   });
 
-  const loginLink = await stripe.accounts.createLoginLink(
+  const loginLink = await stripeConnect.accounts.createLoginLink(
     data?.seller?.connectedAccountId as string
   );
 

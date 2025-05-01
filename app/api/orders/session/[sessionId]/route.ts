@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripeCheckout } from "@/lib/stripe";
 import { db } from "@/lib/db";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const session = await stripe.checkout.sessions.retrieve(params.sessionId, {
+    const session = await stripeCheckout.checkout.sessions.retrieve(params.sessionId, {
       expand: ['payment_intent'],
     });
 
