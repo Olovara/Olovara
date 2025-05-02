@@ -76,10 +76,10 @@ const SellerApplicationForm = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="w-full mx-auto shadow-xl p-8 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+        <Card className="w-full mx-auto shadow-xl p-8 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
           <CardHeader className="space-y-4">
-            <CardTitle className="text-3xl font-bold text-purple-900">Seller Application</CardTitle>
-            <CardDescription className="text-lg text-purple-700">
+            <CardTitle className="text-3xl font-bold">Seller Application</CardTitle>
+            <CardDescription className="text-lg">
               Please fill in the information below to start selling on Yarnnu
             </CardDescription>
           </CardHeader>
@@ -90,7 +90,7 @@ const SellerApplicationForm = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Label className="text-lg font-semibold text-purple-800">Crafting process</Label>
+              <Label className="text-lg font-semibold">Crafting process</Label>
               <Textarea
                 placeholder="Tell us about your crafting process and what you make. This helps us understand your unique style and products."
                 {...form.register("craftingProcess")}
@@ -105,7 +105,7 @@ const SellerApplicationForm = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Label className="text-lg font-semibold text-purple-800">Portfolio</Label>
+              <Label className="text-lg font-semibold">Portfolio</Label>
               <Input
                 placeholder="Share a link to your portfolio, Etsy shop, or social media"
                 {...form.register("portfolio")}
@@ -121,7 +121,7 @@ const SellerApplicationForm = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Label className="text-lg font-semibold text-purple-800">What is your interest in joining Yarnnu?</Label>
+              <Label className="text-lg font-semibold">What is your interest in joining Yarnnu?</Label>
               <Textarea
                 placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
                 {...form.register("interestInJoining")}

@@ -281,6 +281,63 @@ export async function POST(req: Request) {
               },
             });
 
+            // Create reviews for the order
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 14); // 14 days from now
+
+            // Get the seller's user ID
+            const seller = await db.seller.findUnique({
+              where: { id: session.metadata.sellerId },
+              select: { userId: true },
+            });
+
+            if (!seller) {
+              throw new Error("Seller not found");
+            }
+
+            // Create product review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: session.metadata.userId,
+                reviewedId: seller.userId,
+                sellerId: session.metadata.sellerId,
+                productId: session.metadata.productId,
+                type: "PRODUCT",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
+            // Create seller review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: session.metadata.userId,
+                reviewedId: seller.userId,
+                sellerId: session.metadata.sellerId,
+                type: "SELLER",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
+            // Create buyer review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: seller.userId,
+                reviewedId: session.metadata.userId,
+                sellerId: session.metadata.sellerId,
+                type: "BUYER",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
             console.log(`✅ Updated product and seller stats for order ${order.id}`);
           } catch (statsError) {
             console.error("⚠️ Error updating product/seller stats:", statsError);

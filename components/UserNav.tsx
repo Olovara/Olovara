@@ -64,25 +64,25 @@ export function UserNav({ userInfo }: iAppProps) {
 
         <DropdownMenuGroup>
           {dashboardRoute && (
-            <DropdownMenuItem asChild>
-              <ProtectedLink href={dashboardRoute}>Account</ProtectedLink>
+            <DropdownMenuItem>
+              <ProtectedLink href={dashboardRoute} className="w-full">Account</ProtectedLink>
             </DropdownMenuItem>
           )}
           {settingsRoute && (
-            <DropdownMenuItem asChild>
-              <ProtectedLink href={settingsRoute}>Settings</ProtectedLink>
+            <DropdownMenuItem>
+              <ProtectedLink href={settingsRoute} className="w-full">Settings</ProtectedLink>
             </DropdownMenuItem>
           )}
           {isSeller && (
             <>
-              <DropdownMenuItem asChild>
-                <ProtectedLink href="/seller/dashboard/products">My Products</ProtectedLink>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <ProtectedLink href="/seller/dashboard/my-orders">My Orders</ProtectedLink>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <ProtectedLink href="/seller/dashboard/billing">Billing</ProtectedLink>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
               </DropdownMenuItem>
             </>
           )}

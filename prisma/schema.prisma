@@ -186,6 +186,7 @@ model Seller {
   products	                Product[]
   order                     Order[]
   addresses                 Address[]
+  reviews                   Review[]
   user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt	      DateTime @default(now())
@@ -324,6 +325,7 @@ model TemporaryUpload {
 model Review {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
   orderId           String   
+  sellerId          String   // Direct reference to the seller
   reviewerId        String   
   reviewedId        String   
   productId         String?  
@@ -335,11 +337,13 @@ model Review {
   updatedAt         DateTime @updatedAt
   expiresAt         DateTime // 2 weeks from order completion
   order             Order    @relation(fields: [orderId], references: [id])
+  seller            Seller   @relation(fields: [sellerId], references: [id])
   reviewer          User     @relation("Reviewer", fields: [reviewerId], references: [id])
   reviewed          User     @relation("Reviewed", fields: [reviewedId], references: [id])
   product           Product? @relation(fields: [productId], references: [id])
 
   @@index([orderId])
+  @@index([sellerId])
   @@index([reviewerId])
   @@index([reviewedId])
   @@index([productId])

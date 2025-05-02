@@ -17,7 +17,7 @@ export default function Home() {
         </h1>
         <p className="mt-6 text-lg max-w-prose text-muted-foreground">
           Welcome to Yarnnu. Every shop on our platform is verified by our team
-          to ensure our highest quality standards.
+          to ensure the highest quality standards.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <Link href="/products" className={buttonVariants()}>
