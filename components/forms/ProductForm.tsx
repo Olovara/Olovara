@@ -104,37 +104,36 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
   const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
-  const [isSellerApproved, setIsSellerApproved] = useState(false);
+  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
 
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
-      ...(initialData || {
-        name: "",
-        price: 0,
-        description: { html: "", text: "" },
-        images: [],
-        freeShipping: false,
-        handlingFee: 0,
-        shippingCost: 0,
-        itemWeight: 0,
-        itemLength: 0,
-        itemWidth: 0,
-        itemHeight: 0,
-        shippingNotes: "",
-        status: "HIDDEN",
-        isDigital: false,
-        primaryCategory: "",
-        secondaryCategory: "",
-        stock: 0,
-        inStockProcessingTime: 0,
-        outStockLeadTime: 0,
-        productDrop: false,
-        dropDate: null,
-        discountEndDate: undefined,
-      }),
+      name: initialData?.name || "",
+      price: initialData?.price || 0,
+      description: initialData?.description || { html: "", text: "" },
+      images: initialData?.images || [],
+      freeShipping: initialData?.freeShipping || false,
+      handlingFee: initialData?.handlingFee || 0,
+      shippingCost: initialData?.shippingCost || 0,
+      itemWeight: initialData?.itemWeight || 0,
+      itemLength: initialData?.itemLength || 0,
+      itemWidth: initialData?.itemWidth || 0,
+      itemHeight: initialData?.itemHeight || 0,
+      shippingNotes: initialData?.shippingNotes || "",
+      status: initialData?.status || "HIDDEN",
+      isDigital: initialData?.isDigital || false,
+      primaryCategory: initialData?.primaryCategory || "",
+      secondaryCategory: initialData?.secondaryCategory || "",
+      stock: initialData?.stock || 0,
+      inStockProcessingTime: initialData?.inStockProcessingTime || 0,
+      outStockLeadTime: initialData?.outStockLeadTime || 0,
+      productDrop: initialData?.productDrop || false,
+      dropDate: initialData?.dropDate || null,
+      discountEndDate: initialData?.discountEndDate || undefined,
+      howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
     }
   });
@@ -348,6 +347,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productDrop: false,
       dropDate: null,
       discountEndDate: undefined,
+      howItsMade: "",
       productFile: null,
     });
   };
@@ -358,6 +358,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
   });
 
   if (!isClient) return <Spinner />;
+
+  // Show loading state while checking approval
+  if (isSellerApproved === null) {
+    return <Spinner />;
+  }
 
   if (!isSellerApproved) {
     return (

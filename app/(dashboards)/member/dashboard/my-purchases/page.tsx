@@ -103,13 +103,8 @@ export default async function MyPurchasesPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatPrice(
-                          purchase.totalAmount +
-                            (purchase.shippingCost || 0) -
-                            (() => {
-                              if (typeof purchase.discount === 'number') return purchase.discount;
-                              if (typeof purchase.discount === 'string') return parseFloat(purchase.discount) || 0;
-                              return 0;
-                            })()
+                          purchase.totalAmount,
+                          { isCents: true }
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">

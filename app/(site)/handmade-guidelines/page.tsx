@@ -23,26 +23,23 @@ export default function HandmadeGuidelines() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
+    setIsLoading(true);
     try {
       // Fetch guidelines
       const res = await fetch("/api/handmade-guidelines");
+      if (!res.ok) {
+        throw new Error(`API request failed with status ${res.status}`);
+      }
       const data = await res.json();
-      
-      // Parse the content if it exists
-      if (data.content) {
-        if (typeof data.content === 'string') {
-          try {
-            const parsed = JSON.parse(data.content);
-            setContent(parsed.text || '');
-          } catch {
-            setContent(data.content);
-          }
-        } else if (typeof data.content === 'object') {
-          setContent(data.content.text || '');
-        }
+
+      // The API now returns clean HTML content
+      if (data.content && typeof data.content.html === 'string') {
+        setContent(data.content.html);
+      } else {
+        setContent("");
       }
 
-      // Try to fetch user role from API (optional)
+      // Try to fetch user role
       try {
         const roleRes = await fetch("/api/auth/get-role");
         if (roleRes.ok) {
@@ -50,11 +47,11 @@ export default function HandmadeGuidelines() {
           setIsAdmin(roleData.role === "ADMIN");
         }
       } catch (error) {
-        // Ignore role fetch errors for non-logged-in users
         console.log("User not logged in or role fetch failed");
       }
     } catch (error) {
       console.error("Error fetching guidelines:", error);
+      setContent("");
     } finally {
       setIsLoading(false);
     }
@@ -66,13 +63,18 @@ export default function HandmadeGuidelines() {
 
   const handleSave = useCallback(async () => {
     try {
+      // Ensure content is defined, default to empty string if not
+      const htmlToSave = content || '';
+      // Generate plain text by stripping HTML tags
+      const textToSave = htmlToSave.replace(/<[^>]*>?/gm, '');
+
       await fetch("/api/handmade-guidelines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: {
-            html: content,
-            text: content.replace(/<[^>]*>?/gm, '') // Strip HTML tags for plain text
+            html: htmlToSave,
+            text: textToSave
           }
         }),
       });
@@ -88,26 +90,32 @@ export default function HandmadeGuidelines() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Handmade Guidelines</h1>
 
-      {/* Always display content */}
-      <div className="ql-editor" dangerouslySetInnerHTML={{ __html: content }} />
+      {/* Display content with proper Quill styling */}
+      <div className="prose max-w-none ql-snow">
+        <div
+          className="ql-editor"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      </div>
 
       {/* Show editor and save button only for admin */}
       {isAdmin && (
-        <>
-          <QuillEditor 
+        <div className="mt-8 border-t pt-8">
+          <h2 className="text-xl font-semibold mb-4">Edit Guidelines</h2>
+          <QuillEditor
             value={content}
             onChange={setContent}
           />
           <button
-            className="mt-4 p-2 bg-purple-600 text-white rounded"
+            className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
             onClick={handleSave}
           >
             Save Changes
           </button>
-        </>
+        </div>
       )}
     </div>
   );

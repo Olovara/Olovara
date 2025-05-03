@@ -45,7 +45,8 @@ export const ProductInfoSection = ({
   setMaterialTags,
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = useFormContext();
-  const [isSellerApproved, setIsSellerApproved] = useState(false);
+  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
+  const currentStatus = watch("status");
 
   useEffect(() => {
     const checkApproval = async () => {
@@ -209,7 +210,7 @@ export const ProductInfoSection = ({
       <div className="space-y-4">
         <Label className="text-lg font-semibold">Product Status</Label>
         <RadioGroup
-          defaultValue="HIDDEN"
+          value={currentStatus || "HIDDEN"}
           onValueChange={(value) => form.setValue("status", value)}
           className="flex flex-col space-y-2"
         >
@@ -228,14 +229,14 @@ export const ProductInfoSection = ({
               value="ACTIVE"
               id="active"
               className="text-purple-600"
-              disabled={!isSellerApproved}
+              disabled={isSellerApproved === null || !isSellerApproved}
             />
             <Label 
               htmlFor="active" 
-              className={`text-base ${!isSellerApproved ? 'text-gray-400' : ''}`}
+              className={`text-base ${isSellerApproved === null || !isSellerApproved ? 'text-gray-400' : ''}`}
             >
               Active
-              {!isSellerApproved && (
+              {(isSellerApproved === null || !isSellerApproved) && (
                 <span className="ml-2 text-sm text-gray-500">
                   (Available after approval)
                 </span>
@@ -247,14 +248,14 @@ export const ProductInfoSection = ({
               value="DISABLED"
               id="disabled"
               className="text-purple-600"
-              disabled={!isSellerApproved}
+              disabled={isSellerApproved === null || !isSellerApproved}
             />
             <Label 
               htmlFor="disabled" 
-              className={`text-base ${!isSellerApproved ? 'text-gray-400' : ''}`}
+              className={`text-base ${isSellerApproved === null || !isSellerApproved ? 'text-gray-400' : ''}`}
             >
               Disabled
-              {!isSellerApproved && (
+              {(isSellerApproved === null || !isSellerApproved) && (
                 <span className="ml-2 text-sm text-gray-500">
                   (Available after approval)
                 </span>

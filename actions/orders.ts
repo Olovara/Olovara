@@ -5,14 +5,26 @@ export async function getSellerOrders(userId: string) {
     throw new Error("You must be logged in!");
   }
 
-  return await db.order.findMany({
+  // First get the seller's ID from their userId
+  const seller = await db.seller.findUnique({
     where: { userId },
+    select: { id: true }
+  });
+
+  if (!seller) {
+    throw new Error("Seller not found!");
+  }
+
+  return await db.order.findMany({
+    where: { sellerId: seller.id },
     orderBy: { createdAt: "desc" },
     include: {
       product: true,
     },
   }).then(orders => orders.map(order => ({
     ...order,
+    buyerName: order.buyerName || 'Anonymous',
+    buyerEmail: order.buyerEmail || '',
     seller: {
       id: order.sellerId,
       userId: order.sellerId,

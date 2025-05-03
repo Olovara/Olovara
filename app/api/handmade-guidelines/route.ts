@@ -6,24 +6,77 @@ import { UserRole } from "@prisma/client";
 export async function GET() {
   const guidelines = await db.handmadeGuidelines.findFirst();
   
-  // If no guidelines exist, return empty content
   if (!guidelines) {
     return NextResponse.json({ content: { html: "", text: "" } });
   }
 
-  // If content is a string, try to parse it as JSON
-  if (typeof guidelines.content === 'string') {
+  let responseContent = { html: "", text: "" };
+
+  // Check if the fetched content is usable
+  if (guidelines.content && typeof guidelines.content === 'object' && guidelines.content !== null) {
+    // Assume content is potentially an object like { html: any, text: any }
+    let fetchedHtml = (guidelines.content as any).html;
+    let fetchedText = (guidelines.content as any).text;
+
+    // --- Attempt to fix double-stringified HTML ---
+    if (typeof fetchedHtml === 'string') {
+      try {
+        // Check if it looks like the stringified JSON object
+        if (fetchedHtml.trim().startsWith('{"html":')) {
+          const parsed = JSON.parse(fetchedHtml);
+          if (parsed && typeof parsed.html === 'string') {
+            fetchedHtml = parsed.html; // Use the inner HTML
+          }
+        }
+      } catch {
+        // Ignore parsing error, keep fetchedHtml as is
+      }
+    }
+    responseContent.html = typeof fetchedHtml === 'string' ? fetchedHtml : "";
+
+    // --- Attempt to fix double-stringified Text ---
+    if (typeof fetchedText === 'string') {
+      try {
+        // Check if it looks like the stringified JSON object
+        if (fetchedText.trim().startsWith('{"html":')) {
+          const parsed = JSON.parse(fetchedText);
+          if (parsed && typeof parsed.text === 'string') {
+            fetchedText = parsed.text;
+          }
+        }
+      } catch {
+        // Ignore parsing error, keep fetchedText as is
+      }
+    }
+    responseContent.text = typeof fetchedText === 'string' ? fetchedText : "";
+
+    // Ensure text content is derived from the *final* HTML content if text seems wrong/missing
+    if (!responseContent.text && responseContent.html) {
+      responseContent.text = responseContent.html.replace(/<[^>]*>?/gm, '');
+    }
+  } else if (typeof guidelines.content === 'string') {
+    // Handle legacy case where content itself was just a string
     try {
       const parsed = JSON.parse(guidelines.content);
-      return NextResponse.json({ content: parsed });
+      if (parsed && typeof parsed.html === 'string') {
+        responseContent.html = parsed.html;
+        responseContent.text = parsed.text || parsed.html.replace(/<[^>]*>?/gm, '');
+      } else {
+        // If parsing fails or structure is wrong, treat original string as HTML
+        responseContent.html = guidelines.content;
+        responseContent.text = guidelines.content.replace(/<[^>]*>?/gm, '');
+      }
     } catch {
-      // If parsing fails, return as plain text
-      return NextResponse.json({ content: { html: guidelines.content, text: guidelines.content } });
+      // If it's not JSON, treat the string as HTML
+      responseContent.html = guidelines.content;
+      responseContent.text = guidelines.content.replace(/<[^>]*>?/gm, '');
     }
   }
 
-  // If content is already an object, return as is
-  return NextResponse.json(guidelines);
+  return NextResponse.json({
+    content: responseContent,
+    updatedAt: guidelines.updatedAt
+  });
 }
 
 export async function POST(req: Request) {

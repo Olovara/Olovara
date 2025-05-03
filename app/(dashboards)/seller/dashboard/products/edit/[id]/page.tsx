@@ -19,12 +19,23 @@ export default function EditProductPage() {
   const params = useParams();
   const [product, setProduct] = useState<ProductFormValues | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const response = await fetch(`/api/products/${params.id}`);
-        if (!response.ok) throw new Error("Failed to fetch product");
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("Product not found");
+          } else if (response.status === 401) {
+            setError("You need to be logged in to edit this product");
+          } else {
+            setError("Failed to fetch product");
+          }
+          return;
+        }
+
         const data = await response.json();
 
         // Transform the product data to match the expected format
@@ -69,6 +80,7 @@ export default function EditProductPage() {
         setProduct(transformedProduct);
       } catch (error) {
         console.error("Error fetching product:", error);
+        setError("An unexpected error occurred");
       } finally {
         setLoading(false);
       }
@@ -78,11 +90,15 @@ export default function EditProductPage() {
   }, [params.id]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center min-h-[50vh]">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center justify-center min-h-[50vh] text-red-500">{error}</div>;
   }
 
   if (!product) {
-    return <div>Product not found</div>;
+    return <div className="flex items-center justify-center min-h-[50vh]">Product not found</div>;
   }
 
   return (

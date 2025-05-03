@@ -15,7 +15,7 @@ const ReactQuill = dynamic(() => import("react-quill").then(mod => mod.default),
 });
 
 interface QuillEditorProps {
-  value: any; // Can be string or object
+  value: string; // Changed to string type since we only handle HTML
   onChange: (value: string) => void;
   placeholder?: string;
 }
@@ -53,15 +53,9 @@ export function QuillEditor({ value, onChange, placeholder }: QuillEditorProps) 
     try {
       if (!value) return "";
       
-      // If value is already an object with html property
-      if (typeof value === 'object' && value.html) {
-        return value.html;
-      }
-      
-      // If value is a string, try to parse it as JSON
+      // If value is a string, it should be the HTML content
       if (typeof value === 'string') {
-        const parsed = JSON.parse(value);
-        return parsed.html || "";
+        return value;
       }
       
       return "";
@@ -71,13 +65,9 @@ export function QuillEditor({ value, onChange, placeholder }: QuillEditorProps) 
     }
   }, [value]);
 
-  // Convert HTML to JSON when content changes
+  // Simply pass the HTML content directly
   const handleChange = (html: string) => {
-    const json = {
-      html,
-      text: html.replace(/<[^>]*>?/gm, ""), // Strip HTML tags for plain text
-    };
-    onChange(JSON.stringify(json));
+    onChange(html);
   };
 
   return (

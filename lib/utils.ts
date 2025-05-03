@@ -10,19 +10,23 @@ export function formatPrice(
   options: {
     currency?: 'USD' | 'EUR' | 'GBP' | 'BDT'
     notation?: Intl.NumberFormatOptions['notation']
+    isCents?: boolean
   } = {}
 ) {
-  const { currency = 'USD', notation = 'compact' } = options
+  const { currency = 'USD', notation = 'compact', isCents = true } = options
 
   const numericPrice =
     typeof price === 'string' ? parseFloat(price) : price
+
+  // Convert cents to dollars if isCents is true
+  const priceInDollars = isCents ? numericPrice / 100 : numericPrice
 
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     notation,
     maximumFractionDigits: 2,
-  }).format(numericPrice)
+  }).format(priceInDollars)
 }
 
 export function shopNameSlugify(text: string) {

@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AlertTriangle } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
 
 interface OrderDetailsModalProps {
   order: {
@@ -233,23 +234,31 @@ export function OrderDetailsModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Subtotal</p>
-                    <p className="font-medium">${(order.totalAmount - (order.shippingCost || 0)).toFixed(2)}</p>
+                    <p className="font-medium">
+                      {formatPrice(order.totalAmount - (order.shippingCost || 0), { isCents: true })}
+                    </p>
                   </div>
                   {!order.isDigital && (
                     <div>
                       <p className="text-sm text-muted-foreground">Shipping Cost</p>
-                      <p className="font-medium">${order.shippingCost?.toFixed(2) || "0.00"}</p>
+                      <p className="font-medium">
+                        {formatPrice(order.shippingCost || 0, { isCents: true })}
+                      </p>
                     </div>
                   )}
                   {order.discount && order.discount > 0 && (
                     <div>
                       <p className="text-sm text-muted-foreground">Discount</p>
-                      <p className="font-medium">-${order.discount.toFixed(2)}</p>
+                      <p className="font-medium">
+                        -{formatPrice(order.discount, { isCents: true })}
+                      </p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">Total Amount</p>
-                    <p className="font-medium">${order.totalAmount.toFixed(2)}</p>
+                    <p className="font-medium">
+                      {formatPrice(order.totalAmount, { isCents: true })}
+                    </p>
                   </div>
                 </div>
               </div>
