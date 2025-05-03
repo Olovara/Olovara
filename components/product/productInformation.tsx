@@ -24,11 +24,13 @@ import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { CategoriesMap } from "@/data/categories";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
+import { ProductSchema } from "@/schemas/ProductSchema";
+import { z } from "zod";
 
 type ProductInfoSectionProps = {
-  form: UseFormReturn<any>;
-  descriptionJson: any;
-  setDescriptionJson: (value: any) => void;
+  form: ReturnType<typeof useFormContext<z.infer<typeof ProductSchema>>>;
+  description: string;
+  setDescription: (value: string) => void;
   tags: string[];
   setTags: (tags: string[]) => void;
   materialTags: string[];
@@ -37,8 +39,8 @@ type ProductInfoSectionProps = {
 
 export const ProductInfoSection = ({
   form,
-  descriptionJson,
-  setDescriptionJson,
+  description,
+  setDescription,
   tags,
   setTags,
   materialTags,
@@ -124,15 +126,12 @@ export const ProductInfoSection = ({
       />
 
       {/* Product Description */}
-      <div className="flex flex-col gap-y-2">
-        <Label>Product Description</Label>
-        <QuillEditor 
-          value={descriptionJson || ''}
-          onChange={(newValue) => {
-            setDescriptionJson(newValue);
-            // Also update the form value
-            form.setValue("description", newValue);
-          }} 
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <QuillEditor
+          value={description}
+          onChange={setDescription}
+          placeholder="Enter product description..."
         />
       </div>
 

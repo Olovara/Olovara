@@ -156,20 +156,16 @@ export default async function ProductPage({
             )}
           </p>
 
-          {/* Handling Fee and Shipping */}
-          {data.handlingFee && (
+          {/* Combined Shipping and Handling Fee */}
+          {!data.freeShipping && (data.shippingCost || data.handlingFee) && (
             <p className="text-sm text-gray-600">
-              Handling Fee: ${data.handlingFee.toFixed(2)}
-            </p>
-          )}
-          {data.shippingCost && !data.freeShipping && (
-            <p className="text-sm text-gray-600">
-              Shipping: ${data.shippingCost.toFixed(2)}
+              Shipping & Handling: ${((data.shippingCost || 0) + (data.handlingFee || 0)).toFixed(2)}
             </p>
           )}
           {data.freeShipping && (
             <p className="text-sm text-green-600">Free Shipping Available</p>
           )}
+
           {/* Display Stock Quantity if it's a physical product */}
           {!data.isDigital && (
             <p className="text-sm text-gray-600">

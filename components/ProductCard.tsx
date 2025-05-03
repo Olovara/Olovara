@@ -75,7 +75,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
         </h3>
         <p className="mt-1 text-sm text-gray-500">{label}</p>
         <p className="mt-1 font-medium text-sm text-gray-900">
-          {formatPrice(product.price)}
+          {formatPrice(product.price, { isCents: false })}
         </p>
       </div>
     </Link>

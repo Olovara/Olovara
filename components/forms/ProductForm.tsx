@@ -47,8 +47,8 @@ type SchemaOption = {
 export function ProductForm({ initialData }: ProductFormProps) {
   console.log('[DEBUG] ProductForm - Initial data:', initialData);
   
-  const [descriptionJson, setDescriptionJson] = useState<any>(
-    initialData?.description || { html: "", text: "" }
+  const [description, setDescription] = useState<string>(
+    initialData?.description?.html || ""
   );
   const [tags, setTags] = useState<string[]>(
     initialData?.tags || []
@@ -160,29 +160,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
     setValue('images', images);
   }, [images, setValue]);
 
-  // Add this useEffect to handle description updates
+  // Update the description handling useEffect
   useEffect(() => {
-    if (descriptionJson) {
-      // If descriptionJson is a string, parse it
-      const parsedDescription = typeof descriptionJson === 'string' 
-        ? JSON.parse(descriptionJson)
-        : descriptionJson;
-      
-      // Update both the form value and the state
-      form.setValue('description', parsedDescription);
-      setDescriptionJson(parsedDescription);
+    if (description) {
+      // Update the form value with the proper structure
+      form.setValue('description', {
+        html: description,
+        text: description.replace(/<[^>]*>?/gm, '')
+      });
     }
-  }, [descriptionJson, form]);
+  }, [description, form]);
 
-  // Add this useEffect to sync form values with descriptionJson
+  // Update the form watch for description
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'description' && value.description) {
-        setDescriptionJson(value.description);
+        // Only update if the description has changed
+        if (value.description.html !== description) {
+          setDescription(value.description.html || ""); // Add fallback for undefined
+        }
       }
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, description]);
 
   const cleanupTempImages = useCallback(async () => {
     // Only clean up if the form was submitted successfully
@@ -258,7 +258,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       const submissionData = {
         ...data,
         ...(initialData && { id: initialData.id }),
-        description: descriptionJson,
+        description: description,
         images: images,
         tags: tags,
         materialTags: materialTags,
@@ -319,7 +319,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   };
 
   const resetExternalStates = () => {
-    setDescriptionJson({ html: "", text: "" });
+    setDescription("");
     setDropdownOptions([]);
     setImages([]);
     setTags([]);
@@ -381,8 +381,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
         {/* Product Information Section */}
         <ProductInfoSection
           form={form}
-          descriptionJson={descriptionJson}
-          setDescriptionJson={setDescriptionJson}
+          description={description}
+          setDescription={setDescription}
           tags={tags}
           setTags={setTags}
           materialTags={materialTags}

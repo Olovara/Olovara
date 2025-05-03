@@ -23,9 +23,22 @@ export function ProductDescriptionComponent({ content }: ProductDescriptionProps
           return;
         }
 
-        // Parse the content if it's a string, otherwise use it directly
-        const json = typeof content === 'string' ? JSON.parse(content) : content;
-        const html = json.html || "";
+        // Handle different content formats
+        let htmlContent = "";
+        
+        if (typeof content === 'string') {
+          try {
+            // Try to parse as JSON first
+            const parsed = JSON.parse(content);
+            htmlContent = parsed.html || "";
+          } catch {
+            // If not JSON, assume it's HTML
+            htmlContent = content;
+          }
+        } else if (typeof content === 'object' && content !== null) {
+          // If it's an object, try to get html property
+          htmlContent = content.html || "";
+        }
 
         // Initialize Quill in read-only mode
         const quill = new Quill(editorRef.current, {
@@ -34,14 +47,21 @@ export function ProductDescriptionComponent({ content }: ProductDescriptionProps
         });
 
         // Set content to the editor
-        quill.clipboard.dangerouslyPasteHTML(html);
+        quill.clipboard.dangerouslyPasteHTML(htmlContent);
       } catch (error) {
         console.error("Error parsing description content:", error);
       }
     }
   }, [content]);
 
-  return <div ref={editorRef} className="prose prose-sm sm:prose-base" />;
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Product Description</h2>
+      <div className="prose prose-sm sm:prose-base">
+        <div ref={editorRef} />
+      </div>
+    </div>
+  );
 }
 
 export default ProductDescriptionComponent;

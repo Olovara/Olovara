@@ -68,14 +68,14 @@ export default function EditProductPage() {
             ? data.options
                 .map((opt: unknown) =>
                   typeof opt === "object" && opt !== null && "name" in opt && "value" in opt
-                    ? { name: String(opt.name), value: String(opt.value) }
-                    : null
-                )
+              ? { name: String(opt.name), value: String(opt.value) }
+              : null
+          )
                 .filter((opt: ProductOption | null): opt is ProductOption => opt !== null)
-            : [],
+      : [],
           dropDate: data.dropDate ? new Date(data.dropDate) : null,
           discountEndDate: data.discountEndDate ? new Date(data.discountEndDate) : undefined,
-        };
+  };
 
         setProduct(transformedProduct);
       } catch (error) {

@@ -59,15 +59,19 @@ export function ProductTable({ products }: ProductTableProps) {
     if (typeof description === 'string') {
       try {
         const parsed = JSON.parse(description);
-        return parsed.text || 'No description';
-      } catch {
+        if (parsed && typeof parsed === 'object') {
+          return parsed.text || parsed.html?.replace(/<[^>]*>?/gm, '') || 'No description';
+        }
         return description;
+      } catch {
+        // If it's not JSON, try to strip HTML tags
+        return description.replace(/<[^>]*>?/gm, '');
       }
     }
     
     // Handle description object
-    if (description && typeof description === 'object' && 'text' in description) {
-      return description.text || 'No description';
+    if (description && typeof description === 'object') {
+      return description.text || description.html?.replace(/<[^>]*>?/gm, '') || 'No description';
     }
     
     return 'No description';
@@ -98,19 +102,24 @@ export function ProductTable({ products }: ProductTableProps) {
             <TableRow key={product.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <div className="relative h-10 w-10 overflow-hidden rounded-md">
+                  <div className="relative h-12 w-12 overflow-hidden rounded-md">
                     <Image
-                      src={product.images?.[0] || "/placeholder.png"}
-                      alt={product.name || "Product image"}
+                      src={product.images[0] || "/placeholder.png"}
+                      alt={product.name}
                       fill
                       className="object-cover"
                     />
                   </div>
-                  <div>
-                    <div className="font-medium">{product.name || "Unnamed Product"}</div>
-                    <div className="text-sm text-muted-foreground line-clamp-1">
+                  <div className="flex flex-col">
+                    <Link
+                      href={`/seller/dashboard/products/edit/${product.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {product.name}
+                    </Link>
+                    <p className="text-sm text-muted-foreground line-clamp-1">
                       {getDescriptionText(product.description)}
-                    </div>
+                    </p>
                   </div>
                 </div>
               </TableCell>

@@ -2,6 +2,7 @@ import React from "react";
 import { db } from "@/lib/db";
 import Image from "next/image";
 import ContactSellerButton from "@/components/shared/ContactSellerButton";
+import ProductCard from "@/components/ProductCard";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -89,29 +90,12 @@ export default async function ShopPage({ params }: ShopPageProps) {
             <p className="text-gray-500">No products available.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {seller.products.map((product) => (
-                <div
-                  key={product.id}
-                  className="border p-4 rounded-lg shadow-sm"
-                >
-                  <div className="relative w-full h-40">
-                    <Image
-                      src={product.images[0] || "/placeholder.jpg"}
-                      alt={product.name}
-                      fill
-                      className="object-cover rounded-md"
-                    />
-                  </div>
-                  <h3 className="text-sm font-medium mt-2">{product.name}</h3>
-                  <p className="text-xs text-gray-500">
-                    ${product.price.toFixed(2)}
-                  </p>
-                  {product.onSale && (
-                    <p className="text-xs text-red-500">
-                      On Sale: -{product.discount}%
-                    </p>
-                  )}
-                </div>
+              {seller.products.map((product, index) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  index={index} 
+                />
               ))}
             </div>
           )}
