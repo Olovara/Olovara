@@ -12,10 +12,23 @@ export default function PrivacyPolicy() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch guidelines
+        // Fetch policy
         const res = await fetch("/api/privacy-policy");
         const data = await res.json();
-        setContent(data.content?.ops?.map((op: any) => op.insert).join('') || '');
+        
+        // Parse the content if it exists
+        if (data.content) {
+          if (typeof data.content === 'string') {
+            try {
+              const parsed = JSON.parse(data.content);
+              setContent(parsed.text || '');
+            } catch {
+              setContent(data.content);
+            }
+          } else if (typeof data.content === 'object') {
+            setContent(data.content.text || '');
+          }
+        }
 
         // Try to fetch user role from API (optional)
         try {
@@ -43,7 +56,12 @@ export default function PrivacyPolicy() {
       await fetch("/api/privacy-policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: { ops: [{ insert: content }] } }),
+        body: JSON.stringify({ 
+          content: {
+            html: content,
+            text: content.replace(/<[^>]*>?/gm, '') // Strip HTML tags for plain text
+          }
+        }),
       });
       alert("Policy updated!");
     } catch (error) {

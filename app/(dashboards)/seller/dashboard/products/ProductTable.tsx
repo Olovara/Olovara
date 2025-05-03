@@ -23,7 +23,7 @@ import Link from "next/link";
 interface Product {
   id: string;
   name: string;
-  description: string | { ops: any[] };
+  description: string | { html: string; text: string } | null;
   price: number;
   isDigital: boolean;
   status: string;
@@ -53,28 +53,21 @@ export function ProductTable({ products }: ProductTableProps) {
   };
 
   // Helper function to extract text from description
-  const getDescriptionText = (description: string | { ops: any[] }) => {
+  const getDescriptionText = (description: string | { html: string; text: string } | null) => {
+    if (!description) return 'No description';
+    
     if (typeof description === 'string') {
-      return description;
+      try {
+        const parsed = JSON.parse(description);
+        return parsed.text || 'No description';
+      } catch {
+        return description;
+      }
     }
     
-    // Handle rich text object with ops
-    if (description && typeof description === 'object' && 'ops' in description) {
-      try {
-        // Extract text from ops array
-        return description.ops
-          .map((op: any) => {
-            if (typeof op.insert === 'string') {
-              return op.insert;
-            }
-            return '';
-          })
-          .join('')
-          .trim() || 'No description';
-      } catch (error) {
-        console.error('Error extracting description text:', error);
-        return 'No description';
-      }
+    // Handle description object
+    if (description && typeof description === 'object' && 'text' in description) {
+      return description.text || 'No description';
     }
     
     return 'No description';

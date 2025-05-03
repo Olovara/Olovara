@@ -4,20 +4,9 @@ import { db } from "@/lib/db";
 import { stripeCheckout } from "@/lib/stripe";
 import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
 
-// Helper function to convert Quill delta to plain text
-function quillDeltaToPlainText(delta: any): string {
-  if (!delta || !delta.ops) return "";
-  return delta.ops
-    .map((op: any) => {
-      if (typeof op.insert === 'string') {
-        return op.insert;
-      }
-      return '';
-    })
-    .join("")
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/\n/g, " ")
-    .trim();
+interface ProductDescription {
+  html: string;
+  text: string;
 }
 
 export async function POST(req: Request) {
@@ -70,8 +59,21 @@ export async function POST(req: Request) {
     // Calculate platform fee only on the product price (not including shipping/handling)
     const platformFeeInCents = Math.round(totalProductPriceInCents * (PLATFORM_FEE_PERCENT / 100));
 
-    // Convert Quill content to plain text
-    const plainTextDescription = quillDeltaToPlainText(product.description) || "No description available";
+    // Handle description in new JSON format
+    let productDescription = "No description available";
+    if (product.description) {
+      if (typeof product.description === 'string') {
+        try {
+          const parsed = JSON.parse(product.description) as unknown as ProductDescription;
+          productDescription = parsed.text || parsed.html || product.description;
+        } catch {
+          productDescription = product.description;
+        }
+      } else if (typeof product.description === 'object') {
+        const desc = product.description as unknown as ProductDescription;
+        productDescription = desc.text || desc.html || "No description available";
+      }
+    }
 
     // Create a checkout session
     const checkoutSession = await stripeCheckout.checkout.sessions.create({
@@ -83,7 +85,7 @@ export async function POST(req: Request) {
             currency: 'usd',
             product_data: {
               name: product.name,
-              description: plainTextDescription,
+              description: productDescription,
             },
             unit_amount: productPriceInCents, // Product price in cents
           },

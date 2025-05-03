@@ -126,12 +126,11 @@ export const ProductInfoSection = ({
       <div className="flex flex-col gap-y-2">
         <Label>Product Description</Label>
         <QuillEditor 
-          value={descriptionJson?.ops?.map((op: any) => op.insert).join('') || ''}
+          value={descriptionJson || ''}
           onChange={(newValue) => {
-            const newJson = { ops: [{ insert: newValue }] };
-            setDescriptionJson(newJson);
+            setDescriptionJson(newValue);
             // Also update the form value
-            form.setValue("description", newJson);
+            form.setValue("description", newValue);
           }} 
         />
       </div>

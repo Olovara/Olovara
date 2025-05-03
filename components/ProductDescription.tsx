@@ -1,12 +1,11 @@
 'use client' // Ensure the component only runs on the client side
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import Quill from "quill";
-import type { Delta, Op } from 'quill';
+import "quill/dist/quill.bubble.css"; // Import bubble theme CSS
 
 interface ProductDescriptionProps {
-  content: Delta;
+  content: any | null; // Can be string, object, or null
 }
 
 export function ProductDescriptionComponent({ content }: ProductDescriptionProps) {
@@ -14,14 +13,31 @@ export function ProductDescriptionComponent({ content }: ProductDescriptionProps
 
   useEffect(() => {
     if (editorRef.current) {
-      // Initialize Quill in read-only mode
-      const quill = new Quill(editorRef.current, {
-        theme: "bubble", // Minimalist theme for read-only
-        readOnly: true,
-      });
+      try {
+        if (!content) {
+          // Initialize empty Quill editor if no content
+          const quill = new Quill(editorRef.current, {
+            theme: "bubble",
+            readOnly: true,
+          });
+          return;
+        }
 
-      // Set content to the editor
-      quill.setContents(content);
+        // Parse the content if it's a string, otherwise use it directly
+        const json = typeof content === 'string' ? JSON.parse(content) : content;
+        const html = json.html || "";
+
+        // Initialize Quill in read-only mode
+        const quill = new Quill(editorRef.current, {
+          theme: "bubble", // Minimalist theme for read-only
+          readOnly: true,
+        });
+
+        // Set content to the editor
+        quill.clipboard.dangerouslyPasteHTML(html);
+      } catch (error) {
+        console.error("Error parsing description content:", error);
+      }
     }
   }, [content]);
 

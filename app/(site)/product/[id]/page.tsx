@@ -203,7 +203,7 @@ export default async function ProductPage({
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="text-gray-700">
           <ProtectedProductDescription
-            content={typeof data.description === "string" ? JSON.parse(data.description) : {}}
+            content={data.description}
             NSFW={Boolean(data.NSFW)}
           />
         </div>

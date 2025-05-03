@@ -1,96 +1,89 @@
-import { ProductForm } from "@/components/forms/ProductForm";
-import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+"use client";
 
-export const metadata = {
-  title: "Seller - Edit Product",
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { ProductForm } from "@/components/forms/ProductForm";
+import { ProductSchema } from "@/schemas/ProductSchema";
+import { z } from "zod";
+
+type ProductFormValues = z.infer<typeof ProductSchema> & {
+  id?: string;
 };
 
-// Fetch the product data
-async function getProduct(id: string) {
-  const product = await db.product.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      price: true,
-      status: true,
-      shippingCost: true,
-      handlingFee: true,
-      itemWeight: true,
-      itemLength: true,
-      itemWidth: true,
-      itemHeight: true,
-      shippingNotes: true,
-      freeShipping: true,
-      isDigital: true,
-      stock: true,
-      images: true,
-      productFile: true,
-      numberSold: true,
-      onSale: true,
-      discount: true,
-      primaryCategory: true,
-      secondaryCategory: true,
-      tags: true,
-      materialTags: true,
-      options: true,
-      inStockProcessingTime: true,
-      outStockLeadTime: true,
-      howItsMade: true,
-      productDrop: true,
-      NSFW: true,
-      dropDate: true,
-      discountEndDate: true,
-    },
-  });
-
-  if (!product) {
-    notFound();
-  }
-
-  // Convert any null values to appropriate defaults
-  return {
-    ...product,
-    description: product.description
-      ? { ops: [{ insert: product.description as string }] }
-      : { ops: [{ insert: "" }] },
-    shippingCost: product.shippingCost || 0,
-    handlingFee: product.handlingFee || 0,
-    itemWeight: product.itemWeight || 0,
-    itemLength: product.itemLength || 0,
-    itemWidth: product.itemWidth || 0,
-    itemHeight: product.itemHeight || 0,
-    shippingNotes: product.shippingNotes || "",
-    stock: product.stock ?? null,
-    discount: product.discount || 0,
-    numberSold: product.numberSold || 0,
-    inStockProcessingTime: product.inStockProcessingTime || 0,
-    outStockLeadTime: product.outStockLeadTime || 0,
-    howItsMade: product.howItsMade || "",
-    tags: product.tags || [],
-    materialTags: product.materialTags || [],
-    options: Array.isArray(product.options)
-      ? product.options
-          .map((opt: any) =>
-            typeof opt === "object" && "name" in opt && "value" in opt
-              ? { name: String(opt.name), value: String(opt.value) }
-              : null
-          )
-          .filter((opt): opt is { name: string; value: string } => opt !== null)
-      : [],
-    dropDate: product.dropDate ? product.dropDate.toISOString() : null,
-    discountEndDate: product.discountEndDate ?? undefined,
-  };
+interface ProductOption {
+  name: string;
+  value: string;
 }
 
-export default async function EditProduct({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const product = await getProduct(params.id);
+export default function EditProductPage() {
+  const params = useParams();
+  const [product, setProduct] = useState<ProductFormValues | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch(`/api/products/${params.id}`);
+        if (!response.ok) throw new Error("Failed to fetch product");
+        const data = await response.json();
+
+        // Transform the product data to match the expected format
+        const transformedProduct: ProductFormValues = {
+          ...data,
+          description: typeof data.description === 'string' 
+            ? { html: data.description, text: data.description.replace(/<[^>]*>?/gm, '') }
+            : data.description.ops 
+              ? { 
+                  html: data.description.ops.map((op: { insert: string }) => op.insert).join(''),
+                  text: data.description.ops.map((op: { insert: string }) => op.insert).join('').replace(/<[^>]*>?/gm, '')
+                }
+              : data.description || { html: '', text: '' },
+          shippingCost: data.shippingCost || 0,
+          handlingFee: data.handlingFee || 0,
+          itemWeight: data.itemWeight || 0,
+          itemLength: data.itemLength || 0,
+          itemWidth: data.itemWidth || 0,
+          itemHeight: data.itemHeight || 0,
+          shippingNotes: data.shippingNotes || '',
+          stock: data.stock ?? null,
+          discount: data.discount || 0,
+          numberSold: data.numberSold || 0,
+          inStockProcessingTime: data.inStockProcessingTime || 0,
+          outStockLeadTime: data.outStockLeadTime || 0,
+          howItsMade: data.howItsMade || '',
+          tags: data.tags || [],
+          materialTags: data.materialTags || [],
+          options: Array.isArray(data.options)
+            ? data.options
+                .map((opt: unknown) =>
+                  typeof opt === "object" && opt !== null && "name" in opt && "value" in opt
+                    ? { name: String(opt.name), value: String(opt.value) }
+                    : null
+                )
+                .filter((opt: ProductOption | null): opt is ProductOption => opt !== null)
+            : [],
+          dropDate: data.dropDate ? new Date(data.dropDate) : null,
+          discountEndDate: data.discountEndDate ? new Date(data.discountEndDate) : undefined,
+        };
+
+        setProduct(transformedProduct);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [params.id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!product) {
+    return <div>Product not found</div>;
+  }
 
   return (
     <div className="flex items-center justify-center vertical-center">

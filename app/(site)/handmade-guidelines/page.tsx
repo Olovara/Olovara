@@ -27,7 +27,20 @@ export default function HandmadeGuidelines() {
       // Fetch guidelines
       const res = await fetch("/api/handmade-guidelines");
       const data = await res.json();
-      setContent(data.content?.ops?.map((op: any) => op.insert).join('') || '');
+      
+      // Parse the content if it exists
+      if (data.content) {
+        if (typeof data.content === 'string') {
+          try {
+            const parsed = JSON.parse(data.content);
+            setContent(parsed.text || '');
+          } catch {
+            setContent(data.content);
+          }
+        } else if (typeof data.content === 'object') {
+          setContent(data.content.text || '');
+        }
+      }
 
       // Try to fetch user role from API (optional)
       try {
@@ -56,7 +69,12 @@ export default function HandmadeGuidelines() {
       await fetch("/api/handmade-guidelines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: { ops: [{ insert: content }] } }),
+        body: JSON.stringify({ 
+          content: {
+            html: content,
+            text: content.replace(/<[^>]*>?/gm, '') // Strip HTML tags for plain text
+          }
+        }),
       });
       alert("Guidelines updated!");
     } catch (error) {

@@ -40,12 +40,30 @@ export default async function ProductsPage({
   );
 
   // Transform the products data to match the expected types
-  const transformedProducts = products.map(product => ({
-    ...product,
-    description: typeof product.description === 'string' 
-      ? product.description 
-      : { ops: Array.isArray(product.description) ? product.description : [] }
-  }));
+  const transformedProducts = products.map(product => {
+    // Handle description transformation
+    let transformedDescription: string | { html: string; text: string } | null = null;
+    
+    if (product.description) {
+      if (typeof product.description === 'string') {
+        transformedDescription = product.description;
+      } else if (typeof product.description === 'object') {
+        // Ensure the object has the required properties
+        const desc = product.description as any;
+        if (desc.html || desc.text) {
+          transformedDescription = {
+            html: desc.html || '',
+            text: desc.text || ''
+          };
+        }
+      }
+    }
+
+    return {
+      ...product,
+      description: transformedDescription
+    };
+  });
 
   // Helper function to generate tab URLs while preserving search and pagination
   const getTabUrl = (tab: string) => {

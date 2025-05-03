@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import ProductDescription from "./ProductDescription";
-import { Delta } from "quill";
 
 interface ProtectedProductDescriptionProps {
-  content: Delta;
+  content: any | null; // Can be string, object, or null
   NSFW: boolean;
 }
 
@@ -14,6 +13,10 @@ export default function ProtectedProductDescription({
   NSFW,
 }: ProtectedProductDescriptionProps) {
   const [revealed, setRevealed] = useState(!NSFW); // Start revealed if not NSFW
+
+  if (!content) {
+    return <div className="text-muted-foreground">No description available.</div>;
+  }
 
   return (
     <div className="relative">

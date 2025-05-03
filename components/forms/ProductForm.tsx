@@ -48,7 +48,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   console.log('[DEBUG] ProductForm - Initial data:', initialData);
   
   const [descriptionJson, setDescriptionJson] = useState<any>(
-    initialData?.description || { ops: [] }
+    initialData?.description || { html: "", text: "" }
   );
   const [tags, setTags] = useState<string[]>(
     initialData?.tags || []
@@ -114,7 +114,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       ...(initialData || {
         name: "",
         price: 0,
-        description: { ops: [] },
+        description: { html: "", text: "" },
         images: [],
         freeShipping: false,
         handlingFee: 0,
@@ -160,6 +160,30 @@ export function ProductForm({ initialData }: ProductFormProps) {
     console.log('[DEBUG] ProductForm - Current images state:', images);
     setValue('images', images);
   }, [images, setValue]);
+
+  // Add this useEffect to handle description updates
+  useEffect(() => {
+    if (descriptionJson) {
+      // If descriptionJson is a string, parse it
+      const parsedDescription = typeof descriptionJson === 'string' 
+        ? JSON.parse(descriptionJson)
+        : descriptionJson;
+      
+      // Update both the form value and the state
+      form.setValue('description', parsedDescription);
+      setDescriptionJson(parsedDescription);
+    }
+  }, [descriptionJson, form]);
+
+  // Add this useEffect to sync form values with descriptionJson
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'description' && value.description) {
+        setDescriptionJson(value.description);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const cleanupTempImages = useCallback(async () => {
     // Only clean up if the form was submitted successfully
@@ -243,6 +267,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
         productFile: data.productFile || null,
       };
 
+      console.log('[DEBUG] Submitting data:', submissionData);
+
       const response = await fetch(endpoint, {
         method,
         headers: {
@@ -294,7 +320,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   };
 
   const resetExternalStates = () => {
-    setDescriptionJson({ ops: [] });
+    setDescriptionJson({ html: "", text: "" });
     setDropdownOptions([]);
     setImages([]);
     setTags([]);
@@ -302,7 +328,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     form.reset({
       name: "",
       price: 0,
-      description: { ops: [] },
+      description: { html: "", text: "" },
       images: [],
       freeShipping: false,
       handlingFee: 0,
