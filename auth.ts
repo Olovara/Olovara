@@ -1,15 +1,11 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { NextAuthConfig } from "next-auth";
 
 import { db } from "@/lib/db";
-import authConfig from "./auth.config";
+import authConfig from "@/auth.config";
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
+const authOptions = {
   events: {
     async linkAccount({ user }) {
       if (user.id) {
@@ -25,6 +21,14 @@ export const {
     },
   },
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt" },
   ...authConfig,
-});
+} satisfies NextAuthConfig;
+
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut,
+} = NextAuth(authOptions);
+
+export { authOptions };

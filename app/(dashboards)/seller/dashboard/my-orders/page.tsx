@@ -175,12 +175,17 @@ export default async function SellerMyOrders({
                           <TableCell>
                             <OrderActions order={{
                               ...order,
-                              shopName: order.seller?.shopName || "Unknown Shop",
+                              shopName: order.shopName || "Unknown Shop",
                               seller: {
-                                id: order.seller?.id || "",
-                                userId: order.seller?.userId || "",
-                                shopName: order.seller?.shopName || "Unknown Shop",
+                                id: order.sellerId,
+                                userId: order.sellerId,
+                                shopName: order.shopName || "Unknown Shop"
                               },
+                              product: {
+                                id: order.productId,
+                                name: order.productName,
+                                images: order.product?.images || []
+                              }
                             }} />
                           </TableCell>
                         </TableRow>
