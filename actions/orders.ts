@@ -1,66 +1,120 @@
+"use server";
+
 import { db } from "@/lib/db";
+import { decryptName } from "@/lib/encryption";
 
 export async function getSellerOrders(userId: string) {
   if (!userId) {
     throw new Error("You must be logged in!");
   }
+  try {
+    // First find the seller
+    const seller = await db.seller.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
 
-  // First get the seller's ID from their userId
-  const seller = await db.seller.findUnique({
-    where: { userId },
-    select: { id: true }
-  });
+    console.log("Found seller:", seller);
 
-  if (!seller) {
-    throw new Error("Seller not found!");
-  }
-
-  return await db.order.findMany({
-    where: { sellerId: seller.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      product: true,
-    },
-  }).then(orders => orders.map(order => ({
-    ...order,
-    buyerName: order.buyerName || 'Anonymous',
-    buyerEmail: order.buyerEmail || '',
-    seller: {
-      id: order.sellerId,
-      userId: order.sellerId,
-      shopName: order.shopName || "Unknown Seller"
+    if (!seller) {
+      console.log("No seller found for userId:", userId);
+      return [];
     }
-  })));
+
+    // Then find the orders
+    const orders = await db.order.findMany({
+      where: { sellerId: seller.id },
+      select: {
+        id: true,
+        userId: true,
+        sellerId: true,
+        shopName: true,
+        productId: true,
+        productName: true,
+        quantity: true,
+        totalAmount: true,
+        productPrice: true,
+        shippingCost: true,
+        stripeFee: true,
+        isDigital: true,
+        status: true,
+        paymentStatus: true,
+        stripeSessionId: true,
+        stripeTransferId: true,
+        encryptedBuyerEmail: true,
+        buyerEmailIV: true,
+        encryptedBuyerName: true,
+        buyerNameIV: true,
+        encryptedShippingAddress: true,
+        shippingAddressIV: true,
+        discount: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        product: {
+          select: {
+            name: true,
+            images: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    console.log("Found orders:", orders);
+
+    // Decrypt sensitive data
+    return orders.map(order => ({
+      ...order,
+      buyerEmail: decryptName(order.encryptedBuyerEmail, order.buyerEmailIV),
+      buyerName: decryptName(order.encryptedBuyerName, order.buyerNameIV),
+      shippingAddress: order.encryptedShippingAddress 
+        ? JSON.parse(decryptName(order.encryptedShippingAddress, order.shippingAddressIV))
+        : null,
+    }));
+  } catch (error) {
+    console.error("Error getting seller orders:", error);
+    return [];
+  }
 }
 
 export async function getBuyerOrders(userId: string) {
-  if (!userId) {
-    throw new Error("You must be logged in!");
-  }
+  try {
+    const orders = await db.order.findMany({
+      where: { userId },
+      include: {
+        product: {
+          select: {
+            name: true,
+            images: true,
+          },
+        },
+        seller: {
+          select: {
+            id: true,
+            userId: true,
+            shopName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-  // Get all orders for this user without including the seller relation
-  const orders = await db.order.findMany({
-    where: { userId: userId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      product: true,
-    },
-  });
-
-  // Map the orders to include a seller object with the shopName from the order
-  const ordersWithSellers = orders.map(order => {
-    // Use type assertion to access the shopName property
-    const orderWithShopName = order as any;
-    
-    return {
+    // Decrypt sensitive data
+    return orders.map(order => ({
       ...order,
-      seller: {
-        id: order.sellerId,
-        userId: order.sellerId,
-        shopName: orderWithShopName.shopName || "Unknown Seller"
-      }
-    };
-  });
-
-  return ordersWithSellers;
+      buyerEmail: decryptName(order.encryptedBuyerEmail, order.buyerEmailIV),
+      buyerName: decryptName(order.encryptedBuyerName, order.buyerNameIV),
+      shippingAddress: order.encryptedShippingAddress 
+        ? JSON.parse(decryptName(order.encryptedShippingAddress, order.shippingAddressIV))
+        : null,
+    }));
+  } catch (error) {
+    console.error("Error getting buyer orders:", error);
+    return [];
+  }
 }

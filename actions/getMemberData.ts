@@ -1,50 +1,36 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { decryptName } from "@/lib/encryption";
 
-export const getMemberData = async () => {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "User not authenticated." };
-    }
-
-    const member = await db.member.findUnique({
-      where: {
-        userId: session.user.id,
-      },
-      select: {
-        firstName: true,
-        lastName: true,
-        userBio: true,
-      },
-    });
-
-    const user = await db.user.findUnique({
-      where: {
-        id: session.user.id,
-      },
-      select: {
-        email: true,
-        image: true,
-      },
-    });
-
-    if (!member || !user) {
-      return { error: "Member data not found." };
-    }
-
-    // Combine member and user data
-    const formattedData = {
-      ...member,
-      email: user.email || "",
-      image: user.image || "",
-    };
-
-    return { data: formattedData };
-  } catch (error) {
-    console.error("Error fetching member data:", error);
-    return { error: "Failed to fetch member data." };
+export async function getMemberData(userId: string | undefined) {
+  if (!userId) {
+    return null;
   }
-}; 
+
+  try {
+    const member = await db.member.findUnique({
+      where: { userId },
+      select: {
+        encryptedFirstName: true,
+        encryptedLastName: true,
+        firstNameIV: true,
+        lastNameIV: true,
+        userBio: true
+      }
+    });
+
+    if (!member) {
+      return null;
+    }
+
+    return {
+      firstName: decryptName(member.encryptedFirstName, member.firstNameIV),
+      lastName: decryptName(member.encryptedLastName, member.lastNameIV),
+      userBio: member.userBio
+    };
+  } catch (error) {
+    console.error("Error getting member data:", error);
+    return null;
+  }
+} 

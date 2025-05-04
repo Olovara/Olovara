@@ -202,16 +202,16 @@ export function OrderDetailsModal({
                 <h3 className="text-lg font-medium">Product Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <p className="text-sm text-muted-foreground">Shop Name</p>
+                    <p className="font-medium">{order.shopName}</p>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Product Name</p>
                     <p className="font-medium">{order.productName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Quantity</p>
                     <p className="font-medium">{order.quantity}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Shop Name</p>
-                    <p className="font-medium">{order.shopName}</p>
                   </div>
                 </div>
               </div>

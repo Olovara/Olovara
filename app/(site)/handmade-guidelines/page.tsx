@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import "react-quill/dist/quill.snow.css";
 import dynamic from "next/dynamic";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 // Dynamically import QuillEditor with SSR disabled
 const QuillEditor = dynamic(
@@ -19,56 +21,64 @@ const QuillEditor = dynamic(
 
 export default function HandmadeGuidelines() {
   const [content, setContent] = useState<string>("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchGuidelines = useCallback(async () => {
     try {
-      // Fetch guidelines
       const res = await fetch("/api/handmade-guidelines");
       if (!res.ok) {
         throw new Error(`API request failed with status ${res.status}`);
       }
       const data = await res.json();
-
-      // The API now returns clean HTML content
-      if (data.content && typeof data.content.html === 'string') {
-        setContent(data.content.html);
-      } else {
-        setContent("");
-      }
-
-      // Try to fetch user role
-      try {
-        const roleRes = await fetch("/api/auth/get-role");
-        if (roleRes.ok) {
-          const roleData = await roleRes.json();
-          setIsAdmin(roleData.role === "ADMIN");
-        }
-      } catch (error) {
-        console.log("User not logged in or role fetch failed");
-      }
+      setContent(data.content.html || "");
+      setLastUpdated(new Date(data.updatedAt));
     } catch (error) {
       console.error("Error fetching guidelines:", error);
       setContent("");
-    } finally {
-      setIsLoading(false);
+      setLastUpdated(null);
+    }
+  }, []);
+
+  const checkAdminStatus = useCallback(async () => {
+    try {
+      const roleRes = await fetch("/api/auth/get-role");
+      if (roleRes.ok) {
+        const roleData = await roleRes.json();
+        setIsAdmin(roleData.role === "ADMIN");
+      }
+    } catch (error) {
+      // If there's an error (like not logged in), just keep isAdmin as false
+      setIsAdmin(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const loadData = async () => {
+      setIsLoading(true);
+      await fetchGuidelines();
+      await checkAdminStatus();
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchGuidelines, checkAdminStatus]);
 
   const handleSave = useCallback(async () => {
+    if (!content.trim()) {
+      toast.error("Please add some content before saving");
+      return;
+    }
+
+    setIsSaving(true);
+    const toastId = toast.loading("Saving guidelines...");
+
     try {
-      // Ensure content is defined, default to empty string if not
       const htmlToSave = content || '';
-      // Generate plain text by stripping HTML tags
       const textToSave = htmlToSave.replace(/<[^>]*>?/gm, '');
 
-      await fetch("/api/handmade-guidelines", {
+      const response = await fetch("/api/handmade-guidelines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,45 +88,69 @@ export default function HandmadeGuidelines() {
           }
         }),
       });
-      alert("Guidelines updated!");
+
+      if (!response.ok) {
+        throw new Error("Failed to save guidelines");
+      }
+
+      const data = await response.json();
+      setLastUpdated(new Date(data.updatedAt));
+
+      toast.success("Guidelines updated successfully!", {
+        id: toastId,
+      });
     } catch (error) {
       console.error("Error saving guidelines:", error);
-      alert("Failed to update guidelines");
+      toast.error("Failed to update guidelines. Please try again.", {
+        id: toastId,
+      });
+    } finally {
+      setIsSaving(false);
     }
   }, [content]);
 
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-4 sm:p-6">Loading...</div>;
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Handmade Guidelines</h1>
-
-      {/* Display content with proper Quill styling */}
-      <div className="prose max-w-none ql-snow">
-        <div
-          className="ql-editor"
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
-      </div>
-
-      {/* Show editor and save button only for admin */}
-      {isAdmin && (
-        <div className="mt-8 border-t pt-8">
-          <h2 className="text-xl font-semibold mb-4">Edit Guidelines</h2>
-          <QuillEditor
-            value={content}
-            onChange={setContent}
-          />
-          <button
-            className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
-            onClick={handleSave}
-          >
-            Save Changes
-          </button>
+    <div className="w-full px-4 sm:px-6 md:px-8">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Handmade Guidelines</h1>
+          {lastUpdated && (
+            <p className="text-sm text-muted-foreground mt-2 sm:mt-0">
+              Last updated: {format(lastUpdated, "MMMM d, yyyy")}
+            </p>
+          )}
         </div>
-      )}
+
+        {/* Display content with proper Quill styling */}
+        <div className="prose max-w-none ql-snow">
+          <div
+            className="ql-editor"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        </div>
+
+        {/* Show editor and save button only for admin */}
+        {isAdmin && (
+          <div className="mt-6 sm:mt-8 border-t pt-6 sm:pt-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Edit Guidelines</h2>
+            <QuillEditor
+              value={content}
+              onChange={setContent}
+            />
+            <button
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

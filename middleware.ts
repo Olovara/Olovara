@@ -20,7 +20,7 @@ export default auth((req) => {
   const userRole = req.auth?.user?.role;
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
   const isStripeWebhook = nextUrl.pathname.startsWith('/api/stripe/webhooks');
   const isLogoutRedirect = nextUrl.pathname === '/login' && nextUrl.searchParams.get('callbackUrl')?.includes('/login');
@@ -35,10 +35,17 @@ export default auth((req) => {
     return;
   }
 
+  // Allow auth API routes without authentication
   if (isApiAuthRoute) {
     return;
   }
 
+  // Allow public routes without authentication
+  if (isPublicRoute) {
+    return;
+  }
+
+  // Handle auth routes
   if (isAuthRoute) {
     if (isAuthorized) {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));

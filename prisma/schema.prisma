@@ -273,8 +273,10 @@ model ContactUs {
 model Order {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
   userId            String
-  buyerEmail       String
-  buyerName         String
+  encryptedBuyerEmail String
+  buyerEmailIV      String
+  encryptedBuyerName String
+  buyerNameIV       String
   sellerId          String
   shopName          String
   productId         String
@@ -289,7 +291,8 @@ model Order {
   paymentStatus     PaymentStatus
   stripeSessionId   String
   stripeTransferId  String?
-  shippingAddress   Json?
+  encryptedShippingAddress String
+  shippingAddressIV String
   discount          Json?
   reviews           Review[]
   completedAt       DateTime?
@@ -303,12 +306,28 @@ model Order {
 model HandmadeGuidelines {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   Json
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model PrivacyPolicy {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TermsOfService {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BuyerAndReturnsPolicy {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 

@@ -9,6 +9,7 @@ export const publicRoutes = [
   "/api/uploadthing", 
   "/api/stripe/webhooks",
   "/handmade-guidelines",
+  "/api/handmade-guidelines",
   "/contact",
   "/products",
   "/product/[id]",

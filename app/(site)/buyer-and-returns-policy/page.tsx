@@ -19,7 +19,7 @@ const QuillEditor = dynamic(
   }
 );
 
-export default function PrivacyPolicy() {
+export default function BuyerAndReturnsPolicy() {
   const [content, setContent] = useState<string>("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
 
   const fetchPolicy = useCallback(async () => {
     try {
-      const res = await fetch("/api/privacy-policy");
+      const res = await fetch("/api/buyer-and-returns-policy");
       if (!res.ok) {
         throw new Error(`API request failed with status ${res.status}`);
       }
@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
       setContent(data.content.html || "");
       setLastUpdated(new Date(data.updatedAt));
     } catch (error) {
-      console.error("Error fetching privacy policy:", error);
+      console.error("Error fetching buyer and returns policy:", error);
       setContent("");
       setLastUpdated(null);
     }
@@ -78,7 +78,7 @@ export default function PrivacyPolicy() {
       const htmlToSave = content || '';
       const textToSave = htmlToSave.replace(/<[^>]*>?/gm, '');
 
-      const response = await fetch("/api/privacy-policy", {
+      const response = await fetch("/api/buyer-and-returns-policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,18 +90,18 @@ export default function PrivacyPolicy() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save privacy policy");
+        throw new Error("Failed to save buyer and returns policy");
       }
 
       const data = await response.json();
       setLastUpdated(new Date(data.updatedAt));
 
-      toast.success("Privacy policy updated successfully!", {
+      toast.success("Buyer and returns policy updated successfully!", {
         id: toastId,
       });
     } catch (error) {
-      console.error("Error saving privacy policy:", error);
-      toast.error("Failed to update privacy policy. Please try again.", {
+      console.error("Error saving buyer and returns policy:", error);
+      toast.error("Failed to update policy. Please try again.", {
         id: toastId,
       });
     } finally {
@@ -117,6 +117,7 @@ export default function PrivacyPolicy() {
     <div className="w-full px-4 sm:px-6 md:px-8">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Buyer and Returns Policy</h1>
           {lastUpdated && (
             <p className="text-sm text-muted-foreground mt-2 sm:mt-0">
               Last updated: {format(lastUpdated, "MMMM d, yyyy")}

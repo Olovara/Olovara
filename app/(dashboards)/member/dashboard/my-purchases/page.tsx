@@ -95,7 +95,7 @@ export default async function MyPurchasesPage() {
                     <TableRow key={purchase.id}>
                       <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
                       <TableCell>{purchase.product.name}</TableCell>
-                      <TableCell>{purchase.seller.shopName}</TableCell>
+                      <TableCell>{purchase.seller?.shopName || purchase.shopName || "Unknown Seller"}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(purchase.status)}>
                           {purchase.status}

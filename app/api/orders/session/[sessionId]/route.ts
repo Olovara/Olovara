@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripeCheckout } from "@/lib/stripe";
 import { db } from "@/lib/db";
+import { decryptOrderData } from "@/lib/encryption";
 
 export async function GET(
   request: Request,
@@ -20,14 +21,35 @@ export async function GET(
       where: {
         stripeSessionId: params.sessionId,
       },
-      include: {
-        product: true,
+      select: {
+        id: true,
+        totalAmount: true,
+        status: true,
+        product: {
+          select: {
+            name: true,
+            price: true,
+          },
+        },
+        encryptedBuyerEmail: true,
+        buyerEmailIV: true,
+        encryptedBuyerName: true,
+        buyerNameIV: true,
+        encryptedShippingAddress: true,
+        shippingAddressIV: true,
       },
     });
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    // Decrypt sensitive data
+    const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV);
+    const buyerName = decryptOrderData(order.encryptedBuyerName, order.buyerNameIV);
+    const shippingAddress = order.encryptedShippingAddress 
+      ? JSON.parse(decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV))
+      : null;
 
     return NextResponse.json({
       id: order.id,
@@ -37,7 +59,9 @@ export async function GET(
         name: order.product.name,
         price: order.product.price,
       },
-      shippingAddress: order.shippingAddress,
+      shippingAddress,
+      buyerEmail,
+      buyerName,
     });
   } catch (error) {
     console.error("[ORDER_DETAILS_ERROR]", error);

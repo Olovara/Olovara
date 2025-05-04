@@ -2,46 +2,52 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { z } from "zod";
+import { encryptName } from "@/lib/encryption";
 
-interface EncryptedMemberData {
-  encryptedFirstName: string;
-  encryptedLastName: string;
-  firstNameIV: string;
-  lastNameIV: string;
+interface MemberData {
+  firstName: string;
+  lastName: string;
   userBio: string;
-  image?: string;
 }
 
-export const memberInformation = async (values: EncryptedMemberData) => {
+export const memberInformation = async (data: MemberData) => {
   const session = await auth();
   if (!session?.user) {
     return { error: "Unauthorized" };
   }
 
   try {
-    // Update member information with encrypted data
-    await db.member.updateMany({
-      where: {
-        userId: session.user.id,
-      },
-      data: {
-        encryptedFirstName: values.encryptedFirstName,
-        encryptedLastName: values.encryptedLastName,
-        firstNameIV: values.firstNameIV,
-        lastNameIV: values.lastNameIV,
-        userBio: values.userBio,
-      },
+    // Encrypt the names on the server side
+    const { encrypted: encryptedFirstName, iv: firstNameIV } = encryptName(data.firstName);
+    const { encrypted: encryptedLastName, iv: lastNameIV } = encryptName(data.lastName);
+
+    // Check if member exists
+    const existingMember = await db.member.findUnique({
+      where: { userId: session.user.id },
     });
 
-    // Update user image if provided
-    if (values.image) {
-      await db.user.update({
-        where: {
-          id: session.user.id,
-        },
+    if (existingMember) {
+      // Update existing member information
+      await db.member.update({
+        where: { userId: session.user.id },
         data: {
-          image: values.image,
+          encryptedFirstName,
+          encryptedLastName,
+          firstNameIV,
+          lastNameIV,
+          userBio: data.userBio,
+        },
+      });
+    } else {
+      // Create new member record
+      await db.member.create({
+        data: {
+          userId: session.user.id,
+          encryptedFirstName,
+          encryptedLastName,
+          firstNameIV,
+          lastNameIV,
+          userBio: data.userBio,
         },
       });
     }

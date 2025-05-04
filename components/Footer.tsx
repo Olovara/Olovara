@@ -98,6 +98,14 @@ const Footer = () => {
                         Contact Us
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/buyer-and-returns-policy"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Buyer and Returns Policy
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 

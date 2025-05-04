@@ -6,6 +6,7 @@ import type { Stripe } from "stripe";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { Resend } from "resend";
 import ProductEmail from "@/components/emails/ProductEmail";
+import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -85,36 +86,47 @@ export async function POST(req: Request) {
           }
 
           // Create preliminary order
+          const buyerEmail = session.customer_details?.email || "";
+          const buyerName = session.customer_details?.name || "";
+          const shippingAddress = session.shipping_details?.address
+            ? JSON.stringify({
+                city: session.shipping_details.address.city || "",
+                country: session.shipping_details.address.country || "",
+                line1: session.shipping_details.address.line1 || "",
+                line2: session.shipping_details.address.line2 || "",
+                postal_code: session.shipping_details.address.postal_code || "",
+                state: session.shipping_details.address.state || "",
+              })
+            : null;
+
+          const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV } = encryptOrderData(buyerEmail);
+          const { encrypted: encryptedBuyerName, iv: buyerNameIV } = encryptOrderData(buyerName);
+          const { encrypted: encryptedShippingAddress, iv: shippingAddressIV } = shippingAddress 
+            ? encryptOrderData(shippingAddress)
+            : { encrypted: "", iv: "" };
+
           const preliminaryOrderData = {
             userId: session.metadata.userId || "",
-            buyerEmail: session.customer_details?.email || "",
-            buyerName: session.customer_details?.name || "",
+            encryptedBuyerEmail,
+            buyerEmailIV,
+            encryptedBuyerName,
+            buyerNameIV,
             sellerId: session.metadata.sellerId || "",
             shopName: product.seller?.shopName || "",
             productId: session.metadata.productId || "",
             productName: product.name,
             quantity: parseInt(session.metadata.quantity || "1"),
-            // Amounts are already in cents from metadata
             totalAmount: parseInt(session.metadata.productPrice || "0") + parseInt(session.metadata.shippingAndHandling || "0"),
             productPrice: parseInt(session.metadata.productPrice || "0"),
             shippingCost: parseInt(session.metadata.shippingAndHandling || "0"),
             stripeFee: 0, // Placeholder
             isDigital: product.isDigital || false,
-            // Set initial status based on product type
             status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
             paymentStatus: PaymentStatus.PAID,
             stripeSessionId: session.id,
             stripeTransferId: null,
-            shippingAddress: session.shipping_details?.address
-              ? {
-                  city: session.shipping_details.address.city || "",
-                  country: session.shipping_details.address.country || "",
-                  line1: session.shipping_details.address.line1 || "",
-                  line2: session.shipping_details.address.line2 || "",
-                  postal_code: session.shipping_details.address.postal_code || "",
-                  state: session.shipping_details.address.state || "",
-                }
-              : null,
+            encryptedShippingAddress,
+            shippingAddressIV,
             discount: null,
             completedAt: product.isDigital ? new Date() : null,
           };
@@ -223,9 +235,17 @@ export async function POST(req: Request) {
 
           // Send confirmation email to buyer
           try {
+            // Decrypt the buyer's email
+            const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV);
+            
+            // Decrypt and parse the shipping address if it exists
+            const shippingAddress = order.encryptedShippingAddress 
+              ? JSON.parse(decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV))
+              : null;
+
             const { data, error } = await resend.emails.send({
               from: "Yarnnu <noreply@yarnnu.com>",
-              to: [order.buyerEmail],
+              to: [buyerEmail],
               subject: product.isDigital ? "Your digital product is ready!" : "Your order has been confirmed!",
               react: ProductEmail({
                 link: product.isDigital && product.productFile ? product.productFile : undefined,
@@ -233,12 +253,12 @@ export async function POST(req: Request) {
                 orderDetails: {
                   productName: product.name,
                   orderId: order.id,
-                  shippingAddress: order.shippingAddress ? {
-                    street: (order.shippingAddress as any).line1 || "",
-                    city: (order.shippingAddress as any).city || "",
-                    state: (order.shippingAddress as any).state || "",
-                    zipCode: (order.shippingAddress as any).postal_code || "",
-                    country: (order.shippingAddress as any).country || "",
+                  shippingAddress: shippingAddress ? {
+                    street: shippingAddress.line1 || "",
+                    city: shippingAddress.city || "",
+                    state: shippingAddress.state || "",
+                    zipCode: shippingAddress.postal_code || "",
+                    country: shippingAddress.country || "",
                   } : undefined,
                 },
               }),

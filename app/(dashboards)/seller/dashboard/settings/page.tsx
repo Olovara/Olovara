@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import MemberForm from "@/components/forms/MemberForm";
 import SellerForm from "@/components/forms/SellerForm";
 import {
@@ -7,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { unstable_noStore as noStore } from "next/cache";
 import { getMemberData } from "@/actions/getMemberData";
 
 export const metadata = {
@@ -15,18 +16,19 @@ export const metadata = {
 };
 
 export default async function SellerSettings() {
-  noStore();
+  const session = await auth();
+  
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-  // Fetch member data
-  const memberData = await getMemberData();
+  const memberData = await getMemberData(session.user.id);
   
   // Provide default values if member data is not available
   const initialData = {
-    firstName: memberData.data?.firstName || "",
-    lastName: memberData.data?.lastName || "",
-    userBio: memberData.data?.userBio || "",
-    email: memberData.data?.email || "",
-    image: memberData.data?.image || "",
+    firstName: memberData?.firstName || "",
+    lastName: memberData?.lastName || "",
+    userBio: memberData?.userBio || "",
   };
 
   return (

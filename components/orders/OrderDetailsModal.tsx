@@ -33,6 +33,7 @@ interface OrderDetailsModalProps {
     id: string;
     buyerEmail: string;
     buyerName?: string | null;
+    shopName: string;
     productName: string;
     quantity: number;
     totalAmount: number;
@@ -46,12 +47,14 @@ interface OrderDetailsModalProps {
   };
   isOpen: boolean;
   onClose: () => void;
+  isSeller?: boolean;
 }
 
 export function OrderDetailsModal({
   order,
   isOpen,
   onClose,
+  isSeller = false,
 }: OrderDetailsModalProps) {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
@@ -202,6 +205,10 @@ export function OrderDetailsModal({
                 <h3 className="text-lg font-medium">Product Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <p className="text-sm text-muted-foreground">Shop Name</p>
+                    <p className="font-medium">{order.shopName}</p>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Product Name</p>
                     <p className="font-medium">{order.productName}</p>
                   </div>
@@ -234,31 +241,23 @@ export function OrderDetailsModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Subtotal</p>
-                    <p className="font-medium">
-                      {formatPrice(order.totalAmount - (order.shippingCost || 0), { isCents: true })}
-                    </p>
+                    <p className="font-medium">${((order.totalAmount - (order.shippingCost || 0)) / 100).toFixed(2)}</p>
                   </div>
                   {!order.isDigital && (
                     <div>
                       <p className="text-sm text-muted-foreground">Shipping Cost</p>
-                      <p className="font-medium">
-                        {formatPrice(order.shippingCost || 0, { isCents: true })}
-                      </p>
+                      <p className="font-medium">${((order.shippingCost || 0) / 100).toFixed(2)}</p>
                     </div>
                   )}
                   {order.discount && order.discount > 0 && (
                     <div>
                       <p className="text-sm text-muted-foreground">Discount</p>
-                      <p className="font-medium">
-                        -{formatPrice(order.discount, { isCents: true })}
-                      </p>
+                      <p className="font-medium">-${(order.discount / 100).toFixed(2)}</p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">Total Amount</p>
-                    <p className="font-medium">
-                      {formatPrice(order.totalAmount, { isCents: true })}
-                    </p>
+                    <p className="font-medium">${(order.totalAmount / 100).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -274,7 +273,7 @@ export function OrderDetailsModal({
           </ScrollArea>
 
           <DialogFooter className="flex gap-2 sm:gap-0">
-            {canCancel && (
+            {isSeller && canCancel && (
               <Button 
                 variant="outline" 
                 onClick={handleCancelOrder}
@@ -283,7 +282,7 @@ export function OrderDetailsModal({
                 Cancel Order
               </Button>
             )}
-            {canRefund && (
+            {isSeller && canRefund && (
               <Button 
                 variant="outline" 
                 onClick={handleRefundOrder}
@@ -298,54 +297,58 @@ export function OrderDetailsModal({
       </Dialog>
 
       {/* Cancel Order Confirmation Dialog */}
-      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Cancel Order
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this order? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmCancelOrder} 
-              disabled={loading}
-              className="bg-yellow-500 hover:bg-yellow-600"
-            >
-              {loading ? "Processing..." : "Yes, Cancel Order"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isSeller && (
+        <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                Cancel Order
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel this order? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmCancelOrder} 
+                disabled={loading}
+                className="bg-yellow-500 hover:bg-yellow-600"
+              >
+                {loading ? "Processing..." : "Yes, Cancel Order"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {/* Refund Order Confirmation Dialog */}
-      <AlertDialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              Refund Order
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to refund this order? This will process a refund of ${order.totalAmount.toFixed(2)} to the customer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmRefundOrder} 
-              disabled={loading}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              {loading ? "Processing..." : "Yes, Refund Order"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isSeller && (
+        <AlertDialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Refund Order
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to refund this order? This will process a refund of ${order.totalAmount.toFixed(2)} to the customer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmRefundOrder} 
+                disabled={loading}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {loading ? "Processing..." : "Yes, Refund Order"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 } 

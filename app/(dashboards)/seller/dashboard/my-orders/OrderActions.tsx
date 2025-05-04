@@ -20,19 +20,22 @@ import {
 interface Order {
   id: string;
   userId: string | null;
-  buyerEmail: string;
-  buyerName: string | null;
+  encryptedBuyerEmail: string;
+  buyerEmailIV: string;
+  encryptedBuyerName: string;
+  buyerNameIV: string;
+  encryptedShippingAddress: string | null;
+  shippingAddressIV: string | null;
   sellerId: string;
   productId: string;
   productName: string;
   quantity: number;
   totalAmount: number;
   shippingCost: number | null;
-  discount: any; // Allow any type for JsonValue
+  discount: any;
   isDigital: boolean;
   status: string;
   paymentStatus: string;
-  shippingAddress: any | null;
   createdAt: Date;
   updatedAt: Date;
   shopName: string;
@@ -46,6 +49,10 @@ interface Order {
     userId: string;
     shopName: string;
   };
+  // Decrypted fields (added by the order actions)
+  buyerEmail?: string;
+  buyerName?: string;
+  shippingAddress?: any | null;
 }
 
 export function OrderActions({
@@ -170,8 +177,20 @@ export function OrderActions({
 
       <OrderDetailsModal 
         order={{
-          ...order,
-          shopName: order.seller.shopName
+          id: order.id,
+          buyerEmail: order.buyerEmail || "",
+          buyerName: order.buyerName || null,
+          shopName: order.seller.shopName,
+          productName: order.productName,
+          quantity: order.quantity,
+          totalAmount: order.totalAmount,
+          shippingCost: order.shippingCost,
+          discount: order.discount,
+          isDigital: order.isDigital,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          shippingAddress: order.shippingAddress,
+          createdAt: order.createdAt,
         }} 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 

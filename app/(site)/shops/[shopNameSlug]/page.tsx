@@ -57,7 +57,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar */}
         <aside className="col-span-3 border-r pr-6">
-          <h2 className="text-lg font-semibold mb-4">Filters</h2>
+          <h2 className="text-lg font-semibold mb-4">Shop Information</h2>
           <ul className="space-y-2 text-sm text-gray-600">
             <li>All Products ({seller.products.length})</li>
             <li>
@@ -65,7 +65,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
               {seller.products.filter((p) => !p.isDigital).length})
             </li>
             <li>
-              Digital Patterns (
+              Digital Products (
               {seller.products.filter((p) => p.isDigital).length})
             </li>
           </ul>

@@ -8,14 +8,45 @@ import { formatDistanceToNow } from "date-fns";
 import { Order, Review, Message } from "@prisma/client";
 import { getBuyerOrders } from "@/actions/orders";
 
-interface OrderWithRelations extends Order {
+interface OrderWithRelations {
+  id: string;
+  userId: string;
+  sellerId: string;
+  shopName: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  totalAmount: number;
+  productPrice: number;
+  shippingCost: number;
+  stripeFee: number;
+  isDigital: boolean;
+  status: string;
+  paymentStatus: string;
+  stripeSessionId: string;
+  stripeTransferId: string | null;
+  encryptedBuyerEmail: string;
+  buyerEmailIV: string;
+  encryptedBuyerName: string;
+  buyerNameIV: string;
+  encryptedShippingAddress: string;
+  shippingAddressIV: string;
+  discount: any | null;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
   product: {
     name: string;
     images: string[];
   };
   seller: {
+    id: string;
+    userId: string;
     shopName: string;
-  };
+  } | null;
+  buyerEmail?: string;
+  buyerName?: string;
+  shippingAddress?: any | null;
 }
 
 interface ReviewWithRelations extends Review {
@@ -163,7 +194,7 @@ export default async function MemberDashboard() {
                     <div>
                       <p className="text-sm font-medium">{purchase.productName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {purchase.shopName}
+                        {purchase.seller?.shopName || purchase.shopName}
                       </p>
                     </div>
                     <Link href={`/member/dashboard/my-purchases`}>
