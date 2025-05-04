@@ -135,8 +135,10 @@ model User {
 model Member {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
   userId            String    @unique
-  firstName         String
-  lastName          String
+  encryptedFirstName String
+  encryptedLastName  String
+  firstNameIV       String    // Initialization vector for first name
+  lastNameIV        String    // Initialization vector for last name
   userBio           String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

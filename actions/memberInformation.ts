@@ -1,37 +1,35 @@
 "use server";
 
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { MemberSchema } from "@/schemas/MemberSchema";
+import { z } from "zod";
 
-export const memberInformation = async (values: z.infer<typeof MemberSchema>) => {
+interface EncryptedMemberData {
+  encryptedFirstName: string;
+  encryptedLastName: string;
+  firstNameIV: string;
+  lastNameIV: string;
+  userBio: string;
+  image?: string;
+}
+
+export const memberInformation = async (values: EncryptedMemberData) => {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "Unauthorized" };
+  }
+
   try {
-    const validatedFields = MemberSchema.safeParse(values);
-
-    if (!validatedFields.success) {
-      return { error: "Invalid fields!" };
-    }
-
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "User not authenticated." };
-    }
-
-    // Update member data
-    await db.member.upsert({
+    // Update member information with encrypted data
+    await db.member.updateMany({
       where: {
         userId: session.user.id,
       },
-      update: {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        userBio: values.userBio,
-      },
-      create: {
-        userId: session.user.id,
-        firstName: values.firstName,
-        lastName: values.lastName,
+      data: {
+        encryptedFirstName: values.encryptedFirstName,
+        encryptedLastName: values.encryptedLastName,
+        firstNameIV: values.firstNameIV,
+        lastNameIV: values.lastNameIV,
         userBio: values.userBio,
       },
     });
@@ -48,9 +46,9 @@ export const memberInformation = async (values: z.infer<typeof MemberSchema>) =>
       });
     }
 
-    return { success: "Member information updated!" };
+    return { success: "Member information updated successfully!" };
   } catch (error) {
     console.error("Error updating member information:", error);
-    return { error: "Failed to update member information." };
+    return { error: "Something went wrong!" };
   }
 };

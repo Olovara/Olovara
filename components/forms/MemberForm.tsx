@@ -19,11 +19,14 @@ import Spinner from "@/components/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { MemberSchema } from "@/schemas/MemberSchema";
 import { memberInformation } from "@/actions/memberInformation";
+import { encryptName, decryptName } from "@/lib/encryption";
 
 interface MemberFormProps {
   initialData: {
-    firstName: string;
-    lastName: string;
+    encryptedFirstName: string;
+    encryptedLastName: string;
+    firstNameIV: string;
+    lastNameIV: string;
     userBio: string;
     email: string;
     image: string;
@@ -38,22 +41,42 @@ const MemberForm = ({ initialData }: MemberFormProps) => {
 
   const [isPending, startTransition] = useTransition();
 
+  // Decrypt the initial data
+  const decryptedFirstName = decryptName(initialData.encryptedFirstName, initialData.firstNameIV);
+  const decryptedLastName = decryptName(initialData.encryptedLastName, initialData.lastNameIV);
+
   const form = useForm<z.infer<typeof MemberSchema>>({
     resolver: zodResolver(MemberSchema),
     defaultValues: {
-      firstName: initialData.firstName,
-      lastName: initialData.lastName,
+      firstName: decryptedFirstName,
+      lastName: decryptedLastName,
       userBio: initialData.userBio,
       image: initialData.image,
     },
   });
 
-  const onSubmit = (values: z.infer<typeof MemberSchema>) => {
-    startTransition(() => {
-      memberInformation(values).then((data) => {
-        if (data.success) setSuccess(data.success);
-        if (data?.error) setError(data.error);
-      });
+  const onSubmit = async (values: z.infer<typeof MemberSchema>) => {
+    // Encrypt the names before sending to the server
+    const { encrypted: encryptedFirstName, iv: firstNameIV } = encryptName(values.firstName);
+    const { encrypted: encryptedLastName, iv: lastNameIV } = encryptName(values.lastName);
+
+    const encryptedData = {
+      encryptedFirstName,
+      encryptedLastName,
+      firstNameIV,
+      lastNameIV,
+      userBio: values.userBio,
+      image: values.image,
+    };
+
+    startTransition(async () => {
+      try {
+        const result = await memberInformation(encryptedData);
+        if (result.success) setSuccess(result.success);
+        if (result.error) setError(result.error);
+      } catch (error) {
+        setError("Failed to update member information");
+      }
     });
 
     form.reset();
