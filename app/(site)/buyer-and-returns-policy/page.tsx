@@ -117,7 +117,6 @@ export default function BuyerAndReturnsPolicy() {
     <div className="w-full px-4 sm:px-6 md:px-8">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Buyer and Returns Policy</h1>
           {lastUpdated && (
             <p className="text-sm text-muted-foreground mt-2 sm:mt-0">
               Last updated: {format(lastUpdated, "MMMM d, yyyy")}

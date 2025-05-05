@@ -19,16 +19,16 @@ const QuillEditor = dynamic(
   }
 );
 
-export default function HandmadeGuidelines() {
+export default function ProhibitedItems() {
   const [content, setContent] = useState<string>("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchGuidelines = useCallback(async () => {
+  const fetchPolicy = useCallback(async () => {
     try {
-      const res = await fetch("/api/handmade-guidelines");
+      const res = await fetch("/api/prohibited-items-policy");
       if (!res.ok) {
         throw new Error(`API request failed with status ${res.status}`);
       }
@@ -36,7 +36,7 @@ export default function HandmadeGuidelines() {
       setContent(data.content.html || "");
       setLastUpdated(new Date(data.updatedAt));
     } catch (error) {
-      console.error("Error fetching guidelines:", error);
+      console.error("Error fetching prohibited items policy:", error);
       setContent("");
       setLastUpdated(null);
     }
@@ -58,12 +58,12 @@ export default function HandmadeGuidelines() {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await fetchGuidelines();
+      await fetchPolicy();
       await checkAdminStatus();
       setIsLoading(false);
     };
     loadData();
-  }, [fetchGuidelines, checkAdminStatus]);
+  }, [fetchPolicy, checkAdminStatus]);
 
   const handleSave = useCallback(async () => {
     if (!content.trim()) {
@@ -72,13 +72,13 @@ export default function HandmadeGuidelines() {
     }
 
     setIsSaving(true);
-    const toastId = toast.loading("Saving guidelines...");
+    const toastId = toast.loading("Saving policy...");
 
     try {
       const htmlToSave = content || '';
       const textToSave = htmlToSave.replace(/<[^>]*>?/gm, '');
 
-      const response = await fetch("/api/handmade-guidelines", {
+      const response = await fetch("/api/prohibited-items-policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,18 +90,18 @@ export default function HandmadeGuidelines() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save guidelines");
+        throw new Error("Failed to save prohibited items policy");
       }
 
       const data = await response.json();
       setLastUpdated(new Date(data.updatedAt));
 
-      toast.success("Guidelines updated successfully!", {
+      toast.success("Prohibited items policy updated successfully!", {
         id: toastId,
       });
     } catch (error) {
-      console.error("Error saving guidelines:", error);
-      toast.error("Failed to update guidelines. Please try again.", {
+      console.error("Error saving prohibited items policy:", error);
+      toast.error("Failed to update policy. Please try again.", {
         id: toastId,
       });
     } finally {
@@ -135,7 +135,7 @@ export default function HandmadeGuidelines() {
         {/* Show editor and save button only for admin */}
         {isAdmin && (
           <div className="mt-6 sm:mt-8 border-t pt-6 sm:pt-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4">Edit Guidelines</h2>
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Edit Policy</h2>
             <QuillEditor
               value={content}
               onChange={setContent}

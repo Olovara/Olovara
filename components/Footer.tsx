@@ -106,6 +106,22 @@ const Footer = () => {
                         Buyer and Returns Policy
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/prohibited-items"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Prohibited Items Policy
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/copyright-infringement"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Copyright Infringement
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 
@@ -121,6 +137,14 @@ const Footer = () => {
                         className="text-sm text-muted-foreground hover:text-gray-600"
                       >
                         About Us
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/feedback"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Customer Feedback
                       </Link>
                     </li>
                     {/*<li>

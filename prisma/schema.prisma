@@ -331,6 +331,20 @@ model BuyerAndReturnsPolicy {
   updatedAt DateTime @updatedAt
 }
 
+model ProhibitedItemsPolicy {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CopyrightInfringement {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model TemporaryUpload {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   fileKey   String   @unique
@@ -408,4 +422,20 @@ model UserConversation {
   updatedAt      DateTime     @updatedAt
 
   @@unique([userId, conversationId])
+}
+
+model CustomerFeedback {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  heardFrom         String
+  overallExperience Int      // 1-5 rating
+  placedOrder       String   // "YES", "PLANNING", "NO"
+  orderNumber       String?
+  experience        String
+  improvements      String?
+  returnLikelihood  Int      // 1-5 rating
+  email             String?
+  website           String?  // Honeypot field
+  recaptchaToken    String?
+
+  createdAt         DateTime @default(now())
 }

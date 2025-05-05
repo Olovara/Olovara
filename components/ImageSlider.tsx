@@ -75,23 +75,25 @@ const ImageSlider = ({ urls }: ImageSliderProps) => {
           renderBullet: (_, className) => {
             return `<span class="rounded-full transition ${className}"></span>`;
           },
+          bulletClass: "swiper-pagination-bullet !bg-gray-300",
+          bulletActiveClass: "swiper-pagination-bullet-active !bg-purple-500",
         }}
         onSwiper={(swiper) => setSwiper(swiper)}
         spaceBetween={50}
         modules={[Pagination]}
         slidesPerView={1}
-        className="h-full w-full"
+        className="h-full w-full [&_.swiper-pagination-bullet]:!bg-gray-300 [&_.swiper-pagination-bullet-active]:!bg-purple-500"
       >
         <div className="flex overflow-x-auto space-x-4">
           {urls.map((url, i) => (
             <SwiperSlide key={i} className="-z-10 relative h-full w-full">
               <Image
-              fill
-              loading='eager'
-              className='-z-10 h-full w-full object-cover object-center'
-              src={url}
-              alt='Product image'
-            />
+                fill
+                loading='eager'
+                className='-z-10 h-full w-full object-cover object-center'
+                src={url}
+                alt='Product image'
+              />
             </SwiperSlide>
           ))}
         </div>
