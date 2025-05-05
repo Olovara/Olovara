@@ -152,6 +152,24 @@ export function OrderDetailsModal({
                     order.status !== "COMPLETED" && 
                     order.status !== "REFUNDED";
 
+  // Transform the purchase data to match the OrderDetailsModal interface
+  const orderForModal = {
+    id: order.id,
+    buyerEmail: order.buyerEmail || "",
+    buyerName: order.buyerName || null,
+    shopName: order.shopName || "Unknown Seller",
+    productName: order.productName,
+    quantity: order.quantity,
+    totalAmount: order.totalAmount,
+    shippingCost: order.shippingCost,
+    discount: order.discount,
+    isDigital: order.isDigital,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    shippingAddress: order.shippingAddress,
+    createdAt: order.createdAt,
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>

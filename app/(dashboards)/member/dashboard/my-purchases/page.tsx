@@ -9,6 +9,43 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbS
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
+
+interface Purchase {
+  id: string;
+  userId: string;
+  sellerId: string;
+  shopName: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  totalAmount: number;
+  productPrice: number;
+  shippingCost: number;
+  stripeFee: number;
+  isDigital: boolean;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  stripeSessionId: string;
+  stripeTransferId: string | null;
+  encryptedBuyerEmail: string;
+  buyerEmailIV: string;
+  encryptedBuyerName: string;
+  buyerNameIV: string;
+  encryptedShippingAddress: string;
+  shippingAddressIV: string;
+  discount: any | null;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  product: {
+    name: string;
+    images: string[];
+  };
+  buyerEmail?: string;
+  buyerName?: string;
+  shippingAddress?: any | null;
+}
 
 export const metadata = {
   title: "Member - My Purchases",
@@ -97,7 +134,7 @@ export default async function MyPurchasesPage() {
                     <TableRow key={purchase.id}>
                       <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
                       <TableCell>{purchase.product.name}</TableCell>
-                      <TableCell>{purchase.seller?.shopName || purchase.shopName || "Unknown Seller"}</TableCell>
+                      <TableCell>{purchase.shopName || "Unknown Seller"}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(purchase.status)}>
                           {purchase.status}

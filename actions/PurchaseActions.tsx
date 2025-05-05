@@ -31,7 +31,7 @@ interface Purchase {
     name: string;
     images: string[];
   };
-  seller: {
+  seller?: {
     userId: string;
     shopName: string;
   } | null;
@@ -62,7 +62,7 @@ export function PurchaseActions({
     id: purchase.id,
     buyerEmail: purchase.buyerEmail || "",
     buyerName: purchase.buyerName || null,
-    shopName: purchase.seller?.shopName || purchase.shopName || "Unknown Seller",
+    shopName: purchase.shopName || "Unknown Seller",
     productName: purchase.productName,
     quantity: purchase.quantity,
     totalAmount: purchase.totalAmount,

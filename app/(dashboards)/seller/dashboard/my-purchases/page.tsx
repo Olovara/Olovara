@@ -43,7 +43,7 @@ export default async function MyPurchasesPage({
   const searchedPurchases = search
     ? filteredPurchases.filter(purchase => 
         purchase.product.name.toLowerCase().includes(search.toLowerCase()) ||
-        purchase.seller.shopName.toLowerCase().includes(search.toLowerCase())
+        purchase.shopName.toLowerCase().includes(search.toLowerCase())
       )
     : filteredPurchases;
 
@@ -175,7 +175,7 @@ export default async function MyPurchasesPage({
                         <TableRow key={purchase.id}>
                           <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
                           <TableCell>{purchase.product.name}</TableCell>
-                          <TableCell>{purchase.seller.shopName}</TableCell>
+                          <TableCell>{purchase.shopName}</TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(purchase.status)}>
                               {purchase.status}

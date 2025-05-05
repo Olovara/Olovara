@@ -194,7 +194,7 @@ export default async function MemberDashboard() {
                     <div>
                       <p className="text-sm font-medium">{purchase.productName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {purchase.seller?.shopName || purchase.shopName}
+                        {purchase.shopName}
                       </p>
                     </div>
                     <Link href={`/member/dashboard/my-purchases`}>
