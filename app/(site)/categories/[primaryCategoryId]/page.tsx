@@ -115,7 +115,20 @@ export default async function PrimaryCategoryPage({
     orderBy: sort === "price-asc" ? { price: "asc" } : sort === "price-desc" ? { price: "desc" } : { createdAt: "desc" },
     skip: (currentPage - 1) * itemsPerPage,
     take: itemsPerPage,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      images: true,
+      primaryCategory: true,
+      secondaryCategory: true,
+      status: true,
+      isDigital: true,
+      onSale: true,
+      discount: true,
+      stock: true,
+      dropDate: true,
+      dropTime: true,
       seller: {
         select: {
           shopName: true,

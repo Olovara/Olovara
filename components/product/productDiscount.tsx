@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DiscountSectionProps = {
@@ -32,9 +32,10 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
   const onSale = watch("onSale");
 
   React.useEffect(() => {
-    // Reset discount end date when the sale status changes
+    // Reset discount end date and time when the sale status changes
     if (!onSale) {
       setValue("discountEndDate", undefined);
+      setValue("discountEndTime", undefined);
     }
   }, [onSale, setValue]);
 
@@ -102,6 +103,22 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* Discount End Time */}
+          <div className="flex flex-col gap-y-2">
+            <Label>Discount End Time</Label>
+            <FormField
+              control={control}
+              name="discountEndTime"
+              render={({ field }) => (
+                <Input
+                  type="time"
+                  className="w-[280px]"
+                  {...field}
+                />
+              )}
+            />
           </div>
         </div>
       )}

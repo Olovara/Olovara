@@ -26,7 +26,10 @@ export const ProductSchema = z
     price: z
       .number()
       .min(0.01, "Price must be at least $0.01")
-      .or(z.string().transform(Number)),
+      .transform((val) => Math.round(val * 100))
+      .refine((val) => Number.isInteger(val), {
+        message: "Price must be a valid number",
+      }),
     status: z.string(),
     images: z.array(z.string().url()).min(1, {
       message: "Please add at least one image.",
@@ -36,12 +39,18 @@ export const ProductSchema = z
       .number()
       .min(0)
       .default(0)
-      .or(z.string().transform((val) => Number(val || 0))),
+      .transform((val) => Math.round(val * 100))
+      .refine((val) => Number.isInteger(val), {
+        message: "Shipping cost must be a valid number",
+      }),
     handlingFee: z
       .number()
       .min(0)
       .default(0)
-      .or(z.string().transform((val) => Number(val || 0))),
+      .transform((val) => Math.round(val * 100))
+      .refine((val) => Number.isInteger(val), {
+        message: "Handling fee must be a valid number",
+      }),
     stock: z
       .number()
       .int()
@@ -72,6 +81,7 @@ export const ProductSchema = z
       .nullable()
       .optional()
       .transform((date) => (date ? date.toISOString() : null)),
+    dropTime: z.string().optional(),
     discountEndDate: z
       .union([z.date(), z.string()])
       .optional()
@@ -81,6 +91,7 @@ export const ProductSchema = z
         }
         return value;
       }),
+    discountEndTime: z.string().optional(),
     NSFW: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
@@ -101,6 +112,24 @@ export const ProductSchema = z
         code: "custom",
         message: "Discount end date is required when the product is on sale.",
         path: ["discount"],
+      });
+    }
+
+    if (data.onSale && data.discountEndTime === undefined) {
+      console.log("Validation Error: Discount end time required when on sale.");
+      ctx.addIssue({
+        code: "custom",
+        message: "Discount end time is required when the product is on sale.",
+        path: ["discountEndTime"],
+      });
+    }
+
+    if (data.productDrop && data.dropTime === undefined) {
+      console.log("Validation Error: Drop time required for product drops.");
+      ctx.addIssue({
+        code: "custom",
+        message: "Drop time is required for product drops.",
+        path: ["dropTime"],
       });
     }
 

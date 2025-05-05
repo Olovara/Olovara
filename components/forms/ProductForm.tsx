@@ -112,12 +112,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       name: initialData?.name || "",
-      price: initialData?.price || 0,
+      price: initialData?.price ? initialData.price / 100 : 0,
       description: initialData?.description || { html: "", text: "" },
       images: initialData?.images || [],
       freeShipping: initialData?.freeShipping || false,
-      handlingFee: initialData?.handlingFee || 0,
-      shippingCost: initialData?.shippingCost || 0,
+      handlingFee: initialData?.handlingFee ? initialData.handlingFee / 100 : 0,
+      shippingCost: initialData?.shippingCost ? initialData.shippingCost / 100 : 0,
       itemWeight: initialData?.itemWeight || 0,
       itemLength: initialData?.itemLength || 0,
       itemWidth: initialData?.itemWidth || 0,
@@ -132,7 +132,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
       outStockLeadTime: initialData?.outStockLeadTime || 0,
       productDrop: initialData?.productDrop || false,
       dropDate: initialData?.dropDate || null,
+      dropTime: initialData?.dropTime || "",
       discountEndDate: initialData?.discountEndDate || undefined,
+      discountEndTime: initialData?.discountEndTime || "",
       howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
     }
@@ -230,50 +232,28 @@ export function ProductForm({ initialData }: ProductFormProps) {
     void checkApproval();
   }, []);
 
-  const onSubmit = async (data: z.infer<typeof ProductSchema>) => {
+  const onSubmit = async (data: ProductFormValues) => {
     try {
-      // Check if we have temporary uploads that haven't been created yet
-      if ((tempImages.length > 0 || tempFiles.length > 0) && !tempUploadsCreated) {
-        toast.error("Please wait for all uploads to complete before submitting");
-        return;
-      }
-      
       setIsLoading(true);
-      
-      const endpoint = initialData 
-        ? "/api/products/edit-product"
-        : "/api/products/create-product";
-      
-      const method = initialData ? "PATCH" : "POST";
+      console.log("[DEBUG] Submitting form with data:", data);
 
-      // Convert dropdownOptions back to schema format
-      const schemaOptions = dropdownOptions.flatMap(option => 
-        option.values.map(value => ({
-          name: option.label,
-          value: value.name
-        }))
-      );
-
-      // Include all necessary data
-      const submissionData = {
+      // The schema already handles the conversion to cents
+      const formData = {
         ...data,
-        ...(initialData && { id: initialData.id }),
-        description: description,
-        images: images,
-        tags: tags,
-        materialTags: materialTags,
-        options: schemaOptions,
-        productFile: data.productFile || null,
+        // Remove these conversions since they're handled by the schema
+        // price: Math.round(data.price * 100),
+        // shippingCost: Math.round(data.shippingCost * 100),
+        // handlingFee: Math.round(data.handlingFee * 100),
       };
 
-      console.log('[DEBUG] Submitting data:', submissionData);
+      console.log("[DEBUG] Form data after conversion:", formData);
 
-      const response = await fetch(endpoint, {
-        method,
+      const response = await fetch(initialData ? `/api/products/${initialData.id}` : "/api/products/create-product", {
+        method: initialData ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(submissionData),
+        body: JSON.stringify(formData),
       });
 
       const responseData = await response.json();
@@ -346,7 +326,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
       outStockLeadTime: 0,
       productDrop: false,
       dropDate: null,
+      dropTime: "",
       discountEndDate: undefined,
+      discountEndTime: "",
       howItsMade: "",
       productFile: null,
     });

@@ -62,6 +62,8 @@ async function getData(id: string) {
           shopNameSlug: true,
         },
       },
+      dropDate: true,
+      dropTime: true,
     },
   });
 
@@ -108,7 +110,7 @@ export default async function ProductPage({
     new Date(data.discountEndDate) > new Date();
   const discount = data.discount ?? 0;
   const finalPrice = isOnSale
-    ? data.price - data.price * (discount / 100)
+    ? data.price - Math.round(data.price * (discount / 100))
     : data.price;
 
   return (
@@ -147,19 +149,19 @@ export default async function ProductPage({
             {isOnSale ? (
               <>
                 <span className="line-through text-gray-500">
-                  ${data.price.toFixed(2)}
+                  ${(data.price / 100).toFixed(2)}
                 </span>{" "}
-                <span className="text-red-600">${finalPrice.toFixed(2)}</span>
+                <span className="text-red-600">${(finalPrice / 100).toFixed(2)}</span>
               </>
             ) : (
-              <>${data.price.toFixed(2)}</>
+              <>${(data.price / 100).toFixed(2)}</>
             )}
           </p>
 
           {/* Combined Shipping and Handling Fee */}
           {!data.freeShipping && (data.shippingCost || data.handlingFee) && (
             <p className="text-sm text-gray-600">
-              Shipping & Handling: ${((data.shippingCost || 0) + (data.handlingFee || 0)).toFixed(2)}
+              Shipping & Handling: ${(((data.shippingCost || 0) + (data.handlingFee || 0)) / 100).toFixed(2)}
             </p>
           )}
           {data.freeShipping && (
@@ -175,7 +177,12 @@ export default async function ProductPage({
             </p>
           )}
           {/* Quantity Selector & Buy Now Button */}
-          <ProductActions productId={data.id} maxStock={data.stock} />
+          <ProductActions 
+            productId={data.id} 
+            maxStock={data.stock} 
+            dropDate={data.dropDate}
+            dropTime={data.dropTime}
+          />
 
           {/* How It's Made Section */}
           {data.howItsMade && (

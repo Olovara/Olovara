@@ -16,6 +16,33 @@ async function getShopData(shopNameSlug: string) {
       products: {
         where: {
           status: "ACTIVE" // Only include active products
+        },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          images: true,
+          primaryCategory: true,
+          secondaryCategory: true,
+          status: true,
+          isDigital: true,
+          onSale: true,
+          discount: true,
+          stock: true,
+          dropDate: true,
+          dropTime: true,
+          seller: {
+            select: {
+              shopName: true,
+              shopNameSlug: true,
+              isWomanOwned: true,
+              isMinorityOwned: true,
+              isLGBTQOwned: true,
+              isVeteranOwned: true,
+              isSustainable: true,
+              isCharitable: true,
+            },
+          },
         }
       }
     },

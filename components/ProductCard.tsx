@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn, formatPrice } from "@/lib/utils";
 import { CategoriesMap } from "@/data/categories";
 import ImageSlider from "./ImageSlider";
+import { CountdownTimer } from "./CountdownTimer";
 
 interface SimplifiedProduct {
   name: string;
@@ -16,6 +17,9 @@ interface SimplifiedProduct {
   price: number;
   images: string[];
   primaryCategory: string;
+  stock: number;
+  dropDate: Date | null;
+  dropTime: string | null;
   seller?: {
     shopName: string;
     shopNameSlug: string;
@@ -36,6 +40,7 @@ interface ProductListingProps {
 const ProductCard = ({ product, index }: ProductListingProps) => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDropActive, setIsDropActive] = useState<boolean>(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,6 +49,23 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
     return () => clearTimeout(timer);
   }, [index]);
+
+  // Check if drop is active
+  useEffect(() => {
+    if (product?.dropDate && product?.dropTime) {
+      const [hours, minutes] = product.dropTime.split(":").map(Number);
+      const dropDateTime = new Date(product.dropDate);
+      dropDateTime.setHours(hours, minutes, 0, 0);
+      setIsDropActive(dropDateTime.getTime() <= new Date().getTime());
+
+      // Set up interval to check drop status
+      const interval = setInterval(() => {
+        setIsDropActive(dropDateTime.getTime() <= new Date().getTime());
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [product?.dropDate, product?.dropTime]);
 
   if (!product || !isVisible) return <ProductPlaceholder />;
 
@@ -55,6 +77,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   // Filter out any invalid image URLs
   const validUrls = product.images.filter(Boolean) as string[];
   const imageUrlsToUse = validUrls.length > 0 ? validUrls : ["/placeholder.jpg"];
+
+  const isDropProduct = product.dropDate && product.dropTime;
 
   return (
     <Link
@@ -74,8 +98,19 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
           {product.name}
         </h3>
         <p className="mt-1 text-sm text-gray-500">{label}</p>
+        {isDropProduct && (
+          <div className="mt-1">
+            <p className="text-xs text-gray-400">Drops in:</p>
+            <CountdownTimer
+              dropDate={product.dropDate}
+              dropTime={product.dropTime}
+              variant="compact"
+              className="text-sm text-gray-500"
+            />
+          </div>
+        )}
         <p className="mt-1 font-medium text-sm text-gray-900">
-          {formatPrice(product.price, { isCents: false })}
+          {formatPrice(product.price, { isCents: true })}
         </p>
       </div>
     </Link>

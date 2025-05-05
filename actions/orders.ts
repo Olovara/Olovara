@@ -21,7 +21,7 @@ export async function getSellerOrders(userId: string) {
       return [];
     }
 
-    // Then find the orders
+    // Then find the orders using the seller's id
     const orders = await db.order.findMany({
       where: { sellerId: seller.id },
       select: {
@@ -82,20 +82,41 @@ export async function getSellerOrders(userId: string) {
 
 export async function getBuyerOrders(userId: string) {
   try {
+    console.log("[DEBUG] Looking up orders for userId:", userId);
+    
     const orders = await db.order.findMany({
       where: { userId },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        sellerId: true,
+        shopName: true,
+        productId: true,
+        productName: true,
+        quantity: true,
+        totalAmount: true,
+        productPrice: true,
+        shippingCost: true,
+        stripeFee: true,
+        isDigital: true,
+        status: true,
+        paymentStatus: true,
+        stripeSessionId: true,
+        stripeTransferId: true,
+        encryptedBuyerEmail: true,
+        buyerEmailIV: true,
+        encryptedBuyerName: true,
+        buyerNameIV: true,
+        encryptedShippingAddress: true,
+        shippingAddressIV: true,
+        discount: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
         product: {
           select: {
             name: true,
             images: true,
-          },
-        },
-        seller: {
-          select: {
-            id: true,
-            userId: true,
-            shopName: true,
           },
         },
       },
@@ -103,6 +124,8 @@ export async function getBuyerOrders(userId: string) {
         createdAt: "desc",
       },
     });
+
+    console.log("[DEBUG] Found orders:", orders);
 
     // Decrypt sensitive data
     return orders.map(order => ({

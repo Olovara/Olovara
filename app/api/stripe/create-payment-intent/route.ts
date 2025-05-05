@@ -48,9 +48,9 @@ export async function POST(req: Request) {
     }
 
     // Calculate amounts in cents
-    const productPriceInCents = Math.round(product.price * 100);
-    const shippingCostInCents = Math.round((product.shippingCost || 0) * 100);
-    const handlingFeeInCents = Math.round((product.handlingFee || 0) * 100);
+    const productPriceInCents = product.price; // Already in cents
+    const shippingCostInCents = product.shippingCost || 0; // Get from product, default to 0
+    const handlingFeeInCents = product.handlingFee || 0; // Get from product, default to 0
     const parsedQuantity = parseInt(quantity.toString());
 
     const totalProductPriceInCents = productPriceInCents * parsedQuantity;
@@ -65,13 +65,13 @@ export async function POST(req: Request) {
       if (typeof product.description === 'string') {
         try {
           const parsed = JSON.parse(product.description) as unknown as ProductDescription;
-          productDescription = parsed.text || parsed.html || product.description;
+          productDescription = parsed.text || "No description available";
         } catch {
-          productDescription = product.description;
+          productDescription = product.description.replace(/<[^>]*>?/gm, '');
         }
       } else if (typeof product.description === 'object') {
         const desc = product.description as unknown as ProductDescription;
-        productDescription = desc.text || desc.html || "No description available";
+        productDescription = desc.text || "No description available";
       }
     }
 
@@ -124,4 +124,4 @@ export async function POST(req: Request) {
     console.error("[CHECKOUT_SESSION_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
-}
+} 

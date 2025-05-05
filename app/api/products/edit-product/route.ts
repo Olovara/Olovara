@@ -101,6 +101,7 @@ export async function PATCH(req: Request) {
       // Ensure images array from the input data is used for the update
       images: updateData.images, 
       dropDate: updateData.dropDate ? new Date(updateData.dropDate) : null,
+      dropTime: updateData.dropTime || null,
       discountEndDate: updateData.discountEndDate 
         ? new Date(updateData.discountEndDate) 
         : null,

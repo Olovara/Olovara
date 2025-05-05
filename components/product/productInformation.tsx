@@ -140,10 +140,13 @@ export const ProductInfoSection = ({
         <Label>Price</Label>
         <Input
           type="number"
+          step="0.01"
+          min="0.01"
           placeholder="Price"
           {...register("price", {
             valueAsNumber: true,
             required: "Price is required",
+            setValueAs: (value) => Math.round(value * 100),
           })}
         />
       </div>

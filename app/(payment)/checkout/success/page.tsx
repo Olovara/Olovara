@@ -8,6 +8,6 @@ export default async function CheckoutSuccessPage() {
   if (!session?.user) {
     redirect("/login");
   }
-
+  
   return <CheckoutSuccessClient userRole={session.user.role} />;
 } 

@@ -117,6 +117,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       isDigital: true,
       onSale: true,
       discount: true,
+      stock: true,
+      dropDate: true,
+      dropTime: true,
       seller: {
         select: {
           shopName: true,

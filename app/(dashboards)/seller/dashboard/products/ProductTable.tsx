@@ -149,7 +149,7 @@ export function ProductTable({ products }: ProductTableProps) {
                   {product.status || "UNKNOWN"}
                 </Badge>
               </TableCell>
-              <TableCell>${(product.price || 0).toFixed(2)}</TableCell>
+              <TableCell>${(product.price / 100).toFixed(2)}</TableCell>
               <TableCell>{product.numberSold || 0}</TableCell>
               <TableCell>
                 {formatDate(product.createdAt)}

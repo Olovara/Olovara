@@ -21,7 +21,9 @@ export default async function MyPurchasesPage() {
     redirect("/login");
   }
 
+  console.log("[DEBUG] Current user ID:", session.user.id);
   const purchases = await getBuyerOrders(session.user.id);
+  console.log("[DEBUG] Found purchases:", purchases);
 
   const getStatusColor = (status: string) => {
     switch (status) {

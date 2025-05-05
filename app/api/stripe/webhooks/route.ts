@@ -16,41 +16,41 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   console.log("🔔 Webhook received");
-
+  
   try {
     // Get the raw body as text
     const rawBody = await req.text();
-    const sig = headers().get("stripe-signature") as string;
+  const sig = headers().get("stripe-signature") as string;
 
-    if (!sig) {
-      console.error("❌ No Stripe signature found in request");
+  if (!sig) {
+    console.error("❌ No Stripe signature found in request");
       return NextResponse.json({ error: "No signature" }, { status: 400 });
-    }
+  }
 
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      console.error("❌ No webhook secret found in environment variables");
+  
+  if (!webhookSecret) {
+    console.error("❌ No webhook secret found in environment variables");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
       );
-    }
+  }
 
     // Log the signature and first few characters of the body for debugging
     console.log("🔍 Webhook signature:", sig);
     console.log("🔍 Webhook body preview:", rawBody.substring(0, 100));
 
-    let event;
-    try {
+  let event;
+  try {
       event = stripeWebhook.webhooks.constructEvent(
         rawBody,
-        sig,
-        webhookSecret
-      );
-      console.log(`✅ Webhook verified: ${event.type}`);
-    } catch (err: any) {
-      console.error("❌ Stripe Webhook Error:", err.message);
+      sig,
+      webhookSecret
+    );
+    console.log(`✅ Webhook verified: ${event.type}`);
+  } catch (err: any) {
+    console.error("❌ Stripe Webhook Error:", err.message);
       console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
       return NextResponse.json(
         { error: `Webhook Error: ${err.message}` },
@@ -276,9 +276,9 @@ export async function POST(req: Request) {
           // Update product/seller stats
           try {
             // Update product stats
-            await db.product.update({
+      await db.product.update({
               where: { id: session.metadata.productId },
-              data: {
+        data: {
                 numberSold: {
                   increment: parseInt(session.metadata.quantity || "1"),
                 },
@@ -288,11 +288,11 @@ export async function POST(req: Request) {
                     decrement: parseInt(session.metadata.quantity || "1"),
                   },
                 }),
-              },
-            });
+        },
+      });
 
             // Update seller stats
-            await db.seller.update({
+      await db.seller.update({
               where: { id: session.metadata.sellerId },
               data: {
                 totalSales: {
@@ -332,7 +332,7 @@ export async function POST(req: Request) {
 
             // Create seller review
             await db.review.create({
-              data: {
+        data: {
                 orderId: order.id,
                 reviewerId: session.metadata.userId,
                 reviewedId: seller.userId,
@@ -341,12 +341,12 @@ export async function POST(req: Request) {
                 status: "PENDING",
                 expiresAt,
                 rating: 0,
-              },
-            });
+        },
+      });
 
             // Create buyer review
             await db.review.create({
-              data: {
+        data: {
                 orderId: order.id,
                 reviewerId: seller.userId,
                 reviewedId: session.metadata.userId,
@@ -355,8 +355,8 @@ export async function POST(req: Request) {
                 status: "PENDING",
                 expiresAt,
                 rating: 0,
-              },
-            });
+        },
+      });
 
             console.log(`✅ Updated product and seller stats for order ${order.id}`);
           } catch (statsError) {

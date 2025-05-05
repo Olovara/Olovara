@@ -3,7 +3,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormField, FormItem, FormControl, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "../ui/checkbox";
 import { Textarea } from "../ui/textarea";
 import { useEffect } from "react";
@@ -69,14 +69,20 @@ export function ProductShippingSection({
             name="handlingFee"
             render={({ field }) => (
               <FormItem>
-                <Label>Handling Fee</Label>
-                <Input
-                  type="number"
-                  placeholder="Handling fee"
-                  value={field.value ?? 0}
-                  onChange={field.onChange}
-                  disabled={freeShipping}
-                />
+                <FormLabel>Handling Fee</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    {...field}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      field.onChange(value); // Store in dollars
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
@@ -87,14 +93,20 @@ export function ProductShippingSection({
             name="shippingCost"
             render={({ field }) => (
               <FormItem>
-                <Label>Shipping Cost</Label>
-                <Input
-                  type="number"
-                  placeholder="Shipping cost"
-                  value={field.value ?? 0}
-                  onChange={field.onChange}
-                  disabled={freeShipping}
-                />
+                <FormLabel>Shipping Cost</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    {...field}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      field.onChange(value); // Store in dollars
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />

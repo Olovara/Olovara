@@ -86,6 +86,7 @@ export async function POST(req: Request) {
       productDrop = false,
       NSFW = false,
       dropDate,
+      dropTime,
       discountEndDate,
     } = data;
 
@@ -140,6 +141,7 @@ export async function POST(req: Request) {
       productDrop,
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
+      dropTime: dropTime || null,
       discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
     };
     console.log("[PRE-CREATE] Data prepared for db.product.create:", cleanData);

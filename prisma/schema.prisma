@@ -212,10 +212,10 @@ model Product {
   userId                String
   name                  String
   description           Json
-  price                 Float
+  price                 Int
   status                String   @default("HIDDEN")
-  shippingCost          Float?   // Only required if product is physical
-  handlingFee           Float?
+  shippingCost          Int?     // Only required if product is physical
+  handlingFee           Int?
   itemWeight            Int?
   itemLength            Int?
   itemWidth             Int?
@@ -241,7 +241,9 @@ model Product {
   NSFW                  Boolean		@default(false)
   order                 Order[]
   dropDate              DateTime?
+  dropTime              String?  // Time component for product drop
   discountEndDate       DateTime?
+  discountEndTime       String?  // Time component for discount end
   reviews               Review[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
