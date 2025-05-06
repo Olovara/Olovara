@@ -147,6 +147,14 @@ const Footer = () => {
                         Customer Feedback
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/suggestions"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Suggestions
+                      </Link>
+                    </li>
                     {/*<li>
                       <Link
                         href="/blog"

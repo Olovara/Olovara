@@ -119,6 +119,7 @@ model User {
   status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
   suggestion            Suggestion[]
+  upvotes               Upvote[]
   isTwoFactorEnabled    Boolean @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
   role                  UserRole  @default(MEMBER)
@@ -257,9 +258,22 @@ model Suggestion {
   description       String
   type              String   // e.g., "Feature", "Change", "Addition"
   role              String   // "Seller" or "Member"
+  upvoteCount       Int      @default(0)
+  upvotes           Upvote[]
   
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])
+}
+
+model Upvote {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String
+  suggestionId  String
+  createdAt     DateTime   @default(now())
+  user          User       @relation(fields: [userId], references: [id])
+  suggestion    Suggestion @relation(fields: [suggestionId], references: [id])
+
+  @@unique([userId, suggestionId])
 }
 
 model ContactUs {

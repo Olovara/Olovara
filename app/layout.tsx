@@ -38,11 +38,14 @@ export default async function RootLayout({
         </Script>
       </head>
       <body
-        className={cn("relative h-full font-sans antialiased", inter.className)}
+        className={cn(
+          "relative min-h-screen bg-background font-sans antialiased",
+          inter.className
+        )}
       >
         <SessionProvider session={session}>
-          <main>
-            <div>{children}</div>
+          <main className="relative flex min-h-screen flex-col">
+            {children}
           </main>
           <Toaster position="top-center" richColors />
         </SessionProvider>
