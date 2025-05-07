@@ -115,11 +115,32 @@ export async function approveApplication(applicationId: string) {
         data: { applicationApproved: true },
       });
 
-      // Update the seller's applicationAccepted status
-      await tx.seller.update({
+      // Check if seller exists
+      const existingSeller = await tx.seller.findUnique({
         where: { userId },
-        data: { applicationAccepted: true },
       });
+
+      if (existingSeller) {
+        // Update existing seller
+        await tx.seller.update({
+          where: { userId },
+          data: { applicationAccepted: true },
+        });
+      } else {
+        // Create new seller
+        await tx.seller.create({
+          data: {
+            shopName: "Temporary Shop Name", // This will be updated when the seller sets up their shop
+            shopNameSlug: "temporary-shop-name",
+            applicationAccepted: true,
+            user: {
+              connect: {
+                id: userId
+              }
+            }
+          },
+        });
+      }
     });
 
     return { success: true };

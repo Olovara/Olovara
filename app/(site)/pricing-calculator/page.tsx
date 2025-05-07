@@ -7,8 +7,11 @@ import LaborSection from "@/components/pricing-calculator/LaborSection";
 import { LaborCostItem } from "@/components/pricing-calculator/LaborSection";
 import PackagingSection from "@/components/pricing-calculator/PackagingSection";
 import CraftShowCostsSection from "@/components/pricing-calculator/CraftShowCostsSection";
+import WebsiteCostsSection from "@/components/pricing-calculator/WebsiteCostsSection";
 import PricingOverviewSection from "@/components/pricing-calculator/PricingOverviewSection";
 import PricingBreakdownSection from "@/components/pricing-calculator/PricingBreakdownSection";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 Chart.register(ArcElement, Tooltip, Legend);
 
@@ -29,10 +32,21 @@ export default function PricingCalculator() {
   const [discount, setDiscount] = useState(0);
   const [markup, setMarkup] = useState(0);
   const [salesTax, setSalesTax] = useState(0);
+  
+  // Transaction fees (shared between website and craft show)
   const [transactionFeePercent, setTransactionFeePercent] = useState(2.9);
   const [transactionFeeDollar, setTransactionFeeDollar] = useState(0.25);
+  
+  // Craft show specific fees
   const [boothFee, setBoothFee] = useState(0);
   const [averageItemsSold, setAverageItemsSold] = useState(1);
+  
+  // Website specific fees
+  const [websiteFeePercent, setWebsiteFeePercent] = useState(10);
+  const [websiteFeeDollar, setWebsiteFeeDollar] = useState(0);
+  
+  // Toggle between website and craft show costs
+  const [isWebsiteMode, setIsWebsiteMode] = useState(false);
 
   // Calculate total costs
   const totalMaterialCost = materials.reduce(
@@ -62,9 +76,9 @@ export default function PricingCalculator() {
     totalPackagingCost +
     totalLaborCost +
     totalOtherCosts +
-    totalBoothFees;
+    (isWebsiteMode ? 0 : totalBoothFees);
 
-  // Initial selling price before transaction fees (excludes transaction fees)
+  // Initial selling price before fees
   let sellingPrice =
     totalCost *
     (1 + markup / 100) *
@@ -75,11 +89,16 @@ export default function PricingCalculator() {
   const transactionFees =
     (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
 
-  // Final selling price, including transaction fees
-  sellingPrice += transactionFees;
+  // Calculate website fees if in website mode
+  const websiteFees = isWebsiteMode
+    ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
+    : 0;
+
+  // Final selling price, including all fees
+  sellingPrice += transactionFees + websiteFees;
 
   // Calculate profit
-  const profit = sellingPrice - (totalCost + transactionFees);
+  const profit = sellingPrice - (totalCost + transactionFees + websiteFees);
 
   // Function to update costs dynamically
   const updateField = (
@@ -120,19 +139,46 @@ export default function PricingCalculator() {
 
       <PackagingSection packaging={packaging} setPackaging={setPackaging} />
 
-      <CraftShowCostsSection
-        transactionFeePercent={transactionFeePercent}
-        setTransactionFeePercent={setTransactionFeePercent}
-        transactionFeeDollar={transactionFeeDollar}
-        setTransactionFeeDollar={setTransactionFeeDollar}
-        boothFee={boothFee}
-        setBoothFee={setBoothFee}
-        averageItemsSold={averageItemsSold}
-        setAverageItemsSold={setAverageItemsSold}
-        transactionFees={transactionFees}
-        totalBoothFees={totalBoothFees}
-        updateField={updateField}
-      />
+      {/* Toggle between Website and Craft Show Costs */}
+      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+        <Switch
+          id="cost-mode"
+          checked={isWebsiteMode}
+          onCheckedChange={setIsWebsiteMode}
+        />
+        <Label htmlFor="cost-mode" className="text-lg font-semibold">
+          {isWebsiteMode ? "Website Mode" : "Craft Show Mode"}
+        </Label>
+      </div>
+
+      {isWebsiteMode ? (
+        <WebsiteCostsSection
+          transactionFeePercent={transactionFeePercent}
+          setTransactionFeePercent={setTransactionFeePercent}
+          transactionFeeDollar={transactionFeeDollar}
+          setTransactionFeeDollar={setTransactionFeeDollar}
+          websiteFeePercent={websiteFeePercent}
+          setWebsiteFeePercent={setWebsiteFeePercent}
+          websiteFeeDollar={websiteFeeDollar}
+          setWebsiteFeeDollar={setWebsiteFeeDollar}
+          transactionFees={transactionFees}
+          websiteFees={websiteFees}
+        />
+      ) : (
+        <CraftShowCostsSection
+          transactionFeePercent={transactionFeePercent}
+          setTransactionFeePercent={setTransactionFeePercent}
+          transactionFeeDollar={transactionFeeDollar}
+          setTransactionFeeDollar={setTransactionFeeDollar}
+          boothFee={boothFee}
+          setBoothFee={setBoothFee}
+          averageItemsSold={averageItemsSold}
+          setAverageItemsSold={setAverageItemsSold}
+          transactionFees={transactionFees}
+          totalBoothFees={totalBoothFees}
+          updateField={updateField}
+        />
+      )}
 
       <PricingOverviewSection
         markup={markup}
@@ -148,7 +194,7 @@ export default function PricingCalculator() {
         totalPackagingCost={totalPackagingCost}
         totalLaborCost={totalLaborCost}
         totalOtherCosts={totalOtherCosts}
-        totalBoothFees={totalBoothFees}
+        totalBoothFees={isWebsiteMode ? 0 : totalBoothFees}
         transactionFees={transactionFees}
         totalCost={totalCost}
         sellingPrice={sellingPrice}

@@ -55,7 +55,6 @@ const SellerDashboardInfo = () => {
     const fetchSellerData = async () => {
       try {
         const query = new URLSearchParams();
-        query.append("sellerId", "some-seller-id"); // Replace with actual sellerId
         if (startDate) query.append("startDate", startDate.toISOString());
         if (endDate) query.append("endDate", endDate.toISOString());
 

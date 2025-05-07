@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import MemberForm from "@/components/forms/MemberForm";
 import SellerForm from "@/components/forms/SellerForm";
+import ShopQRCode from "@/components/ShopQRCode";
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMemberData } from "@/actions/getMemberData";
+import { db } from "@/lib/db";
 
 export const metadata = {
   title: "Seller - Settings",
@@ -23,6 +25,12 @@ export default async function SellerSettings() {
   }
 
   const memberData = await getMemberData(session.user.id);
+  
+  // Get seller data to access shopNameSlug
+  const seller = await db.seller.findUnique({
+    where: { userId: session.user.id },
+    select: { shopNameSlug: true }
+  });
   
   // Provide default values if member data is not available
   const initialData = {
@@ -40,6 +48,7 @@ export default async function SellerSettings() {
         <TabsList>
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="shop">Shop</TabsTrigger>
+          <TabsTrigger value="qrcode">QR Code</TabsTrigger>
         </TabsList>
         <div className="flex-1 pt-2">
           <Card className="w-full">
@@ -55,6 +64,19 @@ export default async function SellerSettings() {
               {/* Shop Settings */}
               <TabsContent value="shop">
                 <SellerForm />
+              </TabsContent>
+
+              {/* QR Code Settings */}
+              <TabsContent value="qrcode">
+                {seller?.shopNameSlug ? (
+                  <ShopQRCode shopNameSlug={seller.shopNameSlug} />
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      Please set up your shop information first to generate a QR code.
+                    </p>
+                  </div>
+                )}
               </TabsContent>
             </CardContent>
           </Card>

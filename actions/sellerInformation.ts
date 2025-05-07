@@ -38,7 +38,6 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
       // Create new seller
       await db.seller.create({
         data: {
-          userId: session.user.id,
           ...validatedFields.data,
           shopNameSlug: validatedFields.data.shopName.toLowerCase().replace(/\s+/g, '-'),
           user: {
