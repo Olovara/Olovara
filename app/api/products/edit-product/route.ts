@@ -106,6 +106,7 @@ export async function PATCH(req: Request) {
         ? new Date(updateData.discountEndDate) 
         : null,
       price: Number(updateData.price),
+      currency: updateData.currency || "USD",
       stock: Number(updateData.stock),
       shippingCost: Number(updateData.shippingCost),
       handlingFee: Number(updateData.handlingFee),

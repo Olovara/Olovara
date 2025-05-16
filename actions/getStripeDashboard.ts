@@ -24,7 +24,7 @@ export async function GetStripeDashboardLink() {
     },
   });
 
-  const loginLink = await stripeConnect.accounts.createLoginLink(
+  const loginLink = await stripeConnect.instance.accounts.createLoginLink(
     data?.seller?.connectedAccountId as string
   );
 

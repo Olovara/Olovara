@@ -45,6 +45,9 @@ export const AuthEmail = ({
             <Text style={footerText}>
               If you didn&apos;t request this email, you can safely ignore it.
             </Text>
+            <Text style={copyrightText}>
+              © 2025 Yarnnu. All rights reserved.
+            </Text>
           </Section>
         </Container>
       </Body>
@@ -115,5 +118,11 @@ const footerSection = {
 
 const footerText = {
   fontSize: "14px",
+  color: "#666666",
+  marginBottom: "8px",
+};
+
+const copyrightText = {
+  fontSize: "12px",
   color: "#666666",
 }; 

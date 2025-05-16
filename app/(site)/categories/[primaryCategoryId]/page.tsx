@@ -119,6 +119,7 @@ export default async function PrimaryCategoryPage({
       id: true,
       name: true,
       price: true,
+      currency: true,
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
@@ -148,6 +149,7 @@ export default async function PrimaryCategoryPage({
   const transformedProducts = products.map(product => ({
     ...product,
     imageUrl: product.images[0] || "", // Use the first image as the main image
+    currency: product.currency || "USD", // Ensure currency is included with a default
     seller: product.seller ? {
       shopName: product.seller.shopName,
       shopNameSlug: product.seller.shopNameSlug,

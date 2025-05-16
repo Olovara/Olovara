@@ -51,14 +51,26 @@ export function ProductFilters() {
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
   const selectedCategory = searchParams.get("category")?.split(",")[0];
 
+  // Initialize price range from URL params
+  useEffect(() => {
+    const priceRangeParam = searchParams.get("priceRange");
+    if (priceRangeParam) {
+      const [min, max] = priceRangeParam.split(",").map(Number);
+      setCurrentPriceRange([min, max]);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const fetchPriceRange = async () => {
       const range = await getPriceRange(selectedCategory);
       setPriceRange(range);
-      setCurrentPriceRange([range.min, range.max]);
+      // Only update current range if it hasn't been set by URL params
+      if (!searchParams.get("priceRange")) {
+        setCurrentPriceRange([range.min, range.max]);
+      }
     };
     fetchPriceRange();
-  }, [selectedCategory]);
+  }, [selectedCategory, searchParams]);
 
   const handleFilterChange = (key: string, value: string | string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -82,6 +94,10 @@ export function ProductFilters() {
   };
 
   const handlePriceChange = (values: number[]) => {
+    setCurrentPriceRange(values);
+  };
+
+  const handlePriceCommit = (values: number[]) => {
     handleFilterChange("priceRange", values.join(","));
   };
 
@@ -249,20 +265,18 @@ export function ProductFilters() {
         <h3 className="text-lg font-semibold mb-4">Price Range</h3>
         <div className="px-2">
           <Slider
-            min={priceRange.min}
-            max={priceRange.max}
-            step={1}
-            value={currentPriceRange}
-            onValueChange={(values) => {
-              setCurrentPriceRange(values);
-            }}
-            onValueCommit={handlePriceChange}
+            min={priceRange.min / 100}
+            max={priceRange.max / 100}
+            step={0.01}
+            value={currentPriceRange.map(price => price / 100)}
+            onValueChange={(values) => handlePriceChange(values.map(price => Math.round(price * 100)))}
+            onValueCommit={(values) => handlePriceCommit(values.map(price => Math.round(price * 100)))}
             minStepsBetweenThumbs={1}
             className="my-4"
           />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>${currentPriceRange[0]}</span>
-            <span>${currentPriceRange[1]}</span>
+            <span>${(currentPriceRange[0] / 100).toFixed(2)}</span>
+            <span>${(currentPriceRange[1] / 100).toFixed(2)}</span>
           </div>
         </div>
       </div>

@@ -42,23 +42,51 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 };
 
 export const sendVerificationEmail = async (email: string, token: string) => {
+  const startTime = Date.now();
   const confirmLink = `${domain}/new-verification?token=${token}`;
 
   try {
-    console.log("Attempting to send verification email to:", email);
-    console.log("Using domain:", domain);
-    console.log("Verification link:", confirmLink);
+    console.log("[Email Verification] Starting process:", {
+      email,
+      timestamp: new Date().toISOString(),
+      startTime,
+    });
     
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: email,
       subject: "Verify your email",
       react: VerificationEmail({ confirmLink }),
+      headers: {
+        "X-Entity-Ref-ID": token,
+      },
     });
     
-    console.log("Verification email sent successfully:", response);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    if (!response) {
+      throw new Error("Failed to send verification email: No response received");
+    }
+    
+    console.log("[Email Verification] Email sent successfully:", {
+      email,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString(),
+      response,
+    });
+    
+    return response;
   } catch (error) {
-    console.error("Error sending verification email:", error);
-    throw error;
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.error("[Email Verification] Error sending email:", {
+      error,
+      email,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString(),
+    });
+    throw new Error("Failed to send verification email. Please try again later.");
   }
 };

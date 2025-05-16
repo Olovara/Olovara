@@ -42,8 +42,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     AND: [
       {
         price: {
-          gte: priceRange[0],
-          lte: priceRange[1],
+          gte: priceRange[0] * 100, // Convert to cents
+          lte: priceRange[1] * 100, // Convert to cents
         },
       },
       {
@@ -110,6 +110,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       id: true,
       name: true,
       price: true,
+      currency: true,
       images: true,
       primaryCategory: true,
       secondaryCategory: true,

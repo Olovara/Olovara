@@ -1,4 +1,10 @@
 import * as z from "zod";
+import { 
+  SUPPORTED_CURRENCIES, 
+  SUPPORTED_WEIGHT_UNITS, 
+  SUPPORTED_DIMENSION_UNITS,
+  getCurrencyDecimals 
+} from "@/data/units";
 
 // JSON schema for product description
 const descriptionJsonSchema = z.object({
@@ -7,6 +13,30 @@ const descriptionJsonSchema = z.object({
 }).nullable().refine((val) => !!val, {
   message: "Product description is required.",
 });
+
+// Create a base schema for monetary values
+const createMonetarySchema = (fieldName: string) => {
+  return z.preprocess(
+    (val) => {
+      if (typeof val === "string") return parseFloat(val);
+      if (typeof val === "number") return val;
+      return 0;
+    },
+    z.number()
+      .min(0.01, `${fieldName} must be at least $0.01`)
+      .refine((val) => Number.isFinite(val), {
+        message: `${fieldName} must be a valid number`,
+      })
+  );
+};
+
+// Create a type for the product data
+type ProductData = {
+  currency: string;
+  price: number;
+  shippingCost: number;
+  handlingFee: number;
+};
 
 export const ProductSchema = z
   .object({
@@ -23,34 +53,17 @@ export const ProductSchema = z
       )
       .nullable()
       .optional(),
-    price: z
-      .number()
-      .min(0.01, "Price must be at least $0.01")
-      .transform((val) => Math.round(val * 100))
-      .refine((val) => Number.isInteger(val), {
-        message: "Price must be a valid number",
-      }),
+    price: createMonetarySchema("price"),
+    currency: z.enum(SUPPORTED_CURRENCIES.map(c => c.code) as [string, ...string[]], {
+      required_error: "Please select a currency",
+    }).default("USD"),
     status: z.string(),
     images: z.array(z.string().url()).min(1, {
       message: "Please add at least one image.",
     }),
     isDigital: z.boolean().default(false),
-    shippingCost: z
-      .number()
-      .min(0)
-      .default(0)
-      .transform((val) => Math.round(val * 100))
-      .refine((val) => Number.isInteger(val), {
-        message: "Shipping cost must be a valid number",
-      }),
-    handlingFee: z
-      .number()
-      .min(0)
-      .default(0)
-      .transform((val) => Math.round(val * 100))
-      .refine((val) => Number.isInteger(val), {
-        message: "Handling fee must be a valid number",
-      }),
+    shippingCost: createMonetarySchema("shippingCost").default(0),
+    handlingFee: createMonetarySchema("handlingFee").default(0),
     stock: z
       .number()
       .int()
@@ -68,9 +81,11 @@ export const ProductSchema = z
     discount: z.number().int().optional(),
     freeShipping: z.boolean().default(false),
     itemWeight: z.number().optional(),
+    itemWeightUnit: z.enum(SUPPORTED_WEIGHT_UNITS.map(u => u.code) as [string, ...string[]]).default("lbs"),
     itemLength: z.number().optional(),
     itemWidth: z.number().optional(),
     itemHeight: z.number().optional(),
+    itemDimensionUnit: z.enum(SUPPORTED_DIMENSION_UNITS.map(u => u.code) as [string, ...string[]]).default("in"),
     shippingNotes: z.string().optional(),
     inStockProcessingTime: z.number().optional(),
     outStockLeadTime: z.number().optional(),
@@ -93,9 +108,45 @@ export const ProductSchema = z
       }),
     discountEndTime: z.string().optional(),
     NSFW: z.boolean().default(false),
+    taxCategory: z.enum([
+      "PHYSICAL_GOODS",
+      "DIGITAL_GOODS",
+      "SERVICES",
+      "SHIPPING",
+      "HANDLING"
+    ]).default("PHYSICAL_GOODS"),
+    taxCode: z.string().optional(),
+    taxExempt: z.boolean().default(false),
+  })
+  .transform((data) => {
+    // Convert all monetary values to smallest unit
+    const decimals = getCurrencyDecimals(data.currency);
+    const multiplier = Math.pow(10, decimals);
+
+    return {
+      ...data,
+      price: Math.round(data.price * multiplier),
+      shippingCost: Math.round(data.shippingCost * multiplier),
+      handlingFee: Math.round(data.handlingFee * multiplier),
+    };
   })
   .superRefine((data, ctx) => {
-    console.log("Refining product data:", data);
+    // Validate tax category matches product type
+    if (data.isDigital && data.taxCategory !== "DIGITAL_GOODS") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Digital products must use the DIGITAL_GOODS tax category.",
+        path: ["taxCategory"],
+      });
+    }
+
+    if (!data.isDigital && data.taxCategory === "DIGITAL_GOODS") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Physical products cannot use the DIGITAL_GOODS tax category.",
+        path: ["taxCategory"],
+      });
+    }
 
     if (data.onSale && data.discount === undefined) {
       console.log("Validation Error: Discount required when on sale.");
@@ -202,6 +253,19 @@ export const ProductSchema = z
           code: "custom",
           message: "Item height is required for physical products.",
           path: ["itemHeight"],
+        });
+      }
+    }
+
+    // Validate price based on currency
+    const currency = SUPPORTED_CURRENCIES.find(c => c.code === data.currency);
+    if (currency) {
+      const minPrice = 1 / Math.pow(10, currency.decimals);
+      if (data.price < minPrice) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Price must be at least ${currency.symbol}${minPrice} for ${currency.code}`,
+          path: ["price"],
         });
       }
     }

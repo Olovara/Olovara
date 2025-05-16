@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { stripeCheckout } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import { decryptOrderData } from "@/lib/encryption";
+import { decryptData } from "@/lib/encryption";
 
 export async function GET(
   request: Request,
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const session = await stripeCheckout.checkout.sessions.retrieve(params.sessionId, {
+    const session = await stripeCheckout.instance.checkout.sessions.retrieve(params.sessionId, {
       expand: ['payment_intent'],
     });
 
@@ -33,10 +33,13 @@ export async function GET(
         },
         encryptedBuyerEmail: true,
         buyerEmailIV: true,
+        buyerEmailSalt: true,
         encryptedBuyerName: true,
         buyerNameIV: true,
+        buyerNameSalt: true,
         encryptedShippingAddress: true,
         shippingAddressIV: true,
+        shippingAddressSalt: true,
       },
     });
 
@@ -45,10 +48,10 @@ export async function GET(
     }
 
     // Decrypt sensitive data
-    const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV);
-    const buyerName = decryptOrderData(order.encryptedBuyerName, order.buyerNameIV);
+    const buyerEmail = decryptData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
+    const buyerName = decryptData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt);
     const shippingAddress = order.encryptedShippingAddress 
-      ? JSON.parse(decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV))
+      ? JSON.parse(decryptData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt))
       : null;
 
     return NextResponse.json({

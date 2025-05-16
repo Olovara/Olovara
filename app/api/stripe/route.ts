@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return new Response("Server configuration error", { status: 500 });
     }
     
-    event = stripeWebhook.webhooks.constructEvent(
+    event = stripeWebhook.instance.webhooks.constructEvent(
       body,
       signature,
       webhookSecret

@@ -128,11 +128,24 @@ export async function approveApplication(applicationId: string) {
         });
       } else {
         // Create new seller
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 8);
+        const tempShopName = `Temporary Shop ${timestamp}-${randomString}`;
+        const tempShopSlug = `temporary-shop-${timestamp}-${randomString}`;
+
         await tx.seller.create({
           data: {
-            shopName: "Temporary Shop Name", // This will be updated when the seller sets up their shop
-            shopNameSlug: "temporary-shop-name",
+            shopName: tempShopName,
+            shopNameSlug: tempShopSlug,
             applicationAccepted: true,
+            // Required encrypted fields with temporary values
+            encryptedBusinessName: "Temporary Business Name",
+            businessNameIV: "temp-iv",
+            businessNameSalt: "temp-salt",
+            encryptedTaxId: "Temporary Tax ID",
+            taxIdIV: "temp-iv",
+            taxIdSalt: "temp-salt",
+            taxCountry: "US", // Default to US, can be updated later
             user: {
               connect: {
                 id: userId

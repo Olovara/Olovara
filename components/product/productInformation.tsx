@@ -27,6 +27,18 @@ import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
 
+// Update the SUPPORTED_CURRENCIES to match the schema
+const SUPPORTED_CURRENCIES = [
+  { code: "USD", decimals: 2, symbol: "$", name: "US Dollar" },
+  { code: "EUR", decimals: 2, symbol: "€", name: "Euro" },
+  { code: "GBP", decimals: 2, symbol: "£", name: "British Pound" },
+  { code: "CAD", decimals: 2, symbol: "C$", name: "Canadian Dollar" },
+  { code: "AUD", decimals: 2, symbol: "A$", name: "Australian Dollar" },
+  { code: "JPY", decimals: 0, symbol: "¥", name: "Japanese Yen" },
+  { code: "INR", decimals: 2, symbol: "₹", name: "Indian Rupee" },
+  { code: "SGD", decimals: 2, symbol: "S$", name: "Singapore Dollar" },
+] as const;
+
 type ProductInfoSectionProps = {
   form: ReturnType<typeof useFormContext<z.infer<typeof ProductSchema>>>;
   description: string;
@@ -49,6 +61,14 @@ export const ProductInfoSection = ({
   const { register, control, setValue, watch } = useFormContext();
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
   const currentStatus = watch("status");
+  const selectedCurrency = watch("currency") || "USD";
+
+  // Get currency info for the selected currency
+  const getCurrencyInfo = (currencyCode: string) => {
+    return SUPPORTED_CURRENCIES.find(c => c.code === currencyCode) || SUPPORTED_CURRENCIES[0];
+  };
+
+  const currencyInfo = getCurrencyInfo(selectedCurrency);
 
   useEffect(() => {
     const checkApproval = async () => {
@@ -135,20 +155,61 @@ export const ProductInfoSection = ({
         />
       </div>
 
-      {/* Price */}
-      <div className="flex flex-col gap-y-2">
-        <Label>Price</Label>
-        <Input
-          type="number"
-          step="0.01"
-          min="0.01"
-          placeholder="Price"
-          {...register("price", {
-            valueAsNumber: true,
-            required: "Price is required",
-            setValueAs: (value) => Math.round(value * 100),
-          })}
-        />
+      {/* Price and Currency */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-y-2">
+          <Label>Currency</Label>
+          <FormField
+            control={control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value || "USD"}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {SUPPORTED_CURRENCIES.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.code} - {currency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex flex-col gap-y-2">
+          <Label>Price</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              {currencyInfo.symbol}
+            </span>
+            <Input
+              type="number"
+              step={1 / Math.pow(10, currencyInfo.decimals)}
+              min={1 / Math.pow(10, currencyInfo.decimals)}
+              placeholder="Price"
+              className="pl-8"
+              {...register("price", {
+                valueAsNumber: true,
+                required: "Price is required",
+              })}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {currencyInfo.decimals === 0 
+              ? "Enter whole numbers only (no decimal places)"
+              : `Enter price with up to ${currencyInfo.decimals} decimal places`}
+          </p>
+        </div>
       </div>
 
       {/* Primary Category */}
@@ -276,7 +337,11 @@ export const ProductInfoSection = ({
             <FormControl>
               <Checkbox
                 checked={field.value}
-                onCheckedChange={(checked) => field.onChange(checked === true)}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked === true);
+                  // Automatically update tax category based on isDigital
+                  form.setValue("taxCategory", checked ? "DIGITAL_GOODS" : "PHYSICAL_GOODS");
+                }}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
@@ -354,6 +419,65 @@ export const ProductInfoSection = ({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Tax Settings */}
+      <div className="space-y-4">
+        <Label className="text-lg font-semibold">Tax Settings</Label>
+        
+        <FormField
+          control={control}
+          name="taxCategory"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tax Category</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tax category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="PHYSICAL_GOODS">Physical Goods</SelectItem>
+                  <SelectItem value="DIGITAL_GOODS">Digital Goods</SelectItem>
+                  <SelectItem value="SERVICES">Services</SelectItem>
+                  <SelectItem value="SHIPPING">Shipping</SelectItem>
+                  <SelectItem value="HANDLING">Handling</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                {watch("isDigital") 
+                  ? "Automatically set to Digital Goods based on product type"
+                  : "Automatically set to Physical Goods based on product type"}
+              </p>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="taxExempt"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Tax Exempt</FormLabel>
+                <p className="text-sm text-muted-foreground">
+                  Check this if your product is tax exempt (e.g., educational materials, certain medical supplies)
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
       </div>
     </div>
   );

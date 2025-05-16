@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { CurrencySelector } from "./CurrencySelector";
 
 const Footer = () => {
   const pathname = usePathname();
@@ -172,8 +173,11 @@ const Footer = () => {
       </div>
 
       {/* Copyright and Legal Links */}
-      <div className="py-10 md:flex md:items-center md:justify-center bg-gray-100">
-        <div className="text-center">
+      <div className="py-10 md:flex md:items-center md:justify-between bg-gray-100 px-6">
+        <div className="mb-4 md:mb-0">
+          <CurrencySelector />
+        </div>
+        <div className="flex-1 flex flex-col items-center">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} All Rights Reserved
           </p>
@@ -198,6 +202,7 @@ const Footer = () => {
             </Link>
           </div>
         </div>
+        <div className="hidden md:block w-[180px]"></div> {/* Spacer to balance the layout */}
       </div>
     </footer>
   );

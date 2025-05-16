@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   let event;
 
   try {
-    event = stripeConnect.webhooks.constructEvent(
+    event = stripeConnect.instance.webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_CONNECT_WEBHOOK_SECRET as string

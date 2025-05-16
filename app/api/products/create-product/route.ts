@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       dropDate,
       dropTime,
       discountEndDate,
+      currency = "USD",
     } = data;
 
     // Basic validation for required fields
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
       userId,
       name,
       price: Number(price),
+      currency,
       description: description || "",
       status,
       shippingCost: Number(shippingCost),

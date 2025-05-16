@@ -112,6 +112,7 @@ model User {
   emailVerified         DateTime?
   passwordHash          String?
   image                 String?
+  preferredCurrency     String    @default("USD") // Store user's preferred currency
   accounts              Account[]
   member                Member?
   seller                Seller?
@@ -148,20 +149,32 @@ model Member {
 }
 
 model Address {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  streetAddress String
-  streetAddress2 String?  // For apartment numbers, suite numbers, etc.
-  city          String
-  state         String?   // Optional for countries without states
-  province      String?   // Alternative to state for some countries
-  postalCode    String    // Can handle various formats (ZIP, PIN, etc.)
-  country       String
-  isDefault     Boolean  @default(true)
-  sellerId      String
-  seller        Seller   @relation(fields: [sellerId], references: [userId])
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  encryptedStreet   String   // Encrypted street address
+  streetIV          String   // IV for street address
+  streetSalt        String   // Salt for street address
+  encryptedStreet2  String?  // Encrypted street address 2 (optional)
+  street2IV         String?  // IV for street address 2
+  street2Salt       String?  // Salt for street address 2
+  encryptedCity     String   // Encrypted city
+  cityIV            String   // IV for city
+  citySalt          String   // Salt for city
+  encryptedState    String?  // Encrypted state/province
+  stateIV           String?  // IV for state/province
+  stateSalt         String?  // Salt for state/province
+  encryptedPostal   String   // Encrypted postal code
+  postalIV          String   // IV for postal code
+  postalSalt        String   // Salt for postal code
+  encryptedCountry  String   // Encrypted country
+  countryIV         String   // IV for country
+  countrySalt       String   // Salt for country
+  isDefault         Boolean  @default(true)
+  isBusinessAddress Boolean  @default(false) // Flag to identify business addresses
+  sellerId          String
+  seller            Seller   @relation(fields: [sellerId], references: [userId])
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([sellerId])
 }
@@ -173,6 +186,10 @@ model Seller {
   shopNameSlug              String    @unique // URL-friendly shop name
   shopTagLine               String?
   shopDescription           String?
+  preferredCurrency         String    @default("USD") // Store seller's preferred currency
+  preferredWeightUnit       String    @default("lbs")  // Store seller's preferred weight unit (kg/lbs)
+  preferredDimensionUnit    String    @default("in")  // Store seller's preferred dimension unit (cm/inches)
+  preferredDistanceUnit     String    @default("miles")  // Store seller's preferred distance unit (km/miles)
   applicationAccepted       Boolean   @default(false)
   stripeConnected	          Boolean		@default(false)
   connectedAccountId        String?   @unique // Optional, but required for selling
@@ -191,6 +208,22 @@ model Seller {
   addresses                 Address[]
   reviews                   Review[]
   user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tax fields
+  encryptedBusinessName     String
+  businessNameIV           String
+  businessNameSalt         String
+  encryptedTaxId           String
+  taxIdIV                  String
+  taxIdSalt                String
+  encryptedAdditionalTaxRegistrations String?
+  additionalTaxRegistrationsIV String?
+  additionalTaxRegistrationsSalt String?
+  taxCountry               String
+  taxIdVerified            Boolean   @default(false)
+  taxIdVerificationDate    DateTime?
+  taxIdVerificationMethod  String?   // e.g., "MANUAL", "API", "DOCUMENT"
+  taxIdVerificationNotes   String?   // Any notes about the verification process
 
   createdAt	      DateTime @default(now())
   updatedAt	      DateTime @updatedAt
@@ -214,13 +247,16 @@ model Product {
   name                  String
   description           Json
   price                 Int
+  currency              String   @default("USD") // Store the currency code (e.g., USD, EUR, GBP)
   status                String   @default("HIDDEN")
   shippingCost          Int?     // Only required if product is physical
   handlingFee           Int?
   itemWeight            Int?
+  itemWeightUnit        String   @default("lbs")  // Store the weight unit (kg/lbs)
   itemLength            Int?
   itemWidth             Int?
   itemHeight            Int?
+  itemDimensionUnit     String   @default("in")  // Store the dimension unit (cm/inches)
   shippingNotes         String?
   freeShipping          Boolean  @default(false)
   isDigital             Boolean
@@ -248,7 +284,12 @@ model Product {
   reviews               Review[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  seller          Seller?    @relation(fields: [userId], references: [userId])
+  seller                Seller?    @relation(fields: [userId], references: [userId])
+  
+  // Tax fields
+  taxCategory    String    @default("PHYSICAL_GOODS")
+  taxCode        String?
+  taxExempt      Boolean   @default(false)
 }
 
 model Suggestion {
@@ -287,36 +328,52 @@ model ContactUs {
 }
 
 model Order {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String
-  encryptedBuyerEmail String
-  buyerEmailIV      String
-  encryptedBuyerName String
-  buyerNameIV       String
-  sellerId          String
-  shopName          String
-  productId         String
-  productName       String
-  quantity          Int
-  totalAmount       Float
-  productPrice      Float
-  shippingCost      Float
-  stripeFee         Float     @default(0)
-  isDigital         Boolean   @default(false)
-  status            OrderStatus
-  paymentStatus     PaymentStatus
-  stripeSessionId   String
-  stripeTransferId  String?
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String
+  encryptedBuyerEmail   String
+  buyerEmailIV          String
+  buyerEmailSalt        String
+  encryptedBuyerName    String
+  buyerNameIV           String
+  buyerNameSalt         String
+  sellerId              String
+  shopName              String
+  productId             String
+  productName           String
+  quantity              Int
+  totalAmount           Float
+  currency              String    @default("USD") // Store the currency code used for the order
+  productPrice          Float
+  shippingCost          Float
+  stripeFee             Float     @default(0)
+  taxAmount             Float     @default(0)     // Total tax amount collected
+  taxJurisdiction       String?   // Country/State where tax was collected
+  taxRate               Float?    // Tax rate applied (e.g., 0.08 for 8%)
+  taxType               String?   // Type of tax (e.g., "VAT", "GST", "Sales Tax")
+  taxBreakdown          Json?     // Detailed breakdown of taxes by type and jurisdiction
+  taxExempt             Boolean   @default(false) // Whether the order was tax exempt
+  taxCategory           String?   // Product tax category
+  taxCode               String?   // Stripe tax code used
+  isDigital             Boolean   @default(false)
+  status                OrderStatus
+  paymentStatus         PaymentStatus
+  stripeSessionId       String
+  stripeTransferId      String?
   encryptedShippingAddress String
-  shippingAddressIV String
-  discount          Json?
-  reviews           Review[]
-  completedAt       DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  user              User      @relation(fields: [userId], references: [id])
-  seller            Seller    @relation(fields: [sellerId], references: [userId])
-  product           Product   @relation(fields: [productId], references: [id])
+  shippingAddressIV     String
+  shippingAddressSalt   String
+  discount              Json?
+  // Exchange rate fields
+  exchangeRate          Float?    // The exchange rate used for this order (e.g., 1.2 for USD to EUR)
+  baseCurrency          String    @default("USD") // The original currency (usually USD)
+  exchangeRateTimestamp DateTime? // When the exchange rate was fetched
+  reviews               Review[]
+  completedAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id])
+  seller                Seller    @relation(fields: [sellerId], references: [userId])
+  product               Product   @relation(fields: [productId], references: [id])
 }
 
 model HandmadeGuidelines {
@@ -454,4 +511,18 @@ model CustomerFeedback {
   recaptchaToken    String?
 
   createdAt         DateTime @default(now())
+}
+
+// New model for storing exchange rates
+model ExchangeRate {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  baseCurrency  String   // Base currency (e.g., USD)
+  targetCurrency String  // Target currency (e.g., EUR)
+  rate          Float    // Exchange rate value
+  lastUpdated   DateTime @default(now())
+  isActive      Boolean  @default(true)
+
+  @@unique([baseCurrency, targetCurrency])
+  @@index([baseCurrency])
+  @@index([targetCurrency])
 }

@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "./ui/skeleton";
 import Link from "next/link";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { CategoriesMap } from "@/data/categories";
 import ImageSlider from "./ImageSlider";
 import { CountdownTimer } from "./CountdownTimer";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface SimplifiedProduct {
   name: string;
@@ -15,6 +16,7 @@ interface SimplifiedProduct {
   isDigital: boolean;
   discount: number | null;
   price: number;
+  currency: string;
   images: string[];
   primaryCategory: string;
   stock: number;
@@ -41,6 +43,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDropActive, setIsDropActive] = useState<boolean>(false);
+  const [convertedPrice, setConvertedPrice] = useState<string>("");
+  const { formatPrice } = useCurrency();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,6 +53,15 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
     return () => clearTimeout(timer);
   }, [index]);
+
+  // Convert price when product or currency changes
+  useEffect(() => {
+    if (product) {
+      formatPrice(product.price, true)
+        .then(setConvertedPrice)
+        .catch(console.error);
+    }
+  }, [product, formatPrice]);
 
   // Check if drop is active
   useEffect(() => {
@@ -110,7 +123,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
           </div>
         )}
         <p className="mt-1 font-medium text-sm text-gray-900">
-          {formatPrice(product.price, { isCents: true })}
+          {convertedPrice}
         </p>
       </div>
     </Link>

@@ -21,6 +21,7 @@ async function getShopData(shopNameSlug: string) {
           id: true,
           name: true,
           price: true,
+          currency: true,
           images: true,
           primaryCategory: true,
           secondaryCategory: true,

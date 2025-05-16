@@ -1,40 +1,77 @@
 import Stripe from "stripe";
 
 // Helper function to get the appropriate key based on environment
-function getStripeKey(key: string, isTest: boolean = false) {
-  if (isTest) {
-    return process.env.STRIPE_SECRET_KEY!; // Use test key
+function getStripeKey(key: string) {
+  if (typeof window !== 'undefined') {
+    throw new Error('Stripe should only be initialized on the server side');
   }
-  return process.env[key]!; // Use production key
+  
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
 }
 
-// Create Stripe instances with different keys for different purposes
-export const stripeWebhook = new Stripe(process.env.STRIPE_WEBHOOK_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+// Lazy initialization of Stripe instances
+let stripeWebhookInstance: Stripe | null = null;
+let stripeCheckoutInstance: Stripe | null = null;
+let stripeConnectInstance: Stripe | null = null;
+let stripeSecretInstance: Stripe | null = null;
 
-export const stripeCheckout = new Stripe(process.env.STRIPE_CHECKOUT_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+export const stripeWebhook = {
+  get instance() {
+    if (!stripeWebhookInstance) {
+      stripeWebhookInstance = new Stripe(getStripeKey('STRIPE_WEBHOOK_KEY'), {
+        apiVersion: "2025-02-24.acacia",
+      });
+    }
+    return stripeWebhookInstance;
+  }
+};
 
-export const stripeConnect = new Stripe(process.env.STRIPE_CONNECT_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+export const stripeCheckout = {
+  get instance() {
+    if (!stripeCheckoutInstance) {
+      stripeCheckoutInstance = new Stripe(getStripeKey('STRIPE_CHECKOUT_KEY'), {
+        apiVersion: "2025-02-24.acacia",
+      });
+    }
+    return stripeCheckoutInstance;
+  }
+};
 
-// Add secret key instance for balance operations
-export const stripeSecret = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+export const stripeConnect = {
+  get instance() {
+    if (!stripeConnectInstance) {
+      stripeConnectInstance = new Stripe(getStripeKey('STRIPE_CONNECT_KEY'), {
+        apiVersion: "2025-02-24.acacia",
+      });
+    }
+    return stripeConnectInstance;
+  }
+};
+
+export const stripeSecret = {
+  get instance() {
+    if (!stripeSecretInstance) {
+      stripeSecretInstance = new Stripe(getStripeKey('STRIPE_SECRET_KEY'), {
+        apiVersion: "2025-02-24.acacia",
+      });
+    }
+    return stripeSecretInstance;
+  }
+};
 
 // Helper function to get the appropriate Stripe instance based on operation
 export function getStripeInstance(operation: 'checkout' | 'connect' | 'webhook') {
   switch (operation) {
     case 'checkout':
-      return stripeCheckout;
+      return stripeCheckout.instance;
     case 'connect':
-      return stripeConnect;
+      return stripeConnect.instance;
     case 'webhook':
-      return stripeWebhook;
+      return stripeWebhook.instance;
     default:
       throw new Error('Invalid Stripe operation');
   }

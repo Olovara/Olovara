@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const CheckoutButton = ({ productId, quantity }: { productId: string; quantity: number }) => {
   const [loading, setLoading] = useState(false);
+  const { currency } = useCurrency();
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -15,7 +17,11 @@ const CheckoutButton = ({ productId, quantity }: { productId: string; quantity: 
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId, quantity }),
+        body: JSON.stringify({ 
+          productId, 
+          quantity,
+          preferredCurrency: currency 
+        }),
       });
 
       const data = await response.json();

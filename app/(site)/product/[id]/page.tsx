@@ -1,9 +1,11 @@
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
 import Link from "next/link";
 import ProductActions from "@/components/ProductPageActions";
+import ProductDetails from "@/components/ProductDetails";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -15,231 +17,77 @@ const ProtectedProductDescription = dynamic(
   { ssr: false }
 );
 
-// Generate metadata dynamically
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const { id } = params;
-
-  if (!ObjectId.isValid(id)) {
-    console.error("Invalid product ID:", id);
-    return { title: "Invalid Product" };
+interface ProductPageProps {
+  params: {
+    id: string;
+  };
   }
 
-  const product = await getData(id);
-  return { title: product?.name || "Product Not Found" };
-}
-
-// Fetch product data
 async function getData(id: string) {
-  const data = await db.product.findUnique({
-    where: { id: id },
-    select: {
-      id: true,
-      name: true,
-      images: true,
-      price: true,
-      discount: true,
-      discountEndDate: true,
-      description: true,
-      status: true,
-      isDigital: true,
-      stock: true,
-      productFile: true,
-      handlingFee: true,
-      shippingCost: true,
-      itemWeight: true,
-      itemLength: true,
-      itemWidth: true,
-      itemHeight: true,
-      shippingNotes: true,
-      freeShipping: true,
-      inStockProcessingTime: true,
-      howItsMade: true,
-      tags: true,
-      NSFW: true,
+  try {
+    const product = await db.product.findUnique({
+      where: {
+        id,
+      },
+      include: {
       seller: {
         select: {
           shopName: true,
           shopNameSlug: true,
         },
       },
-      dropDate: true,
-      dropTime: true,
     },
   });
 
-  return data;
+    if (!product) {
+      console.error("Product not found:", id);
+      return null;
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+    return product;
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: ProductPageProps) {
+  const product = await getData(params.id);
+
+  if (!product) {
+    return {
+      title: "Product Not Found",
+    };
+  }
+
+  return {
+    title: product.name,
+    description: product.description,
+  };
+}
+
+export default async function ProductPage({ params }: ProductPageProps) {
   noStore();
+  const product = await getData(params.id);
 
-  const data = await getData(params.id);
+  if (!product) {
+    notFound();
+  }
 
-  // If product doesn't exist or is not active, show not found
-  if (!data || data.status !== "ACTIVE") {
+  if (product.status.toUpperCase() !== "ACTIVE") {
+    notFound();
+  }
+
+  if (!product.images || product.images.length === 0) {
     return (
-      <div className="container mx-auto p-5">
-        <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <p>This product may have been removed or is no longer available.</p>
-        <Link
-          href="/products"
-          className="text-primary hover:underline mt-4 inline-block"
-        >
-          Return to Products
-        </Link>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Product Image Not Available</h2>
+          <p className="text-gray-600">This product does not have any images.</p>
+        </div>
       </div>
     );
   }
 
-  if (!data || !data.images || data.images.length === 0) {
-    return (
-      <div className="flex items-center justify-center">
-        Product image not available.
-      </div>
-    );
-  }
-
-  // Calculate discounted price if applicable
-  const isOnSale =
-    data.discount &&
-    data.discountEndDate &&
-    new Date(data.discountEndDate) > new Date();
-  const discount = data.discount ?? 0;
-  const finalPrice = isOnSale
-    ? data.price - Math.round(data.price * (discount / 100))
-    : data.price;
-
-  return (
-    <section className="mx-auto px-4 lg:mt-10 max-w-7xl lg:px-8">
-      {/* Product Image and Name Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="col-span-1 lg:col-span-2 w-full h-full bg-gray-100 rounded-lg overflow-hidden">
-          <ImageSlider urls={data.images} />
-        </div>
-
-        <div className="col-span-1 flex flex-col justify-center space-y-6">
-          <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
-            {data.name}
-          </h1>
-          {data.seller?.shopName && (
-            <p className="text-gray-700 text-sm">
-              Made by:&nbsp;
-              <Link
-                href={`/shops/${data.seller.shopNameSlug}`}
-                className="font-medium text-purple-600 hover:underline"
-              >
-                {data.seller.shopName}
-              </Link>
-            </p>
-          )}
-          {!data.isDigital && data.stock > 0 && data.inStockProcessingTime && (
-            <div>
-              <p className="text-sm text-gray-500">
-                Ships in {data.inStockProcessingTime} days.
-              </p>
-            </div>
-          )}
-
-          {/* Sale Price or Regular Price */}
-          <p className="text-xl font-semibold text-gray-800">
-            {isOnSale ? (
-              <>
-                <span className="line-through text-gray-500">
-                  ${(data.price / 100).toFixed(2)}
-                </span>{" "}
-                <span className="text-red-600">${(finalPrice / 100).toFixed(2)}</span>
-              </>
-            ) : (
-              <>${(data.price / 100).toFixed(2)}</>
-            )}
-          </p>
-
-          {/* Combined Shipping and Handling Fee */}
-          {!data.freeShipping && (data.shippingCost || data.handlingFee) && (
-            <p className="text-sm text-gray-600">
-              Shipping & Handling: ${(((data.shippingCost || 0) + (data.handlingFee || 0)) / 100).toFixed(2)}
-            </p>
-          )}
-          {data.freeShipping && (
-            <p className="text-sm text-green-600">Free Shipping Available</p>
-          )}
-
-          {/* Display Stock Quantity if it's a physical product */}
-          {!data.isDigital && (
-            <p className="text-sm text-gray-600">
-              {data.stock > 0
-                ? `In Stock: ${data.stock} available`
-                : "Out of Stock"}
-            </p>
-          )}
-          {/* Quantity Selector & Buy Now Button */}
-          <ProductActions 
-            productId={data.id} 
-            maxStock={data.stock} 
-            dropDate={data.dropDate}
-            dropTime={data.dropTime}
-          />
-
-          {/* How It's Made Section */}
-          {data.howItsMade && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold">How It&apos;s Made</h3>
-              <p className="text-gray-600">{data.howItsMade}</p>
-            </div>
-          )}
-
-          {/* Shipping Notes Section */}
-          {data.shippingNotes && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold">Shipping Notes</h3>
-              <p className="text-gray-600">{data.shippingNotes}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Additional Info Section */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="text-gray-700">
-          <ProtectedProductDescription
-            content={data.description}
-            NSFW={Boolean(data.NSFW)}
-          />
-        </div>
-
-        {/* Shipping and Dimensions */}
-        {!data.isDigital && (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">Product Details</h3>
-            {data.itemWeight && <p>Weight: {data.itemWeight}g</p>}
-            {(data.itemLength || data.itemWidth || data.itemHeight) && (
-              <p>
-                Dimensions: {data.itemLength || 0} x {data.itemWidth || 0} x{" "}
-                {data.itemHeight || 0}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Digital Product Download */}
-      {data.isDigital && data.productFile && (
-        <div className="mt-8 bg-green-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Digital Download</h3>
-          <a
-            href={data.productFile}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            Download Now
-          </a>
-        </div>
-      )}
-    </section>
-  );
+  return <ProductDetails data={product} />;
 }

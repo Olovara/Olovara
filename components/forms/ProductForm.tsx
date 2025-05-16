@@ -7,6 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema } from "@/schemas/ProductSchema";
+import { 
+  SUPPORTED_CURRENCIES, 
+  SUPPORTED_WEIGHT_UNITS, 
+  SUPPORTED_DIMENSION_UNITS,
+  CurrencyCode,
+  WeightUnit,
+  DimensionUnit 
+} from "@/data/units";
 import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
@@ -23,6 +31,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { ProductFileSection } from "../product/productFile";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
+import { getSellerPreferences } from "@/actions/getSellerPreferences";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -105,10 +114,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
-
   const [isPending, startTransition] = useTransition();
+  const [sellerPreferences, setSellerPreferences] = useState({
+    preferredCurrency: "USD" as CurrencyCode,
+    preferredWeightUnit: "lbs" as WeightUnit,
+    preferredDimensionUnit: "in" as DimensionUnit,
+  });
 
-  const form = useForm<ProductFormValues>({
+  const form = useForm<z.infer<typeof ProductSchema>>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       name: initialData?.name || "",
@@ -119,9 +132,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
       handlingFee: initialData?.handlingFee ? initialData.handlingFee / 100 : 0,
       shippingCost: initialData?.shippingCost ? initialData.shippingCost / 100 : 0,
       itemWeight: initialData?.itemWeight || 0,
+      itemWeightUnit: initialData?.itemWeightUnit || sellerPreferences.preferredWeightUnit,
       itemLength: initialData?.itemLength || 0,
       itemWidth: initialData?.itemWidth || 0,
       itemHeight: initialData?.itemHeight || 0,
+      itemDimensionUnit: initialData?.itemDimensionUnit || sellerPreferences.preferredDimensionUnit,
       shippingNotes: initialData?.shippingNotes || "",
       status: initialData?.status || "HIDDEN",
       isDigital: initialData?.isDigital || false,
@@ -137,6 +152,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       discountEndTime: initialData?.discountEndTime || "",
       howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
+      currency: initialData?.currency || sellerPreferences.preferredCurrency,
     }
   });
 

@@ -68,6 +68,7 @@ export default async function SecondaryCategoryPage({
       id: true,
       name: true,
       price: true,
+      currency: true,
       images: true,
       primaryCategory: true,
       secondaryCategory: true,

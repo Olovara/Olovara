@@ -6,6 +6,7 @@ import type { Stripe } from "stripe";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { Resend } from "resend";
 import ProductEmail from "@/components/emails/ProductEmail";
+import SellerOrderEmail from "@/components/emails/SellerOrderEmail";
 import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -20,37 +21,37 @@ export async function POST(req: Request) {
   try {
     // Get the raw body as text
     const rawBody = await req.text();
-  const sig = headers().get("stripe-signature") as string;
+    const sig = headers().get("stripe-signature") as string;
 
-  if (!sig) {
-    console.error("❌ No Stripe signature found in request");
+    if (!sig) {
+      console.error("❌ No Stripe signature found in request");
       return NextResponse.json({ error: "No signature" }, { status: 400 });
-  }
+    }
 
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   
-  if (!webhookSecret) {
-    console.error("❌ No webhook secret found in environment variables");
+    if (!webhookSecret) {
+      console.error("❌ No webhook secret found in environment variables");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
       );
-  }
+    }
 
     // Log the signature and first few characters of the body for debugging
     console.log("🔍 Webhook signature:", sig);
     console.log("🔍 Webhook body preview:", rawBody.substring(0, 100));
 
-  let event;
-  try {
-      event = stripeWebhook.webhooks.constructEvent(
+    let event;
+    try {
+      event = stripeWebhook.instance.webhooks.constructEvent(
         rawBody,
-      sig,
-      webhookSecret
-    );
-    console.log(`✅ Webhook verified: ${event.type}`);
-  } catch (err: any) {
-    console.error("❌ Stripe Webhook Error:", err.message);
+        sig,
+        webhookSecret
+      );
+      console.log(`✅ Webhook verified: ${event.type}`);
+    } catch (err: any) {
+      console.error("❌ Stripe Webhook Error:", err.message);
       console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
       return NextResponse.json(
         { error: `Webhook Error: ${err.message}` },
@@ -77,7 +78,13 @@ export async function POST(req: Request) {
           // Fetch product details using metadata
           const product = await db.product.findUnique({
             where: { id: session.metadata.productId },
-            include: { seller: true },
+            include: { 
+              seller: {
+                include: {
+                  user: true
+                }
+              }
+            },
           });
 
           if (!product || !product.seller?.connectedAccountId) {
@@ -99,18 +106,20 @@ export async function POST(req: Request) {
               })
             : null;
 
-          const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV } = encryptOrderData(buyerEmail);
-          const { encrypted: encryptedBuyerName, iv: buyerNameIV } = encryptOrderData(buyerName);
-          const { encrypted: encryptedShippingAddress, iv: shippingAddressIV } = shippingAddress 
+          const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV, salt: buyerEmailSalt } = encryptOrderData(buyerEmail);
+          const { encrypted: encryptedBuyerName, iv: buyerNameIV, salt: buyerNameSalt } = encryptOrderData(buyerName);
+          const { encrypted: encryptedShippingAddress, iv: shippingAddressIV, salt: shippingAddressSalt } = shippingAddress 
             ? encryptOrderData(shippingAddress)
-            : { encrypted: "", iv: "" };
+            : { encrypted: "", iv: "", salt: "" };
 
           const preliminaryOrderData = {
             userId: session.metadata.userId || "",
             encryptedBuyerEmail,
             buyerEmailIV,
+            buyerEmailSalt,
             encryptedBuyerName,
             buyerNameIV,
+            buyerNameSalt,
             sellerId: session.metadata.sellerId || "",
             shopName: product.seller?.shopName || "",
             productId: session.metadata.productId || "",
@@ -127,18 +136,28 @@ export async function POST(req: Request) {
             stripeTransferId: null,
             encryptedShippingAddress,
             shippingAddressIV,
+            shippingAddressSalt,
             discount: null,
             completedAt: product.isDigital ? new Date() : null,
+            taxAmount: session.total_details?.amount_tax || 0,
+            taxBreakdown: session.total_details?.breakdown ? JSON.stringify(session.total_details.breakdown) : null,
+            taxExempt: session.metadata.taxExempt === 'true',
+            taxCategory: session.metadata.taxCategory || null,
+            taxCode: product.taxCode || null,
+            taxJurisdiction: session.customer_details?.address?.country || null,
+            taxRate: session.total_details?.amount_tax ? 
+              (session.total_details.amount_tax / (session.amount_total || 1)) : null,
+            taxType: session.total_details?.amount_tax ? 'VAT' : null, // Default to VAT, adjust based on jurisdiction
           };
 
           const order = await db.order.create({ data: preliminaryOrderData });
           console.log(`✅ Created preliminary order: ${order.id}`);
 
           // Retrieve Charge and Balance Transaction to get the exact fee
-          const paymentIntent = await stripeSecret.paymentIntents.retrieve(session.payment_intent as string);
+          const paymentIntent = await stripeSecret.instance.paymentIntents.retrieve(session.payment_intent as string);
           if (!paymentIntent.latest_charge) throw new Error("Charge ID missing from Payment Intent");
 
-          let charge = await stripeSecret.charges.retrieve(paymentIntent.latest_charge as string);
+          let charge = await stripeSecret.instance.charges.retrieve(paymentIntent.latest_charge as string);
 
           // Check charge status - should be succeeded
           if (charge.status !== 'succeeded') {
@@ -151,7 +170,7 @@ export async function POST(req: Request) {
           // If balance_transaction ID is missing, try listing balance transactions by source (charge ID)
           if (!balanceTransactionId) {
             console.warn(`⚠️ Charge ${charge.id} status is 'succeeded', but balance_transaction ID initially missing. Trying list fallback.`);
-            const btList = await stripeSecret.balanceTransactions.list({
+            const btList = await stripeSecret.instance.balanceTransactions.list({
               source: charge.id,
               limit: 1 // We only expect one balance transaction per charge
             });
@@ -163,7 +182,7 @@ export async function POST(req: Request) {
               // Optional: Add a small delay and retry the list once more, as a final check
               console.warn(`⚠️ Fallback list failed for charge ${charge.id}. Waiting 1 second and retrying list.`);
               await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-              const finalList = await stripeSecret.balanceTransactions.list({ source: charge.id, limit: 1 });
+              const finalList = await stripeSecret.instance.balanceTransactions.list({ source: charge.id, limit: 1 });
               if (finalList.data.length > 0) {
                 balanceTransactionId = finalList.data[0].id;
                 console.log(`✅ Fallback successful on retry: Found balance transaction ${balanceTransactionId} via list.`);
@@ -181,7 +200,7 @@ export async function POST(req: Request) {
           }
 
           // Retrieve the Balance Transaction using the obtained ID
-          const balanceTransaction = await stripeSecret.balanceTransactions.retrieve(balanceTransactionId);
+          const balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(balanceTransactionId);
           const stripeFee = balanceTransaction.fee; // Actual fee in cents
           console.log(`💰 Stripe fee from balance transaction: ${stripeFee} cents`);
 
@@ -194,6 +213,18 @@ export async function POST(req: Request) {
           // Get amounts from metadata (already in cents)
           const totalAmountInCents = order.totalAmount;
           const platformFeeInCents = parseInt(session.metadata.platformFee || "0");
+          const sellerCurrency = session.metadata.sellerCurrency || "usd"; // Get seller's currency from metadata
+          const originalPrice = parseInt(session.metadata.originalPrice || "0"); // Get original price in seller's currency
+
+          // Get the current exchange rate from the database
+          const exchangeRate = await db.exchangeRate.findUnique({
+            where: {
+              baseCurrency_targetCurrency: {
+                baseCurrency: product.currency.toUpperCase(), // Use product's currency as base
+                targetCurrency: sellerCurrency.toUpperCase()
+              }
+            }
+          });
 
           // Calculate amount to transfer (ensure at least 1 cent)
           const amountToSeller = Math.max(1,
@@ -202,48 +233,62 @@ export async function POST(req: Request) {
             - platformFeeInCents  // Your fee in cents
           );
 
-          console.log(`💰 Transfer calculation (in cents):`);
+          console.log(`💰 Transfer calculation (in ${product.currency.toUpperCase()}):`);
           console.log(`- Total amount: ${totalAmountInCents}`);
           console.log(`- Stripe fee: ${stripeFee}`);
           console.log(`- Platform fee: ${platformFeeInCents}`);
           console.log(`- Amount to seller: ${amountToSeller}`);
+          console.log(`- Seller currency: ${sellerCurrency}`);
+          console.log(`- Original price: ${originalPrice} ${sellerCurrency}`);
+          console.log(`- Exchange rate: ${exchangeRate?.rate || 1}`);
 
-          // Create transfer to seller
-          const transfer = await stripeSecret.transfers.create({
+          // Create transfer to seller with automatic currency conversion
+          const transfer = await stripeSecret.instance.transfers.create({
             amount: amountToSeller,
-            currency: "usd",
+            currency: product.currency.toLowerCase(), // Use product's currency
             destination: product.seller.connectedAccountId,
             transfer_group: session.payment_intent as string,
             source_transaction: charge.id,
             metadata: {
               orderId: order.id,
               sessionId: session.id,
+              sellerCurrency: sellerCurrency, // Store the seller's preferred currency
+              originalPrice: originalPrice.toString(), // Store the original price in seller's currency
+              convertedAmount: amountToSeller.toString(), // Store the converted amount
+              exchangeRate: exchangeRate?.rate?.toString() || "1", // Store the exchange rate used
+              baseCurrency: product.currency.toUpperCase(), // Store the base currency
             }
           });
-          console.log(`💰 Created transfer to seller: ${transfer.id}`);
+          console.log(`💰 Created transfer to seller: ${transfer.id} (${product.currency.toUpperCase()} to ${sellerCurrency})`);
 
-          // Update order with transfer ID and finalize status
+          // Update order with transfer ID, currency info, exchange rate, and finalize status
           await db.order.update({
             where: { id: order.id },
             data: {
               stripeTransferId: transfer.id,
+              currency: sellerCurrency, // Store the seller's preferred currency
               status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING,
               paymentStatus: PaymentStatus.PAID,
               completedAt: product.isDigital ? new Date() : null,
+              // Add exchange rate information
+              exchangeRate: exchangeRate?.rate || 1,
+              baseCurrency: product.currency.toUpperCase(), // Use product's currency as base
+              exchangeRateTimestamp: exchangeRate?.lastUpdated || new Date(),
             },
           });
 
           // Send confirmation email to buyer
           try {
             // Decrypt the buyer's email
-            const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV);
+            const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
             
             // Decrypt and parse the shipping address if it exists
             const shippingAddress = order.encryptedShippingAddress 
-              ? JSON.parse(decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV))
+              ? JSON.parse(decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt))
               : null;
 
-            const { data, error } = await resend.emails.send({
+            // Send buyer email
+            const { data: buyerEmailData, error: buyerEmailError } = await resend.emails.send({
               from: "Yarnnu <noreply@yarnnu.com>",
               to: [buyerEmail],
               subject: product.isDigital ? "Your digital product is ready!" : "Your order has been confirmed!",
@@ -264,21 +309,54 @@ export async function POST(req: Request) {
               }),
             });
 
-            if (error) {
-              console.error("❌ Error sending confirmation email:", error);
+            if (buyerEmailError) {
+              console.error("❌ Error sending buyer confirmation email:", buyerEmailError);
             } else {
-              console.log("✅ Confirmation email sent successfully");
+              console.log("✅ Buyer confirmation email sent successfully");
+            }
+
+            // Send seller notification email
+            if (!product.seller.user.email) {
+              console.error("❌ Seller email not found");
+            } else {
+              const { data: sellerEmailData, error: sellerEmailError } = await resend.emails.send({
+                from: "Yarnnu <noreply@yarnnu.com>",
+                to: [product.seller.user.email],
+                subject: `New Sale Alert! Order #${order.id}`,
+                react: SellerOrderEmail({
+                  orderDetails: {
+                    productName: product.name,
+                    orderId: order.id,
+                    quantity: order.quantity,
+                    totalAmount: order.totalAmount,
+                    buyerName: decryptOrderData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt),
+                    shippingAddress: shippingAddress ? {
+                      street: shippingAddress.line1 || "",
+                      city: shippingAddress.city || "",
+                      state: shippingAddress.state || "",
+                      zipCode: shippingAddress.postal_code || "",
+                      country: shippingAddress.country || "",
+                    } : undefined,
+                  },
+                }),
+              });
+
+              if (sellerEmailError) {
+                console.error("❌ Error sending seller notification email:", sellerEmailError);
+              } else {
+                console.log("✅ Seller notification email sent successfully");
+              }
             }
           } catch (emailError) {
-            console.error("❌ Error sending confirmation email:", emailError);
+            console.error("❌ Error sending emails:", emailError);
           }
 
           // Update product/seller stats
           try {
             // Update product stats
-      await db.product.update({
+            await db.product.update({
               where: { id: session.metadata.productId },
-        data: {
+              data: {
                 numberSold: {
                   increment: parseInt(session.metadata.quantity || "1"),
                 },
@@ -288,11 +366,11 @@ export async function POST(req: Request) {
                     decrement: parseInt(session.metadata.quantity || "1"),
                   },
                 }),
-        },
-      });
+              },
+            });
 
             // Update seller stats
-      await db.seller.update({
+            await db.seller.update({
               where: { id: session.metadata.sellerId },
               data: {
                 totalSales: {
@@ -332,7 +410,7 @@ export async function POST(req: Request) {
 
             // Create seller review
             await db.review.create({
-        data: {
+              data: {
                 orderId: order.id,
                 reviewerId: session.metadata.userId,
                 reviewedId: seller.userId,
@@ -341,12 +419,12 @@ export async function POST(req: Request) {
                 status: "PENDING",
                 expiresAt,
                 rating: 0,
-        },
-      });
+              },
+            });
 
             // Create buyer review
             await db.review.create({
-        data: {
+              data: {
                 orderId: order.id,
                 reviewerId: seller.userId,
                 reviewedId: session.metadata.userId,
@@ -355,8 +433,8 @@ export async function POST(req: Request) {
                 status: "PENDING",
                 expiresAt,
                 rating: 0,
-        },
-      });
+              },
+            });
 
             console.log(`✅ Updated product and seller stats for order ${order.id}`);
           } catch (statsError) {
