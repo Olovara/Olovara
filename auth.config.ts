@@ -3,10 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { UserRole } from "@prisma/client";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "@/lib/db";
-import { JWT } from "next-auth/jwt";
-
 
 // Extend the User type to include role
 interface ExtendedUser {
@@ -16,20 +13,7 @@ interface ExtendedUser {
   role: UserRole;
 }
 
-// Extend the JWT type to include role
-interface ExtendedJWT extends JWT {
-  id: string;
-  role: UserRole;
-}
-
-// Define credentials type
-interface Credentials {
-  email: string;
-  password: string;
-}
-
 const authConfig = {
-  adapter: PrismaAdapter(db),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -69,75 +53,36 @@ const authConfig = {
       },
     }),
   ],
-  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/error",
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      console.log("JWT Callback:", {
-        hasUser: !!user,
-        hasToken: !!token,
-        trigger,
-        hasSession: !!session,
-        userRole: (user as ExtendedUser)?.role,
-        tokenRole: (token as ExtendedJWT)?.role
-      });
-
+    async jwt({ token, user }) {
       if (user) {
         // When signing in, update token with user data
         const typedUser = user as ExtendedUser;
-        return {
-          ...token,
-          id: typedUser.id,
-          role: typedUser.role,
-          email: typedUser.email,
-          name: typedUser.name,
-        } as ExtendedJWT;
-      } else if (trigger === "update" && session) {
-        // When updating session, sync with database
-        const dbUser = await db.user.findUnique({
-          where: { id: token.sub },
-          select: { role: true }
-        });
-        
-        if (dbUser) {
-          return {
-            ...token,
-            role: dbUser.role,
-          } as ExtendedJWT;
-        }
+        token.id = typedUser.id;
+        token.role = typedUser.role;
+        token.email = typedUser.email;
+        token.name = typedUser.name;
       }
-
-      return token as ExtendedJWT;
+      return token;
     },
     async session({ session, token }) {
-      console.log("Session Callback:", {
-        hasSession: !!session,
-        hasToken: !!token,
-        sessionUser: session.user,
-        tokenRole: (token as ExtendedJWT)?.role
-      });
-
       if (token) {
-        const typedToken = token as ExtendedJWT;
-        session.user.id = typedToken.id;
-        session.user.role = typedToken.role;
-        session.user.email = typedToken.email;
-        session.user.name = typedToken.name;
+        session.user.id = token.id as string;
+        session.user.role = token.role as UserRole;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string | null;
       }
-
       return session;
     },
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // Update session age every 24 hours
   },
   secret: process.env.AUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
 } satisfies NextAuthConfig;
 
 export default authConfig;
