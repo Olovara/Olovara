@@ -3,17 +3,33 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { UserRole } from "@prisma/client";
-import type { User } from "@prisma/client";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { db } from "@/lib/db";
+import { JWT } from "next-auth/jwt";
 
-import { LoginSchema } from "@/schemas";
-import { getUserByEmail } from "@/data/user";
 
 // Extend the User type to include role
-interface ExtendedUser extends User {
+interface ExtendedUser {
+  id: string;
+  email: string;
+  name?: string | null;
   role: UserRole;
 }
 
-export default {
+// Extend the JWT type to include role
+interface ExtendedJWT extends JWT {
+  id: string;
+  role: UserRole;
+}
+
+// Define credentials type
+interface Credentials {
+  email: string;
+  password: string;
+}
+
+export const authConfig = {
+  adapter: PrismaAdapter(db),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -21,22 +37,35 @@ export default {
     }),
     Credentials({
       async authorize(credentials) {
-        const validatedFields = LoginSchema.safeParse(credentials);
-
-        if (!validatedFields.success) {
+        if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
-        const { email, password } = validatedFields.data;
+        const user = await db.user.findUnique({
+          where: {
+            email: credentials.email as string,
+          },
+        });
 
-        const user = await getUserByEmail(email);
-        if (!user || !user.password) return null;
+        if (!user || !user.password) {
+          return null;
+        }
 
-        const passwordsMatch = await bcrypt.compare(password, user.password);
+        const passwordsMatch = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        );
 
-        if (passwordsMatch) return user;
+        if (!passwordsMatch) {
+          return null;
+        }
 
-        return null;
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.username,
+          role: user.role,
+        } as ExtendedUser;
       },
     }),
   ],
@@ -53,38 +82,52 @@ export default {
         trigger,
         hasSession: !!session,
         userRole: (user as ExtendedUser)?.role,
-        tokenRole: token?.role
+        tokenRole: (token as ExtendedJWT)?.role
       });
 
       if (user) {
+        // When signing in, update token with user data
         const typedUser = user as ExtendedUser;
-        if (typedUser.role) {
-          token.role = typedUser.role;
-        }
-        if (typedUser.id) {
-          token.id = typedUser.id;
+        return {
+          ...token,
+          id: typedUser.id,
+          role: typedUser.role,
+          email: typedUser.email,
+          name: typedUser.name,
+        } as ExtendedJWT;
+      } else if (trigger === "update" && session) {
+        // When updating session, sync with database
+        const dbUser = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true }
+        });
+        
+        if (dbUser) {
+          return {
+            ...token,
+            role: dbUser.role,
+          } as ExtendedJWT;
         }
       }
-      
-      // Refresh token on session update
-      if (trigger === "update" && session) {
-        token = { ...token, ...session };
-      }
-      
-      return token;
+
+      return token as ExtendedJWT;
     },
     async session({ session, token }) {
       console.log("Session Callback:", {
         hasSession: !!session,
         hasToken: !!token,
-        sessionUser: session?.user,
-        tokenRole: token?.role
+        sessionUser: session.user,
+        tokenRole: (token as ExtendedJWT)?.role
       });
 
-      if (session?.user) {
-        session.user.role = token.role as UserRole;
-        session.user.id = token.id as string;
+      if (token) {
+        const typedToken = token as ExtendedJWT;
+        session.user.id = typedToken.id;
+        session.user.role = typedToken.role;
+        session.user.email = typedToken.email;
+        session.user.name = typedToken.name;
       }
+
       return session;
     },
   },
