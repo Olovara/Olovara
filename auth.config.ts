@@ -28,7 +28,7 @@ interface Credentials {
   password: string;
 }
 
-export const authConfig = {
+const authConfig = {
   adapter: PrismaAdapter(db),
   providers: [
     Google({
@@ -139,3 +139,5 @@ export const authConfig = {
   secret: process.env.AUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 } satisfies NextAuthConfig;
+
+export default authConfig;
