@@ -9,6 +9,9 @@ const SALT_LENGTH = 16; // 128 bits for key derivation
 
 // Get encryption key from environment
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
+console.log("Encryption key exists:", !!ENCRYPTION_KEY);
+console.log("Encryption key length:", ENCRYPTION_KEY?.length);
+
 if (!ENCRYPTION_KEY) {
   if (typeof window === 'undefined') {
     // Server-side error
@@ -23,6 +26,7 @@ if (!ENCRYPTION_KEY) {
 // Validate key length
 const key = Buffer.from(ENCRYPTION_KEY, 'hex');
 if (key.length !== KEY_LENGTH) {
+  console.error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
   throw new Error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
 }
 
