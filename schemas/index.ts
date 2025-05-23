@@ -92,17 +92,50 @@ export const LoginSchema = z.object({
 
 export const RegisterSchema = z
   .object({
-    username: z.string().min(1, {
-      message: "Please enter your name, required.",
+    username: z
+      .string()
+      .min(3, {
+        message: "Username must be at least 3 characters long.",
+      })
+      .max(30, {
+        message: "Username must be less than 30 characters.",
+      })
+      .regex(/^[a-zA-Z0-9_-]+$/, {
+        message: "Username can only contain letters, numbers, underscores, and hyphens.",
+      }),
+    email: z
+      .string()
+      .email({
+        message: "Please enter a valid email address, required.",
+      })
+      .max(255, {
+        message: "Email must be less than 255 characters.",
+      }),
+    password: z
+      .string()
+      .min(8, {
+        message: "Password must be at least 8 characters long.",
+      })
+      .regex(/[A-Z]/, {
+        message: "Password must contain at least one uppercase letter.",
+      })
+      .regex(/[a-z]/, {
+        message: "Password must contain at least one lowercase letter.",
+      })
+      .regex(/[0-9]/, {
+        message: "Password must contain at least one number.",
+      })
+      .regex(/[^A-Za-z0-9]/, {
+        message: "Password must contain at least one special character.",
+      }),
+    passwordConfirmation: z.string(),
+    // Honeypot field - should be empty
+    website: z.string().max(0, {
+      message: "This field should be empty.",
     }),
-    email: z.string().email({
-      message: "Please enter a valid email address, required.",
-    }),
-    password: z.string().min(6, {
-      message: "Please enter a password with at least 6 characters, required",
-    }),
-    passwordConfirmation: z.string().min(6, {
-      message: "Please confirm your password, required.",
+    // reCAPTCHA token
+    recaptchaToken: z.string({
+      required_error: "Please complete the reCAPTCHA verification.",
     }),
   })
   .refine((data) => data.password === data.passwordConfirmation, {

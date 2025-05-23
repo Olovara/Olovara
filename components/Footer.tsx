@@ -156,14 +156,14 @@ const Footer = () => {
                         Suggestions
                       </Link>
                     </li>
-                    {/*<li>
+                    <li>
                       <Link
                         href="/blog"
                         className="text-sm text-muted-foreground hover:text-gray-600"
                       >
                         Blog
                       </Link>
-                    </li>*/}
+                    </li>
                   </ul>
                 </div>
               </div>

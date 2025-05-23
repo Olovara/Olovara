@@ -179,3 +179,64 @@ export async function rejectApplication(applicationId: string) {
     return { success: false, error: "Failed to reject application." };
   }
 }
+
+export async function getAllSellers() {
+  try {
+    const role = await getUserRole();
+
+    if (role !== UserRole.ADMIN) throw new Error("Forbidden");
+
+    return await db.sellerApplication.findMany({
+      select: {
+        id: true,
+        userId: true,
+        createdAt: true,
+        craftingProcess: true,
+        portfolio: true,
+        interestInJoining: true,
+        applicationApproved: true,
+        user: {
+          select: {
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching all seller applications:", error);
+    return [];
+  }
+}
+
+export async function getApprovedSellers() {
+  try {
+    const role = await getUserRole();
+
+    if (role !== UserRole.ADMIN) throw new Error("Forbidden");
+
+    return await db.sellerApplication.findMany({
+      where: {
+        applicationApproved: true,
+      },
+      select: {
+        id: true,
+        userId: true,
+        createdAt: true,
+        craftingProcess: true,
+        portfolio: true,
+        interestInJoining: true,
+        applicationApproved: true,
+        user: {
+          select: {
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching approved seller applications:", error);
+    return [];
+  }
+}

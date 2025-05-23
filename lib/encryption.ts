@@ -27,12 +27,12 @@ if (key.length !== KEY_LENGTH) {
 }
 
 // Generate a random IV
-function generateIV(): string {
+export function generateIV(): string {
   return crypto.randomBytes(IV_LENGTH).toString('hex');
 }
 
 // Generate a random salt for key derivation
-function generateSalt(): string {
+export function generateSalt(): string {
   return crypto.randomBytes(SALT_LENGTH).toString('hex');
 }
 

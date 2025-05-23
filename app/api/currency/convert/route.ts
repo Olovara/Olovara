@@ -147,33 +147,38 @@ async function getExchangeRates(baseCurrency: string) {
     // Update database with new rates using retry logic
     await retryOperation(async () => {
       // Use a transaction to ensure all updates succeed or fail together
-      await db.$transaction(
-        Object.entries(newRates)
-          .filter(([currency]) => SUPPORTED_CURRENCIES.some(c => c.code === currency.toUpperCase()))
-          .map(([currency, rate]) => 
-            db.exchangeRate.upsert({
-              where: {
-                baseCurrency_targetCurrency: {
+      await db.$transaction(async (tx) => {
+        await Promise.all(
+          Object.entries(newRates)
+            .filter(([currency]) => SUPPORTED_CURRENCIES.some(c => c.code === currency.toUpperCase()))
+            .map(([currency, rate]) => 
+              tx.exchangeRate.upsert({
+                where: {
+                  baseCurrency_targetCurrency: {
+                    baseCurrency: baseCurrency.toUpperCase(),
+                    targetCurrency: currency.toUpperCase()
+                  }
+                },
+                update: {
+                  rate,
+                  lastUpdated: new Date(),
+                  isActive: true
+                },
+                create: {
                   baseCurrency: baseCurrency.toUpperCase(),
-                  targetCurrency: currency.toUpperCase()
+                  targetCurrency: currency.toUpperCase(),
+                  rate,
+                  lastUpdated: new Date(),
+                  isActive: true
                 }
-              },
-              update: {
-                rate,
-                lastUpdated: new Date(),
-                isActive: true
-              },
-              create: {
-                baseCurrency: baseCurrency.toUpperCase(),
-                targetCurrency: currency.toUpperCase(),
-                rate,
-                lastUpdated: new Date(),
-                isActive: true
-              }
-            })
-          )
-      );
-    });
+              })
+            )
+        );
+      }, {
+        maxWait: 10000, // 10 seconds
+        timeout: 15000 // 15 seconds
+      });
+    }, 5, 1000); // Increase retries to 5 and delay to 1 second
 
     // Return combined rates (existing + new)
     return {

@@ -78,8 +78,14 @@ export async function POST(req: Request) {
 
     if (preferredCurrency && preferredCurrency.toLowerCase() !== product.currency.toLowerCase()) {
       try {
+        console.log('Converting currency:', {
+          from: product.currency,
+          to: preferredCurrency,
+          amount: productPriceInCents
+        });
+        
         // Convert product price
-        const response = await fetch('/api/currency/convert', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -89,11 +95,28 @@ export async function POST(req: Request) {
             isCents: true
           })
         });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Currency conversion failed:', error);
+          throw new Error(`Currency conversion failed: ${error.error || 'Unknown error'}`);
+        }
+
         const { convertedAmount } = await response.json();
+        console.log('Currency conversion result:', {
+          original: productPriceInCents,
+          converted: convertedAmount,
+          currency: preferredCurrency
+        });
+
+        if (!convertedAmount || isNaN(convertedAmount)) {
+          throw new Error('Invalid conversion result');
+        }
+
         finalProductPriceInCents = convertedAmount;
 
         // Convert shipping and handling
-        const shippingResponse = await fetch('/api/currency/convert', {
+        const shippingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -103,13 +126,25 @@ export async function POST(req: Request) {
             isCents: true
           })
         });
-        const { convertedAmount: convertedShipping } = await shippingResponse.json();
-        finalShippingAndHandlingInCents = convertedShipping;
 
+        if (!shippingResponse.ok) {
+          const error = await shippingResponse.json();
+          console.error('Shipping cost conversion failed:', error);
+          throw new Error(`Shipping cost conversion failed: ${error.error || 'Unknown error'}`);
+        }
+
+        const { convertedAmount: convertedShipping } = await shippingResponse.json();
+        
+        if (!convertedShipping || isNaN(convertedShipping)) {
+          throw new Error('Invalid shipping cost conversion result');
+        }
+
+        finalShippingAndHandlingInCents = convertedShipping;
         checkoutCurrency = preferredCurrency.toLowerCase();
       } catch (error) {
         console.error('Error converting currency:', error);
         // Fallback to original currency if conversion fails
+        console.log('Falling back to original currency:', product.currency);
       }
     }
 

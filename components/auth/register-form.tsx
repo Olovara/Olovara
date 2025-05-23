@@ -24,12 +24,14 @@ import { Button } from "../ui/button";
 import FormError from "../form-error";
 import FormSuccess from "../form-success";
 import { register } from "@/actions/register";
+import { ReCaptcha } from "../ui/recaptcha";
 
 const RegisterForm = () => {
   const isClient = useIsClient();
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
 
   const [isPending, startTransition] = useTransition();
 
@@ -40,12 +42,19 @@ const RegisterForm = () => {
       email: "",
       password: "",
       passwordConfirmation: "",
+      website: "",
+      recaptchaToken: "",
     },
   });
 
   const onSubmit = (values: z.infer<typeof RegisterSchema>) => {
+    if (!recaptchaToken) {
+      setError("Please complete the reCAPTCHA verification.");
+      return;
+    }
+
     startTransition(() => {
-      register(values).then((data) => {
+      register({ ...values, recaptchaToken }).then((data) => {
         if (data.success) setSuccess(data.success);
         if (data?.error) setError(data.error);
       });
@@ -84,6 +93,25 @@ const RegisterForm = () => {
                       disabled={isPending}
                       type="text"
                       placeholder="Your Username"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem className="hidden">
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="text"
+                      autoComplete="off"
+                      tabIndex={-1}
+                      style={{ display: 'none' }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -158,9 +186,13 @@ const RegisterForm = () => {
           </div>
           {error && <FormError message={error} />}
           {success && <FormSuccess message={success} />}
+          <ReCaptcha
+            action="register"
+            onVerify={(token) => setRecaptchaToken(token)}
+          />
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || !recaptchaToken}
             className="w-full hover:bg-purple-400"
           >
             Register
