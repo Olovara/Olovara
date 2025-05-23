@@ -5,29 +5,42 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 
+// Define valid filter values as a const array
+const validFilterValues = [
+  "isWomanOwned",
+  "isMinorityOwned",
+  "isLGBTQOwned",
+  "isVeteranOwned",
+  "isSustainable",
+  "isCharitable",
+] as const;
+
+// Type for valid filter values
+type ValidFilterValue = typeof validFilterValues[number];
+
 const values = [
   {
-    id: "isWomanOwned",
+    id: "isWomanOwned" as ValidFilterValue,
     name: "Woman-Owned",
   },
   {
-    id: "isMinorityOwned",
+    id: "isMinorityOwned" as ValidFilterValue,
     name: "Minority-Owned",
   },
   {
-    id: "isLGBTQOwned",
+    id: "isLGBTQOwned" as ValidFilterValue,
     name: "LGBTQ+ Owned",
   },
   {
-    id: "isVeteranOwned",
+    id: "isVeteranOwned" as ValidFilterValue,
     name: "Veteran-Owned",
   },
   {
-    id: "isSustainable",
+    id: "isSustainable" as ValidFilterValue,
     name: "Sustainable",
   },
   {
-    id: "isCharitable",
+    id: "isCharitable" as ValidFilterValue,
     name: "Charitable",
   },
 ];
@@ -35,10 +48,16 @@ const values = [
 export function ShopFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedValues = searchParams.get("values")?.split(",") || [];
+  
+  // Get and sanitize selected values
+  const rawSelectedValues = searchParams.get("values")?.split(",") || [];
+  const selectedValues = rawSelectedValues.filter((value): value is ValidFilterValue => 
+    validFilterValues.includes(value as ValidFilterValue)
+  );
+  
   const sortBy = searchParams.get("sortBy") || "newest";
 
-  const handleValueChange = (valueId: string) => {
+  const handleValueChange = (valueId: ValidFilterValue) => {
     const params = new URLSearchParams(searchParams.toString());
     const newValues = selectedValues.includes(valueId)
       ? selectedValues.filter((v) => v !== valueId)

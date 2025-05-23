@@ -13,6 +13,16 @@ export const metadata: Metadata = {
   description: "Browse our collection of handcrafted shops",
 };
 
+// Define valid filter values
+const validFilterValues = [
+  "isWomanOwned",
+  "isMinorityOwned",
+  "isLGBTQOwned",
+  "isVeteranOwned",
+  "isSustainable",
+  "isCharitable",
+] as const;
+
 interface ShopsPageProps {
   searchParams: {
     values?: string;
@@ -28,14 +38,17 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
   const currentPage = Number(searchParams.page) || 1;
   const pageSize = Number(searchParams.size) || 24;
 
+  // Filter out invalid values
+  const validValues = values.filter(value => validFilterValues.includes(value as typeof validFilterValues[number]));
+
   // Build where clause
   const where = {
     AND: [
       {
         applicationAccepted: true, // Only show accepted sellers
       },
-      ...(values.length > 0
-        ? values.map((value) => ({
+      ...(validValues.length > 0
+        ? validValues.map((value) => ({
             [value]: true,
           }))
         : []),

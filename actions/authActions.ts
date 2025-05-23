@@ -22,9 +22,17 @@ export async function getAuthUserId() {
 export async function getUserRole(): Promise<UserRole> {
     const session = await auth();
 
-    const role = session?.user.role as UserRole;
+    if (!session?.user) {
+        console.error("Authentication failed: No session found");
+        throw new Error("Unauthorized: No session found");
+    }
 
-    if (!role) throw new Error('Not in role');
+    const role = session.user.role;
+
+    if (!role) {
+        console.error("Authentication failed: Role missing in session");
+        throw new Error("Unauthorized: Role missing");
+    }
 
     return role;
 }
