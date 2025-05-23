@@ -3,9 +3,15 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { UserRole } from "@prisma/client";
+import type { User } from "@prisma/client";
 
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
+
+// Extend the User type to include role
+interface ExtendedUser extends User {
+  role: UserRole;
+}
 
 export default {
   providers: [
@@ -41,8 +47,17 @@ export default {
   },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      console.log("JWT Callback:", {
+        hasUser: !!user,
+        hasToken: !!token,
+        trigger,
+        hasSession: !!session,
+        userRole: (user as ExtendedUser)?.role,
+        tokenRole: token?.role
+      });
+
       if (user) {
-        const typedUser = user as { role?: UserRole; id?: string };
+        const typedUser = user as ExtendedUser;
         if (typedUser.role) {
           token.role = typedUser.role;
         }
@@ -59,6 +74,13 @@ export default {
       return token;
     },
     async session({ session, token }) {
+      console.log("Session Callback:", {
+        hasSession: !!session,
+        hasToken: !!token,
+        sessionUser: session?.user,
+        tokenRole: token?.role
+      });
+
       if (session?.user) {
         session.user.role = token.role as UserRole;
         session.user.id = token.id as string;

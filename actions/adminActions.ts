@@ -58,11 +58,17 @@ export async function getUsers({
 
 export async function getUnapprovedSellers() {
   try {
+    console.log("Starting getUnapprovedSellers...");
     const role = await getUserRole();
+    console.log("Current user role:", role);
 
-    if (role !== UserRole.ADMIN) throw new Error("Forbidden");
+    if (role !== UserRole.ADMIN) {
+      console.error("Access denied: User is not an admin. Role:", role);
+      throw new Error("Forbidden");
+    }
 
-    return await db.sellerApplication.findMany({
+    console.log("Fetching unapproved seller applications...");
+    const applications = await db.sellerApplication.findMany({
       where: {
         applicationApproved: false,
       },
@@ -82,8 +88,25 @@ export async function getUnapprovedSellers() {
         },
       },
     });
+    console.log("Found applications:", {
+      count: applications.length,
+      firstApplication: applications[0] ? {
+        id: applications[0].id,
+        userId: applications[0].userId,
+        username: applications[0].user?.username,
+        email: applications[0].user?.email
+      } : null
+    });
+    return applications;
   } catch (error) {
-    console.error("Error fetching seller applications:", error);
+    console.error("Error in getUnapprovedSellers:", {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : error,
+      timestamp: new Date().toISOString()
+    });
     return [];
   }
 }
@@ -182,11 +205,17 @@ export async function rejectApplication(applicationId: string) {
 
 export async function getAllSellers() {
   try {
+    console.log("Starting getAllSellers...");
     const role = await getUserRole();
+    console.log("Current user role:", role);
 
-    if (role !== UserRole.ADMIN) throw new Error("Forbidden");
+    if (role !== UserRole.ADMIN) {
+      console.error("Access denied: User is not an admin. Role:", role);
+      throw new Error("Forbidden");
+    }
 
-    return await db.sellerApplication.findMany({
+    console.log("Fetching all seller applications...");
+    const applications = await db.sellerApplication.findMany({
       select: {
         id: true,
         userId: true,
@@ -203,8 +232,25 @@ export async function getAllSellers() {
         },
       },
     });
+    console.log("Found applications:", {
+      count: applications.length,
+      firstApplication: applications[0] ? {
+        id: applications[0].id,
+        userId: applications[0].userId,
+        username: applications[0].user?.username,
+        email: applications[0].user?.email
+      } : null
+    });
+    return applications;
   } catch (error) {
-    console.error("Error fetching all seller applications:", error);
+    console.error("Error in getAllSellers:", {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : error,
+      timestamp: new Date().toISOString()
+    });
     return [];
   }
 }

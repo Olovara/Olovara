@@ -19,6 +19,15 @@ export default auth((req) => {
   const isAuthorized = !!req.auth;
   const userRole = req.auth?.user?.role;
 
+  // Debug auth state
+  console.log("Middleware Auth Debug:", {
+    isAuthorized,
+    userRole,
+    path: nextUrl.pathname,
+    userId: req.auth?.user?.id,
+    email: req.auth?.user?.email
+  });
+
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
@@ -29,6 +38,16 @@ export default auth((req) => {
   const isAdminRoute = adminRoutes.some((route: string) => nextUrl.pathname.startsWith(route));
   const isSellerRoute = sellerRoutes.some((route: string) => nextUrl.pathname.startsWith(route)) && !nextUrl.pathname.startsWith('/seller-application');
   const isMemberRoute = memberRoutes.some((route: string) => nextUrl.pathname.startsWith(route));
+
+  // Debug route checks
+  if (isAdminRoute) {
+    console.log("Admin Route Debug:", {
+      isAuthorized,
+      userRole,
+      expectedRole: 'ADMIN',
+      isAllowed: userRole === 'ADMIN'
+    });
+  }
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {

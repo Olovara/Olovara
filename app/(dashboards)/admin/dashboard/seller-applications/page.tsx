@@ -18,6 +18,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApplicationActions } from "./ApplicationActions";
 import Link from "next/link";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
 export const metadata = {
   title: "Seller Application",
@@ -30,17 +32,44 @@ export default async function AdminDashboardSellerApplications({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
+  // Debug session
+  const session = await auth();
+  console.log("Page Session Debug:", {
+    hasSession: !!session,
+    userId: session?.user?.id,
+    role: session?.user?.role,
+    email: session?.user?.email
+  });
+
+  // Direct database check
+  if (session?.user?.id) {
+    const dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true }
+    });
+    console.log("Database Role Check:", {
+      sessionRole: session.user.role,
+      dbRole: dbUser?.role,
+      userId: session.user.id
+    });
+  }
+
   const activeTab = (searchParams.tab as string) || "all";
   
   // Fetch applications based on active tab
   const applications = await (async () => {
-    switch (activeTab) {
-      case "approved":
-        return await getApprovedSellers();
-      case "unapproved":
-        return await getUnapprovedSellers();
-      default:
-        return await getAllSellers();
+    try {
+      switch (activeTab) {
+        case "approved":
+          return await getApprovedSellers();
+        case "unapproved":
+          return await getUnapprovedSellers();
+        default:
+          return await getAllSellers();
+      }
+    } catch (error) {
+      console.error("Error fetching applications:", error);
+      return [];
     }
   })();
 
