@@ -34,7 +34,6 @@ export const currentRole = async () => {
     return null; // You can also return `null` or `undefined` here to handle the error gracefully
   }
 };
-
 export const authOptions: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -47,7 +46,7 @@ export const authOptions: NextAuthConfig = {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/auth/signin",
+    signIn: "/login",
   },
   callbacks: {
     async session({ session, token }: { session: Session; token: JWT }) {

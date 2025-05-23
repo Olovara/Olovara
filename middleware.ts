@@ -80,6 +80,7 @@ export default auth((req) => {
 
     const encodedCallbackUrl = encodeURIComponent(callbackUrl);
 
+    // Redirect to login page with callback URL
     return Response.redirect(
       new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
     );
