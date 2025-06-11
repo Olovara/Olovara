@@ -24,16 +24,36 @@ export async function getAuthUserId() {
             throw new Error("Unauthorized: User ID missing");
         }
 
-        // Verify user exists in database
+        // Verify user exists in database and get full user data
         const dbUser = await db.user.findUnique({
             where: { id: userId },
-            select: { role: true }
+            select: { 
+                role: true,
+                seller: {
+                    select: {
+                        id: true,
+                        applicationAccepted: true
+                    }
+                }
+            }
         });
+        
         console.log("Database user check:", {
             exists: !!dbUser,
             role: dbUser?.role,
-            sessionRole: session.user?.role
+            sessionRole: session.user?.role,
+            hasSellerProfile: !!dbUser?.seller,
+            sellerApplicationAccepted: dbUser?.seller?.applicationAccepted
         });
+
+        // If there's a role mismatch, log it
+        if (dbUser?.role !== session.user?.role) {
+            console.error("Role mismatch detected:", {
+                sessionRole: session.user?.role,
+                dbRole: dbUser?.role,
+                userId: userId
+            });
+        }
 
         return userId;
     } catch (error) {
@@ -64,21 +84,33 @@ export async function getUserRole(): Promise<UserRole> {
             throw new Error("Unauthorized: Role missing");
         }
 
-        // Verify role in database
+        // Verify role in database with seller profile check
         const dbUser = await db.user.findUnique({
             where: { id: session.user.id },
-            select: { role: true }
+            select: { 
+                role: true,
+                seller: {
+                    select: {
+                        id: true,
+                        applicationAccepted: true
+                    }
+                }
+            }
         });
+        
         console.log("Database role check:", {
             sessionRole: role,
             dbRole: dbUser?.role,
-            match: role === dbUser?.role
+            match: role === dbUser?.role,
+            hasSellerProfile: !!dbUser?.seller,
+            sellerApplicationAccepted: dbUser?.seller?.applicationAccepted
         });
 
         if (dbUser?.role !== role) {
             console.error("Role mismatch between session and database:", {
                 sessionRole: role,
-                dbRole: dbUser?.role
+                dbRole: dbUser?.role,
+                userId: session.user.id
             });
         }
 

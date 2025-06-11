@@ -40,8 +40,10 @@ import {
   DimensionUnit,
   DistanceUnit
 } from "@/data/units";
+import { getCountryByCode, getOnboardingCountriesByZone } from "@/data/countries";
 
-type TaxCountry = "US" | "CA" | "GB" | "EU" | "AU" | "JP" | "IN" | "SG";
+// Update TaxCountry type to use country codes from schema
+type TaxCountry = z.infer<typeof SellerSchema>["taxCountry"];
 
 const SellerForm = () => {
   const isClient = useIsClient();
@@ -111,6 +113,12 @@ const SellerForm = () => {
             isSustainable: Boolean(result.data.isSustainable),
             isCharitable: Boolean(result.data.isCharitable),
             valuesPreferNotToSay: Boolean(result.data.valuesPreferNotToSay),
+            // Use business address data if available
+            businessAddress: result.data.businessAddress?.street || "",
+            businessCity: result.data.businessAddress?.city || "",
+            businessState: result.data.businessAddress?.state || "",
+            businessPostalCode: result.data.businessAddress?.postalCode || "",
+            taxCountry: result.data.businessAddress?.country || "US",
           };
           form.reset(formattedData);
         }
@@ -147,6 +155,8 @@ const SellerForm = () => {
       setIsPending(false);
     }
   };
+
+  const countryGroups = getOnboardingCountriesByZone();
 
   if (!isClient || isLoading) return <Spinner />;
 
@@ -463,7 +473,7 @@ const SellerForm = () => {
                 {form.watch("taxCountry") === "US" && "Format: EIN (XX-XXXXXXX) or SSN (XXX-XX-XXXX)"}
                 {form.watch("taxCountry") === "CA" && "Format: XXXXXXXXXRT0001 (Business Number)"}
                 {form.watch("taxCountry") === "GB" && "Format: GBXXXXXXXXX (VAT Number)"}
-                {form.watch("taxCountry") === "EU" && "Format: XX999999999 (VAT Number)"}
+                {getCountryByCode(form.watch("taxCountry"))?.isEU && "Format: XX999999999 (VAT Number)"}
                 {form.watch("taxCountry") === "AU" && "Format: 11 digits (ABN)"}
                 {form.watch("taxCountry") === "JP" && "Format: 13 digits (Corporate Number)"}
                 {form.watch("taxCountry") === "IN" && "Format: 15 digits (GSTIN)"}
@@ -517,14 +527,18 @@ const SellerForm = () => {
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="US">United States</SelectItem>
-                  <SelectItem value="CA">Canada</SelectItem>
-                  <SelectItem value="GB">United Kingdom</SelectItem>
-                  <SelectItem value="EU">European Union</SelectItem>
-                  <SelectItem value="AU">Australia</SelectItem>
-                  <SelectItem value="JP">Japan</SelectItem>
-                  <SelectItem value="IN">India</SelectItem>
-                  <SelectItem value="SG">Singapore</SelectItem>
+                  {countryGroups.map((group) => (
+                    <div key={group.zone}>
+                      <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                        {group.name}
+                      </div>
+                      {group.countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

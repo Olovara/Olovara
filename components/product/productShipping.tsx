@@ -22,8 +22,24 @@ import {
 import { SUPPORTED_WEIGHT_UNITS, SUPPORTED_DIMENSION_UNITS, WeightUnit, DimensionUnit } from "@/data/units";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/ProductSchema";
+import { useEffect, useState } from "react";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
+
+interface ShippingProfile {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  rates: {
+    zone: string;
+    price: number;
+    currency: string;
+    estimatedDays: number;
+    additionalItem?: number;
+    serviceLevel?: string;
+    isFreeShipping: boolean;
+  }[];
+}
 
 interface ProductShippingSectionProps {
   form: UseFormReturn<ProductFormValues>;
@@ -33,6 +49,34 @@ interface ProductShippingSectionProps {
 export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSectionProps) => {
   const { control, watch, setValue } = form;
   const isDigital = watch("isDigital");
+  const [shippingProfiles, setShippingProfiles] = useState<ShippingProfile[]>([]);
+  const selectedProfileId = watch("shippingProfileId");
+
+  // Fetch shipping profiles when component mounts
+  useEffect(() => {
+    const fetchShippingProfiles = async () => {
+      try {
+        const response = await fetch("/api/shipping-profiles");
+        if (!response.ok) throw new Error("Failed to fetch shipping profiles");
+        const data = await response.json();
+        setShippingProfiles(data);
+      } catch (error) {
+        console.error("Error fetching shipping profiles:", error);
+      }
+    };
+
+    void fetchShippingProfiles();
+  }, []);
+
+  // Set default shipping profile if none is selected
+  useEffect(() => {
+    if (shippingProfiles.length > 0 && !selectedProfileId) {
+      const defaultProfile = shippingProfiles.find(profile => profile.isDefault);
+      if (defaultProfile) {
+        setValue("shippingProfileId", defaultProfile.id);
+      }
+    }
+  }, [shippingProfiles, selectedProfileId, setValue]);
 
   if (isDigital) {
     return null;
@@ -47,7 +91,7 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
           onCheckedChange={(checked: boolean) => {
             setValue("freeShipping", checked);
             if (checked) {
-              setValue("shippingCost", 0);
+              setValue("shippingProfileId", null);
             }
           }}
         />
@@ -57,20 +101,28 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
       {!freeShipping && (
         <FormField
           control={control}
-          name="shippingCost"
+          name="shippingProfileId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Shipping Cost</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Enter shipping cost"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                />
-              </FormControl>
+              <FormLabel>Shipping Profile</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value || ""}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a shipping profile" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {shippingProfiles.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.name} {profile.isDefault ? "(Default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
             </FormItem>
           )}
         />

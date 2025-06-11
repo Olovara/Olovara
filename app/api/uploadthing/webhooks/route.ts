@@ -6,7 +6,7 @@ import { db } from '@/lib/db'; // Your Prisma client
 // **Important:** Verify this structure against Uploadthing's documentation!
 interface UploadthingFile {
     key: string; // This is the fileKey
-    url: string;
+    ufsUrl: string;
     name: string;
     size: number;
 }
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     if (event === successEventName) {
         const fileKey = data?.file?.key;
-        const fileUrl = data?.file?.url;
+        const fileUrl = data?.file?.ufsUrl;
         const userId = data?.metadata?.userId as string | undefined; // Extract userId
 
         if (!fileKey || !fileUrl) {

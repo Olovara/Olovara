@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { encryptData } from "@/lib/encryption";
+import { getOnboardingCountriesByZone } from "@/data/countries";
 
 const addressSchema = z.object({
   street1: z.string().min(1, "Street address is required"),
@@ -46,79 +47,10 @@ interface AddressFormProps {
   };
 }
 
-const COUNTRY_OPTIONS = [
-  {
-    region: "North America",
-    countries: [
-      { code: "US", name: "United States" },
-      { code: "CA", name: "Canada" },
-      { code: "MX", name: "Mexico" },
-    ],
-  },
-  {
-    region: "Europe",
-    countries: [
-      { code: "GB", name: "United Kingdom" },
-      { code: "DE", name: "Germany" },
-      { code: "FR", name: "France" },
-      { code: "IT", name: "Italy" },
-      { code: "ES", name: "Spain" },
-      { code: "NL", name: "Netherlands" },
-      { code: "BE", name: "Belgium" },
-      { code: "SE", name: "Sweden" },
-      { code: "CH", name: "Switzerland" },
-      { code: "AT", name: "Austria" },
-      { code: "DK", name: "Denmark" },
-      { code: "NO", name: "Norway" },
-      { code: "FI", name: "Finland" },
-      { code: "IE", name: "Ireland" },
-      { code: "PT", name: "Portugal" },
-    ],
-  },
-  {
-    region: "Asia Pacific",
-    countries: [
-      { code: "JP", name: "Japan" },
-      { code: "CN", name: "China" },
-      { code: "KR", name: "South Korea" },
-      { code: "AU", name: "Australia" },
-      { code: "NZ", name: "New Zealand" },
-      { code: "SG", name: "Singapore" },
-      { code: "HK", name: "Hong Kong" },
-      { code: "TW", name: "Taiwan" },
-      { code: "IN", name: "India" },
-      { code: "ID", name: "Indonesia" },
-      { code: "MY", name: "Malaysia" },
-      { code: "TH", name: "Thailand" },
-      { code: "VN", name: "Vietnam" },
-      { code: "PH", name: "Philippines" },
-    ],
-  },
-  {
-    region: "South America",
-    countries: [
-      { code: "BR", name: "Brazil" },
-      { code: "AR", name: "Argentina" },
-      { code: "CL", name: "Chile" },
-      { code: "CO", name: "Colombia" },
-      { code: "PE", name: "Peru" },
-    ],
-  },
-  {
-    region: "Middle East & Africa",
-    countries: [
-      { code: "AE", name: "United Arab Emirates" },
-      { code: "SA", name: "Saudi Arabia" },
-      { code: "IL", name: "Israel" },
-      { code: "ZA", name: "South Africa" },
-      { code: "EG", name: "Egypt" },
-    ],
-  },
-];
-
 export default function AddressForm({ type, onSuccess, initialData }: AddressFormProps) {
   const [loading, setLoading] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(initialData?.country || "");
+  const countryGroups = getOnboardingCountriesByZone();
 
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
@@ -197,6 +129,27 @@ export default function AddressForm({ type, onSuccess, initialData }: AddressFor
 
       if (!response.ok) {
         throw new Error("Failed to save address");
+      }
+
+      // If this is a business address, update the tax information
+      if (data.isBusinessAddress) {
+        const taxResponse = await fetch('/api/seller/tax-info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            businessAddress: data.street1,
+            businessCity: data.city,
+            businessState: data.state,
+            businessPostalCode: data.postalCode,
+            taxCountry: data.country,
+          }),
+        });
+
+        if (!taxResponse.ok) {
+          console.error('Failed to update tax information');
+        }
       }
 
       toast.success("Address saved successfully");
@@ -314,10 +267,10 @@ export default function AddressForm({ type, onSuccess, initialData }: AddressFor
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {COUNTRY_OPTIONS.map((group) => (
-                      <div key={group.region}>
+                    {countryGroups.map((group) => (
+                      <div key={group.zone}>
                         <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                          {group.region}
+                          {group.name}
                         </div>
                         {group.countries.map((country) => (
                           <SelectItem key={country.code} value={country.code}>

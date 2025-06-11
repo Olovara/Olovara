@@ -117,6 +117,7 @@ export const ProductSchema = z
     ]).default("PHYSICAL_GOODS"),
     taxCode: z.string().optional(),
     taxExempt: z.boolean().default(false),
+    shippingProfileId: z.string().nullable(),
   })
   .transform((data) => {
     // Convert all monetary values to smallest unit

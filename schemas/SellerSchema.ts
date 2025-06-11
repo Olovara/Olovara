@@ -5,6 +5,10 @@ import {
   SUPPORTED_DIMENSION_UNITS,
   SUPPORTED_DISTANCE_UNITS 
 } from "@/data/units";
+import { getOnboardingCountries, getCountryByCode } from "@/data/countries";
+
+// Get supported country codes
+const SUPPORTED_COUNTRY_CODES = getOnboardingCountries().map(country => country.code);
 
 export const SellerSchema = z.object({
   shopName: z.string().min(3, "Shop name is required"),
@@ -35,7 +39,9 @@ export const SellerSchema = z.object({
   businessCity: z.string().min(1, "City is required"),
   businessState: z.string().optional(),
   businessPostalCode: z.string().min(1, "Postal code is required"),
-  taxCountry: z.enum(["US", "CA", "GB", "EU", "AU", "JP", "IN", "SG"]),
+  taxCountry: z.enum(SUPPORTED_COUNTRY_CODES as [string, ...string[]], {
+    required_error: "Please select a country",
+  }).default("US"),
   additionalTaxRegistrations: z.string().optional(),
 }).superRefine((data, ctx) => {
   // Validate tax ID format based on country
@@ -43,12 +49,17 @@ export const SellerSchema = z.object({
     US: /^(\d{2}-\d{7}|\d{3}-\d{2}-\d{4})$/, // EIN (XX-XXXXXXX) or SSN (XXX-XX-XXXX)
     CA: /^\d{9}RT\d{4}$/, // Business Number format
     GB: /^GB\d{9}$/, // VAT number format
-    EU: /^[A-Z]{2}\d{9}$/, // EU VAT number format
     AU: /^\d{11}$/, // ABN format
     JP: /^\d{13}$/, // Corporate Number format
     IN: /^\d{15}$/, // GSTIN format
     SG: /^\d{8}[A-Z]$/, // UEN format
   };
+
+  const country = getCountryByCode(data.taxCountry);
+  if (country?.isEU) {
+    // EU VAT number format
+    taxIdRegex[data.taxCountry] = /^[A-Z]{2}\d{9}$/;
+  }
 
   const regex = taxIdRegex[data.taxCountry];
   if (regex && !regex.test(data.taxId)) {

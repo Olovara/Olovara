@@ -4,51 +4,61 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { decryptData } from "@/lib/encryption";
 import { Seller } from "@prisma/client";
+import { getOnboardingCountries } from "@/data/countries";
 
-type TaxCountry = "US" | "CA" | "GB" | "EU" | "AU" | "JP" | "IN" | "SG";
+// Get supported country codes from the countries data file
+const SUPPORTED_COUNTRY_CODES = getOnboardingCountries().map(country => country.code);
+type TaxCountry = typeof SUPPORTED_COUNTRY_CODES[number];
 
-type SellerData = {
-  shopName: string;
-  shopDescription: string | null;
-  preferredCurrency: string;
-  preferredWeightUnit: string;
-  preferredDimensionUnit: string;
-  preferredDistanceUnit: string;
-  isWomanOwned: boolean;
-  isMinorityOwned: boolean;
-  isLGBTQOwned: boolean;
-  isVeteranOwned: boolean;
-  isSustainable: boolean;
-  isCharitable: boolean;
-  valuesPreferNotToSay: boolean;
-  encryptedBusinessName: string;
-  businessNameIV: string;
-  businessNameSalt: string;
-  encryptedTaxId: string;
-  taxIdIV: string;
-  taxIdSalt: string;
-  taxCountry: string;
-  encryptedAdditionalTaxRegistrations: string | null;
-  additionalTaxRegistrationsIV: string | null;
-  additionalTaxRegistrationsSalt: string | null;
-  addresses: {
+interface SellerData extends Partial<Seller> {
+  shopName?: string;
+  shopDescription?: string;
+  preferredCurrency?: string;
+  preferredWeightUnit?: string;
+  preferredDimensionUnit?: string;
+  preferredDistanceUnit?: string;
+  isWomanOwned?: boolean;
+  isMinorityOwned?: boolean;
+  isLGBTQOwned?: boolean;
+  isVeteranOwned?: boolean;
+  isSustainable?: boolean;
+  isCharitable?: boolean;
+  valuesPreferNotToSay?: boolean;
+  businessName?: string;
+  taxId?: string;
+  taxCountry?: TaxCountry;
+  additionalTaxRegistrations?: string;
+  businessAddress?: {
+    street?: string;
+    street2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  addresses?: {
     encryptedStreet: string;
     streetIV: string;
     streetSalt: string;
+    encryptedStreet2?: string;
+    street2IV?: string;
+    street2Salt?: string;
     encryptedCity: string;
     cityIV: string;
     citySalt: string;
-    encryptedState: string | null;
-    stateIV: string | null;
-    stateSalt: string | null;
+    encryptedState?: string;
+    stateIV?: string;
+    stateSalt?: string;
     encryptedPostal: string;
     postalIV: string;
     postalSalt: string;
     encryptedCountry: string;
     countryIV: string;
     countrySalt: string;
+    isDefault: boolean;
+    isBusinessAddress: boolean;
   }[];
-};
+}
 
 export const getSellerData = async () => {
   try {
@@ -93,6 +103,9 @@ export const getSellerData = async () => {
             encryptedStreet: true,
             streetIV: true,
             streetSalt: true,
+            encryptedStreet2: true,
+            street2IV: true,
+            street2Salt: true,
             encryptedCity: true,
             cityIV: true,
             citySalt: true,
@@ -105,6 +118,8 @@ export const getSellerData = async () => {
             encryptedCountry: true,
             countryIV: true,
             countrySalt: true,
+            isDefault: true,
+            isBusinessAddress: true
           }
         }
       },
@@ -114,78 +129,44 @@ export const getSellerData = async () => {
       return { error: "Seller not found." };
     }
 
-    // Decrypt business name
-    const businessName = await decryptData(
-      seller.encryptedBusinessName,
-      seller.businessNameIV,
-      seller.businessNameSalt
-    );
-
-    // Decrypt tax ID
-    const taxId = await decryptData(
-      seller.encryptedTaxId,
-      seller.taxIdIV,
-      seller.taxIdSalt
-    );
-
-    // Decrypt additional tax registrations if they exist
-    let additionalTaxRegistrations = null;
-    if (seller.encryptedAdditionalTaxRegistrations) {
-      additionalTaxRegistrations = await decryptData(
-        seller.encryptedAdditionalTaxRegistrations,
-        seller.additionalTaxRegistrationsIV!,
-        seller.additionalTaxRegistrationsSalt!
-      );
-    }
-
-    // Decrypt address if it exists
-    let decryptedAddress = {
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "",
+    // Decrypt all encrypted fields
+    const decryptedData: SellerData = {
+      ...seller,
+      businessName: seller.encryptedBusinessName ? 
+        await decryptData(seller.encryptedBusinessName, seller.businessNameIV!, seller.businessNameSalt!) : undefined,
+      taxId: seller.encryptedTaxId ? 
+        await decryptData(seller.encryptedTaxId, seller.taxIdIV!, seller.taxIdSalt!) : undefined,
+      additionalTaxRegistrations: seller.encryptedAdditionalTaxRegistrations ? 
+        await decryptData(seller.encryptedAdditionalTaxRegistrations, seller.additionalTaxRegistrationsIV!, seller.additionalTaxRegistrationsSalt!) : undefined,
     };
 
-    if (seller.addresses.length > 0) {
+    // Decrypt address if it exists
+    if (seller.addresses && seller.addresses.length > 0) {
       const address = seller.addresses[0];
-      decryptedAddress = {
+      decryptedData.businessAddress = {
         street: await decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
+        street2: address.encryptedStreet2 ? 
+          await decryptData(address.encryptedStreet2, address.street2IV!, address.street2Salt!) : undefined,
         city: await decryptData(address.encryptedCity, address.cityIV, address.citySalt),
-        state: address.encryptedState ? await decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : "",
+        state: address.encryptedState ? 
+          await decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : undefined,
         postalCode: await decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
         country: await decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
       };
     }
 
-    // Format the data for the form
-    const formattedData = {
-      shopName: seller.shopName || "",
-      shopDescription: seller.shopDescription || "",
-      preferredCurrency: seller.preferredCurrency || "USD",
-      preferredWeightUnit: seller.preferredWeightUnit || "lbs",
-      preferredDimensionUnit: seller.preferredDimensionUnit || "in",
-      preferredDistanceUnit: seller.preferredDistanceUnit || "miles",
-      isWomanOwned: seller.isWomanOwned || false,
-      isMinorityOwned: seller.isMinorityOwned || false,
-      isLGBTQOwned: seller.isLGBTQOwned || false,
-      isVeteranOwned: seller.isVeteranOwned || false,
-      isSustainable: seller.isSustainable || false,
-      isCharitable: seller.isCharitable || false,
-      valuesPreferNotToSay: seller.valuesPreferNotToSay || false,
-      businessName: businessName || "",
-      taxId: taxId || "",
-      businessAddress: decryptedAddress.street || "",
-      businessCity: decryptedAddress.city || "",
-      businessState: decryptedAddress.state || "",
-      businessPostalCode: decryptedAddress.postalCode || "",
-      taxCountry: seller.taxCountry as TaxCountry,
-      additionalTaxRegistrations: additionalTaxRegistrations || "",
-    };
+    // Remove encrypted fields from the response
+    const { 
+      encryptedBusinessName, businessNameIV, businessNameSalt,
+      encryptedTaxId, taxIdIV, taxIdSalt,
+      encryptedAdditionalTaxRegistrations, additionalTaxRegistrationsIV, additionalTaxRegistrationsSalt,
+      addresses,
+      ...cleanData 
+    } = decryptedData;
 
-    return { data: formattedData };
+    return { data: cleanData };
   } catch (error) {
-    console.error("Error fetching seller data:", error);
-    return { error: "Failed to fetch seller data." };
+    console.error("Error getting seller data:", error);
+    return { error: "Failed to get seller data." };
   }
 }; 

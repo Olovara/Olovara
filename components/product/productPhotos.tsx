@@ -105,16 +105,15 @@ export function ProductPhotosSection({
             return;
           }
 
-          const urls = res.map((file) => file.url);
-          const updatedImages = [...images, ...urls];
-
+          const fileUrls = res.map(file => file.url || file.ufsUrl);
+          const updatedImages = [...images, ...fileUrls];
           setImages(updatedImages);
           form.setValue("images", updatedImages, {
             shouldValidate: true,
           });
 
           // Track uploaded files as temp
-          const updatedTempImages = [...tempImages, ...urls];
+          const updatedTempImages = [...tempImages, ...fileUrls];
           setTempImages(updatedTempImages);
 
           // Mark that temporary uploads have been created
@@ -128,6 +127,8 @@ export function ProductPhotosSection({
             shouldTouch: true,
             shouldValidate: true,
           });
+
+          toast.success("Your images have been uploaded!");
         }}
         onUploadError={(error: Error) => {
           toast.error("Something went wrong, try again");

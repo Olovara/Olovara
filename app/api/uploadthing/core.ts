@@ -21,14 +21,14 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       // This code RUNS ON YOUR SERVER after upload
       console.log("Upload complete for userId:", metadata.userId);
-      console.log("file url", file.url);
+      console.log("file url", file.ufsUrl);
 
       // Record the upload in the TemporaryUpload table
       try {
         await db.temporaryUpload.create({
           data: {
             fileKey: file.key,
-            fileUrl: file.url,
+            fileUrl: file.ufsUrl,
             userId: metadata.userId,
             // productId will be null until associated with a product
           },
@@ -36,10 +36,11 @@ export const ourFileRouter = {
         console.log("Temporary upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record temporary upload:", error);
+        throw new UploadThingError("Failed to record upload");
       }
 
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
-      return { uploadedBy: metadata.userId };
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
   productFileUpload: f({ "application/pdf": { maxFileCount: 1 } })
@@ -54,14 +55,14 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       // This code RUNS ON YOUR SERVER after upload
       console.log("Upload complete for userId:", metadata.userId);
-      console.log("file url", file.url);
+      console.log("file url", file.ufsUrl);
 
       // Record the upload in the TemporaryUpload table
       try {
         await db.temporaryUpload.create({
           data: {
             fileKey: file.key,
-            fileUrl: file.url,
+            fileUrl: file.ufsUrl,
             userId: metadata.userId,
             // productId will be null until associated with a product
           },
@@ -69,10 +70,11 @@ export const ourFileRouter = {
         console.log("Temporary upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record temporary upload:", error);
+        throw new UploadThingError("Failed to record upload");
       }
 
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
-      return { uploadedBy: metadata.userId };
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 } satisfies FileRouter;
 

@@ -29,24 +29,43 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
     return { error: "You already have a pending application." };
   }
 
-  // Create the application and update user role in a transaction
-  await db.$transaction(async (tx) => {
-    // Create the seller application
-    await tx.sellerApplication.create({
-      data: {
-        userId: session.user.id,
-        craftingProcess,
-        portfolio,
-        interestInJoining,
+  try {
+    // Create the application and update user role in a transaction
+    await db.$transaction(async (tx) => {
+      // Create the seller application
+      await tx.sellerApplication.create({
+        data: {
+          userId: session.user.id,
+          craftingProcess,
+          portfolio,
+          interestInJoining,
+        },
+      });
+
+      // Update user role to SELLER
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: { role: UserRole.SELLER },
+      });
+    });
+
+    // Force role synchronization
+    const response = await fetch('/api/auth/sync-role', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
     });
 
-    // Update user role to SELLER
-    await tx.user.update({
-      where: { id: session.user.id },
-      data: { role: UserRole.SELLER },
-    });
-  });
+    if (!response.ok) {
+      console.error('Failed to sync role after seller application');
+    }
 
-  return { success: "Successfully submitted your seller application. You can now access your seller dashboard to start setting up your shop!" };
+    return { 
+      success: "Successfully submitted your seller application. You can now access your seller dashboard to start setting up your shop!" 
+    };
+  } catch (error) {
+    console.error("Seller application error:", error);
+    return { error: "Failed to submit seller application. Please try again." };
+  }
 };

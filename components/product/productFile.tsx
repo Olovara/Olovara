@@ -77,7 +77,7 @@ export function ProductFileSection({
               endpoint="productFileUpload"
               onClientUploadComplete={(res) => {
                 if (res && res.length > 0) {
-                  const fileUrl = res[0].url;
+                  const fileUrl = res[0].url || res[0].ufsUrl;
                   const updatedFiles = [...tempFiles, fileUrl];
 
                   // Update both states

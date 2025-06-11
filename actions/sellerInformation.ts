@@ -15,7 +15,7 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
     return { error: "Invalid fields." };
   }
 
-  const session = await auth(); // Get the authenticated user session
+  const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
   }
@@ -108,6 +108,8 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
             encryptedCountry,
             countryIV,
             countrySalt,
+            isBusinessAddress: true,
+            isDefault: true,
           }
         });
       } else {
@@ -130,6 +132,7 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
             countryIV,
             countrySalt,
             isBusinessAddress: true,
+            isDefault: true,
             seller: {
               connect: {
                 userId: session.user.id
@@ -139,52 +142,39 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
         });
       }
     } else {
-      // Create new seller and business address in a transaction
-      await db.$transaction(async (tx) => {
-        // Create seller
-        const seller = await tx.seller.create({
-          data: {
-            ...dbData,
-            user: {
-              connect: {
-                id: session.user.id
-              }
+      // Create new seller
+      const newSeller = await db.seller.create({
+        data: {
+          ...dbData,
+          userId: session.user.id,
+          addresses: {
+            create: {
+              encryptedStreet,
+              streetIV,
+              streetSalt,
+              encryptedCity,
+              cityIV,
+              citySalt,
+              encryptedState: stateData?.encrypted,
+              stateIV: stateData?.iv,
+              stateSalt: stateData?.salt,
+              encryptedPostal,
+              postalIV,
+              postalSalt,
+              encryptedCountry,
+              countryIV,
+              countrySalt,
+              isBusinessAddress: true,
+              isDefault: true,
             }
           }
-        });
-
-        // Create business address
-        await tx.address.create({
-          data: {
-            encryptedStreet,
-            streetIV,
-            streetSalt,
-            encryptedCity,
-            cityIV,
-            citySalt,
-            encryptedState: stateData?.encrypted,
-            stateIV: stateData?.iv,
-            stateSalt: stateData?.salt,
-            encryptedPostal,
-            postalIV,
-            postalSalt,
-            encryptedCountry,
-            countryIV,
-            countrySalt,
-            isBusinessAddress: true,
-            seller: {
-              connect: {
-                userId: session.user.id
-              }
-            }
-          }
-        });
+        }
       });
     }
 
-    return { success: "Successfully saved your shop information." };
+    return { success: "Seller information updated successfully." };
   } catch (error) {
-    console.error("Error saving seller information:", error);
-    return { error: "Failed to save seller information." };
+    console.error("Error updating seller information:", error);
+    return { error: "Failed to update seller information." };
   }
 };
