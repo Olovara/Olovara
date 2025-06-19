@@ -1,28 +1,4 @@
 /**
- * An array of routes that are accessible to the public
- * These routes do not require authentication
- * @type {string[]}
- */
-export const publicRoutes = [
-  "/", 
-  "/new-verification", 
-  "/api/uploadthing", 
-  "/api/stripe/webhooks",
-  "/handmade-guidelines",
-  "/api/handmade-guidelines",
-  "/contact",
-  "/products",
-  "/product/[id]",
-  "/privacy-policy",
-  "/about",
-  "/pricing-calculator",
-  "/shop/[shopNameSlug]",
-  "/suggestions",
-  "/terms-of-service",
-  "/seller-application",
-];
-
-/**
  * An array of routes that are used for authentication
  * These routes will redirect logged in users to /settings
  * @type {string[]}
@@ -33,6 +9,22 @@ export const authRoutes = [
   "/error",
   "/reset-password",
   "/new-password",
+];
+
+/**
+ * An array of routes that are accessible to the public
+ * These routes do not require authentication
+ * @type {string[]}
+ */
+export const publicRoutes = [
+  "/",
+  "/about",
+  "/contact",
+  "/blog",
+  "/products",
+  "/api/webhook",
+  "/api/stripe/webhooks",
+  "/api/auth/check-permission",
 ];
 
 /**
@@ -66,7 +58,7 @@ export const memberRoutes = [
 
 /**
  * The prefix for API authentication routes
- * Routes that start with this prefix are used for API authentication purposes. They are available to the public.
+ * Routes that start with this prefix are used for API authentication purposes
  * @type {string}
  */
 export const apiAuthPrefix = "/api/auth";

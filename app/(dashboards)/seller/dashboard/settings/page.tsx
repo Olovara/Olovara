@@ -15,6 +15,8 @@ import { getMemberData } from "@/actions/getMemberData";
 import { db } from "@/lib/db";
 import ShippingProfilesTable from "./(components)/ShippingProfilesTable";
 import { decryptData } from "@/lib/encryption";
+import PermissionGate from "@/components/auth/permission-gate";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export const metadata = {
   title: "Seller - Settings",
@@ -101,75 +103,86 @@ export default async function SellerSettings() {
   if (seller?.addresses[0]) {
     const address = seller.addresses[0];
     decryptedAddressData = {
-      street1: await decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
-      street2: address.encryptedStreet2 ? await decryptData(address.encryptedStreet2, address.street2IV!, address.street2Salt!) : undefined,
-      city: await decryptData(address.encryptedCity, address.cityIV, address.citySalt),
-      state: address.encryptedState ? await decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : undefined,
-      postalCode: await decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
-      country: await decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
+      street1: decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
+      street2: address.encryptedStreet2 ? decryptData(address.encryptedStreet2, address.street2IV!, address.street2Salt!) : undefined,
+      city: decryptData(address.encryptedCity, address.cityIV, address.citySalt),
+      state: address.encryptedState ? decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : undefined,
+      postalCode: decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
+      country: decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
       isDefault: address.isDefault,
       isBusinessAddress: address.isBusinessAddress,
     };
   }
 
   return (
-    <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-      </div>
-      <Tabs defaultValue="personal" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="personal">Personal</TabsTrigger>
-          <TabsTrigger value="address">Business Address</TabsTrigger>
-          <TabsTrigger value="shop">Shop</TabsTrigger>
-          <TabsTrigger value="shipping">Shipping Profiles</TabsTrigger>
-          <TabsTrigger value="qrcode">QR Code</TabsTrigger>
-        </TabsList>
-        <div className="flex-1 pt-2">
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle>Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Personal Settings */}
-              <TabsContent value="personal">
-                <MemberForm initialData={initialData} />
-              </TabsContent>
-
-              {/* Address Settings */}
-              <TabsContent value="address">
-                <AddressForm 
-                  type="seller" 
-                  initialData={decryptedAddressData}
-                />
-              </TabsContent>
-
-              {/* Shop Settings */}
-              <TabsContent value="shop">
-                <SellerForm />
-              </TabsContent>
-
-              {/* Shipping Profiles Settings */}
-              <TabsContent value="shipping">
-                <ShippingProfilesTable profiles={seller?.shippingProfiles || []} />
-              </TabsContent>
-
-              {/* QR Code Settings */}
-              <TabsContent value="qrcode">
-                {seller?.shopNameSlug ? (
-                  <ShopQRCode shopNameSlug={seller.shopNameSlug} />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      Please set up your shop information first to generate a QR code.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-            </CardContent>
-          </Card>
+    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_SELLER_SETTINGS}>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium">Settings</h3>
+          <p className="text-sm text-muted-foreground">
+            Manage your account settings and preferences.
+          </p>
         </div>
-      </Tabs>
-    </main>
+        <Tabs defaultValue="profile" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="seller">Seller</TabsTrigger>
+            <TabsTrigger value="address">Address</TabsTrigger>
+            <TabsTrigger value="shipping">Shipping</TabsTrigger>
+            <TabsTrigger value="qr">QR Code</TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MemberForm initialData={initialData} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="seller" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Seller Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SellerForm />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="address" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Business Address</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AddressForm type="seller" initialData={decryptedAddressData} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="shipping" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Shipping Profiles</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ShippingProfilesTable profiles={seller?.shippingProfiles || []} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="qr" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Shop QR Code</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ShopQRCode shopNameSlug={seller?.shopNameSlug || ""} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </PermissionGate>
   );
 }

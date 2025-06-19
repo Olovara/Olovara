@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { UserRole } from "@prisma/client";
+import { ROLES } from "@/data/roles-and-permissions";
 
 interface UserData {
   password?: string;
@@ -30,7 +30,7 @@ export const SettingsSchema = z
   .object({
     name: z.optional(z.string()),
     isTwoFactorEnabled: z.optional(z.boolean()),
-    role: z.enum([UserRole.ADMIN, UserRole.MEMBER]),
+    role: z.enum([ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SELLER, ROLES.MEMBER]),
     email: z.optional(z.string().email()),
     password: z.optional(z.string().min(1)),
     newPassword: z.optional(

@@ -7,12 +7,6 @@ datasource db {
   url  	    = env("DATABASE_URL")
 }
 
-enum UserRole {
-  ADMIN
-  MEMBER
-  SELLER
-}
-
 enum AccountStatus {
   ACTIVE
   SUSPENDED
@@ -123,7 +117,8 @@ model User {
   upvotes               Upvote[]
   isTwoFactorEnabled    Boolean @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
-  role                  UserRole  @default(MEMBER)
+  role                  String  @default("MEMBER")
+  permissions           Json[]  @default([]) // Array of permission objects with expiration
   reviewsGiven          Review[] @relation("Reviewer")
   reviewsReceived       Review[] @relation("Reviewed")
   sessions              Session[]
@@ -134,6 +129,19 @@ model User {
 
   createdAt	        DateTime @default(now())
   updatedAt	        DateTime @updatedAt
+}
+
+
+model RolePermission {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  role        String     // Changed from UserRole to String
+  permission  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([role, permission])
+  @@index([role])
+  @@index([permission])
 }
 
 model Member {

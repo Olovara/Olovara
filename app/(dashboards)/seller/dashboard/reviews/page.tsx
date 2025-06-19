@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ReviewsDashboard } from "@/components/shared/ReviewsDashboard";
+import PermissionGate from "@/components/auth/permission-gate";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 interface Review {
   id: string;
@@ -125,15 +127,17 @@ export default async function SellerReviewsPage() {
   });
 
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
-      <ReviewsDashboard
-        pendingReviews={pendingReviews}
-        completedReviews={completedReviews}
-        publishedReviews={publishedReviews}
-        receivedReviews={receivedReviews}
-        userRole="SELLER"
-      />
-    </div>
+    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_REVIEWS}>
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
+        <ReviewsDashboard
+          pendingReviews={pendingReviews}
+          completedReviews={completedReviews}
+          publishedReviews={publishedReviews}
+          receivedReviews={receivedReviews}
+          userRole="SELLER"
+        />
+      </div>
+    </PermissionGate>
   );
 } 

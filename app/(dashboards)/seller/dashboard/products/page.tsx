@@ -14,6 +14,8 @@ import { ProductSearch } from "./ProductSearch";
 import { ProductTable } from "./ProductTable";
 import { redirect } from "next/navigation";
 import SuspendedPaginationControls from "./PaginationControls";
+import PermissionGate from "@/components/auth/permission-gate";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export default async function ProductsPage({
   searchParams,
@@ -21,8 +23,8 @@ export default async function ProductsPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "SELLER") {
-    redirect("/auth/signin");
+  if (!session?.user) {
+    redirect("/login");
   }
 
   const activeTab = (searchParams.tab as string) || "all";
@@ -77,172 +79,66 @@ export default async function ProductsPage({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header and breadcrumbs */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-        <Breadcrumb className="hidden md:flex">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/seller/dashboard">Dashboard</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/seller/dashboard/products">Products</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_PRODUCTS}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/seller/dashboard">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/seller/dashboard/products">Products</BreadcrumbLink>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <Link href="/seller/dashboard/products/create-product">
+            <Button>Create Product</Button>
+          </Link>
+        </div>
 
-      {/* Main Content */}
-      <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-        <Tabs defaultValue={activeTab} className="space-y-4">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="all" asChild>
-                <Link href={getTabUrl("all")}>All</Link>
-              </TabsTrigger>
-              <TabsTrigger value="active" asChild>
-                <Link href={getTabUrl("active")}>Active</Link>
-              </TabsTrigger>
-              <TabsTrigger value="hidden" asChild>
-                <Link href={getTabUrl("hidden")}>Hidden</Link>
-              </TabsTrigger>
-              <TabsTrigger value="disabled" asChild>
-                <Link href={getTabUrl("disabled")}>Disabled</Link>
-              </TabsTrigger>
-            </TabsList>
-            <ProductSearch initialQuery={search} />
+            <Tabs defaultValue={activeTab} className="w-full">
+              <TabsList>
+                <TabsTrigger value="all" asChild>
+                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "all" } }}>
+                    All
+                  </Link>
+                </TabsTrigger>
+                <TabsTrigger value="ACTIVE" asChild>
+                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "ACTIVE" } }}>
+                    Active
+                  </Link>
+                </TabsTrigger>
+                <TabsTrigger value="HIDDEN" asChild>
+                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "HIDDEN" } }}>
+                    Hidden
+                  </Link>
+                </TabsTrigger>
+                <TabsTrigger value="DISABLED" asChild>
+                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "DISABLED" } }}>
+                    Disabled
+                  </Link>
+                </TabsTrigger>
+              </TabsList>
+              <ProductSearch />
+              <TabsContent value={activeTab}>
+                <ProductTable products={transformedProducts} />
+                <SuspendedPaginationControls 
+                  totalPages={totalPages}
+                  currentPage={page}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  activeTab={activeTab}
+                  searchQuery={search}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
-
-          <TabsContent
-            key={`all-${page}-${search}`}
-            value="all"
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  All Products
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {search
-                    ? `Search results for "${search}"`
-                    : "Manage all your products"}
-                </p>
-              </div>
-              <Link href="/seller/dashboard/products/create-product">
-                <Button>Add Product</Button>
-              </Link>
-            </div>
-            <ProductTable products={transformedProducts} />
-            <SuspendedPaginationControls
-              totalPages={totalPages}
-              currentPage={page}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              activeTab={activeTab}
-              searchQuery={search}
-            />
-          </TabsContent>
-
-          <TabsContent
-            key={`active-${page}-${search}`}
-            value="active"
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Active Products
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {search
-                    ? `Search results for "${search}"`
-                    : "Products currently visible to customers"}
-                </p>
-              </div>
-              <Link href="/seller/dashboard/products/new">
-                <Button>Add Product</Button>
-              </Link>
-            </div>
-            <ProductTable products={transformedProducts} />
-            <SuspendedPaginationControls
-              totalPages={totalPages}
-              currentPage={page}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              activeTab={activeTab}
-              searchQuery={search}
-            />
-          </TabsContent>
-
-          <TabsContent
-            key={`hidden-${page}-${search}`}
-            value="hidden"
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Hidden Products
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {search
-                    ? `Search results for "${search}"`
-                    : "Products temporarily hidden from customers"}
-                </p>
-              </div>
-              <Link href="/seller/dashboard/products/new">
-                <Button>Add Product</Button>
-              </Link>
-            </div>
-            <ProductTable products={transformedProducts} />
-            <SuspendedPaginationControls
-              totalPages={totalPages}
-              currentPage={page}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              activeTab={activeTab}
-              searchQuery={search}
-            />
-          </TabsContent>
-
-          <TabsContent
-            key={`disabled-${page}-${search}`}
-            value="disabled"
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Disabled Products
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {search
-                    ? `Search results for "${search}"`
-                    : "Products that are not available for sale"}
-                </p>
-              </div>
-              <Link href="/seller/dashboard/products/new">
-                <Button>Add Product</Button>
-              </Link>
-            </div>
-            <ProductTable products={transformedProducts} />
-            <SuspendedPaginationControls
-              totalPages={totalPages}
-              currentPage={page}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              activeTab={activeTab}
-              searchQuery={search}
-            />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+        </div>
+      </div>
+    </PermissionGate>
   );
 }
