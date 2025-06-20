@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 // Remove the Edge Runtime configuration
 // export const runtime = "edge";
@@ -23,6 +25,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const userId = session.user.id;
+
+    // Check if user has permission to create products
+    const canCreateProducts = await hasPermission(userId, PERMISSIONS.CREATE_PRODUCTS);
+    if (!canCreateProducts) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "You don't have permission to create products." 
+        }),
+        { status: 403 }
+      );
+    }
+
     // Add the body size check here
     const contentLength = req.headers.get("content-length");
     if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
@@ -30,24 +46,6 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({ success: false, error: "Request body too large" }),
         { status: 413 }
-      );
-    }
-
-    const userId = session.user.id;
-
-    // Check if seller is approved
-    const seller = await db.seller.findUnique({
-      where: { userId },
-      select: { applicationAccepted: true }
-    });
-
-    if (!seller?.applicationAccepted) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Your seller application is still pending approval. You cannot create products until your application is approved." 
-        }),
-        { status: 403 }
       );
     }
 

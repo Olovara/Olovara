@@ -128,16 +128,16 @@ export default async function SellerReviewsPage() {
 
   return (
     <PermissionGate requiredPermission={PERMISSIONS.MANAGE_REVIEWS}>
-      <div className="container mx-auto py-6">
-        <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
-        <ReviewsDashboard
-          pendingReviews={pendingReviews}
-          completedReviews={completedReviews}
-          publishedReviews={publishedReviews}
-          receivedReviews={receivedReviews}
-          userRole="SELLER"
-        />
-      </div>
+    <div className="container mx-auto py-6">
+      <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
+      <ReviewsDashboard
+        pendingReviews={pendingReviews}
+        completedReviews={completedReviews}
+        publishedReviews={publishedReviews}
+        receivedReviews={receivedReviews}
+        userRole="SELLER"
+      />
+    </div>
     </PermissionGate>
   );
 } 

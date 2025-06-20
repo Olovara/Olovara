@@ -10,12 +10,12 @@ export default function SellerDashboadLayout({
 }) {
   return (
     <PermissionGate requiredPermission={PERMISSIONS.ACCESS_SELLER_DASHBOARD}>
-      <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-        <SellerDashboardSideNavbar />
-        <SellerDashboardTopNavbar>
-          <main className="flex flex-col gap-4 p-4 lg:gap-6">{children}</main>
-        </SellerDashboardTopNavbar>
-      </div>
+    <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
+      <SellerDashboardSideNavbar />
+      <SellerDashboardTopNavbar>
+        <main className="flex flex-col gap-4 p-4 lg:gap-6">{children}</main>
+      </SellerDashboardTopNavbar>
+    </div>
     </PermissionGate>
   );
 }

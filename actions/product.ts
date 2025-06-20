@@ -1,16 +1,30 @@
+"use server";
+
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export async function getSellerProducts(
-  userId: string,
   status?: string,
   search?: string,
   pageSize: number = 10,
   pageNumber: number = 1
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated.");
+  }
+
+  const canManageProducts = await hasPermission(session.user.id, PERMISSIONS.MANAGE_PRODUCTS);
+  if (!canManageProducts) {
+    throw new Error("You don't have permission to perform this action.");
+  }
+  
   try {
     // Build the where clause
     const where: any = {
-      userId: userId,
+      userId: session.user.id,
     };
 
     // Add status filter if provided and not "all"

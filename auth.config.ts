@@ -2,22 +2,11 @@ import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { UserRole } from "@prisma/client";
+import { Role, Permission } from "@/data/roles-and-permissions";
 import { db } from "@/lib/db";
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
 import { getUserPermissions } from "@/lib/permissions";
-
-// Extend the User type to include role
-interface ExtendedUser {
-  id: string;
-  email: string | null;
-  name?: string | null;
-  role: UserRole;
-  permissions: string[];
-  isTwoFactorEnabled: boolean;
-  isOAuth: boolean;
-}
 
 const authConfig = {
   providers: [
@@ -41,21 +30,7 @@ const authConfig = {
           );
 
           if (passwordsMatch) {
-            // Get user permissions
-            const permissions = await getUserPermissions(user.id);
-            
-            // Construct the user object with all required properties
-            const extendedUser: ExtendedUser = {
-              id: user.id,
-              email: user.email,
-              name: user.username,
-              role: user.role,
-              permissions: permissions.map(p => p.toString()),
-              isTwoFactorEnabled: user.isTwoFactorEnabled,
-              isOAuth: false, // This is a credentials login, so it's not OAuth
-            };
-
-            return extendedUser;
+            return user;
           }
         }
 
@@ -68,24 +43,29 @@ const authConfig = {
     error: "/error",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
-        const extendedUser = user as ExtendedUser;
-        token.id = extendedUser.id;
-        token.role = extendedUser.role;
-        token.permissions = extendedUser.permissions;
-        token.isTwoFactorEnabled = extendedUser.isTwoFactorEnabled;
-        token.isOAuth = extendedUser.isOAuth;
+        token.id = user.id;
+        token.isOAuth = !!account;
+
+        const dbUser = await db.user.findUnique({ where: { id: user.id } });
+
+        if (dbUser) {
+          const permissions = await getUserPermissions(dbUser.id);
+          token.role = dbUser.role as Role;
+          token.permissions = permissions as Permission[];
+          token.isTwoFactorEnabled = dbUser.isTwoFactorEnabled;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.permissions = token.permissions;
-        session.user.isTwoFactorEnabled = token.isTwoFactorEnabled;
-        session.user.isOAuth = token.isOAuth;
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.permissions = token.permissions as Permission[];
+        session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
+        session.user.isOAuth = token.isOAuth as boolean;
       }
       return session;
     },

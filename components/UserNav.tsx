@@ -13,33 +13,64 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProtectedLink } from "./shared/ProtectedLink";
+import { useCurrentPermissions } from "@/hooks/use-current-permissions";
+import { PERMISSIONS, Role } from "@/data/roles-and-permissions";
 
 interface iAppProps {
   userInfo: {
     email: string | null;
     username: string | null;
     image: string | null;
-    role: "ADMIN" | "SELLER" | "MEMBER" | null;
+    role: Role | null;
     id: string;
   } | null;
 }
 
 export function UserNav({ userInfo }: iAppProps) {
-  const roleRoutes = {
-    ADMIN: "/admin/dashboard",
-    SELLER: "/seller/dashboard",
-    MEMBER: "/member/dashboard",
-  };
+  const permissions = useCurrentPermissions();
 
-  const settingsRoutes = {
-    ADMIN: "/admin/dashboard/settings",
-    SELLER: "/seller/dashboard/settings",
-    MEMBER: "/member/dashboard/settings",
-  };
+  const canAccessAdminDashboard = permissions.includes(
+    PERMISSIONS.ACCESS_ADMIN_DASHBOARD
+  );
+  const canAccessSellerDashboard = permissions.includes(
+    PERMISSIONS.ACCESS_SELLER_DASHBOARD
+  );
+  const canAccessMemberDashboard = permissions.includes(
+    PERMISSIONS.ACCESS_MEMBER_DASHBOARD
+  );
 
-  const dashboardRoute = userInfo?.role ? roleRoutes[userInfo.role] : null;
-  const settingsRoute = userInfo?.role ? settingsRoutes[userInfo.role] : null;
-  const isSeller = userInfo?.role === "SELLER";
+  const canManageAdminSettings = permissions.includes(
+    PERMISSIONS.MANAGE_ADMIN_SETTINGS
+  );
+  const canManageSellerSettings = permissions.includes(
+    PERMISSIONS.MANAGE_SELLER_SETTINGS
+  );
+  const canManageMemberSettings = permissions.includes(
+    PERMISSIONS.MANAGE_MEMBER_SETTINGS
+  );
+
+  const canManageProducts = permissions.includes(PERMISSIONS.MANAGE_PRODUCTS);
+  const canViewOrders = permissions.includes(PERMISSIONS.VIEW_ORDERS);
+
+  let dashboardRoute: string | null = null;
+  if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
+    dashboardRoute = "/admin/dashboard";
+  } else if (canAccessSellerDashboard) {
+    dashboardRoute = "/seller/dashboard";
+  } else if (canAccessMemberDashboard) {
+    dashboardRoute = "/member/dashboard";
+  }
+
+  let settingsRoute: string | null = null;
+  if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
+    settingsRoute = "/admin/dashboard/settings";
+  } else if (canManageSellerSettings) {
+    settingsRoute = "/seller/dashboard/settings";
+  } else if (canManageMemberSettings) {
+    settingsRoute = "/member/dashboard/settings";
+  }
+
+  const isSeller = canAccessSellerDashboard;
 
   return (
     <DropdownMenu>
@@ -73,18 +104,20 @@ export function UserNav({ userInfo }: iAppProps) {
               <ProtectedLink href={settingsRoute} className="w-full">Settings</ProtectedLink>
             </DropdownMenuItem>
           )}
+          {canManageProducts && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
+            </DropdownMenuItem>
+          )}
+          {isSeller && canViewOrders && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
+            </DropdownMenuItem>
+          )}
           {isSeller && (
-            <>
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
-              </DropdownMenuItem>
-            </>
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
+            </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
 

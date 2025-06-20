@@ -1,28 +1,33 @@
 import { db } from "@/lib/db";
 import { Permission, Role, ROLE_PERMISSIONS } from "@/data/roles-and-permissions";
+import { UserPermission } from "@/types/permissions";
+
+function isUserPermission(obj: any): obj is UserPermission {
+  return obj && typeof obj === 'object' && 'permission' in obj;
+}
 
 // Function to check if a user has a specific permission
 export async function hasPermission(userId: string, permission: Permission): Promise<boolean> {
   try {
-    // Get user's role and direct permissions
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: {
-        role: true,
-        permissions: true
-      }
+      select: { role: true, permissions: true },
     });
 
     if (!user) return false;
 
-    // Check direct permissions first
-    const hasDirectPermission = user.permissions.some(
-      (p) => p.permission === permission && (!p.expiresAt || new Date(p.expiresAt) > new Date())
+    // Cast to unknown first, then to UserPermission[]
+    const userPermissions = user.permissions as unknown as UserPermission[];
+
+    const hasDirectPermission = userPermissions.some(
+      (p) =>
+        isUserPermission(p) &&
+        p.permission === permission &&
+        (!p.expiresAt || new Date(p.expiresAt) > new Date())
     );
 
     if (hasDirectPermission) return true;
 
-    // Check role-based permissions
     const rolePermissions = ROLE_PERMISSIONS[user.role as Role] || [];
     return rolePermissions.includes(permission);
   } catch (error) {
@@ -36,24 +41,21 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
   try {
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: {
-        role: true,
-        permissions: true
-      }
+      select: { role: true, permissions: true },
     });
 
     if (!user) return [];
 
-    // Get direct permissions that haven't expired
-    const directPermissions = user.permissions
-      .filter((p) => !p.expiresAt || new Date(p.expiresAt) > new Date())
-      .map((p) => p.permission as Permission);
+    const userPermissions = user.permissions as unknown as UserPermission[];
 
-    // Get role-based permissions
+    const directPermissions = userPermissions
+      .filter(p => isUserPermission(p) && (!p.expiresAt || new Date(p.expiresAt) > new Date()))
+      .map(p => p.permission);
+
     const rolePermissions = ROLE_PERMISSIONS[user.role as Role] || [];
 
-    // Combine and deduplicate permissions
-    return Array.from(new Set([...directPermissions, ...rolePermissions]));
+    // Cast the final combined array to Permission[]
+    return Array.from(new Set([...directPermissions, ...rolePermissions])) as Permission[];
   } catch (error) {
     console.error("Error getting user permissions:", error);
     return [];
@@ -67,17 +69,20 @@ export async function grantPermission(
   expiresAt?: Date
 ): Promise<boolean> {
   try {
+    // We need to push a valid JSON object
+    const newPermission: Omit<UserPermission, 'grantedBy'> = {
+        permission,
+        grantedAt: new Date(),
+        expiresAt,
+    };
+
     await db.user.update({
       where: { id: userId },
       data: {
         permissions: {
-          push: {
-            permission,
-            grantedAt: new Date(),
-            expiresAt
-          }
-        }
-      }
+          push: newPermission as any, // Prisma expects JsonValue
+        },
+      },
     });
     return true;
   } catch (error) {
@@ -91,20 +96,19 @@ export async function revokePermission(userId: string, permission: Permission): 
   try {
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: {
-        permissions: true
-      }
+      select: { permissions: true },
     });
 
     if (!user) return false;
 
-    const updatedPermissions = user.permissions.filter(p => p.permission !== permission);
+    const userPermissions = user.permissions as unknown as UserPermission[];
+    const updatedPermissions = userPermissions.filter(p => !isUserPermission(p) || p.permission !== permission);
 
     await db.user.update({
       where: { id: userId },
       data: {
-        permissions: updatedPermissions
-      }
+        permissions: updatedPermissions as any, // Prisma expects JsonValue
+      },
     });
 
     return true;

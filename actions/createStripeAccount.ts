@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeSecret } from "@/lib/stripe";
 import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export async function CreateStripeAccountLink() {
   const session = await auth();
@@ -11,6 +13,11 @@ export async function CreateStripeAccountLink() {
 
   if (!userId) {
     throw new Error("User is not authenticated.");
+  }
+
+  const canManageSettings = await hasPermission(userId, PERMISSIONS.MANAGE_SELLER_SETTINGS);
+  if (!canManageSettings) {
+    throw new Error("You don't have permission to perform this action.");
   }
 
   // Fetch seller data
@@ -29,6 +36,9 @@ export async function CreateStripeAccountLink() {
 
   // If the seller has no connected Stripe account, create one
   if (!connectedAccountId) {
+    if (!session.user.email) {
+      throw new Error("User email is not available.");
+    }
     const account = await stripeSecret.instance.accounts.create({
       type: "express",
       country: "US", // Change based on your supported countries

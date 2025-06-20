@@ -83,16 +83,16 @@ export default async function ProductsPage({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
+          <BreadcrumbList>
+            <BreadcrumbItem>
                 <BreadcrumbLink href="/seller/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
                 <BreadcrumbLink href="/seller/dashboard/products">Products</BreadcrumbLink>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
           <Link href="/seller/dashboard/products/create-product">
             <Button>Create Product</Button>
           </Link>
@@ -101,44 +101,44 @@ export default async function ProductsPage({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <Tabs defaultValue={activeTab} className="w-full">
-              <TabsList>
-                <TabsTrigger value="all" asChild>
+            <TabsList>
+              <TabsTrigger value="all" asChild>
                   <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "all" } }}>
                     All
                   </Link>
-                </TabsTrigger>
+              </TabsTrigger>
                 <TabsTrigger value="ACTIVE" asChild>
                   <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "ACTIVE" } }}>
                     Active
                   </Link>
-                </TabsTrigger>
+              </TabsTrigger>
                 <TabsTrigger value="HIDDEN" asChild>
                   <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "HIDDEN" } }}>
                     Hidden
                   </Link>
-                </TabsTrigger>
+              </TabsTrigger>
                 <TabsTrigger value="DISABLED" asChild>
                   <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "DISABLED" } }}>
                     Disabled
                   </Link>
-                </TabsTrigger>
-              </TabsList>
+              </TabsTrigger>
+            </TabsList>
               <ProductSearch />
               <TabsContent value={activeTab}>
-                <ProductTable products={transformedProducts} />
-                <SuspendedPaginationControls 
-                  totalPages={totalPages}
-                  currentPage={page}
-                  totalItems={totalItems}
-                  pageSize={pageSize}
-                  activeTab={activeTab}
-                  searchQuery={search}
-                />
-              </TabsContent>
-            </Tabs>
+            <ProductTable products={transformedProducts} />
+            <SuspendedPaginationControls
+              totalPages={totalPages}
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              activeTab={activeTab}
+              searchQuery={search}
+            />
+          </TabsContent>
+        </Tabs>
           </div>
         </div>
-      </div>
+    </div>
     </PermissionGate>
   );
 }

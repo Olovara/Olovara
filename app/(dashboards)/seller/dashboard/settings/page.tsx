@@ -122,25 +122,25 @@ export default async function SellerSettings() {
           <p className="text-sm text-muted-foreground">
             Manage your account settings and preferences.
           </p>
-        </div>
+      </div>
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList>
+        <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="seller">Seller</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
             <TabsTrigger value="shipping">Shipping</TabsTrigger>
             <TabsTrigger value="qr">QR Code</TabsTrigger>
-          </TabsList>
+        </TabsList>
           <TabsContent value="profile" className="space-y-4">
             <Card>
-              <CardHeader>
+            <CardHeader>
                 <CardTitle>Profile</CardTitle>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <MemberForm initialData={initialData} />
               </CardContent>
             </Card>
-          </TabsContent>
+              </TabsContent>
           <TabsContent value="seller" className="space-y-4">
             <Card>
               <CardHeader>
@@ -160,7 +160,7 @@ export default async function SellerSettings() {
                 <AddressForm type="seller" initialData={decryptedAddressData} />
               </CardContent>
             </Card>
-          </TabsContent>
+              </TabsContent>
           <TabsContent value="shipping" className="space-y-4">
             <Card>
               <CardHeader>
@@ -170,7 +170,7 @@ export default async function SellerSettings() {
                 <ShippingProfilesTable profiles={seller?.shippingProfiles || []} />
               </CardContent>
             </Card>
-          </TabsContent>
+              </TabsContent>
           <TabsContent value="qr" className="space-y-4">
             <Card>
               <CardHeader>
@@ -178,11 +178,11 @@ export default async function SellerSettings() {
               </CardHeader>
               <CardContent>
                 <ShopQRCode shopNameSlug={seller?.shopNameSlug || ""} />
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
     </PermissionGate>
   );
 }

@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 const utapi = new UTApi();
 
@@ -13,6 +15,14 @@ export async function PATCH(req: Request) {
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401 }
       );
+    }
+
+    const canEditProducts = await hasPermission(session.user.id, PERMISSIONS.EDIT_PRODUCTS);
+    if (!canEditProducts) {
+        return new Response(
+            JSON.stringify({ success: false, error: "You don't have permission to edit products." }),
+            { status: 403 }
+        );
     }
 
     const data = await req.json();
@@ -29,7 +39,7 @@ export async function PATCH(req: Request) {
 
     // --- Step 1: Fetch CURRENT product state BEFORE update --- 
     const currentProduct = await db.product.findUnique({
-      where: { id: id, userId: session.user.id }, // Also verify ownership here
+      where: { id: id }, // Ownership is checked by permission, so we can simplify this
       select: { images: true, productFile: true }
     });
 

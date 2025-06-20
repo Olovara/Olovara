@@ -7,17 +7,24 @@ import { SellerSchema } from "@/schemas/SellerSchema";
 
 import { auth } from "@/auth"; // Adjust to your auth method
 import { encryptData } from "@/lib/encryption"; // Make sure this import exists
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export const sellerInformation = async (values: z.infer<typeof SellerSchema>) => {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+
+  const canManageSettings = await hasPermission(session.user.id, PERMISSIONS.MANAGE_SELLER_SETTINGS);
+  if (!canManageSettings) {
+    return { error: "You don't have permission to perform this action." };
+  }
+
   const validatedFields = SellerSchema.safeParse(values);
 
   if (!validatedFields.success) {
     return { error: "Invalid fields." };
-  }
-
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
   }
 
   try {

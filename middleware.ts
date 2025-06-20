@@ -8,20 +8,24 @@ import {
   authRoutes,
   publicRoutes,
 } from "@/routes";
-import { ROUTE_PERMISSIONS } from "@/data/roles-and-permissions";
+import { ROUTE_PERMISSIONS, Permission } from "@/data/roles-and-permissions";
 
 const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
-  const userId = req.auth?.user?.id;
+  const userPermissions = (req.auth?.user?.permissions as Permission[]) || [];
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
+  const isPublicRoute = publicRoutes.some((route) =>
+    nextUrl.pathname.startsWith(route)
+  );
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-  const isStripeWebhook = nextUrl.pathname.startsWith('/api/stripe/webhooks');
-  const isLogoutRedirect = nextUrl.pathname === '/login' && nextUrl.searchParams.get('callbackUrl')?.includes('/login');
+  const isStripeWebhook = nextUrl.pathname.startsWith("/api/stripe/webhooks");
+  const isLogoutRedirect =
+    nextUrl.pathname === "/login" &&
+    nextUrl.searchParams.get("callbackUrl")?.includes("/login");
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
@@ -47,29 +51,20 @@ export default auth(async (req) => {
   }
 
   // Check permissions for protected routes
-  if (isAuthorized && userId) {
-    // Find matching route and its required permissions
+  if (isAuthorized) {
     const matchingRoute = Object.entries(ROUTE_PERMISSIONS).find(([route]) =>
       nextUrl.pathname.startsWith(route)
     );
 
     if (matchingRoute) {
-      const [_, requiredPermissions] = matchingRoute;
+      const requiredPermissions: Permission[] = matchingRoute[1];
+      const hasRequiredPermission = requiredPermissions.some((permission) =>
+        userPermissions.includes(permission)
+      );
 
-      try {
-        // Check if user has any of the required permissions
-        const response = await fetch(`${nextUrl.origin}/api/auth/check-permission?permission=${requiredPermissions[0]}`);
-        if (!response.ok) {
-          throw new Error('Failed to check permission');
-        }
-        const data = await response.json();
-        
-        if (!data.hasPermission) {
-          return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
-      } catch (error) {
-        console.error("Error checking permission:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      if (!hasRequiredPermission) {
+        // You can redirect to an "unauthorized" page or just return a 403
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
       }
     }
   }
@@ -77,7 +72,7 @@ export default auth(async (req) => {
   if (!isAuthorized && !isPublicRoute) {
     // If this is a logout redirect, send to home page
     if (isLogoutRedirect) {
-      return Response.redirect(new URL('/', nextUrl));
+      return Response.redirect(new URL("/", nextUrl));
     }
 
     let callbackUrl = nextUrl.pathname;
