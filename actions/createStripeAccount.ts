@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { stripeSecret } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { Permission } from "@/data/roles-and-permissions";
 
 export async function CreateStripeAccountLink() {
   const session = await auth();
@@ -15,7 +15,7 @@ export async function CreateStripeAccountLink() {
     throw new Error("User is not authenticated.");
   }
 
-  const canManageSettings = await hasPermission(userId, PERMISSIONS.MANAGE_SELLER_SETTINGS);
+  const canManageSettings = await hasPermission(userId, "MANAGE_SELLER_SETTINGS" as Permission);
   if (!canManageSettings) {
     throw new Error("You don't have permission to perform this action.");
   }

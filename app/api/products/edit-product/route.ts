@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
 import { hasPermission } from "@/lib/permissions";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { Permission } from "@/data/roles-and-permissions";
 
 const utapi = new UTApi();
 
@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const canEditProducts = await hasPermission(session.user.id, PERMISSIONS.EDIT_PRODUCTS);
+    const canEditProducts = await hasPermission(session.user.id, "EDIT_PRODUCTS" as Permission);
     if (!canEditProducts) {
         return new Response(
             JSON.stringify({ success: false, error: "You don't have permission to edit products." }),

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { Order, Review, Message } from "@prisma/client";
 import { getBuyerOrders } from "@/actions/orders";
+import { redirect } from "next/navigation";
 
 interface OrderWithRelations {
   id: string;
@@ -72,8 +73,8 @@ interface MessageWithRelations extends Message {
 
 export default async function MemberDashboard() {
   const session = await auth();
-  if (!session?.user) {
-    return null;
+  if (!session?.user?.id) {
+    redirect("/login");
   }
 
   // Fetch pending reviews

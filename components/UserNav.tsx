@@ -30,27 +30,27 @@ export function UserNav({ userInfo }: iAppProps) {
   const permissions = useCurrentPermissions();
 
   const canAccessAdminDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_ADMIN_DASHBOARD
+    PERMISSIONS.ACCESS_ADMIN_DASHBOARD.value
   );
   const canAccessSellerDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_SELLER_DASHBOARD
+    PERMISSIONS.ACCESS_SELLER_DASHBOARD.value
   );
   const canAccessMemberDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_MEMBER_DASHBOARD
+    PERMISSIONS.ACCESS_MEMBER_DASHBOARD.value
   );
 
   const canManageAdminSettings = permissions.includes(
-    PERMISSIONS.MANAGE_ADMIN_SETTINGS
+    PERMISSIONS.MANAGE_ADMIN_SETTINGS.value
   );
   const canManageSellerSettings = permissions.includes(
-    PERMISSIONS.MANAGE_SELLER_SETTINGS
+    PERMISSIONS.MANAGE_SELLER_SETTINGS.value
   );
   const canManageMemberSettings = permissions.includes(
-    PERMISSIONS.MANAGE_MEMBER_SETTINGS
+    PERMISSIONS.MANAGE_MEMBER_SETTINGS.value
   );
 
-  const canManageProducts = permissions.includes(PERMISSIONS.MANAGE_PRODUCTS);
-  const canViewOrders = permissions.includes(PERMISSIONS.VIEW_ORDERS);
+  const canManageProducts = permissions.includes(PERMISSIONS.MANAGE_PRODUCTS.value);
+  const canViewOrders = permissions.includes(PERMISSIONS.VIEW_ORDERS.value);
 
   let dashboardRoute: string | null = null;
   if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
@@ -105,19 +105,19 @@ export function UserNav({ userInfo }: iAppProps) {
             </DropdownMenuItem>
           )}
           {canManageProducts && (
-            <DropdownMenuItem>
-              <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
-            </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
+              </DropdownMenuItem>
           )}
           {isSeller && canViewOrders && (
-            <DropdownMenuItem>
-              <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
-            </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
+              </DropdownMenuItem>
           )}
           {isSeller && (
-            <DropdownMenuItem>
-              <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
-            </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
+              </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
 

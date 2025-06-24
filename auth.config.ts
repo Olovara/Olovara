@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { Role, Permission } from "@/data/roles-and-permissions";
+import { Role } from "@/data/roles-and-permissions";
 import { db } from "@/lib/db";
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
@@ -53,7 +53,7 @@ const authConfig = {
         if (dbUser) {
           const permissions = await getUserPermissions(dbUser.id);
           token.role = dbUser.role as Role;
-          token.permissions = permissions as Permission[];
+          token.permissions = permissions;
           token.isTwoFactorEnabled = dbUser.isTwoFactorEnabled;
         }
       }
@@ -63,7 +63,7 @@ const authConfig = {
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
-        session.user.permissions = token.permissions as Permission[];
+        session.user.permissions = token.permissions as string[];
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
         session.user.isOAuth = token.isOAuth as boolean;
       }

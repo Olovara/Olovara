@@ -9,68 +9,97 @@ export type Role = keyof typeof ROLES;
 
 export const PERMISSIONS = {
   // User Management
-  MANAGE_USERS: 'MANAGE_USERS',
-  VIEW_USERS: 'VIEW_USERS',
-  DELETE_USERS: 'DELETE_USERS',
-  SUSPEND_USERS: 'SUSPEND_USERS',
+  MANAGE_USERS: { value: 'MANAGE_USERS', group: 'User Management', label: 'Manage Users' },
+  VIEW_USERS: { value: 'VIEW_USERS', group: 'User Management', label: 'View Users' },
+  DELETE_USERS: { value: 'DELETE_USERS', group: 'User Management', label: 'Delete Users' },
+  SUSPEND_USERS: { value: 'SUSPEND_USERS', group: 'User Management', label: 'Suspend Users' },
+  MANAGE_PERMISSIONS: { value: 'MANAGE_PERMISSIONS', group: 'User Management', label: 'Manage Permissions' },
 
   // Dashboard Access
-  ACCESS_ADMIN_DASHBOARD: 'ACCESS_ADMIN_DASHBOARD',
-  ACCESS_SELLER_DASHBOARD: 'ACCESS_SELLER_DASHBOARD',
-  ACCESS_MEMBER_DASHBOARD: 'ACCESS_MEMBER_DASHBOARD',
+  ACCESS_ADMIN_DASHBOARD: { value: 'ACCESS_ADMIN_DASHBOARD', group: 'Dashboard Access', label: 'Access Admin Dashboard' },
+  ACCESS_SELLER_DASHBOARD: { value: 'ACCESS_SELLER_DASHBOARD', group: 'Dashboard Access', label: 'Access Seller Dashboard' },
+  ACCESS_MEMBER_DASHBOARD: { value: 'ACCESS_MEMBER_DASHBOARD', group: 'Dashboard Access', label: 'Access Member Dashboard' },
   
   // Content Management
-  MANAGE_CONTENT: 'MANAGE_CONTENT',
-  WRITE_BLOG: 'WRITE_BLOG',
-  PUBLISH_BLOG: 'PUBLISH_BLOG',
-  DELETE_BLOG: 'DELETE_BLOG',
-  MANAGE_COMMENTS: 'MANAGE_COMMENTS',
+  MANAGE_CONTENT: { value: 'MANAGE_CONTENT', group: 'Content Management', label: 'Manage Content' },
+  WRITE_BLOG: { value: 'WRITE_BLOG', group: 'Content Management', label: 'Write Blog' },
+  PUBLISH_BLOG: { value: 'PUBLISH_BLOG', group: 'Content Management', label: 'Publish Blog' },
+  DELETE_BLOG: { value: 'DELETE_BLOG', group: 'Content Management', label: 'Delete Blog' },
+  MANAGE_COMMENTS: { value: 'MANAGE_COMMENTS', group: 'Content Management', label: 'Manage Comments' },
   
   // Product Management
-  MANAGE_PRODUCTS: 'MANAGE_PRODUCTS',
-  CREATE_PRODUCTS: 'CREATE_PRODUCTS',
-  EDIT_PRODUCTS: 'EDIT_PRODUCTS',
-  DELETE_PRODUCTS: 'DELETE_PRODUCTS',
-  MANAGE_PRODUCT_CATEGORIES: 'MANAGE_PRODUCT_CATEGORIES',
+  MANAGE_PRODUCTS: { value: 'MANAGE_PRODUCTS', group: 'Product Management', label: 'Manage Products' },
+  CREATE_PRODUCTS: { value: 'CREATE_PRODUCTS', group: 'Product Management', label: 'Create Products' },
+  EDIT_PRODUCTS: { value: 'EDIT_PRODUCTS', group: 'Product Management', label: 'Edit Products' },
+  DELETE_PRODUCTS: { value: 'DELETE_PRODUCTS', group: 'Product Management', label: 'Delete Products' },
+  MANAGE_PRODUCT_CATEGORIES: { value: 'MANAGE_PRODUCT_CATEGORIES', group: 'Product Management', label: 'Manage Product Categories' },
   
   // Order Management
-  MANAGE_ORDERS: 'MANAGE_ORDERS',
-  VIEW_ORDERS: 'VIEW_ORDERS',
-  PROCESS_ORDERS: 'PROCESS_ORDERS',
-  REFUND_ORDERS: 'REFUND_ORDERS',
+  MANAGE_ORDERS: { value: 'MANAGE_ORDERS', group: 'Order Management', label: 'Manage Orders' },
+  VIEW_ORDERS: { value: 'VIEW_ORDERS', group: 'Order Management', label: 'View Orders' },
+  PROCESS_ORDERS: { value: 'PROCESS_ORDERS', group: 'Order Management', label: 'Process Orders' },
+  REFUND_ORDERS: { value: 'REFUND_ORDERS', group: 'Order Management', label: 'Refund Orders' },
   
   // Review Management
-  MANAGE_REVIEWS: 'MANAGE_REVIEWS',
+  MANAGE_REVIEWS: { value: 'MANAGE_REVIEWS', group: 'Review Management', label: 'Manage Reviews' },
   
   // Seller Management
-  MANAGE_SELLERS: 'MANAGE_SELLERS',
-  APPROVE_SELLERS: 'APPROVE_SELLERS',
-  SUSPEND_SELLERS: 'SUSPEND_SELLERS',
-  VIEW_SELLER_APPLICATIONS: 'VIEW_SELLER_APPLICATIONS',
+  MANAGE_SELLERS: { value: 'MANAGE_SELLERS', group: 'Seller Management', label: 'Manage Sellers' },
+  APPROVE_SELLERS: { value: 'APPROVE_SELLERS', group: 'Seller Management', label: 'Approve Sellers' },
+  SUSPEND_SELLERS: { value: 'SUSPEND_SELLERS', group: 'Seller Management', label: 'Suspend Sellers' },
+  VIEW_SELLER_APPLICATIONS: { value: 'VIEW_SELLER_APPLICATIONS', group: 'Seller Management', label: 'View Seller Applications' },
   
   // System Management
-  MANAGE_SYSTEM: 'MANAGE_SYSTEM',
-  VIEW_LOGS: 'VIEW_LOGS',
-  MANAGE_ADMIN_SETTINGS: 'MANAGE_ADMIN_SETTINGS',
-  MANAGE_SELLER_SETTINGS: 'MANAGE_SELLER_SETTINGS',
-  MANAGE_MEMBER_SETTINGS: 'MANAGE_MEMBER_SETTINGS',
-  MANAGE_CURRENCIES: 'MANAGE_CURRENCIES',
+  MANAGE_SYSTEM: { value: 'MANAGE_SYSTEM', group: 'System Management', label: 'Manage System' },
+  VIEW_LOGS: { value: 'VIEW_LOGS', group: 'System Management', label: 'View Logs' },
+  MANAGE_ADMIN_SETTINGS: { value: 'MANAGE_ADMIN_SETTINGS', group: 'System Management', label: 'Manage Admin Settings' },
+  MANAGE_SELLER_SETTINGS: { value: 'MANAGE_SELLER_SETTINGS', group: 'System Management', label: 'Manage Seller Settings' },
+  MANAGE_MEMBER_SETTINGS: { value: 'MANAGE_MEMBER_SETTINGS', group: 'System Management', label: 'Manage Member Settings' },
+  MANAGE_CURRENCIES: { value: 'MANAGE_CURRENCIES', group: 'System Management', label: 'Manage Currencies' },
   
   // Analytics
-  VIEW_ANALYTICS: 'VIEW_ANALYTICS',
-  EXPORT_ANALYTICS: 'EXPORT_ANALYTICS',
+  VIEW_ANALYTICS: { value: 'VIEW_ANALYTICS', group: 'Analytics', label: 'View Analytics' },
+  EXPORT_ANALYTICS: { value: 'EXPORT_ANALYTICS', group: 'Analytics', label: 'Export Analytics' },
   
   // Communication
-  MANAGE_MESSAGES: 'MANAGE_MESSAGES',
-  SEND_BROADCASTS: 'SEND_BROADCASTS',
-  MANAGE_NOTIFICATIONS: 'MANAGE_NOTIFICATIONS'
+  MANAGE_MESSAGES: { value: 'MANAGE_MESSAGES', group: 'Communication', label: 'Manage Messages' },
+  SEND_BROADCASTS: { value: 'SEND_BROADCASTS', group: 'Communication', label: 'Send Broadcasts' },
+  MANAGE_NOTIFICATIONS: { value: 'MANAGE_NOTIFICATIONS', group: 'Communication', label: 'Manage Notifications' }
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
 
-// Default role permissions mapping
-export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  SUPER_ADMIN: Object.keys(PERMISSIONS) as Permission[], // Super admin has all permissions
+// Helper function to get permission value
+export const getPermissionValue = (permission: Permission): string => {
+  return PERMISSIONS[permission].value;
+};
+
+// Helper function to get all permission values
+export const getPermissionValues = (): string[] => {
+  return Object.values(PERMISSIONS).map(p => p.value);
+};
+
+// Helper function to group permissions
+export const getPermissionGroups = () => {
+  const groups: Record<string, { value: string; label: string }[]> = {};
+  
+  Object.entries(PERMISSIONS).forEach(([key, permission]) => {
+    const group = permission.group;
+    if (!groups[group]) {
+      groups[group] = [];
+    }
+    groups[group].push({
+      value: permission.value,
+      label: permission.label
+    });
+  });
+  
+  return groups;
+};
+
+// Default role permissions mapping (using permission values)
+export const ROLE_PERMISSIONS: Record<Role, string[]> = {
+  SUPER_ADMIN: getPermissionValues(), // Super admin has all permissions
   ADMIN: [
     'MANAGE_USERS',
     'VIEW_USERS',
@@ -120,10 +149,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 };
 
 // Route permissions mapping
-export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
+export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/admin": ['ACCESS_ADMIN_DASHBOARD'],
   "/admin/users": ['MANAGE_USERS'],
+  "/admin/users/[userId]": ['MANAGE_PERMISSIONS'],
   "/admin/sellers": ['MANAGE_SELLERS'],
+  "/admin/seller-applications": ['VIEW_SELLER_APPLICATIONS'],
   "/admin/orders": ['MANAGE_ORDERS'],
   "/admin/products": ['MANAGE_PRODUCTS'],
   "/admin/blog": ['MANAGE_CONTENT'],

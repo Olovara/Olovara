@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { ROLES } from "@/data/roles-and-permissions";
 import { createBlogCategorySchema, blogCategoryQuerySchema } from "@/schemas/BlogCategorySchema";
 import { z } from "zod";
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const session = await auth();
     
     // Check if user is authenticated and is an admin
-    if (!session || session.user.role !== UserRole.ADMIN) {
+    if (!session || session.user.role !== ROLES.ADMIN) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
@@ -144,7 +144,7 @@ export async function PUT(req: Request) {
   try {
     const session = await auth();
     
-    if (!session || session.user.role !== UserRole.ADMIN) {
+    if (!session || session.user.role !== ROLES.ADMIN) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
@@ -227,7 +227,7 @@ export async function DELETE(req: Request) {
   try {
     const session = await auth();
     
-    if (!session || session.user.role !== UserRole.ADMIN) {
+    if (!session || session.user.role !== ROLES.ADMIN) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }

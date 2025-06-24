@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { ROLES } from "@/data/roles-and-permissions";
 
 const defaultPolicy = {
   html: `
@@ -171,7 +171,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== UserRole.ADMIN) {
+  if (!session || session.user.role !== ROLES.ADMIN) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 

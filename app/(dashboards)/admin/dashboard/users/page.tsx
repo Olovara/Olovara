@@ -27,16 +27,155 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { File, ListFilter, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { getAllUsers } from "@/actions/adminActions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export default function AdminDashboardUsers() {
+export default async function AdminDashboardUsers() {
+  const users = await getAllUsers();
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <Badge className="text-xs" variant="outline">Active</Badge>;
+      case 'SUSPENDED':
+        return <Badge className="text-xs" variant="secondary">Suspended</Badge>;
+      case 'VACATION':
+        return <Badge className="text-xs" variant="destructive">Vacation</Badge>;
+      default:
+        return <Badge className="text-xs" variant="outline">Active</Badge>;
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return <Badge className="text-xs" variant="destructive">Super Admin</Badge>;
+      case 'ADMIN':
+        return <Badge className="text-xs" variant="default">Admin</Badge>;
+      case 'SELLER':
+        return <Badge className="text-xs" variant="secondary">Seller</Badge>;
+      case 'MEMBER':
+        return <Badge className="text-xs" variant="outline">Member</Badge>;
+      default:
+        return <Badge className="text-xs" variant="outline">Member</Badge>;
+    }
+  };
+
+  // Filter users by role
+  const allUsers = users;
+  const adminUsers = users.filter(user => user.role === 'ADMIN' || user.role === 'SUPER_ADMIN');
+  const sellerUsers = users.filter(user => user.role === 'SELLER');
+  const memberUsers = users.filter(user => user.role === 'MEMBER');
+
+  // Helper function to render user table
+  const renderUserTable = (filteredUsers: typeof users, title: string, description: string) => (
+    <Card x-chunk="dashboard-05-chunk-3">
+      <CardHeader className="px-7">
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description} ({filteredUsers.length} total)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead className="hidden sm:table-cell">Role</TableHead>
+              <TableHead className="hidden sm:table-cell">
+                Status
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                Sign-up Date
+              </TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No users found in this category
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map((user) => (
+                <TableRow key={user.id} className="bg-accent">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.image || undefined} alt={user.username || "User"} />
+                        <AvatarFallback>{user.username?.[0] || "U"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{user.username || "No username"}</div>
+                        <div className="hidden text-sm text-muted-foreground md:inline">
+                          {user.email || "No email"}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {getRoleBadge(user.role)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {getStatusBadge(user.status)}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {formatDate(user.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          aria-haspopup="true"
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Toggle menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem>
+                          <Link href={`/admin/dashboard/users/${user.id}`}>
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>Edit User</DropdownMenuItem>
+                        <DropdownMenuItem>Suspend User</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600">
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <main>
-      <Tabs defaultValue="week">
+      <Tabs defaultValue="all">
         <div className="flex items-center">
           <TabsList>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="month">Month</TabsTrigger>
-            <TabsTrigger value="year">Year</TabsTrigger>
+            <TabsTrigger value="all">All Users</TabsTrigger>
+            <TabsTrigger value="admins">Admins</TabsTrigger>
+            <TabsTrigger value="sellers">Sellers</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
             <DropdownMenu>
@@ -54,10 +193,10 @@ export default function AdminDashboardUsers() {
                 <DropdownMenuLabel>Filter by</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem checked>
-                  Fulfilled
+                  Active
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Declined</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Refunded</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem>Suspended</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem>Vacation</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button size="sm" variant="outline" className="h-7 gap-1 text-sm">
@@ -66,200 +205,21 @@ export default function AdminDashboardUsers() {
             </Button>
           </div>
         </div>
-        <TabsContent value="week">
-          <Card x-chunk="dashboard-05-chunk-3">
-            <CardHeader className="px-7">
-              <CardTitle>Yarnnu Users</CardTitle>
-              <CardDescription>All users on our platform.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead className="hidden sm:table-cell">Role</TableHead>
-                    <TableHead className="hidden sm:table-cell">
-                      Status
-                    </TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Sign-up Date
-                    </TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="bg-accent">
-                    <TableCell>
-                      <div className="font-medium">Liam Johnson</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        liam@example.com
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      Seller
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge className="text-xs" variant="outline">
-                        Active
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      2023-06-23
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link href="/shop-dashboard/products/edit-product">
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <div className="font-medium">Olivia Smith</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        olivia@example.com
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      Member
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge className="text-xs" variant="outline">
-                        Active
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      2023-06-24
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link href="/shop-dashboard/products/edit-product">
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <div className="font-medium">Noah Williams</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        noah@example.com
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      Member
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge className="text-xs" variant="secondary">
-                        Suspended
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      2023-06-25
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link href="/shop-dashboard/products/edit-product">
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <div className="font-medium">Emma Brown</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        emma@example.com
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      Seller
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge className="text-xs" variant="secondary">
-                        Suspended
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      2023-06-26
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link href="/shop-dashboard/products/edit-product">
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+        
+        <TabsContent value="all">
+          {renderUserTable(allUsers, "All Users", "All users on our platform")}
+        </TabsContent>
+        
+        <TabsContent value="admins">
+          {renderUserTable(adminUsers, "Administrators", "Admin and Super Admin users")}
+        </TabsContent>
+        
+        <TabsContent value="sellers">
+          {renderUserTable(sellerUsers, "Sellers", "Users with seller accounts")}
+        </TabsContent>
+        
+        <TabsContent value="members">
+          {renderUserTable(memberUsers, "Members", "Regular member users")}
         </TabsContent>
       </Tabs>
     </main>

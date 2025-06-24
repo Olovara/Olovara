@@ -47,7 +47,7 @@ export default function HandmadeGuidelines() {
       const roleRes = await fetch("/api/auth/get-role");
       if (roleRes.ok) {
         const roleData = await roleRes.json();
-        setIsAdmin(roleData.role === "ADMIN");
+        setIsAdmin(roleData.permissions?.includes('MANAGE_CONTENT'));
       }
     } catch (error) {
       // If there's an error (like not logged in), just keep isAdmin as false

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ReviewsDashboard } from "@/components/shared/ReviewsDashboard";
 import PermissionGate from "@/components/auth/permission-gate";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { redirect } from "next/navigation";
 
 interface Review {
   id: string;
@@ -34,8 +35,8 @@ interface Review {
 
 export default async function SellerReviewsPage() {
   const session = await auth();
-  if (!session?.user) {
-    return null;
+  if (!session?.user?.id) {
+    redirect("/login");
   }
 
   const reviews = await db.review.findMany({
@@ -127,7 +128,7 @@ export default async function SellerReviewsPage() {
   });
 
   return (
-    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_REVIEWS}>
+    <PermissionGate requiredPermission={"MANAGE_REVIEWS" as const}>
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
       <ReviewsDashboard

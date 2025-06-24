@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { ROLES } from "@/data/roles-and-permissions";
 
 const defaultTerms = {
   html: `
@@ -91,49 +91,27 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    // Try to get existing terms
-    const terms = await db.termsOfService.findFirst();
-    
+    const terms = await db.termsOfService.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+
     if (!terms) {
-      // If no terms exist, return default terms
-      return NextResponse.json({
-        content: defaultTerms,
-        updatedAt: new Date()
-      });
+      return NextResponse.json(defaultTerms);
     }
 
-    // Process the content
-    let responseContent = { html: "", text: "" };
-
-    if (terms.content && typeof terms.content === 'object') {
-      const content = terms.content as any;
-      responseContent.html = content.html || defaultTerms.html;
-      responseContent.text = content.text || defaultTerms.text;
-    } else {
-      // If content is not in expected format, return default terms
-      return NextResponse.json({
-        content: defaultTerms,
-        updatedAt: terms.updatedAt
-      });
-    }
-
-    return NextResponse.json({
-      content: responseContent,
-      updatedAt: terms.updatedAt
-    });
+    return NextResponse.json(terms);
   } catch (error) {
-    console.error("Error in GET /api/terms-of-service:", error);
-    // Return default terms in case of error
-    return NextResponse.json({
-      content: defaultTerms,
-      updatedAt: new Date()
-    });
+    console.error("Error fetching terms of service:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch terms of service" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== UserRole.ADMIN) {
+  if (!session || session.user.role !== ROLES.ADMIN) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 

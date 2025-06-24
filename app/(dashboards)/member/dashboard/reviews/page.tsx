@@ -40,7 +40,7 @@ interface Review {
 export default async function MemberReviewsPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/signin");
   }
 

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { Permission, Role, ROLE_PERMISSIONS } from "@/data/roles-and-permissions";
+import { Permission, Role, ROLE_PERMISSIONS, getPermissionValue } from "@/data/roles-and-permissions";
 import { UserPermission } from "@/types/permissions";
 
 function isUserPermission(obj: any): obj is UserPermission {
@@ -19,17 +19,19 @@ export async function hasPermission(userId: string, permission: Permission): Pro
     // Cast to unknown first, then to UserPermission[]
     const userPermissions = user.permissions as unknown as UserPermission[];
 
+    const permissionValue = getPermissionValue(permission);
+
     const hasDirectPermission = userPermissions.some(
       (p) =>
         isUserPermission(p) &&
-        p.permission === permission &&
+        p.permission === permissionValue &&
         (!p.expiresAt || new Date(p.expiresAt) > new Date())
     );
 
     if (hasDirectPermission) return true;
 
     const rolePermissions = ROLE_PERMISSIONS[user.role as Role] || [];
-    return rolePermissions.includes(permission);
+    return rolePermissions.includes(permissionValue);
   } catch (error) {
     console.error("Error checking permission:", error);
     return false;
@@ -37,7 +39,7 @@ export async function hasPermission(userId: string, permission: Permission): Pro
 }
 
 // Function to get all permissions for a user
-export async function getUserPermissions(userId: string): Promise<Permission[]> {
+export async function getUserPermissions(userId: string): Promise<string[]> {
   try {
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -54,8 +56,8 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
 
     const rolePermissions = ROLE_PERMISSIONS[user.role as Role] || [];
 
-    // Cast the final combined array to Permission[]
-    return Array.from(new Set([...directPermissions, ...rolePermissions])) as Permission[];
+    // Return the combined array as string[]
+    return Array.from(new Set([...directPermissions, ...rolePermissions]));
   } catch (error) {
     console.error("Error getting user permissions:", error);
     return [];
@@ -71,7 +73,7 @@ export async function grantPermission(
   try {
     // We need to push a valid JSON object
     const newPermission: Omit<UserPermission, 'grantedBy'> = {
-        permission,
+        permission: getPermissionValue(permission),
         grantedAt: new Date(),
         expiresAt,
     };
@@ -102,7 +104,8 @@ export async function revokePermission(userId: string, permission: Permission): 
     if (!user) return false;
 
     const userPermissions = user.permissions as unknown as UserPermission[];
-    const updatedPermissions = userPermissions.filter(p => !isUserPermission(p) || p.permission !== permission);
+    const permissionValue = getPermissionValue(permission);
+    const updatedPermissions = userPermissions.filter(p => !isUserPermission(p) || p.permission !== permissionValue);
 
     await db.user.update({
       where: { id: userId },

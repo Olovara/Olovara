@@ -8,14 +8,14 @@ import {
   authRoutes,
   publicRoutes,
 } from "@/routes";
-import { ROUTE_PERMISSIONS, Permission } from "@/data/roles-and-permissions";
+import { ROUTE_PERMISSIONS } from "@/data/roles-and-permissions";
 
 const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
-  const userPermissions = (req.auth?.user?.permissions as Permission[]) || [];
+  const userPermissions = (req.auth?.user?.permissions as string[]) || [];
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) =>
@@ -57,9 +57,9 @@ export default auth(async (req) => {
     );
 
     if (matchingRoute) {
-      const requiredPermissions: Permission[] = matchingRoute[1];
-      const hasRequiredPermission = requiredPermissions.some((permission) =>
-        userPermissions.includes(permission)
+      const requiredPermissions = matchingRoute[1];
+      const hasRequiredPermission = requiredPermissions.some((permissionValue) =>
+        userPermissions.includes(permissionValue)
       );
 
       if (!hasRequiredPermission) {

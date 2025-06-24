@@ -47,7 +47,9 @@ export default function TermsOfService() {
       const roleRes = await fetch("/api/auth/get-role");
       if (roleRes.ok) {
         const roleData = await roleRes.json();
-        setIsAdmin(roleData.role === "ADMIN");
+        // Check if user has MANAGE_CONTENT permission
+        const hasManageContentPermission = roleData.permissions?.includes('MANAGE_CONTENT');
+        setIsAdmin(hasManageContentPermission);
       }
     } catch (error) {
       // If there's an error (like not logged in), just keep isAdmin as false

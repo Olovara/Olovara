@@ -15,7 +15,18 @@ const PermissionGate = ({
 }: PermissionGateProps) => {
   const permissions = useCurrentPermissions();
 
-  const hasPermission = permissions.includes(requiredPermission);
+  // Get the permission value from the permission object
+  const permissionObject = PERMISSIONS[requiredPermission];
+  
+  if (!permissionObject) {
+    console.error(`Invalid permission key: ${requiredPermission}`);
+    return (
+      <FormError message="Invalid permission configuration. Please contact support." />
+    );
+  }
+
+  const permissionValue = permissionObject.value;
+  const hasPermission = permissions.includes(permissionValue);
 
   if (!hasPermission) {
     return (

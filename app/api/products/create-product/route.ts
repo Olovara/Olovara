@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { hasPermission } from "@/lib/permissions";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { NextRequest, NextResponse } from "next/server";
+import { Permission } from "@/data/roles-and-permissions";
 
 // Remove the Edge Runtime configuration
 // export const runtime = "edge";
@@ -11,30 +12,24 @@ export const maxDuration = 60; // 60 seconds timeout
 // For body size limit, we need to use a different approach in App Router
 // This will be handled in the POST function
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   //console.log("API HIT: /api/products/create-product");
 
   try {
     const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!session?.user?.id) {
-      console.warn("Unauthorized access attempt - No valid session.");
-      return new Response(
-        JSON.stringify({ success: false, error: "User not authenticated" }),
+    if (!userId) {
+      return NextResponse.json(
+        { error: "You must be logged in" },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
-
-    // Check if user has permission to create products
-    const canCreateProducts = await hasPermission(userId, PERMISSIONS.CREATE_PRODUCTS);
+    const canCreateProducts = await hasPermission(userId, "CREATE_PRODUCTS" as Permission);
     if (!canCreateProducts) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "You don't have permission to create products." 
-        }),
+      return NextResponse.json(
+        { error: "You don't have permission to create products" },
         { status: 403 }
       );
     }

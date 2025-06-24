@@ -25,7 +25,7 @@ export const metadata = {
 export default async function SellerSettings() {
   const session = await auth();
   
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -115,7 +115,7 @@ export default async function SellerSettings() {
   }
 
   return (
-    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_SELLER_SETTINGS}>
+    <PermissionGate requiredPermission={"MANAGE_SELLER_SETTINGS" as const}>
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-medium">Settings</h3>

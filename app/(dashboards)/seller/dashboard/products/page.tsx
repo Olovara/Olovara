@@ -23,7 +23,7 @@ export default async function ProductsPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -34,7 +34,6 @@ export default async function ProductsPage({
 
   // Get products based on active tab and search
   const { products, totalItems, totalPages } = await getSellerProducts(
-    session.user.id,
     activeTab === "all" ? undefined : activeTab,
     search,
     pageSize,
@@ -79,7 +78,7 @@ export default async function ProductsPage({
   };
 
   return (
-    <PermissionGate requiredPermission={PERMISSIONS.MANAGE_PRODUCTS}>
+    <PermissionGate requiredPermission={"MANAGE_PRODUCTS" as const}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Breadcrumb>

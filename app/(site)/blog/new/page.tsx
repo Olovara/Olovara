@@ -60,11 +60,13 @@ export default function NewBlogPost() {
           setCategories(categoriesData);
         }
 
-        // Check admin status
-        const roleRes = await fetch("/api/auth/get-role");
-        if (roleRes.ok) {
-          const roleData = await roleRes.json();
-          setIsAdmin(roleData.role === "ADMIN");
+        // Check if user has WRITE_BLOG permission
+        const sessionRes = await fetch("/api/auth/get-role");
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          // Check if user has WRITE_BLOG permission
+          const hasWriteBlogPermission = sessionData.permissions?.includes('WRITE_BLOG');
+          setIsAdmin(hasWriteBlogPermission);
         }
       } catch (error) {
         console.error("Error loading data:", error);

@@ -12,9 +12,11 @@ interface MemberData {
 
 export const memberInformation = async (data: MemberData) => {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
+
+  const userId = session.user.id;
 
   try {
     // Encrypt the names on the server side
@@ -23,13 +25,13 @@ export const memberInformation = async (data: MemberData) => {
 
     // Check if member exists
     const existingMember = await db.member.findUnique({
-      where: { userId: session.user.id },
+      where: { userId },
     });
 
     if (existingMember) {
       // Update existing member information
       await db.member.update({
-        where: { userId: session.user.id },
+        where: { userId },
         data: {
           encryptedFirstName,
           encryptedLastName,
@@ -42,7 +44,7 @@ export const memberInformation = async (data: MemberData) => {
       // Create new member record
       await db.member.create({
         data: {
-          userId: session.user.id,
+          userId,
           encryptedFirstName,
           encryptedLastName,
           firstNameIV,

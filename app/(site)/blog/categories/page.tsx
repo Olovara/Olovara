@@ -72,7 +72,7 @@ export default function BlogCategoriesPage() {
     isActive: true,
   });
 
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isAdmin = session?.user?.permissions?.includes('MANAGE_CONTENT');
 
   useEffect(() => {
     fetchCategories();

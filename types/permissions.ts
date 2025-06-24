@@ -1,7 +1,7 @@
 import { Permission } from '@/data/roles-and-permissions'
 
 export interface UserPermission {
-  permission: Permission;
+  permission: string;
   grantedAt: Date;
   grantedBy: string;
   expiresAt?: Date | null;
@@ -13,7 +13,7 @@ export function isPermissionValid(permission: UserPermission): boolean {
   return new Date(permission.expiresAt) > new Date();
 }
 
-export function hasValidPermission(permissions: UserPermission[], requiredPermission: Permission): boolean {
+export function hasValidPermission(permissions: UserPermission[], requiredPermission: string): boolean {
   const permission = permissions.find(p => p.permission === requiredPermission);
   if (!permission) return false;
   return isPermissionValid(permission);

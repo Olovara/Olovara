@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { ROLES } from "@/data/roles-and-permissions";
 
 interface ContactSellerButtonProps {
   sellerId: string;
@@ -43,7 +44,7 @@ export default function ContactSellerButton({ sellerId, sellerName }: ContactSel
       const data = await response.json();
       
       // Redirect to appropriate dashboard based on user role
-      if (session.user.role === "seller") {
+      if (session.user.role === ROLES.SELLER) {
         router.push(`/seller/dashboard/messages?conversation=${data.conversationId}`);
       } else {
         router.push(`/member/dashboard/messages?conversation=${data.conversationId}`);

@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/permissions";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { Permission } from "@/data/roles-and-permissions";
 
 export async function getSellerProducts(
   status?: string,
@@ -16,7 +16,7 @@ export async function getSellerProducts(
     throw new Error("User is not authenticated.");
   }
 
-  const canManageProducts = await hasPermission(session.user.id, PERMISSIONS.MANAGE_PRODUCTS);
+  const canManageProducts = await hasPermission(session.user.id, "MANAGE_PRODUCTS" as Permission);
   if (!canManageProducts) {
     throw new Error("You don't have permission to perform this action.");
   }

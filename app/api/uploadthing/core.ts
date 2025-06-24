@@ -14,7 +14,7 @@ export const ourFileRouter = {
       const session = await auth();
       console.log(session); // Check if session is correctly fetched
 
-      if (!session) throw new UploadThingError("Unauthorized");
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
 
       return { userId: session.user.id };
     })
@@ -48,7 +48,7 @@ export const ourFileRouter = {
     .middleware(async ({ req }) => {
       const session = await auth();
 
-      if (!session) throw new UploadThingError("Unauthorized");
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
 
       return { userId: session.user.id };
     })
