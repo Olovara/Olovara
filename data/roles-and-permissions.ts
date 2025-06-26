@@ -7,6 +7,72 @@ export const ROLES = {
 
 export type Role = keyof typeof ROLES;
 
+// Admin Roles for specialized admin tasks
+export const ADMIN_ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',           // Full access to everything
+  GENERAL_ADMIN: 'GENERAL_ADMIN',       // General admin tasks
+  SELLER_MANAGER: 'SELLER_MANAGER',     // Handles seller applications and issues
+  CONTENT_MODERATOR: 'CONTENT_MODERATOR', // Manages content, blog, reviews
+  CUSTOMER_SUPPORT: 'CUSTOMER_SUPPORT', // Handles customer issues and disputes
+  FINANCIAL_ADMIN: 'FINANCIAL_ADMIN',   // Handles financial matters, refunds, disputes
+  SYSTEM_ADMIN: 'SYSTEM_ADMIN',         // Technical system management
+} as const;
+
+export type AdminRole = keyof typeof ADMIN_ROLES;
+
+// Admin Task Types
+export const ADMIN_TASK_TYPES = {
+  SELLER_APPLICATION_REVIEW: 'SELLER_APPLICATION_REVIEW',
+  CONTENT_MODERATION: 'CONTENT_MODERATION',
+  CUSTOMER_DISPUTE: 'CUSTOMER_DISPUTE',
+  REFUND_REQUEST: 'REFUND_REQUEST',
+  SYSTEM_MAINTENANCE: 'SYSTEM_MAINTENANCE',
+  USER_SUSPENSION: 'USER_SUSPENSION',
+  PRODUCT_REVIEW: 'PRODUCT_REVIEW',
+  BLOG_APPROVAL: 'BLOG_APPROVAL',
+  FINANCIAL_REVIEW: 'FINANCIAL_REVIEW',
+  GENERAL_TASK: 'GENERAL_TASK',
+} as const;
+
+export type AdminTaskType = keyof typeof ADMIN_TASK_TYPES;
+
+// Admin Task Status
+export const ADMIN_TASK_STATUS = {
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  ESCALATED: 'ESCALATED',
+} as const;
+
+export type AdminTaskStatus = keyof typeof ADMIN_TASK_STATUS;
+
+// Admin Task Priority
+export const ADMIN_TASK_PRIORITY = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  URGENT: 'URGENT',
+} as const;
+
+export type AdminTaskPriority = keyof typeof ADMIN_TASK_PRIORITY;
+
+// Admin Notification Types
+export const ADMIN_NOTIFICATION_TYPES = {
+  SELLER_APPLICATION_SUBMITTED: 'SELLER_APPLICATION_SUBMITTED',
+  SELLER_APPLICATION_APPROVED: 'SELLER_APPLICATION_APPROVED',
+  SELLER_APPLICATION_REJECTED: 'SELLER_APPLICATION_REJECTED',
+  CUSTOMER_DISPUTE_CREATED: 'CUSTOMER_DISPUTE_CREATED',
+  REFUND_REQUEST_SUBMITTED: 'REFUND_REQUEST_SUBMITTED',
+  CONTENT_FLAGGED: 'CONTENT_FLAGGED',
+  SYSTEM_ALERT: 'SYSTEM_ALERT',
+  FINANCIAL_ALERT: 'FINANCIAL_ALERT',
+  USER_SUSPENSION_REQUEST: 'USER_SUSPENSION_REQUEST',
+  GENERAL_ADMIN_NOTIFICATION: 'GENERAL_ADMIN_NOTIFICATION',
+} as const;
+
+export type AdminNotificationType = keyof typeof ADMIN_NOTIFICATION_TYPES;
+
 export const PERMISSIONS = {
   // User Management
   MANAGE_USERS: { value: 'MANAGE_USERS', group: 'User Management', label: 'Manage Users' },
@@ -19,6 +85,12 @@ export const PERMISSIONS = {
   ACCESS_ADMIN_DASHBOARD: { value: 'ACCESS_ADMIN_DASHBOARD', group: 'Dashboard Access', label: 'Access Admin Dashboard' },
   ACCESS_SELLER_DASHBOARD: { value: 'ACCESS_SELLER_DASHBOARD', group: 'Dashboard Access', label: 'Access Seller Dashboard' },
   ACCESS_MEMBER_DASHBOARD: { value: 'ACCESS_MEMBER_DASHBOARD', group: 'Dashboard Access', label: 'Access Member Dashboard' },
+  
+  // Seller Onboarding Permissions
+  ACCESS_SELLER_ONBOARDING: { value: 'ACCESS_SELLER_ONBOARDING', group: 'Seller Onboarding', label: 'Access Seller Onboarding' },
+  COMPLETE_SELLER_PROFILE: { value: 'COMPLETE_SELLER_PROFILE', group: 'Seller Onboarding', label: 'Complete Seller Profile' },
+  CONNECT_STRIPE_ACCOUNT: { value: 'CONNECT_STRIPE_ACCOUNT', group: 'Seller Onboarding', label: 'Connect Stripe Account' },
+  CREATE_SHIPPING_PROFILE: { value: 'CREATE_SHIPPING_PROFILE', group: 'Seller Onboarding', label: 'Create Shipping Profile' },
   
   // Content Management
   MANAGE_CONTENT: { value: 'MANAGE_CONTENT', group: 'Content Management', label: 'Manage Content' },
@@ -167,4 +239,17 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/seller/settings": ['MANAGE_SELLER_SETTINGS'],
   "/member": ['ACCESS_MEMBER_DASHBOARD'],
   "/member/messages": ['MANAGE_MESSAGES'],
-}; 
+};
+
+// Helper function to create permission objects for a role
+export const createRolePermissions = (role: Role, grantedBy?: string) => {
+  const permissions = ROLE_PERMISSIONS[role];
+  
+  return permissions.map(permission => ({
+    permission,
+    grantedAt: new Date(),
+    grantedBy: grantedBy || 'system',
+    reason: `Default permissions for ${role} role`,
+    expiresAt: null, // No expiration for default role permissions
+  }));
+};

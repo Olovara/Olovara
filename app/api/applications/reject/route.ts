@@ -2,7 +2,7 @@ import { rejectApplication } from "@/actions/adminActions";
 
 export async function POST(req: Request) {
   try {
-    const { applicationId } = await req.json(); // Extract data from the request body
+    const { applicationId, rejectionReason } = await req.json(); // Extract data from the request body
 
     if (!applicationId) {
       return new Response(
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await rejectApplication(applicationId);
+    const result = await rejectApplication(applicationId, rejectionReason);
 
     if (result.success) {
       return new Response(JSON.stringify({ success: true }), { status: 200 });

@@ -2,6 +2,9 @@ import { Resend } from "resend";
 import { VerificationEmail } from "@/components/emails/VerificationEmail";
 import { PasswordResetEmail } from "@/components/emails/PasswordResetEmail";
 import { TwoFactorEmail } from "@/components/emails/TwoFactorEmail";
+import { SellerApplicationNotificationEmail } from "@/components/emails/SellerApplicationNotificationEmail";
+import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplicationApprovedEmail";
+import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
 
 const apiKey = process.env.RESEND_API_KEY;
 
@@ -88,5 +91,87 @@ export const sendVerificationEmail = async (email: string, token: string) => {
       timestamp: new Date().toISOString(),
     });
     throw new Error("Failed to send verification email. Please try again later.");
+  }
+};
+
+export const sendSellerApplicationNotificationEmail = async (
+  adminEmail: string,
+  adminName: string,
+  applicantName: string,
+  applicantEmail: string,
+  applicationId: string
+) => {
+  const adminDashboardUrl = `${domain}/admin/dashboard/seller-applications`;
+
+  try {
+    const response = await resend.emails.send({
+      from: "Yarnnu <noreply@yarnnu.com>",
+      to: adminEmail,
+      subject: "New Seller Application Requires Review",
+      react: SellerApplicationNotificationEmail({
+        adminName,
+        applicantName,
+        applicantEmail,
+        applicationId,
+        adminDashboardUrl,
+      }),
+    });
+    console.log("Seller application notification email sent successfully:", response);
+    return response;
+  } catch (error) {
+    console.error("Error sending seller application notification email:", error);
+    throw error;
+  }
+};
+
+export const sendSellerApplicationApprovedEmail = async (
+  sellerEmail: string,
+  sellerName: string
+) => {
+  const dashboardUrl = `${domain}/seller/dashboard`;
+
+  try {
+    const response = await resend.emails.send({
+      from: "Yarnnu <noreply@yarnnu.com>",
+      to: sellerEmail,
+      subject: "🎉 Your Seller Application Has Been Approved!",
+      react: SellerApplicationApprovedEmail({
+        sellerName,
+        sellerEmail,
+        dashboardUrl,
+      }),
+    });
+    console.log("Seller application approved email sent successfully:", response);
+    return response;
+  } catch (error) {
+    console.error("Error sending seller application approved email:", error);
+    throw error;
+  }
+};
+
+export const sendSellerApplicationRejectedEmail = async (
+  sellerEmail: string,
+  sellerName: string,
+  rejectionReason?: string
+) => {
+  const applicationUrl = `${domain}/seller-application`;
+
+  try {
+    const response = await resend.emails.send({
+      from: "Yarnnu <noreply@yarnnu.com>",
+      to: sellerEmail,
+      subject: "Update on Your Seller Application",
+      react: SellerApplicationRejectedEmail({
+        sellerName,
+        sellerEmail,
+        applicationUrl,
+        rejectionReason,
+      }),
+    });
+    console.log("Seller application rejected email sent successfully:", response);
+    return response;
+  } catch (error) {
+    console.error("Error sending seller application rejected email:", error);
+    throw error;
   }
 };

@@ -26,6 +26,8 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Admin - Dashboard",
 };
@@ -444,4 +446,4 @@ export default async function AdminDashboardHome() {
       </div>
     );
   }
-  }
+}

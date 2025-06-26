@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { BlogCard } from "./_components/blog-card";
 import { CategoryFilter } from "./_components/category-filter";
+import { BlogActions } from "./_components/blog-actions";
 
 interface BlogPageProps {
   searchParams: {
@@ -77,6 +78,9 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
             Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.
           </p>
         </div>
+
+        {/* Action Buttons - Only visible to users with permissions */}
+        <BlogActions />
 
         {/* Category Filter */}
         <CategoryFilter 

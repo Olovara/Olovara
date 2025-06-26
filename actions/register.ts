@@ -9,6 +9,7 @@ import { getUserByEmail, getUserByUsername } from "@/data/user";
 import { generateVerificationToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/mail";
 import { rateLimit } from "@/lib/rate-limit";
+import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
 
 const verifyRecaptcha = async (token: string) => {
   try {
@@ -86,6 +87,8 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
       username,
       email,
       password: hashedPassword,
+      role: ROLES.MEMBER,
+      permissions: createRolePermissions(ROLES.MEMBER),
     },
   });
 

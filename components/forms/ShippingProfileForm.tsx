@@ -126,8 +126,16 @@ export default function ShippingProfileForm({
           ? "Shipping profile updated successfully"
           : "Shipping profile created successfully"
       );
-      router.refresh();
-      onSuccess?.();
+      
+      // If this is a new profile creation, refresh the page to get updated session data TODO: The same modification here as seller form
+      if (!initialData) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        router.refresh();
+        onSuccess?.();
+      }
     } catch (error) {
       toast.error("Something went wrong");
     }

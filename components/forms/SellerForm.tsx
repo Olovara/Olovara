@@ -147,6 +147,11 @@ const SellerForm = () => {
       }
 
       toast.success(result.success || "Successfully saved your shop information.");
+      
+      // Refresh the page to get updated session data with new permissions TODO: Modify to only do this the first time saving
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error("Error submitting form:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to save seller information";

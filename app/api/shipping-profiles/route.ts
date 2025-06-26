@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { markShippingProfileCreated } from "@/actions/sellerOnboardingActions";
+import { updateUserSession } from "@/lib/session-update";
 
 export async function POST(req: Request) {
   try {
@@ -47,6 +49,15 @@ export async function POST(req: Request) {
         rates: true,
       },
     });
+
+    // Mark shipping profile creation as complete if it's not already
+    const currentOnboarding = session.user.sellerOnboarding;
+    if (!currentOnboarding?.shippingProfileCreated) {
+      await markShippingProfileCreated();
+    } else {
+      // If already complete, just update the session to ensure it's current
+      await updateUserSession(session.user.id);
+    }
 
     return NextResponse.json(shippingProfile);
   } catch (error) {

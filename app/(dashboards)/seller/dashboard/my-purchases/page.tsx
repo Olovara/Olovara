@@ -23,7 +23,7 @@ export default async function MyPurchasesPage({
   const session = await auth();
   
   if (!session?.user?.id) {
-    redirect("/auth/signin");
+    redirect("/signin");
   }
 
   const activeTab = (searchParams.tab as string) || "all";

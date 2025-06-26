@@ -9,6 +9,8 @@ import { auth } from "@/auth"; // Adjust to your auth method
 import { encryptData } from "@/lib/encryption"; // Make sure this import exists
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/data/roles-and-permissions";
+import { markShopProfileComplete } from "./sellerOnboardingActions";
+import { updateUserSession } from "@/lib/session-update";
 
 export const sellerInformation = async (values: z.infer<typeof SellerSchema>) => {
   const session = await auth();
@@ -177,6 +179,15 @@ export const sellerInformation = async (values: z.infer<typeof SellerSchema>) =>
           }
         }
       });
+    }
+
+    // Mark shop profile as complete if it's not already
+    const currentOnboarding = session.user.sellerOnboarding;
+    if (!currentOnboarding?.shopProfileComplete) {
+      await markShopProfileComplete();
+    } else {
+      // If already complete, just update the session to ensure it's current
+      await updateUserSession(session.user.id);
     }
 
     return { success: "Seller information updated successfully." };

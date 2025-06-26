@@ -110,6 +110,7 @@ model User {
   accounts              Account[]
   member                Member?
   seller                Seller?
+  admin                 Admin?
   orders                Order[]
   status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
@@ -201,6 +202,7 @@ model Seller {
   preferredDimensionUnit    String    @default("in")  // Store seller's preferred dimension unit (cm/inches)
   preferredDistanceUnit     String    @default("miles")  // Store seller's preferred distance unit (km/miles)
   applicationAccepted       Boolean   @default(false)
+  isFullyActivated          Boolean   @default(false) // Track if seller is fully activated and ready to sell
   stripeConnected	          Boolean		@default(false)
   connectedAccountId        String?   @unique // Optional, but required for selling
   totalSales	              Int       @default(0)
@@ -219,6 +221,10 @@ model Seller {
   shippingProfiles         ShippingProfile[]
   reviews                   Review[]
   user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Onboarding progress fields
+  shopProfileComplete       Boolean   @default(false) // Business info and tax details completed
+  shippingProfileCreated    Boolean   @default(false) // At least one shipping profile created
 
   // Tax fields
   encryptedBusinessName     String
@@ -657,4 +663,19 @@ model ShippingRate {
   shippingProfile ShippingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+model Admin {
+  id                    String   @id @default(cuid()) @map("_id")
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                 String   // Maps to ADMIN_ROLES from data/roles-and-permissions.ts
+  isActive             Boolean  @default(true)
+  assignedRegions      String[] // Array of region codes or names
+  notificationPreferences Json?  // Array of notification preferences
+  tasks                Json?    // Array of task objects
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("admins")
 }

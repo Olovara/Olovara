@@ -48,13 +48,37 @@ const authConfig = {
         token.id = user.id;
         token.isOAuth = !!account;
 
-        const dbUser = await db.user.findUnique({ where: { id: user.id } });
+        const dbUser = await db.user.findUnique({ 
+          where: { id: user.id },
+          include: {
+            seller: {
+              select: {
+                applicationAccepted: true,
+                stripeConnected: true,
+                shopProfileComplete: true,
+                shippingProfileCreated: true,
+                isFullyActivated: true,
+              }
+            }
+          }
+        });
 
         if (dbUser) {
           const permissions = await getUserPermissions(dbUser.id);
           token.role = dbUser.role as Role;
           token.permissions = permissions;
           token.isTwoFactorEnabled = dbUser.isTwoFactorEnabled;
+          
+          // Include seller onboarding fields in token
+          if (dbUser.seller) {
+            token.sellerOnboarding = {
+              applicationAccepted: dbUser.seller.applicationAccepted,
+              stripeConnected: dbUser.seller.stripeConnected,
+              shopProfileComplete: dbUser.seller.shopProfileComplete,
+              shippingProfileCreated: dbUser.seller.shippingProfileCreated,
+              isFullyActivated: dbUser.seller.isFullyActivated,
+            };
+          }
         }
       }
       return token;
@@ -66,6 +90,17 @@ const authConfig = {
         session.user.permissions = token.permissions as string[];
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
         session.user.isOAuth = token.isOAuth as boolean;
+        
+        // Include seller onboarding fields in session
+        if (token.sellerOnboarding) {
+          session.user.sellerOnboarding = token.sellerOnboarding as {
+            applicationAccepted: boolean;
+            stripeConnected: boolean;
+            shopProfileComplete: boolean;
+            shippingProfileCreated: boolean;
+            isFullyActivated: boolean;
+          };
+        }
       }
       return session;
     },

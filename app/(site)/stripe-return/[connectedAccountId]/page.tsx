@@ -1,9 +1,43 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-export default function ReturnUrlStripe() {
+interface ReturnUrlStripeProps {
+  params: {
+    connectedAccountId: string;
+  };
+}
+
+export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Handle Stripe connection completion
+    const handleStripeConnection = async () => {
+      try {
+        // Call the onboarding status check to update permissions
+        const response = await fetch("/api/seller/onboarding-status");
+        if (response.ok) {
+          // Refresh the page to get updated session data
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      } catch (error) {
+        console.error("Error handling Stripe connection:", error);
+        toast.error("Failed to update onboarding status");
+      }
+    };
+
+    handleStripeConnection();
+  }, []);
+
   return (
     <section className="w-full min-h-[80vh] flex items-center justify-center">
       <Card className="w-[350px]">
@@ -21,7 +55,7 @@ export default function ReturnUrlStripe() {
             </p>
 
             <Button className="mt-5 sm:mt-6 w-full" asChild>
-              <Link href="/">Back to Homepage</Link>
+              <Link href="/seller/dashboard">Go to Dashboard</Link>
             </Button>
           </div>
         </div>

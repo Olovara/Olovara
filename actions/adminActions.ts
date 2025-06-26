@@ -2,7 +2,19 @@ import { db } from "@/lib/db"; // Use the global Prisma instance
 import { User, AccountStatus } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
 import { currentUser } from "@/lib/auth";
-import { PERMISSIONS, getPermissionValue } from "@/data/roles-and-permissions";
+import { 
+  PERMISSIONS, 
+  getPermissionValue, 
+  createRolePermissions, 
+  ROLES, 
+  ADMIN_ROLES,
+  ADMIN_TASK_TYPES,
+  ADMIN_TASK_STATUS,
+  ADMIN_TASK_PRIORITY,
+  ADMIN_NOTIFICATION_TYPES
+} from "@/data/roles-and-permissions";
+import { updateUserSession } from "@/lib/session-update";
+import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 
 interface GetUsersParams {
   role?: string;
@@ -237,6 +249,14 @@ export async function approveApplication(applicationId: string) {
     // Retrieve the seller application to get the userId
     const sellerApplication = await db.sellerApplication.findUnique({
       where: { id: applicationId },
+      include: {
+        user: {
+          select: {
+            email: true,
+            username: true
+          }
+        }
+      }
     });
 
     if (!sellerApplication) {
@@ -245,7 +265,7 @@ export async function approveApplication(applicationId: string) {
 
     const { userId } = sellerApplication;
 
-    // Update all three in a transaction to ensure consistency
+    // Update application and seller in a transaction to ensure consistency
     await db.$transaction(async (tx) => {
       // Approve the seller application
       await tx.sellerApplication.update({
@@ -253,46 +273,67 @@ export async function approveApplication(applicationId: string) {
         data: { applicationApproved: true },
       });
 
-      // Check if seller exists
-      const existingSeller = await tx.seller.findUnique({
+      // Update the existing seller document to mark application as accepted
+      await tx.seller.update({
         where: { userId },
+        data: { applicationAccepted: true },
       });
 
-      if (existingSeller) {
-        // Update existing seller
-        await tx.seller.update({
-          where: { userId },
-          data: { applicationAccepted: true },
-        });
-      } else {
-        // Create new seller
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 8);
-        const tempShopName = `Temporary Shop ${timestamp}-${randomString}`;
-        const tempShopSlug = `temporary-shop-${timestamp}-${randomString}`;
+      // Grant full seller permissions TODO: Don't add ability for products until after shipping information completion
+      const sellerPermissions = [
+        'ACCESS_SELLER_DASHBOARD',
+        'MANAGE_PRODUCTS',
+        'CREATE_PRODUCTS',
+        'EDIT_PRODUCTS',
+        'DELETE_PRODUCTS',
+        'VIEW_ORDERS',
+        'PROCESS_ORDERS',
+        'MANAGE_MESSAGES',
+        'MANAGE_REVIEWS',
+        'MANAGE_SELLER_SETTINGS',
+      ].map(permission => ({
+        permission,
+        grantedAt: new Date(),
+        grantedBy: currentUserData.id,
+        reason: 'Application approved by admin',
+        expiresAt: null,
+      }));
 
-        await tx.seller.create({
-          data: {
-            shopName: tempShopName,
-            shopNameSlug: tempShopSlug,
-            applicationAccepted: true,
-            // Required encrypted fields with temporary values
-            encryptedBusinessName: "Temporary Business Name",
-            businessNameIV: "temp-iv",
-            businessNameSalt: "temp-salt",
-            encryptedTaxId: "Temporary Tax ID",
-            taxIdIV: "temp-iv",
-            taxIdSalt: "temp-salt",
-            taxCountry: "US", // Default to US, can be updated later
-            user: {
-              connect: {
-                id: userId
-              }
-            }
-          },
+      // Get current user permissions and merge
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { permissions: true },
+      });
+
+      if (user) {
+        const currentPermissions = user.permissions as any[];
+        const existingPermissionValues = currentPermissions.map(p => p.permission);
+        const uniqueNewPermissions = sellerPermissions.filter(p => !existingPermissionValues.includes(p.permission));
+        const updatedPermissions = [...currentPermissions, ...uniqueNewPermissions];
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { permissions: updatedPermissions },
         });
       }
     });
+
+    // Send approval email to seller (outside of transaction to avoid blocking)
+    try {
+      if (sellerApplication.user.email) {
+        await sendSellerApplicationApprovedEmail(
+          sellerApplication.user.email,
+          sellerApplication.user.username || 'Seller'
+        );
+        console.log(`Approval email sent to seller: ${sellerApplication.user.email}`);
+      }
+    } catch (emailError) {
+      console.error("Error sending approval email:", emailError);
+      // Don't fail the approval process if email fails
+    }
+
+    // Update seller's session to include new permissions
+    await updateUserSession(userId);
 
     return { success: true };
   } catch (error) {
@@ -301,7 +342,7 @@ export async function approveApplication(applicationId: string) {
   }
 }
 
-export async function rejectApplication(applicationId: string) {
+export async function rejectApplication(applicationId: string, rejectionReason?: string) {
   try {
     const currentUserData = await currentUser();
     
@@ -316,9 +357,79 @@ export async function rejectApplication(applicationId: string) {
       throw new Error("Forbidden: Insufficient permissions");
     }
 
-    await db.sellerApplication.delete({
+    // Get the seller application to find the userId
+    const sellerApplication = await db.sellerApplication.findUnique({
       where: { id: applicationId },
+      include: {
+        user: {
+          select: {
+            email: true,
+            username: true
+          }
+        }
+      }
     });
+
+    if (!sellerApplication) {
+      throw new Error("Seller application not found.");
+    }
+
+    const { userId } = sellerApplication;
+
+    // Delete application and seller document in a transaction
+    await db.$transaction(async (tx) => {
+      // Delete the seller application
+      await tx.sellerApplication.delete({
+        where: { id: applicationId },
+      });
+
+      // Delete the seller document since application was rejected
+      await tx.seller.delete({
+        where: { userId },
+      });
+
+      // Revert user role back to MEMBER and restore member permissions
+      const memberPermissions = [
+        'ACCESS_MEMBER_DASHBOARD',
+        'VIEW_USERS',
+        'MANAGE_MESSAGES',
+        'MANAGE_REVIEWS',
+        'MANAGE_MEMBER_SETTINGS',
+      ].map(permission => ({
+        permission,
+        grantedAt: new Date(),
+        grantedBy: currentUserData.id,
+        reason: 'Application rejected - restored member permissions',
+        expiresAt: null,
+      }));
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { 
+          role: ROLES.MEMBER,
+          permissions: memberPermissions,
+        },
+      });
+    });
+
+    // Send rejection email to seller (outside of transaction to avoid blocking)
+    try {
+      if (sellerApplication.user.email) {
+        await sendSellerApplicationRejectedEmail(
+          sellerApplication.user.email,
+          sellerApplication.user.username || 'Seller',
+          rejectionReason
+        );
+        console.log(`Rejection email sent to seller: ${sellerApplication.user.email}`);
+      }
+    } catch (emailError) {
+      console.error("Error sending rejection email:", emailError);
+      // Don't fail the rejection process if email fails
+    }
+
+    // Update user's session to reflect role change
+    await updateUserSession(userId);
+
     return { success: true };
   } catch (error) {
     console.error("Error rejecting application:", error);
@@ -477,6 +588,9 @@ export async function addUserPermission(userId: string, permission: string, reas
       data: { permissions: updatedPermissions },
     });
 
+    // Update the user session to reflect new permissions
+    await updateUserSession(userId);
+
     return { success: true, message: "Permission added successfully" };
   } catch (error) {
     console.error("Error adding user permission:", error);
@@ -516,6 +630,9 @@ export async function removeUserPermission(userId: string, permission: string) {
       where: { id: userId },
       data: { permissions: updatedPermissions },
     });
+
+    // Update the user session to reflect removed permissions
+    await updateUserSession(userId);
 
     return { success: true, message: "Permission removed successfully" };
   } catch (error) {
@@ -757,5 +874,262 @@ export async function getRecentActivity() {
   } catch (error) {
     console.error("Error fetching recent activity:", error);
     throw error;
+  }
+}
+
+// Admin management functions
+export async function createAdmin(userId: string, role: string = "GENERAL_ADMIN") {
+  try {
+    const admin = await db.admin.create({
+      data: {
+        userId,
+        role,
+        notificationPreferences: [
+          {
+            type: "SELLER_APPLICATIONS",
+            email: true,
+            inApp: true
+          },
+          {
+            type: "DISPUTES",
+            email: true,
+            inApp: true
+          },
+          {
+            type: "SYSTEM_ALERTS",
+            email: true,
+            inApp: true
+          }
+        ],
+        tasks: [] // Initialize with empty tasks array
+      }
+    });
+
+    return { success: true, admin };
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    return { success: false, error: "Failed to create admin" };
+  }
+}
+
+export async function getAdminByUserId(userId: string) {
+  try {
+    const admin = await db.admin.findUnique({
+      where: { userId },
+      include: { user: true }
+    });
+    return { success: true, admin };
+  } catch (error) {
+    console.error("Error fetching admin:", error);
+    return { success: false, error: "Failed to fetch admin" };
+  }
+}
+
+export async function updateAdminRole(userId: string, newRole: string) {
+  try {
+    const admin = await db.admin.update({
+      where: { userId },
+      data: { role: newRole }
+    });
+    return { success: true, admin };
+  } catch (error) {
+    console.error("Error updating admin role:", error);
+    return { success: false, error: "Failed to update admin role" };
+  }
+}
+
+export async function deactivateAdmin(userId: string) {
+  try {
+    const admin = await db.admin.update({
+      where: { userId },
+      data: { isActive: false }
+    });
+    return { success: true, admin };
+  } catch (error) {
+    console.error("Error deactivating admin:", error);
+    return { success: false, error: "Failed to deactivate admin" };
+  }
+}
+
+export async function updateAdminNotificationPreferences(userId: string, preferences: any[]) {
+  try {
+    const admin = await db.admin.update({
+      where: { userId },
+      data: { notificationPreferences: preferences }
+    });
+    return { success: true, admin };
+  } catch (error) {
+    console.error("Error updating notification preferences:", error);
+    return { success: false, error: "Failed to update notification preferences" };
+  }
+}
+
+export async function addAdminTask(userId: string, task: any) {
+  try {
+    const admin = await db.admin.findUnique({
+      where: { userId }
+    });
+
+    if (!admin) {
+      return { success: false, error: "Admin not found" };
+    }
+
+    const currentTasks = admin.tasks as any[] || [];
+    const newTask = {
+      id: generateTaskId(),
+      ...task,
+      createdAt: new Date().toISOString(),
+      status: task.status || "PENDING"
+    };
+
+    const updatedTasks = [...currentTasks, newTask];
+
+    const updatedAdmin = await db.admin.update({
+      where: { userId },
+      data: { tasks: updatedTasks }
+    });
+
+    return { success: true, admin: updatedAdmin };
+  } catch (error) {
+    console.error("Error adding admin task:", error);
+    return { success: false, error: "Failed to add task" };
+  }
+}
+
+export async function updateAdminTask(userId: string, taskId: string, updates: any) {
+  try {
+    const admin = await db.admin.findUnique({
+      where: { userId }
+    });
+
+    if (!admin) {
+      return { success: false, error: "Admin not found" };
+    }
+
+    const currentTasks = admin.tasks as any[] || [];
+    const taskIndex = currentTasks.findIndex(task => task.id === taskId);
+
+    if (taskIndex === -1) {
+      return { success: false, error: "Task not found" };
+    }
+
+    const updatedTasks = [...currentTasks];
+    updatedTasks[taskIndex] = {
+      ...updatedTasks[taskIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const updatedAdmin = await db.admin.update({
+      where: { userId },
+      data: { tasks: updatedTasks }
+    });
+
+    return { success: true, admin: updatedAdmin };
+  } catch (error) {
+    console.error("Error updating admin task:", error);
+    return { success: false, error: "Failed to update task" };
+  }
+}
+
+export async function removeAdminTask(userId: string, taskId: string) {
+  try {
+    const admin = await db.admin.findUnique({
+      where: { userId }
+    });
+
+    if (!admin) {
+      return { success: false, error: "Admin not found" };
+    }
+
+    const currentTasks = admin.tasks as any[] || [];
+    const updatedTasks = currentTasks.filter(task => task.id !== taskId);
+
+    const updatedAdmin = await db.admin.update({
+      where: { userId },
+      data: { tasks: updatedTasks }
+    });
+
+    return { success: true, admin: updatedAdmin };
+  } catch (error) {
+    console.error("Error removing admin task:", error);
+    return { success: false, error: "Failed to remove task" };
+  }
+}
+
+// Helper function to generate unique task IDs
+function generateTaskId(): string {
+  return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Function to get admins who should receive email notifications for seller applications
+export async function getAdminsForSellerApplicationNotification() {
+  try {
+    const admins = await db.admin.findMany({
+      where: {
+        isActive: true,
+        user: {
+          status: 'ACTIVE'
+        },
+        OR: [
+          { role: ADMIN_ROLES.SUPER_ADMIN },
+          { role: ADMIN_ROLES.SELLER_MANAGER }
+        ]
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            username: true
+          }
+        }
+      }
+    });
+
+    // Filter admins who have the specific notification preference
+    const filteredAdmins = admins.filter(admin => {
+      if (!admin.notificationPreferences) return false;
+      
+      const preferences = admin.notificationPreferences as string[];
+      return preferences.includes(ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED);
+    });
+
+    return filteredAdmins;
+  } catch (error) {
+    console.error("Error fetching admins for seller application notification:", error);
+    return [];
+  }
+}
+
+// Helper function to set up admin notification preferences for seller applications TODO: Possibly remove at some point
+export async function setupAdminSellerApplicationNotifications(userId: string) {
+  try {
+    const admin = await db.admin.findUnique({
+      where: { userId }
+    });
+
+    if (!admin) {
+      throw new Error("Admin not found");
+    }
+
+    // Get current preferences or initialize empty array
+    const currentPreferences = admin.notificationPreferences as string[] || [];
+    
+    // Add seller application notification if not already present
+    if (!currentPreferences.includes(ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED)) {
+      const updatedPreferences = [...currentPreferences, ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED];
+      
+      await db.admin.update({
+        where: { userId },
+        data: {
+          notificationPreferences: updatedPreferences
+        }
+      });
+    }
+
+    return { success: "Seller application notifications enabled" };
+  } catch (error) {
+    console.error("Error setting up admin seller application notifications:", error);
+    return { error: "Failed to set up notifications" };
   }
 }

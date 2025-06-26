@@ -30,6 +30,8 @@ import Link from "next/link";
 import { getAllUsers } from "@/actions/adminActions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboardUsers() {
   const users = await getAllUsers();
 
