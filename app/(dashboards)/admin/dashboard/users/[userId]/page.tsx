@@ -21,6 +21,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
 import { PermissionManager } from "@/components/admin/PermissionManager";
+import { RoleManager } from "@/components/admin/RoleManager";
+import { currentUser } from "@/lib/auth";
 
 interface UserDetailsPageProps {
   params: {
@@ -31,10 +33,14 @@ interface UserDetailsPageProps {
 export default async function UserDetailsPage({ params }: UserDetailsPageProps) {
   try {
     const user = await getUserPermissions(params.userId);
+    const currentUserData = await currentUser();
 
     if (!user) {
       notFound();
     }
+
+    // Check if current user has permission to manage roles
+    const canManageRoles = currentUserData?.permissions?.includes('MANAGE_ROLES');
 
     const formatDate = (date: Date | string | any) => {
       try {
@@ -173,6 +179,21 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
           {/* Permission Management Card */}
           <PermissionManager userId={user.id} userPermissions={userPermissions} />
         </div>
+
+        {/* Role Management Card - Only show if user has permission */}
+        {canManageRoles && (
+          <div className="grid gap-6 md:grid-cols-2">
+            <RoleManager 
+              userId={user.id} 
+              currentRole={user.role} 
+              username={user.username || undefined}
+              currentUser={currentUserData ? { 
+                email: currentUserData.email as string | undefined, 
+                id: currentUserData.id 
+              } : undefined}
+            />
+          </div>
+        )}
 
         {/* Seller Information Card - Only show if user has seller profile */}
         {user.seller && (

@@ -588,8 +588,23 @@ export async function addUserPermission(userId: string, permission: string, reas
       data: { permissions: updatedPermissions },
     });
 
-    // Update the user session to reflect new permissions
+    // Update user's session to include new permissions
     await updateUserSession(userId);
+
+    // Send real-time session update notification
+    try {
+      const emitSessionUpdate = (global as any).emitSessionUpdate;
+      if (typeof emitSessionUpdate === "function") {
+        emitSessionUpdate(
+          userId, 
+          currentUserData.email || currentUserData.id || "Unknown Admin",
+          `Permission "${permission}" added: ${reason || "Granted by admin"}`
+        );
+      }
+    } catch (socketError) {
+      console.error("Error sending session update notification:", socketError);
+      // Don't fail the permission update if socket notification fails
+    }
 
     return { success: true, message: "Permission added successfully" };
   } catch (error) {
@@ -631,8 +646,23 @@ export async function removeUserPermission(userId: string, permission: string) {
       data: { permissions: updatedPermissions },
     });
 
-    // Update the user session to reflect removed permissions
+    // Update user's session to reflect removed permissions
     await updateUserSession(userId);
+
+    // Send real-time session update notification
+    try {
+      const emitSessionUpdate = (global as any).emitSessionUpdate;
+      if (typeof emitSessionUpdate === "function") {
+        emitSessionUpdate(
+          userId, 
+          currentUserData.email || currentUserData.id || "Unknown Admin",
+          `Permission "${permission}" removed by admin`
+        );
+      }
+    } catch (socketError) {
+      console.error("Error sending session update notification:", socketError);
+      // Don't fail the permission update if socket notification fails
+    }
 
     return { success: true, message: "Permission removed successfully" };
   } catch (error) {
@@ -1131,5 +1161,74 @@ export async function setupAdminSellerApplicationNotifications(userId: string) {
   } catch (error) {
     console.error("Error setting up admin seller application notifications:", error);
     return { error: "Failed to set up notifications" };
+  }
+}
+
+export async function updateUserRole(
+  userId: string,
+  newRole: string,
+  reason: string,
+  updatedBy: string
+) {
+  try {
+    const currentUserData = await currentUser();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has MANAGE_ROLES permission
+    const hasManageRoles = currentUserData.permissions?.includes('MANAGE_ROLES');
+    
+    if (!hasManageRoles) {
+      throw new Error("Forbidden: Insufficient permissions. MANAGE_ROLES permission required.");
+    }
+
+    // Validate the new role
+    const validRoles = ["ADMIN", "MEMBER", "SELLER"];
+    if (!validRoles.includes(newRole)) {
+      return { error: "Invalid role" };
+    }
+
+    // Update the user's role
+    const updatedUser = await db.user.update({
+      where: { id: userId },
+      data: { role: newRole },
+    });
+
+    // Log the role change (using console for now)
+    console.log(`Role change logged: User ${updatedBy} changed user ${userId} role to ${newRole}. Reason: ${reason}`);
+
+    // Update user session to reflect new role
+    await updateUserSession(userId);
+
+    // Emit WebSocket event for real-time session update
+    try {
+      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/socket/session-update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          updatedBy,
+          reason: `Role changed to ${newRole}: ${reason}`,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("WebSocket session update sent successfully");
+      } else {
+        console.log("WebSocket session update failed, but role was updated");
+      }
+    } catch (error) {
+      console.log("WebSocket session update error:", error);
+      // Continue anyway - the role was still updated successfully
+    }
+
+    return { success: true, user: updatedUser };
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    return { error: error instanceof Error ? error.message : "Failed to update user role" };
   }
 }

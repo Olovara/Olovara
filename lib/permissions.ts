@@ -22,10 +22,16 @@ export async function hasPermission(userId: string, permission: Permission): Pro
     const permissionValue = getPermissionValue(permission);
 
     const hasDirectPermission = userPermissions.some(
-      (p) =>
-        isUserPermission(p) &&
-        p.permission === permissionValue &&
-        (!p.expiresAt || new Date(p.expiresAt) > new Date())
+      (p) => {
+        if (!isUserPermission(p)) return false;
+        
+        // Convert string dates back to Date objects
+        const expiresAt = p.expiresAt ? new Date(p.expiresAt) : null;
+        const grantedAt = p.grantedAt ? new Date(p.grantedAt) : new Date();
+        
+        return p.permission === permissionValue &&
+               (!expiresAt || expiresAt > new Date());
+      }
     );
 
     if (hasDirectPermission) return true;
@@ -50,8 +56,18 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
 
     const userPermissions = user.permissions as unknown as UserPermission[];
 
+    // Convert string dates back to Date objects and filter valid permissions
     const directPermissions = userPermissions
-      .filter(p => isUserPermission(p) && (!p.expiresAt || new Date(p.expiresAt) > new Date()))
+      .filter(p => {
+        if (!isUserPermission(p)) return false;
+        
+        // Convert string dates back to Date objects
+        const expiresAt = p.expiresAt ? new Date(p.expiresAt) : null;
+        const grantedAt = p.grantedAt ? new Date(p.grantedAt) : new Date();
+        
+        // Check if permission is still valid (not expired)
+        return !expiresAt || expiresAt > new Date();
+      })
       .map(p => p.permission);
 
     const rolePermissions = ROLE_PERMISSIONS[user.role as Role] || [];
@@ -118,5 +134,54 @@ export async function revokePermission(userId: string, permission: Permission): 
   } catch (error) {
     console.error("Error revoking permission:", error);
     return false;
+  }
+}
+
+// Utility function to clean up permissions with string dates
+export async function cleanupPermissionsWithStringDates(): Promise<void> {
+  try {
+    const users = await db.user.findMany({
+      select: { id: true, permissions: true },
+    });
+
+    for (const user of users) {
+      if (!user.permissions || !Array.isArray(user.permissions)) continue;
+
+      const permissions = user.permissions as any[];
+      let hasChanges = false;
+
+      const cleanedPermissions = permissions.map(permission => {
+        if (typeof permission === 'object' && permission !== null) {
+          const cleaned = { ...permission };
+          
+          // Convert string grantedAt to Date
+          if (typeof permission.grantedAt === 'string') {
+            cleaned.grantedAt = new Date(permission.grantedAt);
+            hasChanges = true;
+          }
+          
+          // Convert string expiresAt to Date
+          if (typeof permission.expiresAt === 'string') {
+            cleaned.expiresAt = new Date(permission.expiresAt);
+            hasChanges = true;
+          }
+          
+          return cleaned;
+        }
+        return permission;
+      });
+
+      if (hasChanges) {
+        await db.user.update({
+          where: { id: user.id },
+          data: { permissions: cleanedPermissions as any },
+        });
+        console.log(`Cleaned up permissions for user ${user.id}`);
+      }
+    }
+    
+    console.log('Permission cleanup completed');
+  } catch (error) {
+    console.error('Error cleaning up permissions:', error);
   }
 } 

@@ -93,7 +93,7 @@ export function PermissionManager({ userId, userPermissions }: PermissionManager
       const result = await response.json();
       
       if (response.ok && result.success) {
-        toast.success(result.message);
+        toast.success(`${result.message}. User's session has been updated.`);
         setSelectedPermission("");
         setReason("");
         // Refresh the page to show updated permissions
@@ -118,7 +118,7 @@ export function PermissionManager({ userId, userPermissions }: PermissionManager
       const result = await response.json();
       
       if (response.ok && result.success) {
-        toast.success(result.message);
+        toast.success(`${result.message}. User's session has been updated.`);
         // Refresh the page to show updated permissions
         window.location.reload();
       } else {

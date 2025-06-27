@@ -80,17 +80,12 @@ export const PERMISSIONS = {
   DELETE_USERS: { value: 'DELETE_USERS', group: 'User Management', label: 'Delete Users' },
   SUSPEND_USERS: { value: 'SUSPEND_USERS', group: 'User Management', label: 'Suspend Users' },
   MANAGE_PERMISSIONS: { value: 'MANAGE_PERMISSIONS', group: 'User Management', label: 'Manage Permissions' },
+  MANAGE_ROLES: { value: 'MANAGE_ROLES', group: 'User Management', label: 'Manage User Roles' },
 
   // Dashboard Access
   ACCESS_ADMIN_DASHBOARD: { value: 'ACCESS_ADMIN_DASHBOARD', group: 'Dashboard Access', label: 'Access Admin Dashboard' },
   ACCESS_SELLER_DASHBOARD: { value: 'ACCESS_SELLER_DASHBOARD', group: 'Dashboard Access', label: 'Access Seller Dashboard' },
   ACCESS_MEMBER_DASHBOARD: { value: 'ACCESS_MEMBER_DASHBOARD', group: 'Dashboard Access', label: 'Access Member Dashboard' },
-  
-  // Seller Onboarding Permissions
-  ACCESS_SELLER_ONBOARDING: { value: 'ACCESS_SELLER_ONBOARDING', group: 'Seller Onboarding', label: 'Access Seller Onboarding' },
-  COMPLETE_SELLER_PROFILE: { value: 'COMPLETE_SELLER_PROFILE', group: 'Seller Onboarding', label: 'Complete Seller Profile' },
-  CONNECT_STRIPE_ACCOUNT: { value: 'CONNECT_STRIPE_ACCOUNT', group: 'Seller Onboarding', label: 'Connect Stripe Account' },
-  CREATE_SHIPPING_PROFILE: { value: 'CREATE_SHIPPING_PROFILE', group: 'Seller Onboarding', label: 'Create Shipping Profile' },
   
   // Content Management
   MANAGE_CONTENT: { value: 'MANAGE_CONTENT', group: 'Content Management', label: 'Manage Content' },

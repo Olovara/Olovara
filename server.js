@@ -35,8 +35,29 @@ const getUser = (userId) => {
   return onlineUsers.find((user) => user.userId === userId);
 };
 
+// Function to emit session update to a specific user
+const emitSessionUpdate = (userId, updatedBy, reason) => {
+  const userSocket = getUser(userId);
+  if (userSocket) {
+    io.to(userSocket.socketId).emit("sessionUpdated", {
+      message: "Your session has been updated. Please refresh to see changes.",
+      updatedBy,
+      reason,
+      timestamp: new Date().toISOString()
+    });
+    console.log(`Session update sent to user ${userId}`);
+    return true;
+  } else {
+    console.log(`User ${userId} is not currently online`);
+    return false;
+  }
+};
+
+// Make the function available globally for other parts of the app
+global.emitSessionUpdate = emitSessionUpdate;
+
 app.prepare().then(() => {
-  const httpServer = createServer(handler);
+  const httpServer = createServer();
   
   // Configure Socket.IO with CORS and secure options
   const io = new Server(httpServer, {
@@ -51,6 +72,7 @@ app.prepare().then(() => {
     allowEIO3: true
   });
 
+  // Handle Socket.IO connections
   io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
 
@@ -145,11 +167,48 @@ app.prepare().then(() => {
       }
     });
 
+    // Handle session updates for role/permission changes
+    socket.on("sessionUpdate", async ({ userId, updatedBy, reason }) => {
+      console.log("Session update requested:", { userId, updatedBy, reason });
+      
+      try {
+        // Find the user's socket connection
+        const userSocket = onlineUsers.find(u => u.userId === userId);
+        
+        if (userSocket) {
+          // Send session update notification to the specific user
+          io.to(userSocket.socketId).emit("sessionUpdated", {
+            message: "Your session has been updated. Please refresh to see changes.",
+            updatedBy,
+            reason,
+            timestamp: new Date().toISOString()
+          });
+          
+          console.log(`Session update sent to user ${userId}`);
+        } else {
+          console.log(`User ${userId} is not currently online`);
+        }
+      } catch (error) {
+        console.error("Error sending session update:", error);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
       removeUser(socket.id);
       io.emit("getOnlineUsers", onlineUsers);
     });
+  });
+
+  // Handle all other requests with Next.js
+  httpServer.on('request', async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      console.error('Error handling request:', error);
+      res.statusCode = 500;
+      res.end('Internal Server Error');
+    }
   });
 
   httpServer
@@ -159,5 +218,6 @@ app.prepare().then(() => {
     })
     .listen(port, () => {
       console.log(`> Ready on ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${hostname}:${port}`);
+      console.log(`> Socket.IO server is running on the same port`);
     });
 });
