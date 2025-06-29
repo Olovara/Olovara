@@ -51,6 +51,7 @@ export function UserNav({ userInfo }: iAppProps) {
 
   const canManageProducts = permissions.includes(PERMISSIONS.MANAGE_PRODUCTS.value);
   const canViewOrders = permissions.includes(PERMISSIONS.VIEW_ORDERS.value);
+  const canManageOrders = permissions.includes(PERMISSIONS.MANAGE_ORDERS.value);
 
   let dashboardRoute: string | null = null;
   if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
@@ -71,6 +72,7 @@ export function UserNav({ userInfo }: iAppProps) {
   }
 
   const isSeller = canAccessSellerDashboard;
+  const isAdmin = userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN";
 
   return (
     <DropdownMenu>
@@ -104,20 +106,34 @@ export function UserNav({ userInfo }: iAppProps) {
               <ProtectedLink href={settingsRoute} className="w-full">Settings</ProtectedLink>
             </DropdownMenuItem>
           )}
-          {canManageProducts && (
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
-              </DropdownMenuItem>
+          
+          {/* Admin-specific menu items */}
+          {isAdmin && canManageProducts && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/admin/dashboard/products" className="w-full">All Products</ProtectedLink>
+            </DropdownMenuItem>
           )}
-          {isSeller && canViewOrders && (
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
-              </DropdownMenuItem>
+          {isAdmin && canManageOrders && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/admin/dashboard/orders" className="w-full">All Orders</ProtectedLink>
+            </DropdownMenuItem>
           )}
-          {isSeller && (
-              <DropdownMenuItem>
-                <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
-              </DropdownMenuItem>
+          
+          {/* Seller-specific menu items (only show for sellers, not admins) */}
+          {isSeller && !isAdmin && canManageProducts && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
+            </DropdownMenuItem>
+          )}
+          {isSeller && !isAdmin && canViewOrders && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
+            </DropdownMenuItem>
+          )}
+          {isSeller && !isAdmin && (
+            <DropdownMenuItem>
+              <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
+            </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
 

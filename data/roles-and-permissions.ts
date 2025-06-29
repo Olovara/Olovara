@@ -215,6 +215,30 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
   ],
 };
 
+// Initial seller permissions (when application is submitted, before onboarding completion)
+export const INITIAL_SELLER_PERMISSIONS = [
+  'ACCESS_SELLER_DASHBOARD',
+  'VIEW_ORDERS',
+  'PROCESS_ORDERS',
+  'MANAGE_MESSAGES',
+  'MANAGE_REVIEWS',
+  'MANAGE_SELLER_SETTINGS',
+];
+
+// Full seller permissions (after onboarding completion, including product permissions)
+export const FULL_SELLER_PERMISSIONS = [
+  'ACCESS_SELLER_DASHBOARD',
+  'MANAGE_PRODUCTS',
+  'CREATE_PRODUCTS',
+  'EDIT_PRODUCTS',
+  'DELETE_PRODUCTS',
+  'VIEW_ORDERS',
+  'PROCESS_ORDERS',
+  'MANAGE_MESSAGES',
+  'MANAGE_REVIEWS',
+  'MANAGE_SELLER_SETTINGS',
+];
+
 // Route permissions mapping
 export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/admin": ['ACCESS_ADMIN_DASHBOARD'],

@@ -2,7 +2,7 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, FileQuestion, User } from "lucide-react";
+import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -69,10 +69,40 @@ export default function AdminDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/shop-dashboard/messages",
+                    pathname === "/admin/dashboard/orders",
                 }
               )}
-              href="/shop-dashboard/messages"
+              href="/admin/dashboard/orders"
+            >
+              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                <ShoppingCart className="h-3 w-3" />
+              </div>
+              All Orders
+            </Link>
+            <Link
+              className={clsx(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                {
+                  "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
+                    pathname === "/admin/dashboard/products",
+                }
+              )}
+              href="/admin/dashboard/products"
+            >
+              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                <Package className="h-3 w-3" />
+              </div>
+              All Products
+            </Link>
+            <Link
+              className={clsx(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                {
+                  "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
+                    pathname === "/admin/dashboard/messages",
+                }
+              )}
+              href="/admin/dashboard/messages"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
                 <Mail className="h-3 w-3" />
@@ -85,10 +115,10 @@ export default function AdminDashboardSideNavbar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
                   "flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-900  transition-all hover:text-gray-900 dark:bg-gray-800 dark:text-gray-50 dark:hover:text-gray-50":
-                    pathname === "/shop-dashboard/settings",
+                    pathname === "/admin/dashboard/settings",
                 }
               )}
-              href="/shop-dashboard/settings"
+              href="/admin/dashboard/settings"
               id="onboarding"
             >
               <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">

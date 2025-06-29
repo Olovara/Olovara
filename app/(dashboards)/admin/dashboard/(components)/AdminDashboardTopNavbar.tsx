@@ -1,5 +1,3 @@
-"use client";
-
 import { ReactNode } from "react";
 import {
   SheetContent,
@@ -11,17 +9,24 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, FileQuestion, User } from "lucide-react";
+import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { UserNav } from "@/components/UserNav";
+import { auth } from "@/auth";
+import { getUserInfoForNav } from "@/actions/userActions";
 
-export default function AdminDashboardTopNavbar({
+export default async function AdminDashboardTopNavbar({
   children,
 }: {
   children: ReactNode;
 }) {
+  const session = await auth(); // Fetch user session
+  const userInfo = session?.user ? await getUserInfoForNav() : null;
+
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 lg:h-[55px] items-center gap-4 border-b px-6">
+      <header className="flex h-14 lg:h-[55px] items-center gap-4 border-b px-6 justify-between">
+        {/* Left Side - Menu Button */}
         <Dialog>
           <SheetTrigger className="min-[1024px]:hidden p-2 transition">
             <HamburgerMenuIcon />
@@ -59,6 +64,22 @@ export default function AdminDashboardTopNavbar({
                 </Link>
               </DialogClose>
               <DialogClose asChild>
+                <Link href="/admin/dashboard/orders">
+                  <Button variant="outline" className="w-full">
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    All Orders
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/products">
+                  <Button variant="outline" className="w-full">
+                    <Package className="mr-2 h-4 w-4" />
+                    All Products
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
                 <Link href="/admin/dashboard/messages">
                   <Button variant="outline" className="w-full">
                     <Mail className="mr-2 h-4 w-4" />
@@ -78,6 +99,11 @@ export default function AdminDashboardTopNavbar({
             </div>
           </SheetContent>
         </Dialog>
+
+        {/* Right Side - UserNav */}
+        <div className="ml-auto"> {/* Push UserNav to the right */}
+          {userInfo ? <UserNav userInfo={userInfo} /> : <p>Loading...</p>}
+        </div>
       </header>
       {children}
     </div>

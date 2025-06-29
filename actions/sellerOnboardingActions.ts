@@ -3,6 +3,63 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { updateUserSession } from "@/lib/session-update";
+import { FULL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
+
+// Action to grant full seller permissions (including product permissions)
+export async function grantFullSellerPermissions() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const userId = session.user.id;
+
+    // Get current user permissions
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { permissions: true },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const existingPermissions = user.permissions as any[] || [];
+    
+    // Create permission objects for full seller permissions
+    const newPermissions = FULL_SELLER_PERMISSIONS.map(permission => ({
+      permission,
+      grantedAt: new Date(),
+      grantedBy: 'system',
+      reason: 'Full seller permissions granted upon onboarding completion',
+      expiresAt: null,
+    }));
+
+    // Combine existing and new permissions, avoiding duplicates
+    const updatedPermissions = [...existingPermissions];
+    newPermissions.forEach(newPerm => {
+      const exists = updatedPermissions.some(existing => existing.permission === newPerm.permission);
+      if (!exists) {
+        updatedPermissions.push(newPerm);
+      }
+    });
+
+    // Update user with new permissions
+    await db.user.update({
+      where: { id: userId },
+      data: { permissions: updatedPermissions },
+    });
+
+    // Update session to reflect changes
+    await updateUserSession(userId);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error granting full seller permissions:", error);
+    return { success: false, error: "Failed to grant full seller permissions" };
+  }
+}
 
 // Action to mark shop profile as complete
 export async function markShopProfileComplete() {
@@ -130,6 +187,9 @@ export async function markFullyActivated() {
       data: { isFullyActivated: true },
     });
 
+    // Grant full seller permissions (including product permissions)
+    await grantFullSellerPermissions();
+
     // Update session to reflect changes
     await updateUserSession(userId);
 
@@ -205,6 +265,11 @@ export async function checkAndUpdateOnboardingStatus() {
         where: { userId },
         data: updates,
       });
+
+      // If seller is now fully activated, grant full permissions
+      if (updates.isFullyActivated && fullyActivated) {
+        await grantFullSellerPermissions();
+      }
 
       // Update session to reflect changes
       await updateUserSession(userId);

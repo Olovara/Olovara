@@ -4,7 +4,7 @@ import * as z from "zod";
 import { db } from "@/lib/db";
 import { SellerApplicationSchema } from "@/schemas/SellerApplicationSchema";
 import { auth } from "@/auth";
-import { ROLES } from "@/data/roles-and-permissions";
+import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { updateUserSession } from "@/lib/session-update";
@@ -35,6 +35,9 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       const randomString = Math.random().toString(36).substring(2, 8);
       const tempShopName = `Temporary Shop ${timestamp}-${randomString}`;
       const tempShopSlug = `temporary-shop-${timestamp}-${randomString}`;
+      
+      // Generate a unique temporary connectedAccountId to avoid constraint issues
+      const uniqueConnectedAccountId = `temp_${timestamp}_${randomString}`;
 
       await tx.seller.create({
         data: {
@@ -52,6 +55,8 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           taxIdIV: "temp-iv",
           taxIdSalt: "temp-salt",
           taxCountry: "US", // Default to US, can be updated later
+          // Use unique temporary connectedAccountId to avoid constraint issues
+          connectedAccountId: uniqueConnectedAccountId,
           user: {
             connect: {
               id: userId
@@ -67,6 +72,40 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           role: ROLES.SELLER,
         },
       });
+
+      // Grant initial seller permissions (without product permissions)
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { permissions: true },
+      });
+
+      if (user) {
+        const existingPermissions = user.permissions as any[] || [];
+        
+        // Create permission objects for initial seller permissions
+        const newPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
+          permission,
+          grantedAt: new Date(),
+          grantedBy: 'system',
+          reason: 'Initial seller permissions granted upon application submission',
+          expiresAt: null,
+        }));
+
+        // Combine existing and new permissions, avoiding duplicates
+        const updatedPermissions = [...existingPermissions];
+        newPermissions.forEach(newPerm => {
+          const exists = updatedPermissions.some(existing => existing.permission === newPerm.permission);
+          if (!exists) {
+            updatedPermissions.push(newPerm);
+          }
+        });
+
+        // Update user with new permissions
+        await tx.user.update({
+          where: { id: userId },
+          data: { permissions: updatedPermissions },
+        });
+      }
 
       return application;
     });

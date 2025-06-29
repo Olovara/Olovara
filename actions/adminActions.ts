@@ -11,7 +11,8 @@ import {
   ADMIN_TASK_TYPES,
   ADMIN_TASK_STATUS,
   ADMIN_TASK_PRIORITY,
-  ADMIN_NOTIFICATION_TYPES
+  ADMIN_NOTIFICATION_TYPES,
+  INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
 import { updateUserSession } from "@/lib/session-update";
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
@@ -234,7 +235,7 @@ export async function approveApplication(applicationId: string) {
   try {
     // Verify that the current user has APPROVE_SELLERS permission
     const currentUserData = await currentUser();
-    
+
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
@@ -279,23 +280,12 @@ export async function approveApplication(applicationId: string) {
         data: { applicationAccepted: true },
       });
 
-      // Grant full seller permissions TODO: Don't add ability for products until after shipping information completion
-      const sellerPermissions = [
-        'ACCESS_SELLER_DASHBOARD',
-        'MANAGE_PRODUCTS',
-        'CREATE_PRODUCTS',
-        'EDIT_PRODUCTS',
-        'DELETE_PRODUCTS',
-        'VIEW_ORDERS',
-        'PROCESS_ORDERS',
-        'MANAGE_MESSAGES',
-        'MANAGE_REVIEWS',
-        'MANAGE_SELLER_SETTINGS',
-      ].map(permission => ({
+      // Grant initial seller permissions (without product permissions)
+      const sellerPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
         permission,
         grantedAt: new Date(),
         grantedBy: currentUserData.id,
-        reason: 'Application approved by admin',
+        reason: 'Application approved by admin - initial seller permissions',
         expiresAt: null,
       }));
 
