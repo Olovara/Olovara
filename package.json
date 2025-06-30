@@ -2,6 +2,10 @@
   "name": "yarnnu",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "yarn": ">=1.22.0"
+  },
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
