@@ -1,7 +1,9 @@
 import SellerDashboardInfo from "./SellerDashboardInfo";
 import SellerOnboardingDashboard from "@/components/seller/SellerOnboardingDashboard";
+import OnboardingSurveyModal from "@/components/seller/OnboardingSurveyModal";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 
 export const dynamic = 'force-dynamic';
 
@@ -79,15 +81,17 @@ export default async function SellerDashboardHome() {
   const isFullyActivated = onboardingData.isFullyActivated;
 
   return (
-    <div>
-      {isFullyActivated ? (
-        <>
-          <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
-          <SellerDashboardInfo />
-        </>
-      ) : (
-        <SellerOnboardingDashboard />
-      )}
-    </div>
+    <OnboardingSurveyProvider>
+      <div>
+        {isFullyActivated ? (
+          <>
+            <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
+            <SellerDashboardInfo />
+          </>
+        ) : (
+          <SellerOnboardingDashboard />
+        )}
+      </div>
+    </OnboardingSurveyProvider>
   );
 }

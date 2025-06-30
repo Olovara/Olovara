@@ -63,8 +63,8 @@ export default auth(async (req) => {
       );
 
       if (!hasRequiredPermission) {
-        // You can redirect to an "unauthorized" page or just return a 403
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        // Redirect to home page for unauthorized access TODO: Make an unauthorized page for better UX
+        return Response.redirect(new URL("/", nextUrl));
       }
     }
   }

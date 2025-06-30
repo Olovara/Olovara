@@ -127,6 +127,7 @@ export const PERMISSIONS = {
   // Analytics
   VIEW_ANALYTICS: { value: 'VIEW_ANALYTICS', group: 'Analytics', label: 'View Analytics' },
   EXPORT_ANALYTICS: { value: 'EXPORT_ANALYTICS', group: 'Analytics', label: 'Export Analytics' },
+  VIEW_ONBOARDING_SURVEYS: { value: 'VIEW_ONBOARDING_SURVEYS', group: 'Analytics', label: 'View Onboarding Surveys' },
   
   // Communication
   MANAGE_MESSAGES: { value: 'MANAGE_MESSAGES', group: 'Communication', label: 'Manage Messages' },
@@ -189,6 +190,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'VIEW_LOGS',
     'MANAGE_ADMIN_SETTINGS',
     'VIEW_ANALYTICS',
+    'VIEW_ONBOARDING_SURVEYS',
     'MANAGE_MESSAGES',
     'SEND_BROADCASTS',
     'MANAGE_NOTIFICATIONS',
@@ -251,6 +253,7 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/admin/blog": ['MANAGE_CONTENT'],
   "/admin/settings": ['MANAGE_ADMIN_SETTINGS'],
   "/admin/analytics": ['VIEW_ANALYTICS'],
+  "/admin/onboarding-surveys": ['VIEW_ONBOARDING_SURVEYS'],
   "/seller": ['ACCESS_SELLER_DASHBOARD'],
   "/seller/orders": ['VIEW_ORDERS'],
   "/seller/products": ['MANAGE_PRODUCTS'],

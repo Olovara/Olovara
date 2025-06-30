@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Circle, AlertCircle, ArrowRight, ExternalLink } from "lucide-react";
 import { useSellerOnboarding } from "@/hooks/use-seller-onboarding";
+import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import Link from "next/link";
 
 const SellerOnboardingDashboard = () => {
@@ -172,95 +173,97 @@ const SellerOnboardingDashboard = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">Welcome to Your Seller Dashboard</h1>
-        <p className="text-muted-foreground mb-4">
-          Complete these steps to fully activate your seller account and start selling.
-        </p>
-        
-        {/* Progress Bar */}
-        <div className="max-w-md mx-auto mb-6">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Setup Progress</span>
-            <span>{onboardingData.completionPercentage}% Complete</span>
+    <OnboardingSurveyProvider>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-2">Welcome to Your Seller Dashboard</h1>
+          <p className="text-muted-foreground mb-4">
+            Complete these steps to fully activate your seller account and start selling.
+          </p>
+          
+          {/* Progress Bar */}
+          <div className="max-w-md mx-auto mb-6">
+            <div className="flex justify-between text-sm text-muted-foreground mb-2">
+              <span>Setup Progress</span>
+              <span>{onboardingData.completionPercentage}% Complete</span>
+            </div>
+            <Progress value={onboardingData.completionPercentage} className="h-2" />
           </div>
-          <Progress value={onboardingData.completionPercentage} className="h-2" />
         </div>
-      </div>
 
-      {/* Onboarding Steps */}
-      <div className="grid gap-4">
-        {onboardingSteps.map((step) => {
-          const status = getStepStatus(step.id);
-          const isActive = status === 'pending' && 
-            (step.id === onboardingData.currentStep || 
-             (step.id === 'application_approved' && !onboardingData.applicationAccepted) ||
-             (step.id === 'profile_completed' && onboardingData.applicationAccepted && !onboardingData.shopProfileComplete) ||
-             (step.id === 'stripe_connected' && onboardingData.shopProfileComplete && !onboardingData.stripeConnected) ||
-             (step.id === 'shipping_profile_created' && onboardingData.stripeConnected && !onboardingData.shippingProfileCreated) ||
-             (step.id === 'fully_activated' && onboardingData.shippingProfileCreated));
+        {/* Onboarding Steps */}
+        <div className="grid gap-4">
+          {onboardingSteps.map((step) => {
+            const status = getStepStatus(step.id);
+            const isActive = status === 'pending' && 
+              (step.id === onboardingData.currentStep || 
+               (step.id === 'application_approved' && !onboardingData.applicationAccepted) ||
+               (step.id === 'profile_completed' && onboardingData.applicationAccepted && !onboardingData.shopProfileComplete) ||
+               (step.id === 'stripe_connected' && onboardingData.shopProfileComplete && !onboardingData.stripeConnected) ||
+               (step.id === 'shipping_profile_created' && onboardingData.stripeConnected && !onboardingData.shippingProfileCreated) ||
+               (step.id === 'fully_activated' && onboardingData.shippingProfileCreated));
 
-          return (
-            <Card key={step.id} className={`transition-all duration-200 ${isActive ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {getStepIcon(status)}
-                    <div>
-                      <CardTitle className="text-lg">{step.title}</CardTitle>
-                      <CardDescription>{step.description}</CardDescription>
+            return (
+              <Card key={step.id} className={`transition-all duration-200 ${isActive ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {getStepIcon(status)}
+                      <div>
+                        <CardTitle className="text-lg">{step.title}</CardTitle>
+                        <CardDescription>{step.description}</CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {status === 'completed' && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          Completed
+                        </Badge>
+                      )}
+                      {isActive && (
+                        <Badge variant="default" className="bg-purple-100 text-purple-800">
+                          Current Step
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {status === 'completed' && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        Completed
-                      </Badge>
-                    )}
-                    {isActive && (
-                      <Badge variant="default" className="bg-purple-100 text-purple-800">
-                        Current Step
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {getStepAction(step.id)}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardHeader>
+                <CardContent>
+                  {getStepAction(step.id)}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-      {/* Quick Actions */}
-      {onboardingData.completionPercentage === 100 && (
-        <Card className="bg-green-50 border-green-200">
-          <CardHeader>
-            <CardTitle className="text-green-800 flex items-center">
-              <CheckCircle className="h-5 w-5 mr-2" />
-              Congratulations! Your seller account is fully activated.
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href="/seller/dashboard/products/create-product">
-                  Create Your First Product
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/seller/dashboard">
-                  View Dashboard
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        {/* Quick Actions */}
+        {onboardingData.completionPercentage === 100 && (
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader>
+              <CardTitle className="text-green-800 flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Congratulations! Your seller account is fully activated.
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link href="/seller/dashboard/products/create-product">
+                    Create Your First Product
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/seller/dashboard">
+                    View Dashboard
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </OnboardingSurveyProvider>
   );
 };
 

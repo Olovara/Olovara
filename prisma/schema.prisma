@@ -114,6 +114,7 @@ model User {
   orders                Order[]
   status                AccountStatus?  @default(ACTIVE)
   sellerApplication     SellerApplication?
+  onboardingSurvey      OnboardingSurvey?
   suggestion            Suggestion[]
   upvotes               Upvote[]
   isTwoFactorEnabled    Boolean @default(false)
@@ -256,6 +257,21 @@ model SellerApplication {
   user		            User		@relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt	      DateTime @default(now())
+}
+
+model OnboardingSurvey {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String    @unique
+  overallExperience   String    // "excellent", "good", "fair", "poor"
+  clarityOfInstructions String  // "very_clear", "clear", "somewhat_unclear", "very_unclear"
+  difficultyLevel     String    // "very_easy", "easy", "moderate", "difficult", "very_difficult"
+  timeToComplete      String    // "less_than_15_min", "15_30_min", "30_60_min", "1_2_hours", "more_than_2_hours"
+  mostChallengingStep String    // "application", "profile_setup", "stripe_connection", "shipping_setup", "none"
+  suggestions         String?   // Optional text feedback
+  wouldRecommend      String    // "definitely", "probably", "maybe", "probably_not", "definitely_not"
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime  @default(now())
 }
 
 model Product {
