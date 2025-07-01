@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { updateUserSession } from "@/lib/session-update";
+import { triggerCompleteSessionUpdate } from "@/lib/session-utils";
 import { FULL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
 
 // Action to grant full seller permissions (including product permissions)
@@ -85,8 +86,8 @@ export async function markShopProfileComplete() {
       data: { shopProfileComplete: true },
     });
 
-    // Update session to reflect changes
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, userId, 'Shop profile completed');
 
     return { success: true };
   } catch (error) {
@@ -119,8 +120,8 @@ export async function markStripeConnected() {
       data: { stripeConnected: true },
     });
 
-    // Update session to reflect changes
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, userId, 'Stripe account connected');
 
     return { success: true };
   } catch (error) {
@@ -153,8 +154,8 @@ export async function markShippingProfileCreated() {
       data: { shippingProfileCreated: true },
     });
 
-    // Update session to reflect changes
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, userId, 'Shipping profile created');
 
     return { success: true };
   } catch (error) {
@@ -190,8 +191,8 @@ export async function markFullyActivated() {
     // Grant full seller permissions (including product permissions)
     await grantFullSellerPermissions();
 
-    // Update session to reflect changes
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, userId, 'Seller account fully activated');
 
     return { success: true };
   } catch (error) {

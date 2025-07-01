@@ -15,6 +15,7 @@ import {
   INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
 import { updateUserSession } from "@/lib/session-update";
+import { triggerCompleteSessionUpdate } from "@/lib/session-utils";
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 
 interface GetUsersParams {
@@ -322,8 +323,8 @@ export async function approveApplication(applicationId: string) {
       // Don't fail the approval process if email fails
     }
 
-    // Update seller's session to include new permissions
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, currentUserData.id || 'system', 'Seller application approved');
 
     return { success: true };
   } catch (error) {
@@ -417,8 +418,8 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
       // Don't fail the rejection process if email fails
     }
 
-    // Update user's session to reflect role change
-    await updateUserSession(userId);
+    // Trigger complete session update with WebSocket notification
+    await triggerCompleteSessionUpdate(userId, currentUserData.id || 'system', 'Seller application rejected');
 
     return { success: true };
   } catch (error) {

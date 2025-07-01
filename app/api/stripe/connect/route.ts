@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { stripeConnect } from "@/lib/stripe";
 import { headers } from "next/headers";
+import { updateUserSession } from "@/lib/session-update";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
               account.capabilities?.card_payments === "active",
           },
         });
+
+        // Update user session to reflect Stripe connection status
+        await updateUserSession(seller.userId);
       }
       break;
     }

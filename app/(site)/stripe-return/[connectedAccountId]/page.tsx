@@ -21,8 +21,15 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
     // Handle Stripe connection completion
     const handleStripeConnection = async () => {
       try {
-        // Call the onboarding status check to update permissions
-        const response = await fetch("/api/seller/onboarding-status");
+        // Trigger session update to reflect Stripe connection
+        const response = await fetch("/api/auth/trigger-session-update", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: 'Stripe account connected' }),
+        });
+        
         if (response.ok) {
           // Refresh the page to get updated session data
           setTimeout(() => {

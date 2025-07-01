@@ -5,13 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Circle, AlertCircle, ArrowRight, ExternalLink } from "lucide-react";
+import { CheckCircle, Circle, AlertCircle, ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
 import { useSellerOnboarding } from "@/hooks/use-seller-onboarding";
+import { useSessionUpdate } from "@/hooks/use-session-update";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import Link from "next/link";
 
 const SellerOnboardingDashboard = () => {
   const { status: onboardingData, loading, error } = useSellerOnboarding();
+  const { triggerSessionUpdate, forceSessionRefresh } = useSessionUpdate();
 
   if (loading) {
     return (
@@ -177,7 +179,18 @@ const SellerOnboardingDashboard = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Your Seller Dashboard</h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-3xl font-bold">Welcome to Your Seller Dashboard</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => forceSessionRefresh()}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh Status
+            </Button>
+          </div>
           <p className="text-muted-foreground mb-4">
             Complete these steps to fully activate your seller account and start selling.
           </p>
