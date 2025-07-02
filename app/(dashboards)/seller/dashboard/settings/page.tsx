@@ -17,6 +17,8 @@ import ShippingProfilesTable from "./(components)/ShippingProfilesTable";
 import { decryptData } from "@/lib/encryption";
 import PermissionGate from "@/components/auth/permission-gate";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
+import ShopPoliciesForm from "@/components/forms/ShopPoliciesForm";
+import CountryExclusionsForm from "@/components/forms/CountryExclusionsForm";
 
 export const metadata = {
   title: "Seller - Settings",
@@ -115,7 +117,7 @@ export default async function SellerSettings() {
   }
 
   return (
-    <PermissionGate requiredPermission={"MANAGE_SELLER_SETTINGS" as const}>
+    <PermissionGate requiredPermission="MANAGE_SELLER_SETTINGS">
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-medium">Settings</h3>
@@ -129,6 +131,8 @@ export default async function SellerSettings() {
             <TabsTrigger value="seller">Seller</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
             <TabsTrigger value="shipping">Shipping</TabsTrigger>
+            <TabsTrigger value="policies">Policies</TabsTrigger>
+            <TabsTrigger value="exclusions">Exclusions</TabsTrigger>
             <TabsTrigger value="qr">QR Code</TabsTrigger>
         </TabsList>
           <TabsContent value="profile" className="space-y-4">
@@ -171,6 +175,20 @@ export default async function SellerSettings() {
               </CardContent>
             </Card>
               </TabsContent>
+          <TabsContent value="policies" className="space-y-4">
+            <Card>
+              <CardContent>
+                <ShopPoliciesForm />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="exclusions" className="space-y-4">
+            <Card>
+              <CardContent>
+                <CountryExclusionsForm />
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="qr" className="space-y-4">
             <Card>
               <CardHeader>

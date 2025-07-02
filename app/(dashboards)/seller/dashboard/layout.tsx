@@ -9,7 +9,7 @@ export default function SellerDashboadLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PermissionGate requiredPermission={"ACCESS_SELLER_DASHBOARD" as const}>
+    <PermissionGate requiredPermission="ACCESS_SELLER_DASHBOARD">
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
       <SellerDashboardSideNavbar />
       <SellerDashboardTopNavbar>

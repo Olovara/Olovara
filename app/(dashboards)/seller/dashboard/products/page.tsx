@@ -78,7 +78,7 @@ export default async function ProductsPage({
   };
 
   return (
-    <PermissionGate requiredPermission={"MANAGE_PRODUCTS" as const}>
+    <PermissionGate requiredPermission="MANAGE_PRODUCTS">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Breadcrumb>

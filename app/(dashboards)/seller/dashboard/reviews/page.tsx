@@ -128,7 +128,7 @@ export default async function SellerReviewsPage() {
   });
 
   return (
-    <PermissionGate requiredPermission={"MANAGE_REVIEWS" as const}>
+    <PermissionGate requiredPermission="MANAGE_REVIEWS">
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-6">My Reviews</h1>
       <ReviewsDashboard

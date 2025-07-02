@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import Image from "next/image";
 import ContactSellerButton from "@/components/shared/ContactSellerButton";
 import ProductCard from "@/components/ProductCard";
+import ShopPolicies from "@/components/shop/ShopPolicies";
+import ExcludedCountries from "@/components/shop/ExcludedCountries";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -12,7 +14,27 @@ interface ShopPageProps {
 async function getShopData(shopNameSlug: string) {
   const seller = await db.seller.findUnique({
     where: { shopNameSlug }, // Fetch using the slug
-    include: { 
+    select: {
+      id: true,
+      shopName: true,
+      shopNameSlug: true,
+      shopTagLine: true,
+      shopDescription: true,
+      totalSales: true,
+      acceptsCustom: true,
+               processingTime: true,
+        returnsPolicy: true,
+        exchangesPolicy: true,
+        damagesPolicy: true,
+        nonReturnableItems: true,
+        refundPolicy: true,
+        excludedCountries: true,
+      isWomanOwned: true,
+      isMinorityOwned: true,
+      isLGBTQOwned: true,
+      isVeteranOwned: true,
+      isSustainable: true,
+      isCharitable: true,
       products: {
         where: {
           status: "ACTIVE" // Only include active products
@@ -32,18 +54,6 @@ async function getShopData(shopNameSlug: string) {
           stock: true,
           dropDate: true,
           dropTime: true,
-          seller: {
-            select: {
-              shopName: true,
-              shopNameSlug: true,
-              isWomanOwned: true,
-              isMinorityOwned: true,
-              isLGBTQOwned: true,
-              isVeteranOwned: true,
-              isSustainable: true,
-              isCharitable: true,
-            },
-          },
         }
       }
     },
@@ -108,6 +118,25 @@ export default async function ShopPage({ params }: ShopPageProps) {
                 Accepts Custom Orders
               </p>
             )}
+          </div>
+
+          {/* Shop Policies */}
+          <div className="mt-6">
+            <ShopPolicies 
+              processingTime={seller.processingTime}
+              returnsPolicy={seller.returnsPolicy}
+              exchangesPolicy={seller.exchangesPolicy}
+              damagesPolicy={seller.damagesPolicy}
+              nonReturnableItems={seller.nonReturnableItems}
+              refundPolicy={seller.refundPolicy}
+            />
+          </div>
+
+          {/* Excluded Countries */}
+          <div className="mt-6">
+            <ExcludedCountries 
+              excludedCountries={seller.excludedCountries}
+            />
           </div>
         </aside>
 

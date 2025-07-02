@@ -15,7 +15,7 @@ export interface IPinfoResponse {
   timezone?: string;
   readme?: string;
   anycast?: boolean;
-  // Legacy field names for compatibility
+  // Lite API specific fields
   asn?: string;
   as_name?: string;
   as_domain?: string;
@@ -41,16 +41,19 @@ export interface UserLocationPreferences {
  */
 export async function getIPInfo(ip?: string): Promise<IPinfoResponse> {
   try {
-    // IPinfo exports a function that takes a callback
-    return new Promise((resolve, reject) => {
-      ipinfo(ip || '', (err: any, response: IPinfoResponse) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(response);
-        }
-      }, process.env.IPINFO_TOKEN);
-    });
+    // Use the IPinfo Lite API directly for better token handling
+    const token = process.env.IPINFO_TOKEN;
+    const targetIP = ip || '';
+    const url = `https://api.ipinfo.io/lite/${targetIP}${token ? `?token=${token}` : ''}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`IPinfo API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error fetching IP info:', error);
     throw new Error('Failed to fetch IP information');
@@ -67,7 +70,7 @@ export async function getUserLocationPreferences(ip?: string): Promise<UserLocat
     const ipInfo = await getIPInfo(ip);
     
     // Use the actual country field from the API response
-    const countryCode = ipInfo.country;
+    const countryCode = ipInfo.country_code || ipInfo.country;
     
     if (!countryCode) {
       // Default to US if no country code found
@@ -89,8 +92,8 @@ export async function getUserLocationPreferences(ip?: string): Promise<UserLocat
       c => c.code === country.currency
     );
 
-    // Determine continent based on country code
-    const continent = getContinentFromCountry(countryCode);
+    // Use continent from API or determine from country code
+    const continent = ipInfo.continent || getContinentFromCountry(countryCode);
 
     return {
       countryCode: country.code,
@@ -165,13 +168,16 @@ export async function checkIPSuspicious(ip: string): Promise<{isSuspicious: bool
 
     // Check for VPN/Proxy indicators in org field
     const org = ipInfo.org?.toLowerCase() || '';
-    if (org.includes('vpn') || org.includes('proxy') || org.includes('tor')) {
+    const asName = ipInfo.as_name?.toLowerCase() || '';
+    
+    if (org.includes('vpn') || org.includes('proxy') || org.includes('tor') ||
+        asName.includes('vpn') || asName.includes('proxy') || asName.includes('tor')) {
       reasons.push('VPN/Proxy detected');
     }
 
     // Check for data center IPs (common org names)
     const dataCenterKeywords = ['amazon', 'google', 'microsoft', 'digitalocean', 'linode', 'vultr', 'ovh'];
-    if (dataCenterKeywords.some(keyword => org.includes(keyword))) {
+    if (dataCenterKeywords.some(keyword => org.includes(keyword) || asName.includes(keyword))) {
       reasons.push('Data center IP detected');
     }
 
@@ -207,10 +213,13 @@ export async function getUserAnalytics(ip: string): Promise<object> {
     return {
       ip: ipInfo.ip,
       country: ipInfo.country,
+      countryCode: ipInfo.country_code,
       city: ipInfo.city,
       region: ipInfo.region,
       timezone: ipInfo.timezone,
       org: ipInfo.org,
+      asn: ipInfo.asn,
+      asName: ipInfo.as_name,
       hostname: ipInfo.hostname,
       locationPreferences: locationPrefs,
       fraudCheck: suspiciousCheck,
