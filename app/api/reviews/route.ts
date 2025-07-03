@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { ObjectId } from "mongodb";
 
 const reviewSchema = z.object({
   orderId: z.string(),
@@ -22,6 +23,20 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const validatedData = reviewSchema.parse(body);
+
+    // Validate ObjectIDs
+    if (!ObjectId.isValid(validatedData.orderId)) {
+      return new NextResponse("Invalid order ID format", { status: 400 });
+    }
+    if (!ObjectId.isValid(validatedData.reviewerId)) {
+      return new NextResponse("Invalid reviewer ID format", { status: 400 });
+    }
+    if (!ObjectId.isValid(validatedData.reviewedId)) {
+      return new NextResponse("Invalid reviewed ID format", { status: 400 });
+    }
+    if (validatedData.productId && !ObjectId.isValid(validatedData.productId)) {
+      return new NextResponse("Invalid product ID format", { status: 400 });
+    }
 
     // Check if the review already exists
     const existingReview = await db.review.findFirst({
@@ -145,6 +160,11 @@ export async function GET(req: Request) {
 
     if (!userId) {
       return new NextResponse("User ID is required", { status: 400 });
+    }
+
+    // Validate that the userId is a valid ObjectID
+    if (!ObjectId.isValid(userId)) {
+      return new NextResponse("Invalid user ID format", { status: 400 });
     }
 
     const reviews = await db.review.findMany({

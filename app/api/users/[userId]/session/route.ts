@@ -11,17 +11,15 @@ export async function POST(
     const currentUserData = await currentUser();
 
     if (!currentUserData) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Security check: Only allow users to update their own session or admins with proper permissions
     const isOwnSession = currentUserData.id === userId;
-    const hasManagePermissions = currentUserData.permissions?.includes('MANAGE_PERMISSIONS') || 
-                                currentUserData.permissions?.includes('MANAGE_ROLES') ||
-                                currentUserData.role === 'SUPER_ADMIN';
+    const hasManagePermissions =
+      currentUserData.permissions?.includes("MANAGE_PERMISSIONS") ||
+      currentUserData.permissions?.includes("MANAGE_ROLES") ||
+      currentUserData.role === "SUPER_ADMIN";
 
     if (!isOwnSession && !hasManagePermissions) {
       return NextResponse.json(
@@ -43,9 +41,8 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Session updated successfully",
-      requiresClientRefresh: true
+      requiresClientRefresh: true,
     });
-
   } catch (error) {
     console.error("Error updating user session:", error);
     return NextResponse.json(
@@ -53,4 +50,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

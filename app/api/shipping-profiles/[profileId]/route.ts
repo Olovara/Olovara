@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { ObjectId } from "mongodb";
 
 export async function PUT(
   req: Request,
@@ -10,6 +11,11 @@ export async function PUT(
     const session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Validate that the profileId is a valid ObjectID
+    if (!ObjectId.isValid(params.profileId)) {
+      return new NextResponse("Invalid profile ID format", { status: 400 });
     }
 
     const body = await req.json();
@@ -78,6 +84,11 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Validate that the profileId is a valid ObjectID
+    if (!ObjectId.isValid(params.profileId)) {
+      return new NextResponse("Invalid profile ID format", { status: 400 });
     }
 
     // Delete the profile (this will cascade delete the rates)

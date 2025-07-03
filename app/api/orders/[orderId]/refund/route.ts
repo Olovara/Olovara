@@ -3,12 +3,21 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeCheckout } from "@/lib/stripe";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
+import { ObjectId } from "mongodb";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
+    // Validate that the orderId is a valid ObjectID
+    if (!ObjectId.isValid(params.orderId)) {
+      return NextResponse.json(
+        { error: "Invalid order ID format" },
+        { status: 400 }
+      );
+    }
+
     // Check authentication
     const session = await auth();
     if (!session?.user) {

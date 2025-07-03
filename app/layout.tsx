@@ -9,13 +9,68 @@ import { LocationProvider } from "@/components/providers/LocationProvider";
 import { SessionUpdateListener } from "@/components/SessionUpdateListener";
 import { auth } from "@/auth";
 import Script from "next/script";
+import { headers } from "next/headers";
+import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Yarnnu Marketplace",
-  description: "Discover high-quality handcrafted goods.",
+  title: "Yarnnu - Handmade Marketplace",
+  description: "Discover unique handmade products from talented artisans around the world.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  openGraph: {
+    title: "Yarnnu - Handmade Marketplace",
+    description: "Discover unique handmade products from talented artisans around the world.",
+    url: process.env.NEXT_PUBLIC_APP_URL,
+    siteName: "Yarnnu",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Yarnnu - Handmade Marketplace",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yarnnu - Handmade Marketplace",
+    description: "Discover unique handmade products from talented artisans around the world.",
+    images: ["/og-image.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  },
 };
+
+// Add security headers
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  
+  return {
+    ...metadata,
+    other: {
+      // Security headers
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -39,6 +94,12 @@ export default async function RootLayout({
             gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
           `}
         </Script>
+        
+        {/* Security Headers */}
+        <meta httpEquiv="X-Frame-Options" content="DENY" />
+        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+        <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+        <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
       </head>
       <body
         className={cn(
@@ -48,12 +109,14 @@ export default async function RootLayout({
       >
         <SessionProvider session={session}>
           <LocationProvider>
-            <SocketProvider>
-              <main className="relative flex min-h-screen flex-col">
-                {children}
-              </main>
-              <SessionUpdateListener />
-            </SocketProvider>
+            <OnboardingSurveyProvider>
+              <SocketProvider>
+                <main className="relative flex min-h-screen flex-col">
+                  {children}
+                </main>
+                <SessionUpdateListener />
+              </SocketProvider>
+            </OnboardingSurveyProvider>
           </LocationProvider>
           <Toaster position="top-center" richColors />
         </SessionProvider>

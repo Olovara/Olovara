@@ -25,6 +25,12 @@ interface ProductPageProps {
 
 async function getData(id: string) {
   try {
+    // Validate that the ID is a valid ObjectID before querying
+    if (!ObjectId.isValid(id)) {
+      console.error("Invalid ObjectID format:", id);
+      return null;
+    }
+
     const product = await db.product.findUnique({
       where: {
         id,

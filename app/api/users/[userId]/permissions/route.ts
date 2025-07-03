@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addUserPermission, removeUserPermission } from "@/actions/adminActions";
+import { ObjectId } from "mongodb";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
+    // Validate that the userId is a valid ObjectID
+    if (!ObjectId.isValid(params.userId)) {
+      return NextResponse.json(
+        { error: "Invalid user ID format" },
+        { status: 400 }
+      );
+    }
+
     const { permission, reason } = await request.json();
     
     if (!permission) {
@@ -39,6 +48,14 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
+    // Validate that the userId is a valid ObjectID
+    if (!ObjectId.isValid(params.userId)) {
+      return NextResponse.json(
+        { error: "Invalid user ID format" },
+        { status: 400 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const permission = searchParams.get("permission");
     

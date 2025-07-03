@@ -12,10 +12,65 @@ import { ROUTE_PERMISSIONS } from "@/data/roles-and-permissions";
 
 const { auth } = NextAuth(authConfig);
 
+// Simple in-memory rate limiter (use Redis in production)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function getRateLimit(identifier: string, limit: number = 100, windowMs: number = 60 * 1000) {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  // Clean up old entries
+  rateLimitStore.forEach((value, key) => {
+    if (value.resetTime < windowStart) {
+      rateLimitStore.delete(key);
+    }
+  });
+
+  // Get or create rate limit entry
+  let entry = rateLimitStore.get(identifier);
+  if (!entry) {
+    entry = { count: 0, resetTime: now + windowMs };
+    rateLimitStore.set(identifier, entry);
+  }
+
+  // Increment count
+  entry.count++;
+
+  // Check if rate limit exceeded
+  if (entry.count > limit) {
+    return { success: false, limit, remaining: 0, reset: entry.resetTime };
+  }
+
+  return { success: true, limit, remaining: limit - entry.count, reset: entry.resetTime };
+}
+
 export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
   const userPermissions = (req.auth?.user?.permissions as string[]) || [];
+
+  // Rate limiting for all requests
+  const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const rateLimitResult = getRateLimit(clientIP, 200, 60 * 1000); // 200 requests per minute per IP
+
+  if (!rateLimitResult.success) {
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Too many requests', 
+        retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) 
+      }),
+      { 
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+        }
+      }
+    );
+  }
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) =>

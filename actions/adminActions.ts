@@ -17,6 +17,7 @@ import {
 import { updateUserSession } from "@/lib/session-update";
 import { triggerCompleteSessionUpdate } from "@/lib/session-utils";
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
+import { ObjectId } from "mongodb";
 
 interface GetUsersParams {
   role?: string;
@@ -234,6 +235,11 @@ export async function getUnapprovedSellers() {
 
 export async function approveApplication(applicationId: string) {
   try {
+    // Validate that the applicationId is a valid ObjectID
+    if (!ObjectId.isValid(applicationId)) {
+      throw new Error("Invalid application ID format");
+    }
+
     // Verify that the current user has APPROVE_SELLERS permission
     const currentUserData = await currentUser();
 
@@ -335,6 +341,11 @@ export async function approveApplication(applicationId: string) {
 
 export async function rejectApplication(applicationId: string, rejectionReason?: string) {
   try {
+    // Validate that the applicationId is a valid ObjectID
+    if (!ObjectId.isValid(applicationId)) {
+      throw new Error("Invalid application ID format");
+    }
+
     const currentUserData = await currentUser();
     
     if (!currentUserData) {
@@ -467,6 +478,11 @@ export async function getAllUsers() {
 
 export async function getUserPermissions(userId: string) {
   try {
+    // Validate that the userId is a valid ObjectID
+    if (!ObjectId.isValid(userId)) {
+      throw new Error("Invalid user ID format");
+    }
+
     const currentUserData = await currentUser();
 
     if (!currentUserData) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
+import { ObjectId } from "mongodb";
 
 const utapi = new UTApi();
 
@@ -13,6 +14,11 @@ export async function GET(
     const session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Validate that the ID is a valid ObjectID before querying
+    if (!ObjectId.isValid(params.id)) {
+      return new NextResponse("Invalid product ID format", { status: 400 });
     }
 
     const product = await db.product.findUnique({

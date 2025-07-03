@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 
 export async function POST(
   req: Request,
@@ -13,6 +14,11 @@ export async function POST(
     }
 
     const { suggestionId } = params;
+
+    // Validate that the suggestionId is a valid ObjectID
+    if (!ObjectId.isValid(suggestionId)) {
+      return new NextResponse("Invalid suggestion ID format", { status: 400 });
+    }
 
     // Check if user has already upvoted
     const existingUpvote = await db.upvote.findUnique({
@@ -64,6 +70,11 @@ export async function DELETE(
     }
 
     const { suggestionId } = params;
+
+    // Validate that the suggestionId is a valid ObjectID
+    if (!ObjectId.isValid(suggestionId)) {
+      return new NextResponse("Invalid suggestion ID format", { status: 400 });
+    }
 
     // Check if user has upvoted
     const existingUpvote = await db.upvote.findUnique({

@@ -1,115 +1,149 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserRole } from "@/actions/adminActions";
-import { currentUser } from "@/lib/auth";
-import { z } from "zod";
-
-// Validation schema for role update request
-const roleUpdateSchema = z.object({
-  newRole: z.string().min(1, "Role is required"),
-  reason: z.string().min(1, "Reason is required").max(500, "Reason must be less than 500 characters"),
-});
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { ObjectId } from "mongodb";
+import { 
+  ROLES, 
+  ROLE_PERMISSIONS,
+  PERMISSIONS 
+} from "@/data/roles-and-permissions";
+import { updateUserSession } from "@/lib/session-update";
 
 export async function PATCH(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
-    const { userId } = params;
-
-    if (!userId) {
+    // Validate ObjectID
+    if (!ObjectId.isValid(params.userId)) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: "Invalid user ID format" },
         { status: 400 }
       );
     }
 
-    // Get current user for audit logging
-    const currentUserData = await currentUser();
-    if (!currentUserData) {
+    const session = await auth();
+    if (!session?.user) {
       return NextResponse.json(
-        { error: "Not authenticated" },
+        { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const body = await request.json();
-    
-    // Validate request body
-    const validationResult = roleUpdateSchema.safeParse(body);
-    if (!validationResult.success) {
+    // Check if current user has MANAGE_ROLES permission
+    const currentUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { permissions: true, role: true }
+    });
+
+    if (!currentUser?.permissions?.includes('MANAGE_ROLES')) {
       return NextResponse.json(
-        { 
-          error: "Invalid request data",
-          details: validationResult.error.errors 
-        },
+        { error: "Forbidden: Insufficient permissions. MANAGE_ROLES permission required." },
+        { status: 403 }
+      );
+    }
+
+    const { newRole, reason } = await req.json();
+
+    if (!newRole || !reason?.trim()) {
+      return NextResponse.json(
+        { error: "New role and reason are required" },
         { status: 400 }
       );
     }
 
-    const { newRole, reason } = validationResult.data;
-
-    // Update the user's role with current user info for audit logging
-    const result = await updateUserRole(
-      userId, 
-      newRole, 
-      reason, 
-      currentUserData.email || currentUserData.id || "Unknown Admin"
-    );
-
-    if (result.error) {
+    // Validate the new role
+    if (!Object.keys(ROLES).includes(newRole)) {
       return NextResponse.json(
-        { error: result.error },
+        { error: "Invalid role" },
         { status: 400 }
       );
+    }
+
+    // Prevent changing own role (security measure)
+    if (params.userId === session.user.id) {
+      return NextResponse.json(
+        { error: "Cannot change your own role" },
+        { status: 400 }
+      );
+    }
+
+    // Get the target user
+    const targetUser = await db.user.findUnique({
+      where: { id: params.userId },
+      select: { 
+        id: true, 
+        role: true, 
+        permissions: true,
+        email: true,
+        username: true
+      }
+    });
+
+    if (!targetUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Get default permissions for the new role
+    const permissionValues = ROLE_PERMISSIONS[newRole as keyof typeof ROLES];
+
+    // Update user role and permissions
+    const updatedUser = await db.user.update({
+      where: { id: params.userId },
+      data: { 
+        role: newRole,
+        permissions: permissionValues
+      },
+      select: {
+        id: true,
+        role: true,
+        permissions: true,
+        email: true,
+        username: true
+      }
+    });
+
+    // Log the role change
+    console.log(`Role change logged: User ${session.user.email} (${session.user.id}) changed user ${targetUser.email} (${params.userId}) role from ${targetUser.role} to ${newRole}. Reason: ${reason}`);
+
+    // Update user session to reflect new role and permissions
+    await updateUserSession(params.userId);
+
+    // Emit WebSocket event for real-time session update
+    try {
+      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/socket/session-update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: params.userId,
+          updatedBy: session.user.id,
+          reason: `Role changed to ${newRole}: ${reason}`,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("WebSocket session update sent successfully");
+      } else {
+        console.log("WebSocket session update failed, but role was updated");
+      }
+    } catch (error) {
+      console.log("WebSocket session update error:", error);
+      // Continue anyway - the role was still updated successfully
     }
 
     return NextResponse.json({
       success: true,
-      message: "Role updated successfully",
-      data: result
+      user: updatedUser,
+      message: `User role updated to ${newRole} with default permissions`
     });
 
   } catch (error) {
-    console.error("Error in role update API:", error);
-    
-    if (error instanceof Error) {
-      // Handle specific error types
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        );
-      }
-      
-      if (error.message.includes("not found")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        );
-      }
-      
-      if (error.message.includes("Invalid role")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
-      }
-      
-      if (error.message.includes("Cannot change your own role")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
-      }
-      
-      if (error.message.includes("Only Super Admins")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        );
-      }
-    }
-
+    console.error("Error updating user role:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
