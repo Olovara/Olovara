@@ -80,12 +80,6 @@ export default async function RootLayout({
             gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
           `}
         </Script>
-        
-        {/* Security Headers */}
-        <meta httpEquiv="X-Frame-Options" content="DENY" />
-        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-        <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
       </head>
       <body
         className={cn(

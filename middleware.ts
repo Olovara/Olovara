@@ -72,6 +72,17 @@ export default auth(async (req) => {
     );
   }
 
+  // Add security headers to all responses
+  const response = NextResponse.next();
+  
+  // Security headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) =>
     nextUrl.pathname.startsWith(route)
@@ -84,17 +95,17 @@ export default auth(async (req) => {
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
-    return;
+    return response;
   }
 
   // Allow auth API routes without authentication
   if (isApiAuthRoute) {
-    return;
+    return response;
   }
 
   // Allow public routes without authentication
   if (isPublicRoute) {
-    return;
+    return response;
   }
 
   // Handle auth routes
@@ -102,7 +113,7 @@ export default auth(async (req) => {
     if (isAuthorized) {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
-    return;
+    return response;
   }
 
   // Check permissions for protected routes
@@ -144,7 +155,7 @@ export default auth(async (req) => {
     );
   }
 
-  return;
+  return response;
 });
 
 // Optionally, don't invoke Middleware on some paths
