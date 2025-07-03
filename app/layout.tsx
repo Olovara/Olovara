@@ -56,21 +56,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Add security headers
-export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers();
-  
-  return {
-    ...metadata,
-    other: {
-      // Security headers
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    },
-  };
-}
+
 
 export default async function RootLayout({
   children,
