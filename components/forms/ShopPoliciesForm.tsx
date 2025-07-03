@@ -42,6 +42,7 @@ const ShopPoliciesForm = () => {
       damagesPolicy: "",
       nonReturnableItems: "",
       refundPolicy: "",
+      careInstructions: "",
     },
   });
 
@@ -61,6 +62,7 @@ const ShopPoliciesForm = () => {
             damagesPolicy: data.damagesPolicy || "",
             nonReturnableItems: data.nonReturnableItems || "",
             refundPolicy: data.refundPolicy || "",
+            careInstructions: data.careInstructions || "",
           };
           form.reset(formData);
         }
@@ -202,6 +204,20 @@ const ShopPoliciesForm = () => {
           />
           <p className="text-xs text-muted-foreground">
             Explain your refund process, timeframes, and methods
+          </p>
+        </div>
+
+        {/* Care Instructions */}
+        <div className="flex flex-col gap-y-2">
+          <Label>Care Instructions</Label>
+          <Textarea
+            placeholder="Provide care and maintenance instructions for your products (e.g., washing instructions, storage tips, cleaning methods, etc.)"
+            {...form.register("careInstructions")}
+            disabled={isPending}
+            rows={4}
+          />
+          <p className="text-xs text-muted-foreground">
+            Help customers maintain and care for your products properly
           </p>
         </div>
 

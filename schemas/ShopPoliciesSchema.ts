@@ -7,6 +7,7 @@ export const ShopPoliciesSchema = z.object({
   damagesPolicy: z.string().min(1, "Damages policy is required").max(2000, "Damages policy must be less than 2000 characters"),
   nonReturnableItems: z.string().min(1, "Non-returnable items policy is required").max(2000, "Non-returnable items policy must be less than 2000 characters"),
   refundPolicy: z.string().min(1, "Refund policy is required").max(2000, "Refund policy must be less than 2000 characters"),
+  careInstructions: z.string().min(1, "Care instructions are required").max(2000, "Care instructions must be less than 2000 characters"),
 });
 
 export type ShopPoliciesFormData = z.infer<typeof ShopPoliciesSchema>; 

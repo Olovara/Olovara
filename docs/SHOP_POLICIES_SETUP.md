@@ -7,13 +7,14 @@ This feature allows sellers to set and display their shop policies including pro
 
 ### 1. Database Schema Updates
 - **File**: `prisma/schema.prisma`
-- **Changes**: Added 6 new fields to the Seller model:
+- **Changes**: Added 7 new fields to the Seller model:
   - `processingTime` (String?)
   - `returnsPolicy` (String?)
   - `exchangesPolicy` (String?)
   - `damagesPolicy` (String?)
   - `nonReturnableItems` (String?)
   - `refundPolicy` (String?)
+  - `careInstructions` (String?)
 
 ### 2. Validation Schema
 - **File**: `schemas/ShopPoliciesSchema.ts`
@@ -95,6 +96,7 @@ The shop page has been updated to include all policy fields and display componen
 4. **Damages Policy**: How damaged items are handled
 5. **Non-Returnable Items**: Items that cannot be returned
 6. **Refund Policy**: Refund process and methods
+7. **Care Instructions**: Care and maintenance instructions for products
 
 ## Technical Notes
 

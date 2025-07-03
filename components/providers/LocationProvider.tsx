@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useLocationDetection } from '@/hooks/useLocationDetection';
+import { useLocation } from '@/hooks/useLocation';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface LocationProviderProps {
@@ -13,19 +13,32 @@ interface LocationProviderProps {
  * This runs silently in the background without showing any UI
  */
 export function LocationProvider({ children }: LocationProviderProps) {
-  const { locationPreferences, isLoading, error } = useLocationDetection();
+  const { 
+    locationPreferences, 
+    isDetecting, 
+    currentCurrency,
+    detectLocation 
+  } = useLocation();
+  
   const { currency, setCurrency } = useCurrency();
 
+  // Auto-detect location on first load
   useEffect(() => {
-    // Only set currency if we have location preferences and currency is different
-    if (locationPreferences?.currency && locationPreferences.currency !== currency) {
-      setCurrency(locationPreferences.currency);
+    if (!locationPreferences && !isDetecting) {
+      detectLocation();
     }
-  }, [locationPreferences, currency, setCurrency]);
+  }, [locationPreferences, isDetecting, detectLocation]);
+
+  // Sync location store currency with currency store
+  useEffect(() => {
+    if (currentCurrency && currentCurrency !== currency) {
+      setCurrency(currentCurrency);
+    }
+  }, [currentCurrency, currency, setCurrency]);
 
   // Log analytics data for fraud detection and analytics
   useEffect(() => {
-    if (locationPreferences && !isLoading && !error) {
+    if (locationPreferences && !isDetecting) {
       // You can send this data to your analytics service
       console.log('Location detected:', {
         country: locationPreferences.countryName,
@@ -37,7 +50,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
         timestamp: new Date().toISOString(),
       });
     }
-  }, [locationPreferences, isLoading, error]);
+  }, [locationPreferences, isDetecting]);
 
   // This provider doesn't render anything, it just handles location detection
   return <>{children}</>;

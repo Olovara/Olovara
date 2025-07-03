@@ -28,6 +28,7 @@ async function getShopData(shopNameSlug: string) {
         damagesPolicy: true,
         nonReturnableItems: true,
         refundPolicy: true,
+        careInstructions: true,
         excludedCountries: true,
       isWomanOwned: true,
       isMinorityOwned: true,
@@ -129,6 +130,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
               damagesPolicy={seller.damagesPolicy}
               nonReturnableItems={seller.nonReturnableItems}
               refundPolicy={seller.refundPolicy}
+              careInstructions={seller.careInstructions}
             />
           </div>
 

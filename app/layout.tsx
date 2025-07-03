@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { SocketProvider } from "@/components/providers/SocketProvider";
+import { LocationProvider } from "@/components/providers/LocationProvider";
 import { SessionUpdateListener } from "@/components/SessionUpdateListener";
 import { auth } from "@/auth";
 import Script from "next/script";
@@ -46,12 +47,14 @@ export default async function RootLayout({
         )}
       >
         <SessionProvider session={session}>
-          <SocketProvider>
-            <main className="relative flex min-h-screen flex-col">
-              {children}
-            </main>
-            <SessionUpdateListener />
-          </SocketProvider>
+          <LocationProvider>
+            <SocketProvider>
+              <main className="relative flex min-h-screen flex-col">
+                {children}
+              </main>
+              <SessionUpdateListener />
+            </SocketProvider>
+          </LocationProvider>
           <Toaster position="top-center" richColors />
         </SessionProvider>
       </body>

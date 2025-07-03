@@ -24,7 +24,7 @@ export const updateShopPolicies = async (values: z.infer<typeof ShopPoliciesSche
     return { error: "Invalid fields." };
   }
 
-  const { processingTime, returnsPolicy, exchangesPolicy, damagesPolicy, nonReturnableItems, refundPolicy } = validatedFields.data;
+  const { processingTime, returnsPolicy, exchangesPolicy, damagesPolicy, nonReturnableItems, refundPolicy, careInstructions } = validatedFields.data;
 
   try {
     // Update seller with shop policies
@@ -37,6 +37,7 @@ export const updateShopPolicies = async (values: z.infer<typeof ShopPoliciesSche
          damagesPolicy,
          nonReturnableItems,
          refundPolicy,
+         careInstructions,
        },
      });
 
@@ -63,6 +64,7 @@ export const getShopPolicies = async () => {
          damagesPolicy: true,
          nonReturnableItems: true,
          refundPolicy: true,
+         careInstructions: true,
        },
      });
 

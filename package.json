@@ -58,6 +58,7 @@
     "@stripe/stripe-js": "^7.1.0",
     "@tanstack/react-query": "^5.52.1",
     "@tanstack/react-table": "^8.20.5",
+    "@thumbmarkjs/thumbmarkjs": "^0.20.6",
     "@trpc/client": "^11.0.0-rc.724",
     "@trpc/next": "^11.0.0-rc.724",
     "@trpc/react-query": "^11.0.0-rc.724",

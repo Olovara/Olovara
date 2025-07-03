@@ -82,27 +82,39 @@ export async function getUserLocationPreferences(ip?: string): Promise<UserLocat
       c => c.code === countryCode
     );
 
-    if (!country) {
-      // If country not supported, return default preferences
-      return getDefaultLocationPreferences();
-    }
-
-    // Check if the country's currency is supported in our system
-    const isCurrencySupported = SUPPORTED_CURRENCIES.some(
-      c => c.code === country.currency
-    );
-
     // Use continent from API or determine from country code
     const continent = ipInfo.continent || getContinentFromCountry(countryCode);
 
-    return {
-      countryCode: country.code,
-      countryName: country.name,
-      currency: isCurrencySupported ? (country.currency as CurrencyCode) : 'USD',
-      continent: continent,
-      isSupported: country.status === 'supported',
-      canOnboardSellers: country.canOnboardSellers,
-    };
+    if (country) {
+      // Country is in our supported list
+      const isCurrencySupported = SUPPORTED_CURRENCIES.some(
+        c => c.code === country.currency
+      );
+
+      return {
+        countryCode: country.code,
+        countryName: country.name,
+        currency: isCurrencySupported ? (country.currency as CurrencyCode) : 'USD',
+        continent: continent,
+        isSupported: country.status === 'supported',
+        canOnboardSellers: country.canOnboardSellers,
+      };
+    } else {
+      // Country not in our supported list, but we still want to show it
+      // Try to find a country with the same currency or fallback to USD
+      const fallbackCountry = SUPPORTED_COUNTRIES.find(
+        c => c.currency === 'USD' && c.code === 'US'
+      );
+
+      return {
+        countryCode: countryCode,
+        countryName: countryCode, // We don't have the name, so use the code
+        currency: 'USD', // Always fallback to USD for unsupported countries
+        continent: continent,
+        isSupported: false,
+        canOnboardSellers: false,
+      };
+    }
   } catch (error) {
     console.error('Error getting user location preferences:', error);
     return getDefaultLocationPreferences();

@@ -2716,6 +2716,11 @@
   resolved "https://registry.npmjs.org/@testing-library/user-event/-/user-event-14.6.1.tgz"
   integrity sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw==
 
+"@thumbmarkjs/thumbmarkjs@^0.20.6":
+  version "0.20.6"
+  resolved "https://registry.yarnpkg.com/@thumbmarkjs/thumbmarkjs/-/thumbmarkjs-0.20.6.tgz#cfecbce509a2c7e0de8fad4842c042c4c5751ad8"
+  integrity sha512-r8ZobQVpyrpoIHCdCdWYP1stWIpRMGLmFNv5ValV2fblDjDdFbY/IxSM/42rIeDzgMgYLeSbaPaKE2FrVXVaxA==
+
 "@trpc/client@^11.0.0-rc.724":
   version "11.4.3"
   resolved "https://registry.npmjs.org/@trpc/client/-/client-11.4.3.tgz"

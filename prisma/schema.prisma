@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "mongodb"
-  url  	    = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 enum AccountStatus {
@@ -44,18 +44,18 @@ enum PaymentStatus {
 }
 
 model Account {
-  id                 String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -63,27 +63,27 @@ model Account {
 }
 
 model VerificationToken {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-  email String
-  token String @unique
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
 }
 
 model PasswordResetToken {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-  email String
-  token String @unique
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
 }
 
 model TwoFactorToken {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-  email String
-  token String @unique
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
@@ -93,53 +93,67 @@ model TwoFactorConfirmation {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
 }
 
 model User {
-  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  username              String?   @unique
-  email                 String?   @unique
+  id                    String                 @id @default(auto()) @map("_id") @db.ObjectId
+  username              String?                @unique
+  email                 String?                @unique
   password              String?
   emailVerified         DateTime?
   passwordHash          String?
   image                 String?
-  preferredCurrency     String    @default("USD") // Store user's preferred currency
+  preferredCurrency     String                 @default("USD") // Store user's preferred currency
   accounts              Account[]
   member                Member?
   seller                Seller?
   admin                 Admin?
   orders                Order[]
-  status                AccountStatus?  @default(ACTIVE)
+  status                AccountStatus?         @default(ACTIVE)
   sellerApplication     SellerApplication?
   onboardingSurvey      OnboardingSurvey?
   suggestion            Suggestion[]
   upvotes               Upvote[]
-  isTwoFactorEnabled    Boolean @default(false)
+  isTwoFactorEnabled    Boolean                @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
-  role                  String  @default("MEMBER")
-  permissions           Json[]  @default([]) // Array of permission objects with expiration
-  reviewsGiven          Review[] @relation("Reviewer")
-  reviewsReceived       Review[] @relation("Reviewed")
+  role                  String                 @default("MEMBER")
+  permissions           Json[]                 @default([]) // Array of permission objects with expiration
+  reviewsGiven          Review[]               @relation("Reviewer")
+  reviewsReceived       Review[]               @relation("Reviewed")
   sessions              Session[]
   conversations         UserConversation[]
-  sentMessages          Message[] @relation("MessageSender")
+  sentMessages          Message[]              @relation("MessageSender")
   blogPosts             BlogPost[]
   blogComments          BlogComment[]
 
-  createdAt	        DateTime @default(now())
-  updatedAt	        DateTime @updatedAt
+  //Tracability and fraud detection
+  signupIP          String? // IP at signup
+  signupLocation    Json? // { country, region, city }
+  lastLoginIP       String?
+  lastLoginAt       DateTime?
+  isProxy           Boolean?  @default(false) // Was signup IP a VPN/proxy?
+  fraudScore        Float? // 0.0–1.0 risk score
+  accountReputation String? // "TRUSTED", "NEUTRAL", "SUSPICIOUS"
+  numChargebacks    Int       @default(0)
+  numRefunds        Int       @default(0)
+  numDisputes       Int       @default(0)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  DeviceFingerprint DeviceFingerprint[]
+  UserActivityLog   UserActivityLog[]
+  temporaryUploads  TemporaryUpload[]
 }
 
-
 model RolePermission {
-  id          String     @id @default(auto()) @map("_id") @db.ObjectId
-  role        String     // Changed from UserRole to String
-  permission  String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  role       String // Changed from UserRole to String
+  permission String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([role, permission])
   @@index([role])
@@ -147,169 +161,170 @@ model RolePermission {
 }
 
 model Member {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String    @unique
+  id                 String @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String @unique
   encryptedFirstName String
   encryptedLastName  String
-  firstNameIV       String    // Initialization vector for first name
-  lastNameIV        String    // Initialization vector for last name
-  userBio           String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstNameIV        String // Initialization vector for first name
+  lastNameIV         String // Initialization vector for last name
+  userBio            String
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt	        DateTime @default(now())
-  updatedAt	        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Address {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  encryptedStreet   String   // Encrypted street address
-  streetIV          String   // IV for street address
-  streetSalt        String   // Salt for street address
-  encryptedStreet2  String?  // Encrypted street address 2 (optional)
-  street2IV         String?  // IV for street address 2
-  street2Salt       String?  // Salt for street address 2
-  encryptedCity     String   // Encrypted city
-  cityIV            String   // IV for city
-  citySalt          String   // Salt for city
-  encryptedState    String?  // Encrypted state/province
-  stateIV           String?  // IV for state/province
-  stateSalt         String?  // Salt for state/province
-  encryptedPostal   String   // Encrypted postal code
-  postalIV          String   // IV for postal code
-  postalSalt        String   // Salt for postal code
-  encryptedCountry  String   // Encrypted country
-  countryIV         String   // IV for country
-  countrySalt       String   // Salt for country
-  isDefault         Boolean  @default(true)
-  isBusinessAddress Boolean  @default(false) // Flag to identify business addresses
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  encryptedStreet   String // Encrypted street address
+  streetIV          String // IV for street address
+  streetSalt        String // Salt for street address
+  encryptedStreet2  String? // Encrypted street address 2 (optional)
+  street2IV         String? // IV for street address 2
+  street2Salt       String? // Salt for street address 2
+  encryptedCity     String // Encrypted city
+  cityIV            String // IV for city
+  citySalt          String // Salt for city
+  encryptedState    String? // Encrypted state/province
+  stateIV           String? // IV for state/province
+  stateSalt         String? // Salt for state/province
+  encryptedPostal   String // Encrypted postal code
+  postalIV          String // IV for postal code
+  postalSalt        String // Salt for postal code
+  encryptedCountry  String // Encrypted country
+  countryIV         String // IV for country
+  countrySalt       String // Salt for country
+  isDefault         Boolean @default(true)
+  isBusinessAddress Boolean @default(false) // Flag to identify business addresses
   sellerId          String
-  seller            Seller   @relation(fields: [sellerId], references: [userId])
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  seller            Seller  @relation(fields: [sellerId], references: [userId])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sellerId])
 }
 
 model Seller {
-  id		                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId	                  String    @unique
-  shopName	                String    @unique
-  shopNameSlug              String    @unique // URL-friendly shop name
-  shopTagLine               String?
-  shopDescription           String?
-  preferredCurrency         String    @default("USD") // Store seller's preferred currency
-  preferredWeightUnit       String    @default("lbs")  // Store seller's preferred weight unit (kg/lbs)
-  preferredDimensionUnit    String    @default("in")  // Store seller's preferred dimension unit (cm/inches)
-  preferredDistanceUnit     String    @default("miles")  // Store seller's preferred distance unit (km/miles)
-  applicationAccepted       Boolean   @default(false)
-  isFullyActivated          Boolean   @default(false) // Track if seller is fully activated and ready to sell
-  stripeConnected	          Boolean		@default(false)
-  connectedAccountId        String?   @unique // Optional, but required for selling
-  totalSales	              Int       @default(0)
-  totalProducts	            Int       @default(0)
-  acceptsCustom             Boolean   @default(false)
-  isWomanOwned             Boolean   @default(false)
-  isMinorityOwned          Boolean   @default(false)
-  isLGBTQOwned             Boolean   @default(false)
-  isVeteranOwned           Boolean   @default(false)
-  isSustainable            Boolean   @default(false)
-  isCharitable             Boolean   @default(false)
-  valuesPreferNotToSay     Boolean   @default(false)
-  products	                Product[]
-  order                     Order[]
-  addresses                 Address[]
-  shippingProfiles         ShippingProfile[]
-  reviews                   Review[]
-  user		                  User		@relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String            @unique
+  shopName               String            @unique
+  shopNameSlug           String            @unique // URL-friendly shop name
+  shopTagLine            String?
+  shopDescription        String?
+  preferredCurrency      String            @default("USD") // Store seller's preferred currency
+  preferredWeightUnit    String            @default("lbs") // Store seller's preferred weight unit (kg/lbs)
+  preferredDimensionUnit String            @default("in") // Store seller's preferred dimension unit (cm/inches)
+  preferredDistanceUnit  String            @default("miles") // Store seller's preferred distance unit (km/miles)
+  applicationAccepted    Boolean           @default(false)
+  isFullyActivated       Boolean           @default(false) // Track if seller is fully activated and ready to sell
+  stripeConnected        Boolean           @default(false)
+  connectedAccountId     String?           @unique // Optional, but required for selling
+  totalSales             Int               @default(0)
+  totalProducts          Int               @default(0)
+  acceptsCustom          Boolean           @default(false)
+  isWomanOwned           Boolean           @default(false)
+  isMinorityOwned        Boolean           @default(false)
+  isLGBTQOwned           Boolean           @default(false)
+  isVeteranOwned         Boolean           @default(false)
+  isSustainable          Boolean           @default(false)
+  isCharitable           Boolean           @default(false)
+  valuesPreferNotToSay   Boolean           @default(false)
+  products               Product[]
+  order                  Order[]
+  addresses              Address[]
+  shippingProfiles       ShippingProfile[]
+  reviews                Review[]
+  user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Onboarding progress fields
-  shopProfileComplete       Boolean   @default(false) // Business info and tax details completed
-  shippingProfileCreated    Boolean   @default(false) // At least one shipping profile created
+  shopProfileComplete    Boolean @default(false) // Business info and tax details completed
+  shippingProfileCreated Boolean @default(false) // At least one shipping profile created
 
   // Tax fields
-  encryptedBusinessName     String
-  businessNameIV           String
-  businessNameSalt         String
-  encryptedTaxId           String
-  taxIdIV                  String
-  taxIdSalt                String
+  encryptedBusinessName               String
+  businessNameIV                      String
+  businessNameSalt                    String
+  encryptedTaxId                      String
+  taxIdIV                             String
+  taxIdSalt                           String
   encryptedAdditionalTaxRegistrations String?
-  additionalTaxRegistrationsIV String?
-  additionalTaxRegistrationsSalt String?
-  taxCountry               String
-  taxIdVerified            Boolean   @default(false)
-  taxIdVerificationDate    DateTime?
-  taxIdVerificationMethod  String?   // e.g., "MANUAL", "API", "DOCUMENT"
-  taxIdVerificationNotes   String?   // Any notes about the verification process
+  additionalTaxRegistrationsIV        String?
+  additionalTaxRegistrationsSalt      String?
+  taxCountry                          String
+  taxIdVerified                       Boolean   @default(false)
+  taxIdVerificationDate               DateTime?
+  taxIdVerificationMethod             String? // e.g., "MANUAL", "API", "DOCUMENT"
+  taxIdVerificationNotes              String? // Any notes about the verification process
 
   // Shop Policies
-  processingTime           String?   // e.g., "1-3 business days", "3-5 business days"
-  returnsPolicy            String?   // Return policy description
-  exchangesPolicy          String?   // Exchange policy description
-  damagesPolicy            String?   // Policy for damaged items
-  nonReturnableItems       String?   // Items that cannot be returned
-  refundPolicy             String?   // Refund policy description
+  processingTime     String? // e.g., "1-3 business days", "3-5 business days"
+  returnsPolicy      String? // Return policy description
+  exchangesPolicy    String? // Exchange policy description
+  damagesPolicy      String? // Policy for damaged items
+  nonReturnableItems String? // Items that cannot be returned
+  refundPolicy       String? // Refund policy description
+  careInstructions   String? // Care and maintenance instructions for products
 
   // Shipping Restrictions
-  excludedCountries        String[]  @default([]) // Array of country codes that seller doesn't ship to
+  excludedCountries String[] @default([]) // Array of country codes that seller doesn't ship to
 
-  createdAt	      DateTime @default(now())
-  updatedAt	      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SellerApplication {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId              String    @unique
+  id                  String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String  @unique
   craftingProcess     String
   portfolio           String
   interestInJoining   String
   applicationApproved Boolean @default(false)
-  user		            User		@relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt	      DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model OnboardingSurvey {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId              String    @unique
-  overallExperience   String    // "excellent", "good", "fair", "poor"
-  clarityOfInstructions String  // "very_clear", "clear", "somewhat_unclear", "very_unclear"
-  difficultyLevel     String    // "very_easy", "easy", "moderate", "difficult", "very_difficult"
-  timeToComplete      String    // "less_than_15_min", "15_30_min", "30_60_min", "1_2_hours", "more_than_2_hours"
-  mostChallengingStep String    // "application", "profile_setup", "stripe_connection", "shipping_setup", "none"
-  suggestions         String?   // Optional text feedback
-  wouldRecommend      String    // "definitely", "probably", "maybe", "probably_not", "definitely_not"
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String  @unique
+  overallExperience     String // "excellent", "good", "fair", "poor"
+  clarityOfInstructions String // "very_clear", "clear", "somewhat_unclear", "very_unclear"
+  difficultyLevel       String // "very_easy", "easy", "moderate", "difficult", "very_difficult"
+  timeToComplete        String // "less_than_15_min", "15_30_min", "30_60_min", "1_2_hours", "more_than_2_hours"
+  mostChallengingStep   String // "application", "profile_setup", "stripe_connection", "shipping_setup", "none"
+  suggestions           String? // Optional text feedback
+  wouldRecommend        String // "definitely", "probably", "maybe", "probably_not", "definitely_not"
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt           DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Product {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                    String           @id @default(auto()) @map("_id") @db.ObjectId
   userId                String
   name                  String
   description           Json
   price                 Int
-  currency              String   @default("USD") // Store the currency code (e.g., USD, EUR, GBP)
-  status                String   @default("HIDDEN")
-  shippingCost          Int?     // Only required if product is physical
+  currency              String           @default("USD") // Store the currency code (e.g., USD, EUR, GBP)
+  status                String           @default("HIDDEN")
+  shippingCost          Int? // Only required if product is physical
   handlingFee           Int?
   itemWeight            Int?
-  itemWeightUnit        String   @default("lbs")  // Store the weight unit (kg/lbs)
+  itemWeightUnit        String           @default("lbs") // Store the weight unit (kg/lbs)
   itemLength            Int?
   itemWidth             Int?
   itemHeight            Int?
-  itemDimensionUnit     String   @default("in")  // Store the dimension unit (cm/inches)
+  itemDimensionUnit     String           @default("in") // Store the dimension unit (cm/inches)
   shippingNotes         String?
-  freeShipping          Boolean  @default(false)
+  freeShipping          Boolean          @default(false)
   isDigital             Boolean
-  stock                 Int      @default(1)
+  stock                 Int              @default(1)
   images                String[] // Array of image URLs
-  productFile           String?  // Only required if product is digital
-  numberSold            Int      @default(0)
-  onSale                Boolean  @default(false)
-  discount              Int?     // Only if the product is on sale
+  productFile           String? // Only required if product is digital
+  numberSold            Int              @default(0)
+  onSale                Boolean          @default(false)
+  discount              Int? // Only if the product is on sale
   primaryCategory       String
   secondaryCategory     String
   tags                  String[]
@@ -318,108 +333,113 @@ model Product {
   inStockProcessingTime Int?
   outStockLeadTime      Int?
   howItsMade            String?
-  productDrop           Boolean  @default(false)
-  NSFW                  Boolean		@default(false)
+  productDrop           Boolean          @default(false)
+  NSFW                  Boolean          @default(false)
   order                 Order[]
   dropDate              DateTime?
-  dropTime              String?  // Time component for product drop
+  dropTime              String? // Time component for product drop
   discountEndDate       DateTime?
-  discountEndTime       String?  // Time component for discount end
+  discountEndTime       String? // Time component for discount end
   reviews               Review[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  seller                Seller?    @relation(fields: [userId], references: [userId])
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  seller                Seller?          @relation(fields: [userId], references: [userId])
   shippingProfileId     String?
   shippingProfile       ShippingProfile? @relation(fields: [shippingProfileId], references: [id])
-  
+
   // Tax fields
-  taxCategory    String    @default("PHYSICAL_GOODS")
-  taxCode        String?
-  taxExempt      Boolean   @default(false)
+  taxCategory String  @default("PHYSICAL_GOODS")
+  taxCode     String?
+  taxExempt   Boolean @default(false)
 }
 
 model Suggestion {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String
-  title             String
-  description       String
-  type              String   // e.g., "Feature", "Change", "Addition"
-  role              String   // "Seller" or "Member"
-  upvoteCount       Int      @default(0)
-  upvotes           Upvote[]
-  
-  createdAt     DateTime @default(now())
-  user          User     @relation(fields: [userId], references: [id])
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String
+  title       String
+  description String
+  type        String // e.g., "Feature", "Change", "Addition"
+  role        String // "Seller" or "Member"
+  upvoteCount Int      @default(0)
+  upvotes     Upvote[]
+
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Upvote {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String
-  suggestionId  String
-  createdAt     DateTime   @default(now())
-  user          User       @relation(fields: [userId], references: [id])
-  suggestion    Suggestion @relation(fields: [suggestionId], references: [id])
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String
+  suggestionId String
+  createdAt    DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id])
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id])
 
   @@unique([userId, suggestionId])
 }
 
 model ContactUs {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  name              String
-  email             String
-  reason            String
-  helpDescription   String
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String
+  reason          String
+  helpDescription String
 
-  createdAt         DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Order {
-  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId                String
-  encryptedBuyerEmail   String
-  buyerEmailIV          String
-  buyerEmailSalt        String
-  encryptedBuyerName    String
-  buyerNameIV           String
-  buyerNameSalt         String
-  sellerId              String
-  shopName              String
-  productId             String
-  productName           String
-  quantity              Int
-  totalAmount           Float
-  currency              String    @default("USD") // Store the currency code used for the order
-  productPrice          Float
-  shippingCost          Float
-  stripeFee             Float     @default(0)
-  taxAmount             Float     @default(0)     // Total tax amount collected
-  taxJurisdiction       String?   // Country/State where tax was collected
-  taxRate               Float?    // Tax rate applied (e.g., 0.08 for 8%)
-  taxType               String?   // Type of tax (e.g., "VAT", "GST", "Sales Tax")
-  taxBreakdown          Json?     // Detailed breakdown of taxes by type and jurisdiction
-  taxExempt             Boolean   @default(false) // Whether the order was tax exempt
-  taxCategory           String?   // Product tax category
-  taxCode               String?   // Stripe tax code used
-  isDigital             Boolean   @default(false)
-  status                OrderStatus
-  paymentStatus         PaymentStatus
-  stripeSessionId       String
-  stripeTransferId      String?
+  id                       String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId                   String
+  encryptedBuyerEmail      String
+  buyerEmailIV             String
+  buyerEmailSalt           String
+  encryptedBuyerName       String
+  buyerNameIV              String
+  buyerNameSalt            String
+  sellerId                 String
+  shopName                 String
+  productId                String
+  productName              String
+  quantity                 Int
+  totalAmount              Float
+  currency                 String        @default("USD") // Store the currency code used for the order
+  productPrice             Float
+  shippingCost             Float
+  stripeFee                Float         @default(0)
+  taxAmount                Float         @default(0) // Total tax amount collected
+  taxJurisdiction          String? // Country/State where tax was collected
+  taxRate                  Float? // Tax rate applied (e.g., 0.08 for 8%)
+  taxType                  String? // Type of tax (e.g., "VAT", "GST", "Sales Tax")
+  taxBreakdown             Json? // Detailed breakdown of taxes by type and jurisdiction
+  taxExempt                Boolean       @default(false) // Whether the order was tax exempt
+  taxCategory              String? // Product tax category
+  taxCode                  String? // Stripe tax code used
+  isDigital                Boolean       @default(false)
+  status                   OrderStatus
+  paymentStatus            PaymentStatus
+  stripeSessionId          String
+  stripeTransferId         String?
   encryptedShippingAddress String
-  shippingAddressIV     String
-  shippingAddressSalt   String
-  discount              Json?
+  shippingAddressIV        String
+  shippingAddressSalt      String
+  discount                 Json?
   // Exchange rate fields
-  exchangeRate          Float?    // The exchange rate used for this order (e.g., 1.2 for USD to EUR)
-  baseCurrency          String    @default("USD") // The original currency (usually USD)
-  exchangeRateTimestamp DateTime? // When the exchange rate was fetched
-  reviews               Review[]
-  completedAt           DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  user                  User      @relation(fields: [userId], references: [id])
-  seller                Seller    @relation(fields: [sellerId], references: [userId])
-  product               Product   @relation(fields: [productId], references: [id])
+  exchangeRate             Float? // The exchange rate used for this order (e.g., 1.2 for USD to EUR)
+  baseCurrency             String        @default("USD") // The original currency (usually USD)
+  exchangeRateTimestamp    DateTime? // When the exchange rate was fetched
+  reviews                  Review[]
+  completedAt              DateTime?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+  user                     User          @relation(fields: [userId], references: [id])
+  seller                   Seller        @relation(fields: [sellerId], references: [userId])
+  product                  Product       @relation(fields: [productId], references: [id])
+
+  //Tracability and fraud detection
+  buyerIp                  String?
+  buyerLocation            Json?
+  buyerDeviceId            String?
 }
 
 model HandmadeGuidelines {
@@ -469,32 +489,33 @@ model TemporaryUpload {
   fileKey   String   @unique
   fileUrl   String
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  productId String?  // Optional, will be set when the file is associated with a product
+  productId String? // Optional, will be set when the file is associated with a product
 
   @@index([createdAt]) // Add index for better query performance
-  @@index([userId])    // Add index for user queries
+  @@index([userId]) // Add index for user queries
 }
 
 model Review {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  orderId           String   
-  sellerId          String   // Direct reference to the seller
-  reviewerId        String   
-  reviewedId        String   
-  productId         String?  
-  rating            Int      // 1-5 stars
-  comment           String?
-  type              String   // "PRODUCT", "SELLER", "BUYER"
-  status            String   @default("PENDING") // "PENDING", "PUBLISHED", "EXPIRED"
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  expiresAt         DateTime // 2 weeks from order completion
-  order             Order    @relation(fields: [orderId], references: [id])
-  seller            Seller   @relation(fields: [sellerId], references: [id])
-  reviewer          User     @relation("Reviewer", fields: [reviewerId], references: [id])
-  reviewed          User     @relation("Reviewed", fields: [reviewedId], references: [id])
-  product           Product? @relation(fields: [productId], references: [id])
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId    String
+  sellerId   String // Direct reference to the seller
+  reviewerId String
+  reviewedId String
+  productId  String?
+  rating     Int // 1-5 stars
+  comment    String?
+  type       String // "PRODUCT", "SELLER", "BUYER"
+  status     String   @default("PENDING") // "PENDING", "PUBLISHED", "EXPIRED"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  expiresAt  DateTime // 2 weeks from order completion
+  order      Order    @relation(fields: [orderId], references: [id])
+  seller     Seller   @relation(fields: [sellerId], references: [id])
+  reviewer   User     @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewed   User     @relation("Reviewed", fields: [reviewedId], references: [id])
+  product    Product? @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([sellerId])
@@ -506,9 +527,9 @@ model Review {
 model Message {
   id             String       @id @default(auto()) @map("_id") @db.ObjectId
   content        String
-  senderId       String       
+  senderId       String
   sender         User         @relation("MessageSender", fields: [senderId], references: [id])
-  conversationId String       
+  conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
@@ -518,24 +539,24 @@ model Message {
 model Session {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique
-  userId       String   
+  userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  id        String             @id @default(auto()) @map("_id") @db.ObjectId
   users     UserConversation[]
   messages  Message[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 }
 
 model UserConversation {
   id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String       
+  userId         String
   user           User         @relation(fields: [userId], references: [id])
-  conversationId String       
+  conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -544,29 +565,29 @@ model UserConversation {
 }
 
 model CustomerFeedback {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
   heardFrom         String
-  overallExperience Int      // 1-5 rating
-  placedOrder       String   // "YES", "PLANNING", "NO"
+  overallExperience Int // 1-5 rating
+  placedOrder       String // "YES", "PLANNING", "NO"
   orderNumber       String?
   experience        String
   improvements      String?
-  returnLikelihood  Int      // 1-5 rating
+  returnLikelihood  Int // 1-5 rating
   email             String?
-  website           String?  // Honeypot field
+  website           String? // Honeypot field
   recaptchaToken    String?
 
-  createdAt         DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 // New model for storing exchange rates
 model ExchangeRate {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  baseCurrency  String   // Base currency (e.g., USD)
-  targetCurrency String  // Target currency (e.g., EUR)
-  rate          Float    // Exchange rate value
-  lastUpdated   DateTime @default(now())
-  isActive      Boolean  @default(true)
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  baseCurrency   String // Base currency (e.g., USD)
+  targetCurrency String // Target currency (e.g., EUR)
+  rate           Float // Exchange rate value
+  lastUpdated    DateTime @default(now())
+  isActive       Boolean  @default(true)
 
   @@unique([baseCurrency, targetCurrency])
   @@index([baseCurrency])
@@ -574,45 +595,45 @@ model ExchangeRate {
 }
 
 model BlogPost {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   publishedAt DateTime? // When the post was published
-  slug        String    @unique
+  slug        String        @unique
   title       String
   description String
-  content     Json      // Rich text content
-  excerpt     String?   // Short summary for previews
-  img         String?   // Featured image
-  views       Int       @default(0)
-  readTime    Int?      // Estimated reading time in minutes
-  status      String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  content     Json // Rich text content
+  excerpt     String? // Short summary for previews
+  img         String? // Featured image
+  views       Int           @default(0)
+  readTime    Int? // Estimated reading time in minutes
+  status      String        @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
   catSlug     String
   cat         BlogCategory  @relation(fields: [catSlug], references: [slug])
   userEmail   String
-  user        User      @relation(fields: [userEmail], references: [email])
+  user        User          @relation(fields: [userEmail], references: [email])
   comments    BlogComment[] @relation("BlogCommentToBlogPost")
-  
+
   // SEO fields
-  metaTitle       String?   // Custom SEO title
-  metaDescription String?   // Custom meta description
-  keywords        String[]  // SEO keywords
-  canonicalUrl    String?   // Canonical URL for duplicate content
-  ogImage         String?   // Open Graph image for social sharing
-  ogTitle         String?   // Open Graph title
-  ogDescription   String?   // Open Graph description
-  
+  metaTitle       String? // Custom SEO title
+  metaDescription String? // Custom meta description
+  keywords        String[] // SEO keywords
+  canonicalUrl    String? // Canonical URL for duplicate content
+  ogImage         String? // Open Graph image for social sharing
+  ogTitle         String? // Open Graph title
+  ogDescription   String? // Open Graph description
+
   // Schema.org structured data
-  authorName      String?   // Author's full name for structured data
-  authorUrl       String?   // Author's profile URL
-  dateModified    DateTime? // Last modification date for structured data
-  
+  authorName   String? // Author's full name for structured data
+  authorUrl    String? // Author's profile URL
+  dateModified DateTime? // Last modification date for structured data
+
   // Additional metadata
-  tags            String[]  // Blog post tags
-  featured        Boolean   @default(false)
-  allowComments   Boolean   @default(true)
-  isPrivate       Boolean   @default(false)
-  
+  tags          String[] // Blog post tags
+  featured      Boolean  @default(false)
+  allowComments Boolean  @default(true)
+  isPrivate     Boolean  @default(false)
+
   @@index([status])
   @@index([publishedAt])
   @@index([tags])
@@ -620,20 +641,20 @@ model BlogPost {
 }
 
 model BlogComment {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   desc      String
   userEmail String
-  user      User     @relation(fields: [userEmail], references: [email])
+  user      User          @relation(fields: [userEmail], references: [email])
   postSlug  String
-  post      BlogPost @relation("BlogCommentToBlogPost", fields: [postSlug], references: [slug], onDelete: Cascade)
-  parentId  String?  // For nested comments
-  parent    BlogComment? @relation("CommentToComment", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  post      BlogPost      @relation("BlogCommentToBlogPost", fields: [postSlug], references: [slug], onDelete: Cascade)
+  parentId  String? // For nested comments
+  parent    BlogComment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies   BlogComment[] @relation("CommentToComment")
-  isEdited  Boolean  @default(false)
-  isHidden  Boolean  @default(false)
-  likes     Int      @default(0)
+  isEdited  Boolean       @default(false)
+  isHidden  Boolean       @default(false)
+  likes     Int           @default(0)
 
   @@index([postSlug])
   @@index([userEmail])
@@ -641,51 +662,51 @@ model BlogComment {
 }
 
 model BlogCategory {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  slug        String    @unique
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  slug        String         @unique
   title       String
-  description String?   // Category description for SEO
+  description String? // Category description for SEO
   img         String?
   posts       BlogPost[]
-  parentSlug  String?   // For nested categories
-  parent      BlogCategory? @relation("CategoryToCategory", fields: [parentSlug], references: [slug], onDelete: NoAction, onUpdate: NoAction)
+  parentSlug  String? // For nested categories
+  parent      BlogCategory?  @relation("CategoryToCategory", fields: [parentSlug], references: [slug], onDelete: NoAction, onUpdate: NoAction)
   children    BlogCategory[] @relation("CategoryToCategory")
-  order       Int       @default(0) // For custom ordering
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  order       Int            @default(0) // For custom ordering
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([parentSlug])
   @@index([order])
 }
 
 model ShippingProfile {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
   name            String
-  isDefault       Boolean   @default(false)
-  countryOfOrigin String    // Country where the products are shipped from
+  isDefault       Boolean        @default(false)
+  countryOfOrigin String // Country where the products are shipped from
   sellerId        String
-  seller          Seller    @relation(fields: [sellerId], references: [userId])
+  seller          Seller         @relation(fields: [sellerId], references: [userId])
   rates           ShippingRate[]
   products        Product[]
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sellerId])
 }
 
 model ShippingRate {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
   profileId       String
-  zone            String   // e.g., "NORTH_AMERICA", "EUROPE", etc.
-  isInternational Boolean  @default(false) // Whether this is an international shipping rate
-  price           Int      // In cents
-  currency        String   @default("USD")
+  zone            String // e.g., "NORTH_AMERICA", "EUROPE", etc.
+  isInternational Boolean @default(false) // Whether this is an international shipping rate
+  price           Int // In cents
+  currency        String  @default("USD")
   estimatedDays   Int
-  additionalItem  Int?     // Optional: charge extra per item
-  serviceLevel    String?  // Optional: e.g., "STANDARD", "EXPRESS"
-  isFreeShipping  Boolean  @default(false)
+  additionalItem  Int? // Optional: charge extra per item
+  serviceLevel    String? // Optional: e.g., "STANDARD", "EXPRESS"
+  isFreeShipping  Boolean @default(false)
 
   shippingProfile ShippingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
@@ -693,16 +714,48 @@ model ShippingRate {
 }
 
 model Admin {
-  id                    String   @id @default(cuid()) @map("_id")
-  userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role                 String   // Maps to ADMIN_ROLES from data/roles-and-permissions.ts
-  isActive             Boolean  @default(true)
-  assignedRegions      String[] // Array of region codes or names
-  notificationPreferences Json?  // Array of notification preferences
-  tasks                Json?    // Array of task objects
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                      String   @id @default(cuid()) @map("_id")
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                    String // Maps to ADMIN_ROLES from data/roles-and-permissions.ts
+  isActive                Boolean  @default(true)
+  assignedRegions         String[] // Array of region codes or names
+  notificationPreferences Json? // Array of notification preferences
+  tasks                   Json? // Array of task objects
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   @@map("admins")
+}
+
+model DeviceFingerprint {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  deviceId  String // SHA256 hash of entropy data
+  ip        String
+  location  Json?
+  isProxy   Boolean?
+  userAgent String?
+  browser   String?
+  os        String?
+  screenRes String?
+  timezone  String?
+  language  String?
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @updatedAt
+}
+
+model UserActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  action    String // "LOGIN", "SIGNUP", "CHECKOUT", "FAILED_LOGIN", etc.
+  ip        String
+  location  Json?
+  userAgent String?
+  deviceId  String?
+  success   Boolean?
+  details   Json? // Optional: { orderId, productId, errorCode, ... }
+  createdAt DateTime @default(now())
 }

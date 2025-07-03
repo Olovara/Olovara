@@ -1,66 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useLocation } from './useLocation';
 import { useCurrency } from './useCurrency';
-import { UserLocationPreferences } from '@/lib/ipinfo';
-
-interface UseLocationDetectionReturn {
-  locationPreferences: UserLocationPreferences | null;
-  isLoading: boolean;
-  error: string | null;
-  refreshLocation: () => Promise<void>;
-}
+import { useEffect } from 'react';
 
 /**
  * Hook to automatically detect user location and set currency preferences
+ * This is a convenience hook that combines location and currency stores
  */
-export function useLocationDetection(): UseLocationDetectionReturn {
-  const [locationPreferences, setLocationPreferences] = useState<UserLocationPreferences | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { setCurrency } = useCurrency();
+export function useLocationDetection() {
+  const { 
+    locationPreferences, 
+    isDetecting, 
+    error, 
+    detectLocation,
+    currentCountry,
+    currentCurrency 
+  } = useLocation();
+  
+  const { currency, setCurrency } = useCurrency();
 
-  const fetchLocationPreferences = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/location/preferences');
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to get location preferences');
-      }
-
-      const prefs = data.data.locationPreferences;
-      setLocationPreferences(prefs);
-
-      // Automatically set currency based on location
-      if (prefs.currency) {
-        setCurrency(prefs.currency);
-      }
-
-      // Log analytics data (you can send this to your analytics service)
-      console.log('User Analytics:', data.data.analytics);
-
-    } catch (err) {
-      console.error('Error fetching location preferences:', err);
-      setError(err instanceof Error ? err.message : 'Failed to detect location');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const refreshLocation = async () => {
-    await fetchLocationPreferences();
-  };
-
+  // Auto-detect location on first load
   useEffect(() => {
-    fetchLocationPreferences();
-  }, []);
+    if (!locationPreferences && !isDetecting) {
+      detectLocation();
+    }
+  }, [locationPreferences, isDetecting, detectLocation]);
+
+  // Sync location store currency with currency store
+  useEffect(() => {
+    if (currentCurrency && currentCurrency !== currency) {
+      setCurrency(currentCurrency);
+    }
+  }, [currentCurrency, currency, setCurrency]);
 
   return {
     locationPreferences,
-    isLoading,
+    isLoading: isDetecting,
     error,
-    refreshLocation,
+    refreshLocation: detectLocation,
+    currentCountry,
+    currentCurrency,
   };
 } 

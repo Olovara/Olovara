@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { CurrencySelector } from "./CurrencySelector";
+import { LocationModal } from "./LocationModal";
 
 const Footer = () => {
   const pathname = usePathname();
@@ -175,7 +175,7 @@ const Footer = () => {
       {/* Copyright and Legal Links */}
       <div className="py-10 md:flex md:items-center md:justify-between bg-gray-100 px-6">
         <div className="mb-4 md:mb-0">
-          <CurrencySelector />
+          <LocationModal />
         </div>
         <div className="flex-1 flex flex-col items-center">
           <p className="text-sm text-muted-foreground">
