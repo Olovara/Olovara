@@ -43,6 +43,41 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
+  // Single image uploader for profile images, banners, logos, etc.
+  singleImageUploader: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+    // Set permissions and file types for this FileRoute
+    .middleware(async ({ req }) => {
+      const session = await auth();
+
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      // This code RUNS ON YOUR SERVER after upload
+      console.log("Single image upload complete for userId:", metadata.userId);
+      console.log("file url", file.ufsUrl);
+
+      // Record the upload in the TemporaryUpload table
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.ufsUrl,
+            userId: metadata.userId,
+            // productId will be null until associated with a product
+          },
+        });
+        console.log("Temporary upload recorded:", file.key);
+      } catch (error) {
+        console.error("Failed to record temporary upload:", error);
+        throw new UploadThingError("Failed to record upload");
+      }
+
+      // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
+    }),
+
   productFileUpload: f({ "application/pdf": { maxFileCount: 1 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {

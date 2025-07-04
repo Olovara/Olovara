@@ -212,6 +212,10 @@ model Seller {
   shopNameSlug           String            @unique // URL-friendly shop name
   shopTagLine            String?
   shopDescription        String?
+  shopAnnouncement       String? // Shop announcement/status message
+  sellerImage            String? // URL to seller profile image
+  shopBannerImage        String? // URL to shop banner image
+  shopLogoImage          String? // URL to shop logo image
   preferredCurrency      String            @default("USD") // Store seller's preferred currency
   preferredWeightUnit    String            @default("lbs") // Store seller's preferred weight unit (kg/lbs)
   preferredDimensionUnit String            @default("in") // Store seller's preferred dimension unit (cm/inches)
@@ -230,6 +234,12 @@ model Seller {
   isSustainable          Boolean           @default(false)
   isCharitable           Boolean           @default(false)
   valuesPreferNotToSay   Boolean           @default(false)
+  // Social media links
+  facebookUrl            String?
+  instagramUrl           String?
+  twitterUrl             String?
+  pinterestUrl           String?
+  tiktokUrl              String?
   products               Product[]
   order                  Order[]
   addresses              Address[]

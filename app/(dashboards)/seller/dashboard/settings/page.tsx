@@ -1,7 +1,5 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import MemberForm from "@/components/forms/MemberForm";
-import SellerForm from "@/components/forms/SellerForm";
 import AddressForm from "@/components/forms/AddressForm";
 import ShopQRCode from "@/components/ShopQRCode";
 import {
@@ -11,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getMemberData } from "@/actions/getMemberData";
 import { db } from "@/lib/db";
 import ShippingProfilesTable from "./(components)/ShippingProfilesTable";
 import { decryptData } from "@/lib/encryption";
@@ -19,6 +16,9 @@ import PermissionGate from "@/components/auth/permission-gate";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
 import ShopPoliciesForm from "@/components/forms/ShopPoliciesForm";
 import CountryExclusionsForm from "@/components/forms/CountryExclusionsForm";
+import SellerAboutForm from "@/components/forms/SellerAboutForm";
+import SellerInfoForm from "@/components/forms/SellerInfoForm";
+import SellerPreferencesForm from "@/components/forms/SellerPreferencesForm";
 
 export const metadata = {
   title: "Seller - Settings",
@@ -31,8 +31,6 @@ export default async function SellerSettings() {
     redirect("/login");
   }
 
-  const memberData = await getMemberData(session.user.id);
-  
   // Get seller data to access shopNameSlug and shipping profiles
   const seller = await db.seller.findUnique({
     where: { userId: session.user.id },
@@ -92,13 +90,6 @@ export default async function SellerSettings() {
       }
     }
   });
-  
-  // Provide default values if member data is not available
-  const initialData = {
-    firstName: memberData?.firstName || "",
-    lastName: memberData?.lastName || "",
-    userBio: memberData?.userBio || "",
-  };
 
   // Decrypt address data if it exists
   let decryptedAddressData = undefined;
@@ -118,86 +109,92 @@ export default async function SellerSettings() {
 
   return (
     <PermissionGate requiredPermission="MANAGE_SELLER_SETTINGS">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
         <div>
           <h3 className="text-lg font-medium">Settings</h3>
           <p className="text-sm text-muted-foreground">
             Manage your account settings and preferences.
           </p>
-      </div>
-        <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="seller">Seller</TabsTrigger>
-            <TabsTrigger value="address">Address</TabsTrigger>
-            <TabsTrigger value="shipping">Shipping</TabsTrigger>
-            <TabsTrigger value="policies">Policies</TabsTrigger>
-            <TabsTrigger value="exclusions">Exclusions</TabsTrigger>
-            <TabsTrigger value="qr">QR Code</TabsTrigger>
-        </TabsList>
-          <TabsContent value="profile" className="space-y-4">
-            <Card>
-            <CardHeader>
-                <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <MemberForm initialData={initialData} />
+        </div>
+        <Tabs defaultValue="about" className="space-y-4">
+        <div className="relative">
+          <TabsList className="w-full overflow-x-auto scrollbar-hide bg-muted/50 border rounded-lg p-1 mx-4 sm:mx-0">
+            <div className="flex min-w-max space-x-1 px-1">
+              <TabsTrigger value="about" className="flex-shrink-0">About</TabsTrigger>
+              <TabsTrigger value="info" className="flex-shrink-0">Info</TabsTrigger>
+              <TabsTrigger value="preferences" className="flex-shrink-0">Preferences</TabsTrigger>
+              <TabsTrigger value="address" className="flex-shrink-0">Address</TabsTrigger>
+              <TabsTrigger value="shipping" className="flex-shrink-0">Shipping</TabsTrigger>
+              <TabsTrigger value="policies" className="flex-shrink-0">Policies</TabsTrigger>
+              <TabsTrigger value="exclusions" className="flex-shrink-0">Exclusions</TabsTrigger>
+              <TabsTrigger value="qr" className="flex-shrink-0">QR Code</TabsTrigger>
+            </div>
+          </TabsList>
+        </div>
+          <TabsContent value="about" className="space-y-4">
+            <Card className="w-full max-w-none">
+              <CardContent className="p-4 sm:p-6">
+                <SellerAboutForm />
               </CardContent>
             </Card>
-              </TabsContent>
-          <TabsContent value="seller" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Seller Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SellerForm />
+          </TabsContent>
+          <TabsContent value="info" className="space-y-4">
+            <Card className="w-full max-w-none">
+              <CardContent className="p-4 sm:p-6">
+                <SellerInfoForm />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="preferences" className="space-y-4">
+            <Card className="w-full max-w-none">
+              <CardContent className="p-4 sm:p-6">
+                <SellerPreferencesForm />
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="address" className="space-y-4">
-            <Card>
-              <CardHeader>
+            <Card className="w-full max-w-none">
+              <CardHeader className="p-4 sm:p-6 pb-0">
                 <CardTitle>Business Address</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <AddressForm type="seller" initialData={decryptedAddressData} />
               </CardContent>
             </Card>
-              </TabsContent>
+          </TabsContent>
           <TabsContent value="shipping" className="space-y-4">
-            <Card>
-              <CardHeader>
+            <Card className="w-full max-w-none">
+              <CardHeader className="p-4 sm:p-6 pb-0">
                 <CardTitle>Shipping Profiles</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <ShippingProfilesTable profiles={seller?.shippingProfiles || []} />
               </CardContent>
             </Card>
-              </TabsContent>
+          </TabsContent>
           <TabsContent value="policies" className="space-y-4">
-            <Card>
-              <CardContent>
+            <Card className="w-full max-w-none">
+              <CardContent className="p-4 sm:p-6">
                 <ShopPoliciesForm />
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="exclusions" className="space-y-4">
-            <Card>
-              <CardContent>
+            <Card className="w-full max-w-none">
+              <CardContent className="p-4 sm:p-6">
                 <CountryExclusionsForm />
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="qr" className="space-y-4">
-            <Card>
-              <CardHeader>
+            <Card className="w-full max-w-none">
+              <CardHeader className="p-4 sm:p-6 pb-0">
                 <CardTitle>Shop QR Code</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <ShopQRCode shopNameSlug={seller?.shopNameSlug || ""} />
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
         </div>
