@@ -3,64 +3,134 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Menu as MenuIcon } from "lucide-react";
-import { SearchBar } from "./SearchBar";
 import { CategoriesMap } from "@/data/categories";
-import { ProtectedLink } from "./shared/ProtectedLink";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function NavbarLinks() {
   const location = usePathname();
   const primaryCategories = CategoriesMap.PRIMARY;
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
   return (
-    <div className="hidden md:flex justify-center items-center col-span-6 gap-x-4">
-      {/* Categories Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            <MenuIcon size={18} />
-            Categories
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-48">
-          {primaryCategories.map((category) => (
-            <DropdownMenuItem key={category.id} asChild>
-              <Link
-                href={`/categories/${category.id.toLowerCase()}`}
-                className={cn(
-                  location === `/categories/${category.id.toLowerCase()}`
-                    ? "font-semibold text-primary"
-                    : "hover:text-primary"
-                )}
+    <>
+      {/* Categories Navigation */}
+      <div className="flex justify-center items-center">
+        <div className="flex items-center gap-x-8">
+          {primaryCategories.map((category) => {
+            const secondaryCategories = CategoriesMap.SECONDARY.filter(
+              sec => sec.primaryCategoryId === category.id
+            );
+            
+            return (
+              <div
+                key={category.id}
+                className="relative"
+                onMouseEnter={() => setHoveredCategory(category.id)}
+                onMouseLeave={() => setHoveredCategory(null)}
               >
-                {category.name}
-              </Link>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+                <Link
+                  href={`/categories/${category.id.toLowerCase()}`}
+                  className={cn(
+                    "text-sm font-medium transition-colors duration-200 py-2 relative",
+                    location === `/categories/${category.id.toLowerCase()}`
+                      ? "text-primary"
+                      : "text-foreground hover:text-primary",
+                    hoveredCategory === category.id && "text-primary"
+                  )}
+                >
+                  {category.name}
+                  {hoveredCategory === category.id && (
+                    <motion.div
+                      layoutId="activeCategory"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      <SearchBar />
-
-      {/* Become a Seller Button */}
-      <ProtectedLink
-        href="/seller-application"
-        className={cn(
-          location === "/seller-application"
-            ? "bg-muted"
-            : "hover:bg-muted hover:bg-opacity-75",
-          "px-4 py-2 font-medium rounded-md whitespace-nowrap"
+      {/* Full-Width Dropdown Overlay - Positioned relative to viewport */}
+      <AnimatePresence>
+        {hoveredCategory && (
+          <motion.div
+            initial={{ opacity: 0, y: -40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -40 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-xl z-50"
+            style={{ 
+              top: '120px', // Approximate navbar height
+              width: '100vw'
+            }}
+            onMouseEnter={() => setHoveredCategory(hoveredCategory)}
+            onMouseLeave={() => setHoveredCategory(null)}
+          >
+            <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
+              {(() => {
+                const category = CategoriesMap.PRIMARY.find(c => c.id === hoveredCategory);
+                const secondaryCategories = CategoriesMap.SECONDARY.filter(
+                  sec => sec.primaryCategoryId === hoveredCategory
+                );
+                
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    {secondaryCategories.map((secondary) => {
+                      const tertiaryCategories = CategoriesMap.TERTIARY.filter(
+                        ter => ter.secondaryCategoryId === secondary.id
+                      );
+                      
+                      return (
+                        <div key={secondary.id} className="space-y-3">
+                          <Link
+                            href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
+                            className="block font-semibold text-lg text-gray-900 hover:text-primary transition-colors"
+                          >
+                            {secondary.name}
+                          </Link>
+                          
+                          {/* Tertiary Categories */}
+                          {tertiaryCategories.length > 0 && (
+                            <div className="space-y-2">
+                              {tertiaryCategories.map((tertiary) => (
+                                <Link
+                                  key={tertiary.id}
+                                  href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}/${tertiary.id.toLowerCase()}`}
+                                  className="block text-sm text-gray-600 hover:text-primary transition-colors"
+                                >
+                                  {tertiary.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              
+              {/* View All Link */}
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <Link
+                  href={`/categories/${hoveredCategory.toLowerCase()}`}
+                  className="inline-flex items-center text-primary hover:underline font-medium"
+                >
+                  View all {CategoriesMap.PRIMARY.find(c => c.id === hoveredCategory)?.name}
+                  <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
         )}
-      >
-        Become a Seller
-      </ProtectedLink>
-    </div>
+      </AnimatePresence>
+    </>
   );
 }

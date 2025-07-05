@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Menu as MenuIcon, Search as SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -11,14 +10,17 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { CategoriesMap } from "@/data/categories";
 
-// Use the same categories as the desktop navigation
-const categories = CategoriesMap.PRIMARY.map(category => ({
-  id: category.id,
-  name: category.name,
-  href: `/category/${category.id.toLowerCase()}`
-}));
+interface MobileMenuProps {
+  userInfo?: {
+    role: "SUPER_ADMIN" | "ADMIN" | "SELLER" | "MEMBER";
+    id: string;
+    username: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+}
 
-export function MobileMenu() {
+export function MobileMenu({ userInfo }: MobileMenuProps) {
   const location = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -52,45 +54,65 @@ export function MobileMenu() {
             </Button>
           </div>
 
-          {/* Categories Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full">
-                Categories
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {categories.map((category) => (
-                <DropdownMenuItem key={category.id} asChild>
-                  <Link
-                    href={category.href}
-                    className={cn(
-                      location === category.href
-                        ? "font-semibold text-primary"
-                        : "hover:text-primary"
-                    )}
-                  >
-                    {category.name}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Additional Links */}
-          <div className="space-y-2">
+          {/* Become a Seller Button - Only show for non-sellers */}
+          {userInfo?.role !== "SELLER" && (
             <Link
               href="/seller-application"
               className={cn(
                 location === "/seller-application"
                   ? "bg-muted"
                   : "hover:bg-muted hover:bg-opacity-75",
-                "block px-2 py-2 font-medium rounded-md"
+                "block px-2 py-2 font-medium rounded-md text-center"
               )}
             >
               Become a Seller
             </Link>
-            {/* Add other important links here */}
+          )}
+
+          {/* Categories */}
+          <div className="space-y-2 pt-4 border-t border-gray-200">
+            <h3 className="font-semibold text-sm text-gray-900">Categories</h3>
+            {CategoriesMap.PRIMARY.map((category) => {
+              const secondaryCategories = CategoriesMap.SECONDARY.filter(
+                sec => sec.primaryCategoryId === category.id
+              );
+              
+              return (
+                <div key={category.id} className="space-y-1">
+                  <Link
+                    href={`/categories/${category.id.toLowerCase()}`}
+                    className={cn(
+                      location === `/categories/${category.id.toLowerCase()}`
+                        ? "text-primary font-medium"
+                        : "text-gray-700 hover:text-primary",
+                      "block text-sm"
+                    )}
+                  >
+                    {category.name}
+                  </Link>
+                  
+                  {/* Secondary Categories */}
+                  {secondaryCategories.length > 0 && (
+                    <div className="ml-4 space-y-1">
+                      {secondaryCategories.slice(0, 3).map((secondary) => (
+                        <Link
+                          key={secondary.id}
+                          href={`/categories/${category.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
+                          className="block text-xs text-gray-600 hover:text-primary"
+                        >
+                          {secondary.name}
+                        </Link>
+                      ))}
+                      {secondaryCategories.length > 3 && (
+                        <span className="text-xs text-gray-400">
+                          +{secondaryCategories.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </SheetContent>

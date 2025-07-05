@@ -139,7 +139,15 @@ export default async function TertiaryCategoryPage({
           <div className="w-full md:w-3/4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
+                <ProductCard 
+                  key={product.id} 
+                  product={{
+                    ...product,
+                    secondaryCategory: product.secondaryCategory || undefined,
+                    tertiaryCategory: product.tertiaryCategory || undefined,
+                  }} 
+                  index={index} 
+                />
               ))}
             </div>
             

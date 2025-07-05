@@ -17,7 +17,7 @@ export function SearchBar() {
   };
 
   return (
-    <form onSubmit={handleSearch} className="flex items-center w-full max-w-md">
+    <form onSubmit={handleSearch} className="flex items-center w-full">
       <input
         type="text"
         value={query}
