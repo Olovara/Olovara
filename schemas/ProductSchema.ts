@@ -75,6 +75,7 @@ export const ProductSchema = z
     numberSold: z.number().int().optional().default(0),
     primaryCategory: z.string(),
     secondaryCategory: z.string(),
+    tertiaryCategory: z.string().optional(),
     tags: z.array(z.string()).optional().default([]),
     materialTags: z.array(z.string()).optional().default([]),
     onSale: z.boolean().default(false),

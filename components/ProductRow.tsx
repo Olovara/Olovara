@@ -54,6 +54,7 @@ async function getData({ category }: iAppProps) {
             discount: true,
             primaryCategory: true,
             secondaryCategory: true,
+            tertiaryCategory: true,
             tags: true,
             materialTags: true,
             options: true,
@@ -105,6 +106,7 @@ async function getData({ category }: iAppProps) {
             discount: true,
             primaryCategory: true,
             secondaryCategory: true,
+            tertiaryCategory: true,
             tags: true,
             materialTags: true,
             options: true,
@@ -155,6 +157,7 @@ async function getData({ category }: iAppProps) {
             discount: true,
             primaryCategory: true,
             secondaryCategory: true,
+            tertiaryCategory: true,
             tags: true,
             materialTags: true,
             options: true,
@@ -221,7 +224,11 @@ export async function LoadRows({ category }: iAppProps) {
         {data.data.map((product) => (
           <ProductCard
             key={product.id}
-            product={product}
+            product={{
+              ...product,
+              secondaryCategory: product.secondaryCategory || undefined,
+              tertiaryCategory: product.tertiaryCategory || undefined,
+            }}
             index={data.data.indexOf(product)}
           />
         ))}

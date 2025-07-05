@@ -82,13 +82,21 @@ export const ProductInfoSection = ({
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
 
-  // Watch the primary category value
+  // Watch the primary and secondary category values
   const selectedPrimaryCategory = watch("primaryCategory");
+  const selectedSecondaryCategory = watch("secondaryCategory");
 
   // Get secondary categories based on selected primary category
   const availableSecondaryCategories = selectedPrimaryCategory 
     ? CategoriesMap.SECONDARY.filter(category => 
         CategoriesMap.MAPPING[selectedPrimaryCategory as keyof typeof CategoriesMap.MAPPING]?.includes(category.id)
+      )
+    : [];
+
+  // Get tertiary categories based on selected secondary category
+  const availableTertiaryCategories = selectedSecondaryCategory 
+    ? CategoriesMap.TERTIARY.filter(category => 
+        category.secondaryCategoryId === selectedSecondaryCategory
       )
     : [];
 
@@ -248,7 +256,11 @@ export const ProductInfoSection = ({
           <FormItem className="flex flex-col">
             <FormLabel>Secondary Categories</FormLabel>
             <Select
-              onValueChange={field.onChange}
+              onValueChange={(value) => {
+                field.onChange(value);
+                // Clear tertiary category when secondary changes
+                setValue("tertiaryCategory", "");
+              }}
               defaultValue={field.value || ""}
               disabled={!selectedPrimaryCategory}
             >
@@ -268,6 +280,45 @@ export const ProductInfoSection = ({
           </FormItem>
         )}
       />
+
+      {/* Tertiary Categories (Optional) */}
+      {availableTertiaryCategories.length > 0 && (
+        <FormField
+          control={control}
+          name="tertiaryCategory"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Tertiary Category (Optional)</FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  // Convert "none" to empty string for the form
+                  field.onChange(value === "none" ? "" : value);
+                }}
+                defaultValue={field.value || "none"}
+                value={field.value || "none"}
+                disabled={!selectedSecondaryCategory}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tertiary category (optional)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {availableTertiaryCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Adding a tertiary category helps buyers find your product more easily
+              </p>
+            </FormItem>
+          )}
+        />
+      )}
 
       {/* Product Status */}
       <div className="space-y-4">

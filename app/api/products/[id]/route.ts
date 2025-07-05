@@ -140,6 +140,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       shippingCost: Number(updateData.shippingCost),
       handlingFee: Number(updateData.handlingFee),
       discount: updateData.discount ? Number(updateData.discount) : null,
+      // Handle tertiary category (can be null/undefined)
+      tertiaryCategory: updateData.tertiaryCategory || null,
     };
 
     // --- Step 4: Update the product in the database ---

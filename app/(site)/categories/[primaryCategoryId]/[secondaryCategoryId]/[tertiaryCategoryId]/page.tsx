@@ -5,46 +5,49 @@ import { notFound } from "next/navigation";
 import { Filters } from "@/components/filters";
 import ProductCard from "@/components/ProductCard";
 
-
-interface CategoryPageProps {
+interface TertiaryCategoryPageProps {
   params: {
     primaryCategoryId: string;
     secondaryCategoryId: string;
+    tertiaryCategoryId: string;
   };
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export async function generateMetadata({
   params,
-}: CategoryPageProps): Promise<Metadata> {
+}: TertiaryCategoryPageProps): Promise<Metadata> {
   const primaryCategory = CategoriesMap.PRIMARY.find(
     (c) => c.id === params.primaryCategoryId
   );
   const secondaryCategory = CategoriesMap.SECONDARY.find(
     (c) => c.id === params.secondaryCategoryId
   );
+  const tertiaryCategory = CategoriesMap.TERTIARY.find(
+    (c) => c.id === params.tertiaryCategoryId
+  );
 
-  if (!primaryCategory || !secondaryCategory) {
+  if (!primaryCategory || !secondaryCategory || !tertiaryCategory) {
     return {
       title: "Category Not Found | Yarnnu",
     };
   }
 
   return {
-    title: `${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
-    description: `Shop our collection of ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
+    title: `${tertiaryCategory.name} ${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
+    description: `Shop our collection of ${tertiaryCategory.name.toLowerCase()} ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
     openGraph: {
-      title: `${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
-      description: `Shop our collection of ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
+      title: `${tertiaryCategory.name} ${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
+      description: `Shop our collection of ${tertiaryCategory.name.toLowerCase()} ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
     },
   };
 }
 
-export default async function SecondaryCategoryPage({
+export default async function TertiaryCategoryPage({
   params,
   searchParams,
-}: CategoryPageProps) {
-  const { primaryCategoryId, secondaryCategoryId } = params;
+}: TertiaryCategoryPageProps) {
+  const { primaryCategoryId, secondaryCategoryId, tertiaryCategoryId } = params;
 
   const primaryCategory = CategoriesMap.PRIMARY.find(
     (c) => c.id.toLowerCase() === primaryCategoryId.toLowerCase()
@@ -52,16 +55,20 @@ export default async function SecondaryCategoryPage({
   const secondaryCategory = CategoriesMap.SECONDARY.find(
     (c) => c.id.toLowerCase() === secondaryCategoryId.toLowerCase()
   );
+  const tertiaryCategory = CategoriesMap.TERTIARY.find(
+    (c) => c.id.toLowerCase() === tertiaryCategoryId.toLowerCase()
+  );
 
-  if (!primaryCategory || !secondaryCategory) {
+  if (!primaryCategory || !secondaryCategory || !tertiaryCategory) {
     notFound();
   }
 
-  // Fetch products for this category
+  // Fetch products for this tertiary category
   const products = await db.product.findMany({
     where: {
       primaryCategory: primaryCategoryId,
       secondaryCategory: secondaryCategoryId,
+      tertiaryCategory: tertiaryCategoryId,
       status: "ACTIVE",
     },
     select: {
@@ -108,60 +115,31 @@ export default async function SecondaryCategoryPage({
               {primaryCategory.name}
             </a>
             <span>/</span>
-            <span className="text-foreground">{secondaryCategory.name}</span>
+            <a href={`/categories/${primaryCategoryId}/${secondaryCategoryId}`} className="hover:text-primary">
+              {secondaryCategory.name}
+            </a>
+            <span>/</span>
+            <span className="text-foreground">{tertiaryCategory.name}</span>
           </nav>
           
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-            {secondaryCategory.name} {primaryCategory.name}
+            {tertiaryCategory.name} {secondaryCategory.name} {primaryCategory.name}
           </h1>
           <p className="mt-4 text-xl text-muted-foreground">
-            Browse our collection of {secondaryCategory.name.toLowerCase()}{" "}
-            {primaryCategory.name.toLowerCase()}
+            Browse our collection of {tertiaryCategory.name.toLowerCase()}{" "}
+            {secondaryCategory.name.toLowerCase()} {primaryCategory.name.toLowerCase()}
           </p>
         </div>
 
         <div className="flex flex-col md:flex-row gap-8">
           <div className="w-full md:w-1/4">
-            {/* Tertiary Categories Sidebar */}
-            {(() => {
-              const tertiaryCategories = CategoriesMap.getTertiaryCategories(secondaryCategoryId);
-              return tertiaryCategories.length > 0 ? (
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
-                  <ul className="space-y-2">
-                    {tertiaryCategories.map((tertiaryId) => {
-                      const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
-                      return tertiaryCategory ? (
-                        <li key={tertiaryId}>
-                          <a
-                            href={`/categories/${primaryCategoryId}/${secondaryCategoryId}/${tertiaryId.toLowerCase()}`}
-                            className="text-gray-600 hover:text-primary"
-                          >
-                            {tertiaryCategory.name}
-                          </a>
-                        </li>
-                      ) : null;
-                    })}
-                  </ul>
-                </div>
-              ) : null;
-            })()}
-            
             <Filters />
           </div>
 
           <div className="w-full md:w-3/4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product, index) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={{
-                    ...product,
-                    secondaryCategory: product.secondaryCategory || undefined,
-                    tertiaryCategory: product.tertiaryCategory || undefined,
-                  }} 
-                  index={index} 
-                />
+                <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
             

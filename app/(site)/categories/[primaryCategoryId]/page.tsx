@@ -123,6 +123,7 @@ export default async function PrimaryCategoryPage({
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
+      tertiaryCategory: true,
       status: true,
       isDigital: true,
       onSale: true,
@@ -150,6 +151,8 @@ export default async function PrimaryCategoryPage({
     ...product,
     imageUrl: product.images[0] || "", // Use the first image as the main image
     currency: product.currency || "USD", // Ensure currency is included with a default
+    secondaryCategory: product.secondaryCategory || undefined,
+    tertiaryCategory: product.tertiaryCategory || undefined,
     seller: product.seller ? {
       shopName: product.seller.shopName,
       shopNameSlug: product.seller.shopNameSlug,
@@ -178,16 +181,36 @@ export default async function PrimaryCategoryPage({
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
               <ul className="space-y-2">
-                {subcategories.map((subcategory) => (
-                  <li key={subcategory.id}>
-                    <a
-                      href={`/categories/${params.primaryCategoryId}/${subcategory.id}`}
-                      className="text-gray-600 hover:text-primary"
-                    >
-                      {subcategory.name}
-                    </a>
-                  </li>
-                ))}
+                {subcategories.map((subcategory) => {
+                  const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                  return (
+                    <li key={subcategory.id}>
+                      <a
+                        href={`/categories/${params.primaryCategoryId}/${subcategory.id}`}
+                        className="text-gray-600 hover:text-primary font-medium"
+                      >
+                        {subcategory.name}
+                      </a>
+                      {tertiaryCategories.length > 0 && (
+                        <ul className="ml-4 mt-1 space-y-1">
+                          {tertiaryCategories.map((tertiaryId) => {
+                            const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                            return tertiaryCategory ? (
+                              <li key={tertiaryId}>
+                                <a
+                                  href={`/categories/${params.primaryCategoryId}/${subcategory.id}/${tertiaryId.toLowerCase()}`}
+                                  className="text-sm text-gray-500 hover:text-primary"
+                                >
+                                  {tertiaryCategory.name}
+                                </a>
+                              </li>
+                            ) : null;
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 

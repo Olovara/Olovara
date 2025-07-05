@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 interface ProductsPageProps {
   searchParams: {
     category?: string;
+    secondaryCategory?: string;
+    tertiaryCategory?: string;
     priceRange?: string;
     sortBy?: string;
     page?: string;
@@ -31,6 +33,8 @@ interface ProductsPageProps {
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
+  const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
+  const tertiaryCategories = searchParams.tertiaryCategory?.split(",") || [];
   const priceRange = searchParams.priceRange?.split(",").map(Number) || [0, 1000];
   const sortBy = searchParams.sortBy || "newest";
   const currentPage = Number(searchParams.page) || 1;
@@ -64,6 +68,24 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             {
               primaryCategory: {
                 in: categories,
+              },
+            },
+          ]
+        : []),
+      ...(secondaryCategories.length > 0
+        ? [
+            {
+              secondaryCategory: {
+                in: secondaryCategories,
+              },
+            },
+          ]
+        : []),
+      ...(tertiaryCategories.length > 0
+        ? [
+            {
+              tertiaryCategory: {
+                in: tertiaryCategories,
               },
             },
           ]
@@ -114,6 +136,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
+      tertiaryCategory: true,
       status: true,
       isDigital: true,
       onSale: true,
@@ -176,7 +199,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
+              <ProductCard 
+                key={product.id} 
+                product={{
+                  ...product,
+                  secondaryCategory: product.secondaryCategory || undefined,
+                  tertiaryCategory: product.tertiaryCategory || undefined,
+                }} 
+                index={index} 
+              />
             ))}
           </div>
 

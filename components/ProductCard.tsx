@@ -19,6 +19,8 @@ interface SimplifiedProduct {
   currency: string;
   images: string[];
   primaryCategory: string;
+  secondaryCategory?: string;
+  tertiaryCategory?: string;
   stock: number;
   dropDate: Date | null;
   dropTime: string | null;
@@ -83,9 +85,25 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   if (!product || !isVisible) return <ProductPlaceholder />;
 
   const primaryCategories = CategoriesMap.PRIMARY;
-  const label = primaryCategories.find(
+  const secondaryCategories = CategoriesMap.SECONDARY;
+  const tertiaryCategories = CategoriesMap.TERTIARY;
+  
+  const primaryLabel = primaryCategories.find(
     ({ id }) => id === product.primaryCategory
   )?.name;
+  
+  const secondaryLabel = product.secondaryCategory 
+    ? secondaryCategories.find(({ id }) => id === product.secondaryCategory)?.name 
+    : null;
+    
+  const tertiaryLabel = product.tertiaryCategory 
+    ? tertiaryCategories.find(({ id }) => id === product.tertiaryCategory)?.name 
+    : null;
+    
+  // Build category display string
+  const categoryDisplay = [tertiaryLabel, secondaryLabel, primaryLabel]
+    .filter(Boolean)
+    .join(" • ");
 
   // Filter out any invalid image URLs
   const validUrls = product.images.filter(Boolean) as string[];
@@ -110,7 +128,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
         <h3 className="mt-4 font-medium text-sm text-gray-700 line-clamp-2">
           {product.name}
         </h3>
-        <p className="mt-1 text-sm text-gray-500">{label}</p>
+        <p className="mt-1 text-sm text-gray-500">{categoryDisplay}</p>
         {isDropProduct && (
           <div className="mt-1">
             <p className="text-xs text-gray-400">Drops in:</p>

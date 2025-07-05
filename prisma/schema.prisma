@@ -337,6 +337,7 @@ model Product {
   discount              Int? // Only if the product is on sale
   primaryCategory       String
   secondaryCategory     String
+  tertiaryCategory      String? // Optional tertiary category
   tags                  String[]
   materialTags          String[]
   options               Json?

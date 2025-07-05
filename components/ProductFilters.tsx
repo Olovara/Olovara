@@ -41,6 +41,7 @@ const values = [
 
 type PrimaryCategoryID = (typeof CategoriesMap.PRIMARY)[number]["id"];
 type SecondaryCategoryID = (typeof CategoriesMap.SECONDARY)[number]["id"];
+type TertiaryCategoryID = (typeof CategoriesMap.TERTIARY)[number]["id"];
 
 export function ProductFilters() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export function ProductFilters() {
   const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
   const [currentPriceRange, setCurrentPriceRange] = useState([0, 1000]);
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
+  const [openSecondaryCategories, setOpenSecondaryCategories] = useState<Set<SecondaryCategoryID>>(new Set());
   const selectedCategory = searchParams.get("category")?.split(",")[0];
 
   // Initialize price range from URL params
@@ -134,10 +136,20 @@ export function ProductFilters() {
     setOpenCategories(newOpenCategories);
   };
 
-  const handleCategoryChange = (categoryId: PrimaryCategoryID | SecondaryCategoryID, isPrimary: boolean) => {
+  const handleSecondaryCategoryToggle = (categoryId: SecondaryCategoryID) => {
+    const newOpenSecondaryCategories = new Set(openSecondaryCategories);
+    if (newOpenSecondaryCategories.has(categoryId)) {
+      newOpenSecondaryCategories.delete(categoryId);
+    } else {
+      newOpenSecondaryCategories.add(categoryId);
+    }
+    setOpenSecondaryCategories(newOpenSecondaryCategories);
+  };
+
+  const handleCategoryChange = (categoryId: string, level: 'primary' | 'secondary' | 'tertiary') => {
     const params = new URLSearchParams(searchParams.toString());
     
-    if (isPrimary) {
+    if (level === 'primary') {
       // For primary categories, we need to handle both the primary and its subcategories
       const subcategories = CategoriesMap.MAPPING[categoryId as PrimaryCategoryID];
       const newCategories = new Set(selectedCategories);
@@ -157,8 +169,22 @@ export function ProductFilters() {
       } else {
         params.set("category", Array.from(newCategories).join(","));
       }
-    } else {
+    } else if (level === 'secondary') {
       // For secondary categories, just toggle the specific category
+      const newCategories = new Set(selectedCategories);
+      if (newCategories.has(categoryId)) {
+        newCategories.delete(categoryId);
+      } else {
+        newCategories.add(categoryId);
+      }
+      
+      if (newCategories.size === 0) {
+        params.delete("category");
+      } else {
+        params.set("category", Array.from(newCategories).join(","));
+      }
+    } else if (level === 'tertiary') {
+      // For tertiary categories, just toggle the specific category
       const newCategories = new Set(selectedCategories);
       if (newCategories.has(categoryId)) {
         newCategories.delete(categoryId);
@@ -218,7 +244,7 @@ export function ProductFilters() {
                 <Checkbox
                   id={primaryCategory.id}
                   checked={selectedCategories.includes(primaryCategory.id)}
-                  onCheckedChange={() => handleCategoryChange(primaryCategory.id, true)}
+                  onCheckedChange={() => handleCategoryChange(primaryCategory.id, 'primary')}
                 />
                 <label
                   htmlFor={primaryCategory.id}
@@ -235,24 +261,68 @@ export function ProductFilters() {
                 </CollapsibleTrigger>
               </div>
               <CollapsibleContent className="pl-6">
-                <div className="space-y-4 mt-4">
+                <div className="space-y-0 divide-y divide-border mt-4">
                   {CategoriesMap.SECONDARY.filter(
                     (sub) => sub.primaryCategoryId === primaryCategory.id
-                  ).map((subcategory) => (
-                    <div key={subcategory.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={subcategory.id}
-                        checked={selectedCategories.includes(subcategory.id)}
-                        onCheckedChange={() => handleCategoryChange(subcategory.id, false)}
-                      />
-                      <label
-                        htmlFor={subcategory.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {subcategory.name}
-                      </label>
-                    </div>
-                  ))}
+                  ).map((subcategory) => {
+                    const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                    return (
+                      <div key={subcategory.id} className="py-2">
+                        <Collapsible
+                          open={openSecondaryCategories.has(subcategory.id)}
+                          onOpenChange={() => handleSecondaryCategoryToggle(subcategory.id)}
+                          className="py-1"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={subcategory.id}
+                              checked={selectedCategories.includes(subcategory.id)}
+                              onCheckedChange={() => handleCategoryChange(subcategory.id, 'secondary')}
+                            />
+                            <label
+                              htmlFor={subcategory.id}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                            >
+                              {subcategory.name}
+                            </label>
+                            {tertiaryCategories.length > 0 && (
+                              <CollapsibleTrigger className="ml-2">
+                                {openSecondaryCategories.has(subcategory.id) ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </CollapsibleTrigger>
+                            )}
+                          </div>
+                          {tertiaryCategories.length > 0 && (
+                            <CollapsibleContent className="pl-6">
+                              <div className="space-y-2 mt-2 pt-2 border-t border-border ml-4">
+                                {tertiaryCategories.map((tertiaryId) => {
+                                  const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                                  return tertiaryCategory ? (
+                                    <div key={tertiaryId} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={tertiaryId}
+                                        checked={selectedCategories.includes(tertiaryId)}
+                                        onCheckedChange={() => handleCategoryChange(tertiaryId, 'tertiary')}
+                                      />
+                                      <label
+                                        htmlFor={tertiaryId}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                      >
+                                        {tertiaryCategory.name}
+                                      </label>
+                                    </div>
+                                  ) : null;
+                                })}
+                              </div>
+                            </CollapsibleContent>
+                          )}
+                        </Collapsible>
+                      </div>
+                    );
+                  })}
                 </div>
               </CollapsibleContent>
             </Collapsible>

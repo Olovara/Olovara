@@ -35,15 +35,35 @@ export default function CategoriesPage() {
               <div className="space-y-2">
                 {CategoriesMap.SECONDARY.filter(
                   (sub) => sub.primaryCategoryId === category.id
-                ).map((subcategory) => (
-                  <Link
-                    key={subcategory.id}
-                    href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}`}
-                    className="block text-primary hover:text-primary/80 transition-colors"
-                  >
-                    {subcategory.name}
-                  </Link>
-                ))}
+                ).map((subcategory) => {
+                  const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                  return (
+                    <div key={subcategory.id} className="ml-2">
+                      <Link
+                        href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}`}
+                        className="block text-primary hover:text-primary/80 transition-colors font-medium"
+                      >
+                        {subcategory.name}
+                      </Link>
+                      {tertiaryCategories.length > 0 && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          {tertiaryCategories.map((tertiaryId) => {
+                            const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                            return tertiaryCategory ? (
+                              <Link
+                                key={tertiaryId}
+                                href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}/${tertiaryId.toLowerCase()}`}
+                                className="block text-sm text-gray-600 hover:text-primary transition-colors"
+                              >
+                                {tertiaryCategory.name}
+                              </Link>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <Link

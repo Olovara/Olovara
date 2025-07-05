@@ -69,11 +69,51 @@ export const SecondaryCategories = [
 ] as const;
 
 export const TertiaryCategories = [
-  { id: "AMIGURUMI", name: "Amigurumi" },
-  { id: "CROCHET", name: "Crochet" },
-  { id: "KNITTING", name: "Knitting" },
-  { id: "SEWING", name: "Sewing" },
-  { id: "TUNISIAN", name: "Tunisian" },
+  // Jewelry - Necklaces
+  { id: "CHOKERS", name: "Chokers", secondaryCategoryId: "NECKLACES" },
+  { id: "BEADED_NECKLACES", name: "Beaded Necklaces", secondaryCategoryId: "NECKLACES" },
+  { id: "PENDANT_NECKLACES", name: "Pendant Necklaces", secondaryCategoryId: "NECKLACES" },
+  { id: "LAYERED_NECKLACES", name: "Layered Necklaces", secondaryCategoryId: "NECKLACES" },
+  { id: "STATEMENT_NECKLACES", name: "Statement Necklaces", secondaryCategoryId: "NECKLACES" },
+  
+  // Jewelry - Rings
+  { id: "ENGAGEMENT_RINGS", name: "Engagement Rings", secondaryCategoryId: "RINGS" },
+  { id: "WEDDING_RINGS", name: "Wedding Rings", secondaryCategoryId: "RINGS" },
+  { id: "STACKING_RINGS", name: "Stacking Rings", secondaryCategoryId: "RINGS" },
+  { id: "COCKTAIL_RINGS", name: "Cocktail Rings", secondaryCategoryId: "RINGS" },
+  
+  // Jewelry - Earrings
+  { id: "STUDS", name: "Studs", secondaryCategoryId: "EARRINGS" },
+  { id: "HOOPS", name: "Hoops", secondaryCategoryId: "EARRINGS" },
+  { id: "DANGLES", name: "Dangles", secondaryCategoryId: "EARRINGS" },
+  { id: "CHANDELIER", name: "Chandelier", secondaryCategoryId: "EARRINGS" },
+  
+  // Craft Supplies - Yarn
+  { id: "COTTON_YARN", name: "Cotton Yarn", secondaryCategoryId: "YARN" },
+  { id: "WOOL_YARN", name: "Wool Yarn", secondaryCategoryId: "YARN" },
+  { id: "ACRYLIC_YARN", name: "Acrylic Yarn", secondaryCategoryId: "YARN" },
+  { id: "MERINO_WOOL", name: "Merino Wool", secondaryCategoryId: "YARN" },
+  { id: "BULKY_YARN", name: "Bulky Yarn", secondaryCategoryId: "YARN" },
+  { id: "FINGERING_YARN", name: "Fingering Yarn", secondaryCategoryId: "YARN" },
+  
+  // Home - Decor
+  { id: "WALL_ART", name: "Wall Art", secondaryCategoryId: "DECOR" },
+  { id: "CANDLES", name: "Candles", secondaryCategoryId: "DECOR" },
+  { id: "VASES", name: "Vases", secondaryCategoryId: "DECOR" },
+  { id: "THROW_PILLOWS", name: "Throw Pillows", secondaryCategoryId: "DECOR" },
+  { id: "RUGS", name: "Rugs", secondaryCategoryId: "DECOR" },
+  
+  // Bath - Soaps
+  { id: "BAR_SOAP", name: "Bar Soap", secondaryCategoryId: "SOAP" },
+  { id: "LIQUID_SOAP", name: "Liquid Soap", secondaryCategoryId: "SOAP" },
+  { id: "BATH_BOMBS", name: "Bath Bombs", secondaryCategoryId: "SOAP" },
+  { id: "SHOWER_GELS", name: "Shower Gels", secondaryCategoryId: "SOAP" },
+  
+  // Toys - Stuffed Animals
+  { id: "TEDDY_BEARS", name: "Teddy Bears", secondaryCategoryId: "STUFFED" },
+  { id: "ANIMALS", name: "Animals", secondaryCategoryId: "STUFFED" },
+  { id: "DOLLS", name: "Dolls", secondaryCategoryId: "STUFFED" },
+  { id: "PLUSHIES", name: "Plushies", secondaryCategoryId: "STUFFED" },
 ] as const;
 
 // Extract IDs for strict typing
@@ -100,9 +140,31 @@ export const CategoryMapping: Record<PrimaryCategoryID, SecondaryCategoryID[]> =
 export const getSecondaryCategories = (primaryId: PrimaryCategoryID): SecondaryCategoryID[] =>
   CategoryMapping[primaryId] || [];
 
+/**
+ * Map Tertiary Categories to Secondary Categories
+ */
+export const TertiaryCategoryMapping: Record<string, string[]> = {
+  NECKLACES: ["CHOKERS", "BEADED_NECKLACES", "PENDANT_NECKLACES", "LAYERED_NECKLACES", "STATEMENT_NECKLACES"],
+  RINGS: ["ENGAGEMENT_RINGS", "WEDDING_RINGS", "STACKING_RINGS", "COCKTAIL_RINGS"],
+  EARRINGS: ["STUDS", "HOOPS", "DANGLES", "CHANDELIER"],
+  YARN: ["COTTON_YARN", "WOOL_YARN", "ACRYLIC_YARN", "MERINO_WOOL", "BULKY_YARN", "FINGERING_YARN"],
+  DECOR: ["WALL_ART", "CANDLES", "VASES", "THROW_PILLOWS", "RUGS"],
+  SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS"],
+  STUFFED: ["TEDDY_BEARS", "ANIMALS", "DOLLS", "PLUSHIES"],
+};
+
+/**
+ * Helper function to get tertiary categories for a secondary category
+ */
+export const getTertiaryCategories = (secondaryId: string): string[] =>
+  TertiaryCategoryMapping[secondaryId] || [];
+
 export const CategoriesMap = {
   PRIMARY: PrimaryCategories,
   SECONDARY: SecondaryCategories,
+  TERTIARY: TertiaryCategories,
   MAPPING: CategoryMapping,
+  TERTIARY_MAPPING: TertiaryCategoryMapping,
   getSecondaryCategories,
+  getTertiaryCategories,
 };
