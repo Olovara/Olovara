@@ -162,6 +162,15 @@ export default async function AdminDashboardSellerApplications({
                         craftingProcess: application.craftingProcess,
                         portfolio: application.portfolio,
                         interestInJoining: application.interestInJoining,
+                        websiteOrShopLinks: application.websiteOrShopLinks,
+                        socialMediaProfiles: application.socialMediaProfiles,
+                        location: application.location,
+                        yearsOfExperience: application.yearsOfExperience,
+                        productTypes: application.productTypes,
+                        birthdate: application.birthdate,
+                        agreeToHandmadePolicy: application.agreeToHandmadePolicy,
+                        certifyOver18: application.certifyOver18,
+                        agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
                       }}
                     />
@@ -215,6 +224,15 @@ export default async function AdminDashboardSellerApplications({
                         craftingProcess: application.craftingProcess,
                         portfolio: application.portfolio,
                         interestInJoining: application.interestInJoining,
+                        websiteOrShopLinks: application.websiteOrShopLinks,
+                        socialMediaProfiles: application.socialMediaProfiles,
+                        location: application.location,
+                        yearsOfExperience: application.yearsOfExperience,
+                        productTypes: application.productTypes,
+                        birthdate: application.birthdate,
+                        agreeToHandmadePolicy: application.agreeToHandmadePolicy,
+                        certifyOver18: application.certifyOver18,
+                        agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
                       }}
                     />
@@ -268,6 +286,15 @@ export default async function AdminDashboardSellerApplications({
                         craftingProcess: application.craftingProcess,
                         portfolio: application.portfolio,
                         interestInJoining: application.interestInJoining,
+                        websiteOrShopLinks: application.websiteOrShopLinks,
+                        socialMediaProfiles: application.socialMediaProfiles,
+                        location: application.location,
+                        yearsOfExperience: application.yearsOfExperience,
+                        productTypes: application.productTypes,
+                        birthdate: application.birthdate,
+                        agreeToHandmadePolicy: application.agreeToHandmadePolicy,
+                        certifyOver18: application.certifyOver18,
+                        agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
                       }}
                     />

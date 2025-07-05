@@ -170,3 +170,16 @@ export function shopNameSlugify(text: string) {
     .replace(/\s+/g, "") // Remove spaces
     .replace(/[^\w-]+/g, ""); // Remove special characters
 }
+
+/**
+ * Generates a unique referral code in the format YARNNU-XXXX-XXXX
+ * @returns A referral code string
+ */
+export function generateReferralCode(): string {
+  // Generate two random 4-character strings using alphanumeric characters
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const part1 = Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  const part2 = Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  
+  return `YARNNU-${part1}-${part2}`;
+}

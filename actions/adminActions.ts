@@ -99,6 +99,16 @@ export async function getAllSellers() {
         craftingProcess: true,
         portfolio: true,
         interestInJoining: true,
+        // New fields for enhanced application review
+        websiteOrShopLinks: true,
+        socialMediaProfiles: true,
+        location: true,
+        yearsOfExperience: true,
+        productTypes: true,
+        birthdate: true,
+        agreeToHandmadePolicy: true,
+        certifyOver18: true,
+        agreeToTerms: true,
         applicationApproved: true,
         user: {
           select: {
@@ -157,6 +167,16 @@ export async function getApprovedSellers() {
         craftingProcess: true,
         portfolio: true,
         interestInJoining: true,
+        // New fields for enhanced application review
+        websiteOrShopLinks: true,
+        socialMediaProfiles: true,
+        location: true,
+        yearsOfExperience: true,
+        productTypes: true,
+        birthdate: true,
+        agreeToHandmadePolicy: true,
+        certifyOver18: true,
+        agreeToTerms: true,
         applicationApproved: true,
         user: {
           select: {
@@ -201,6 +221,16 @@ export async function getUnapprovedSellers() {
         craftingProcess: true,
         portfolio: true,
         interestInJoining: true,
+        // New fields for enhanced application review
+        websiteOrShopLinks: true,
+        socialMediaProfiles: true,
+        location: true,
+        yearsOfExperience: true,
+        productTypes: true,
+        birthdate: true,
+        agreeToHandmadePolicy: true,
+        certifyOver18: true,
+        agreeToTerms: true,
         applicationApproved: true,
         user: {
           select: {

@@ -279,6 +279,9 @@ model Seller {
   // Shipping Restrictions
   excludedCountries String[] @default([]) // Array of country codes that seller doesn't ship to
 
+  // Referral Program
+  referralCode String?  @unique // Unique referral code in format YARNNU-XXXX-XXXX
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -289,6 +292,16 @@ model SellerApplication {
   craftingProcess     String
   portfolio           String
   interestInJoining   String
+  // New fields for enhanced application
+  websiteOrShopLinks  String
+  socialMediaProfiles String
+  location            String
+  yearsOfExperience   String
+  productTypes        String
+  birthdate           String
+  agreeToHandmadePolicy Boolean
+  certifyOver18       Boolean
+  agreeToTerms        Boolean
   applicationApproved Boolean @default(false)
   user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 

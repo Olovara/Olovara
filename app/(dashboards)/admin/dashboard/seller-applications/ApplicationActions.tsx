@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 interface Application {
   id: string;
@@ -31,6 +33,16 @@ interface Application {
   craftingProcess: string;
   portfolio: string;
   interestInJoining: string;
+  // New fields for enhanced application review
+  websiteOrShopLinks?: string;
+  socialMediaProfiles?: string;
+  location?: string;
+  yearsOfExperience?: string;
+  productTypes?: string;
+  birthdate?: string;
+  agreeToHandmadePolicy?: boolean;
+  certifyOver18?: boolean;
+  agreeToTerms?: boolean;
   applicationApproved: boolean;
 }
 
@@ -115,46 +127,183 @@ export function ApplicationActions({
     setIsRejectDialogOpen(true);
   };
 
+  // Helper function to check if this is a legacy application
+  const isLegacyApplication = !application.websiteOrShopLinks || application.websiteOrShopLinks === "Legacy Application";
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">View</Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Seller Application</DialogTitle>
+            <DialogTitle>Seller Application Review</DialogTitle>
             <DialogDescription>
               Detailed information about the seller&apos;s application.
+              {isLegacyApplication && (
+                <Badge variant="secondary" className="ml-2">Legacy Application</Badge>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <strong>Username:</strong> {application.username || "N/A"}
+          
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <strong className="text-sm text-gray-600">Username:</strong>
+                  <p className="mt-1">{application.username || "N/A"}</p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Email:</strong>
+                  <p className="mt-1">{application.email || "N/A"}</p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Location:</strong>
+                  <p className="mt-1">{application.location || "N/A"}</p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Years of Experience:</strong>
+                  <p className="mt-1">{application.yearsOfExperience || "N/A"}</p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Date of Birth:</strong>
+                  <p className="mt-1">{application.birthdate || "N/A"}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <strong>Email:</strong> {application.email || "N/A"}
+
+            <Separator />
+
+            {/* Crafting Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Crafting Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <strong className="text-sm text-gray-600">Crafting Process:</strong>
+                  <p className="mt-1 text-sm">{application.craftingProcess || "N/A"}</p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Product Types:</strong>
+                  <p className="mt-1 text-sm">{application.productTypes || "N/A"}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <strong>Crafting Process:</strong>{" "}
-              {application.craftingProcess || "N/A"}
+
+            <Separator />
+
+            {/* Online Presence */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Online Presence</h3>
+              <div className="space-y-4">
+                <div>
+                  <strong className="text-sm text-gray-600">Portfolio/Shop Links:</strong>
+                  <p className="mt-1 text-sm">
+                    {application.portfolio ? (
+                      <a href={application.portfolio} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {application.portfolio}
+                      </a>
+                    ) : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Website/Shop Links:</strong>
+                  <p className="mt-1 text-sm">
+                    {application.websiteOrShopLinks ? (
+                      <a href={application.websiteOrShopLinks} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {application.websiteOrShopLinks}
+                      </a>
+                    ) : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <strong className="text-sm text-gray-600">Social Media Profiles:</strong>
+                  <p className="mt-1 text-sm">
+                    {application.socialMediaProfiles ? (
+                      <a href={application.socialMediaProfiles} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {application.socialMediaProfiles}
+                      </a>
+                    ) : "N/A"}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <strong>Portfolio:</strong> {application.portfolio || "N/A"}
+
+            <Separator />
+
+            {/* Motivation */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Why Join Yarnnu?</h3>
+              <div>
+                <strong className="text-sm text-gray-600">Interest in Joining:</strong>
+                <p className="mt-1 text-sm">{application.interestInJoining || "N/A"}</p>
+              </div>
             </div>
-            <div>
-              <strong>Interest in Joining:</strong> {application.interestInJoining || "N/A"}
+
+            <Separator />
+
+            {/* Legal Agreements */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Legal Agreements</h3>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded ${application.certifyOver18 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm">Certified 18+ years old</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded ${application.agreeToHandmadePolicy ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm">Agreed to Handmade Policy</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded ${application.agreeToTerms ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm">Agreed to Terms & Conditions</span>
+                </div>
+              </div>
             </div>
+
+            {/* Scammer Detection Warnings */}
+            {!isLegacyApplication && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Scammer Detection</h3>
+                  <div className="space-y-2 text-sm">
+                    {!application.websiteOrShopLinks && (
+                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        ⚠️ No website/shop links provided
+                      </div>
+                    )}
+                    {!application.socialMediaProfiles && (
+                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        ⚠️ No social media profiles provided
+                      </div>
+                    )}
+                    {application.craftingProcess.length < 50 && (
+                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        ⚠️ Very short crafting process description
+                      </div>
+                    )}
+                    {application.productTypes && application.productTypes.length < 20 && (
+                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        ⚠️ Very short product types description
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {success !== null && (
-            <div className={`mt-2 ${success ? "text-green-500" : "text-red-500"}`}>
+            <div className={`mt-4 p-3 rounded ${success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
               {success ? "Application approved!" : "Application rejected!"}
             </div>
           )}
 
           {error && (
-            <div className="mt-2 text-red-500">
+            <div className="mt-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">
               {error}
             </div>
           )}

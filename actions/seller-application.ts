@@ -8,6 +8,7 @@ import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions"
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { updateUserSession } from "@/lib/session-update";
+import { generateReferralCode } from "@/lib/utils";
 
 export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
   const session = await auth();
@@ -20,13 +21,22 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
   try {
     // Create seller application and seller document in a transaction
     const result = await db.$transaction(async (tx) => {
-      // Create the seller application
+      // Create the seller application with all new fields
       const application = await tx.sellerApplication.create({
         data: {
           userId,
           craftingProcess: values.craftingProcess,
           portfolio: values.portfolio,
           interestInJoining: values.interestInJoining,
+          websiteOrShopLinks: values.websiteOrShopLinks,
+          socialMediaProfiles: values.socialMediaProfiles,
+          location: values.location,
+          yearsOfExperience: values.yearsOfExperience,
+          productTypes: values.productTypes,
+          birthdate: values.birthdate,
+          agreeToHandmadePolicy: values.agreeToHandmadePolicy,
+          certifyOver18: values.certifyOver18,
+          agreeToTerms: values.agreeToTerms,
         } as any,
       });
 
@@ -38,6 +48,41 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       
       // Generate a unique temporary connectedAccountId to avoid constraint issues
       const uniqueConnectedAccountId = `temp_${timestamp}_${randomString}`;
+
+      // Generate a unique referral code with retry logic
+      let referralCode: string = '';
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 20; // Increased attempts for better reliability
+
+      while (!isUnique && attempts < maxAttempts) {
+        referralCode = generateReferralCode();
+        
+        try {
+          // Check if the referral code already exists
+          const existingSeller = await tx.seller.findUnique({
+            where: { referralCode },
+            select: { id: true }
+          });
+          
+          if (!existingSeller) {
+            isUnique = true;
+          } else {
+            attempts++;
+            console.log(`Referral code ${referralCode} already exists, trying again...`);
+          }
+        } catch (error) {
+          // If there's an error checking, assume it's not unique and try again
+          attempts++;
+          console.log(`Error checking referral code ${referralCode}, trying again...`);
+        }
+      }
+
+      if (!isUnique) {
+        throw new Error(`Unable to generate unique referral code after ${maxAttempts} attempts`);
+      }
+
+      console.log(`Generated unique referral code: ${referralCode}`);
 
       await tx.seller.create({
         data: {
@@ -57,6 +102,8 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           taxCountry: "US", // Default to US, can be updated later
           // Use unique temporary connectedAccountId to avoid constraint issues
           connectedAccountId: uniqueConnectedAccountId,
+          // Assign the unique referral code
+          referralCode: referralCode!,
           user: {
             connect: {
               id: userId
