@@ -34,9 +34,9 @@ const ExcludedCountries = ({ excludedCountries }: ExcludedCountriesProps) => {
       <p className="text-sm text-gray-600">
         This seller does not ship to the following countries:
       </p>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {excludedCountryNames.map((countryName) => (
-          <Badge key={countryName} variant="secondary" className="text-xs">
+          <Badge key={countryName} variant="secondary" className="text-xs px-2 py-1">
             {countryName}
           </Badge>
         ))}

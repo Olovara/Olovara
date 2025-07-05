@@ -83,7 +83,20 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
     orderBy,
     take: pageSize,
     skip: (currentPage - 1) * pageSize,
-    include: {
+    select: {
+      id: true,
+      shopName: true,
+      shopNameSlug: true,
+      shopTagLine: true,
+      totalSales: true,
+      totalProducts: true,
+      acceptsCustom: true,
+      // Social media links
+      facebookUrl: true,
+      instagramUrl: true,
+      twitterUrl: true,
+      pinterestUrl: true,
+      tiktokUrl: true,
       products: {
         where: {
           status: "ACTIVE",

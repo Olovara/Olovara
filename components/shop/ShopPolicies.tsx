@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, RefreshCw, AlertTriangle, XCircle, DollarSign, Heart } from "lucide-react";
+import { Clock, RefreshCw, AlertTriangle, XCircle, DollarSign, Heart, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 
 interface ShopPoliciesProps {
   processingTime?: string | null;
@@ -23,19 +24,40 @@ const ShopPolicies = ({
   refundPolicy,
   careInstructions,
 }: ShopPoliciesProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // Don't render if no policies are set
   if (!processingTime && !returnsPolicy && !exchangesPolicy && !damagesPolicy && !nonReturnableItems && !refundPolicy && !careInstructions) {
     return null;
   }
 
+  const hasMultiplePolicies = [
+    processingTime, returnsPolicy, exchangesPolicy, damagesPolicy, 
+    nonReturnableItems, refundPolicy, careInstructions
+  ].filter(Boolean).length > 1;
+
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-lg">Shop Policies</CardTitle>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Shop Policies</CardTitle>
+          {hasMultiplePolicies && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="lg:hidden p-1 hover:bg-gray-100 rounded"
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={`space-y-4 ${hasMultiplePolicies && !isExpanded ? 'lg:block hidden' : 'block'}`}>
         
-        {/* Processing Time */}
+        {/* Processing Time - Always visible */}
         {processingTime && (
           <div className="flex items-start gap-3">
             <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />

@@ -5,6 +5,8 @@ import ContactSellerButton from "@/components/shared/ContactSellerButton";
 import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";
 import ExcludedCountries from "@/components/shop/ExcludedCountries";
+import { FacebookIcon, Instagram, Twitter, ExternalLink, MapPin } from "lucide-react";
+import { decryptData } from "@/lib/encryption";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -20,25 +22,47 @@ async function getShopData(shopNameSlug: string) {
       shopNameSlug: true,
       shopTagLine: true,
       shopDescription: true,
+      shopBannerImage: true,
+      shopLogoImage: true,
+      sellerImage: true,
       totalSales: true,
       acceptsCustom: true,
-               processingTime: true,
-        returnsPolicy: true,
-        exchangesPolicy: true,
-        damagesPolicy: true,
-        nonReturnableItems: true,
-        refundPolicy: true,
-        careInstructions: true,
-        excludedCountries: true,
+      processingTime: true,
+      returnsPolicy: true,
+      exchangesPolicy: true,
+      damagesPolicy: true,
+      nonReturnableItems: true,
+      refundPolicy: true,
+      careInstructions: true,
+      excludedCountries: true,
       isWomanOwned: true,
       isMinorityOwned: true,
       isLGBTQOwned: true,
       isVeteranOwned: true,
       isSustainable: true,
       isCharitable: true,
+      // Social media links
+      facebookUrl: true,
+      instagramUrl: true,
+      twitterUrl: true,
+      pinterestUrl: true,
+      tiktokUrl: true,
+      // Address for location
+      addresses: {
+        where: { isDefault: true },
+        select: {
+          encryptedCountry: true,
+          encryptedState: true,
+          countryIV: true,
+          stateIV: true,
+          countrySalt: true,
+          stateSalt: true,
+        },
+        take: 1,
+      },
       products: {
         where: {
-          status: "ACTIVE" // Only include active products
+          status: "ACTIVE", // Only include active products
         },
         select: {
           id: true,
@@ -55,8 +79,35 @@ async function getShopData(shopNameSlug: string) {
           stock: true,
           dropDate: true,
           dropTime: true,
-        }
-      }
+        },
+      },
+      reviews: {
+        where: {
+          status: "PUBLISHED",
+        },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          type: true,
+          createdAt: true,
+          reviewer: {
+            select: {
+              username: true,
+              image: true,
+            },
+          },
+          product: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 10,
+      },
     },
   });
 
@@ -74,90 +125,320 @@ export default async function ShopPage({ params }: ShopPageProps) {
     );
   }
 
+  // Social media links with icons
+  const socialLinks = [
+    { url: seller.facebookUrl || undefined, icon: FacebookIcon, label: "Facebook" },
+    { url: seller.instagramUrl || undefined, icon: Instagram, label: "Instagram" },
+    { url: seller.twitterUrl || undefined, icon: Twitter, label: "Twitter" },
+    { url: seller.pinterestUrl || undefined, icon: ExternalLink, label: "Pinterest" },
+    { url: seller.tiktokUrl || undefined, icon: ExternalLink, label: "TikTok" },
+  ].filter(link => link.url);
+
+  // Get location from default address
+  const defaultAddress = seller.addresses[0];
+  const location = defaultAddress ? {
+    country: decryptData(defaultAddress.encryptedCountry, defaultAddress.countryIV, defaultAddress.countrySalt),
+    state: defaultAddress.encryptedState ? 
+      decryptData(defaultAddress.encryptedState, defaultAddress.stateIV!, defaultAddress.stateSalt!) : 
+      null,
+  } : null;
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Hero Section */}
-      <section className="mb-8 text-center">
-        <h1 className="text-4xl font-bold">{seller.shopName}</h1>
-        {seller.shopTagLine && (
-          <p className="text-gray-600 mt-2">{seller.shopTagLine}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* HEADER SECTION */}
+      <div className="bg-white border-b">
+        {/* Shop Banner */}
+        {seller.shopBannerImage && (
+          <div className="relative w-full h-48 md:h-64 lg:h-80">
+            <Image
+              src={seller.shopBannerImage}
+              alt={`${seller.shopName} banner`}
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-black/20" />
+          </div>
         )}
-        {seller.shopDescription && (
-          <p className="text-sm text-gray-500 mt-2">{seller.shopDescription}</p>
-        )}
-        <div className="mt-4 max-w-xs mx-auto">
-          <ContactSellerButton 
-            sellerId={seller.id} 
-            sellerName={seller.shopName} 
-          />
+
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
+          {/* Shop Info */}
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            {/* Shop Logo */}
+            <div className="flex-shrink-0">
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                {seller.shopLogoImage ? (
+                  <Image
+                    src={seller.shopLogoImage}
+                    alt={`${seller.shopName} logo`}
+                    width={128}
+                    height={128}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-gray-400">
+                      {seller.shopName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Shop Details */}
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                {seller.shopName}
+              </h1>
+              
+              {seller.shopTagLine && (
+                <p className="text-lg text-gray-600 mb-3">{seller.shopTagLine}</p>
+              )}
+
+              {/* Location */}
+              {location && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                  <MapPin className="h-4 w-4" />
+                  <span>
+                    {location.state ? `${location.state}, ` : ''}{location.country}
+                  </span>
+                </div>
+              )}
+
+              {/* Social Links */}
+              {socialLinks.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {socialLinks.map(({ url, icon: Icon, label }) => (
+                    <a
+                      key={label}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="hidden sm:inline">{label}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick Stats */}
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                <span>{seller.products.length} products</span>
+                <span>•</span>
+                <span>{seller.totalSales} sales</span>
+                {seller.acceptsCustom && (
+                  <>
+                    <span>•</span>
+                    <span className="text-green-600 font-medium">Accepts Custom Orders</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Contact Button */}
+            <div className="flex-shrink-0">
+              <ContactSellerButton
+                sellerId={seller.id}
+                sellerName={seller.shopName}
+              />
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Sidebar */}
-        <aside className="col-span-3 border-r pr-6">
-          <h2 className="text-lg font-semibold mb-4">Shop Information</h2>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li>All Products ({seller.products.length})</li>
-            <li>
-              Physical Items (
-              {seller.products.filter((p) => !p.isDigital).length})
-            </li>
-            <li>
-              Digital Products (
-              {seller.products.filter((p) => p.isDigital).length})
-            </li>
-          </ul>
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* ITEMS SECTION */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">Shop Items</h2>
+          
+          {/* Mobile Layout */}
+          <div className="block lg:hidden">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4">Products ({seller.products.length})</h3>
+              {seller.products.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No products available.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {seller.products.map((product, index) => (
+                    <ProductCard key={product.id} product={product} index={index} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
-          <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">About the Seller</h2>
-            <p className="text-sm text-gray-600">
-              Total Sales: {seller.totalSales}
-            </p>
-            {seller.acceptsCustom && (
-              <p className="text-sm text-green-600 mt-2">
-                Accepts Custom Orders
-              </p>
+          {/* Desktop Layout */}
+          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
+            {/* Filters Sidebar */}
+            <aside className="col-span-3">
+              <div className="sticky top-6 space-y-6">
+                {/* Shop Stats */}
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Shop Information</h3>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>All Products ({seller.products.length})</li>
+                    <li>
+                      Physical Items (
+                      {seller.products.filter((p) => !p.isDigital).length})
+                    </li>
+                    <li>
+                      Digital Products (
+                      {seller.products.filter((p) => p.isDigital).length})
+                    </li>
+                  </ul>
+
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-gray-600">
+                      Total Sales: {seller.totalSales}
+                    </p>
+                    {seller.acceptsCustom && (
+                      <p className="text-sm text-green-600 mt-2">
+                        Accepts Custom Orders
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Excluded Countries */}
+                <ExcludedCountries excludedCountries={seller.excludedCountries} />
+              </div>
+            </aside>
+
+            {/* Product Grid */}
+            <div className="col-span-9">
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                {seller.products.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No products available.</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {seller.products.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* REVIEWS SECTION */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            {seller.reviews.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No reviews yet.</p>
+            ) : (
+              <div className="space-y-6">
+                {seller.reviews.map((review) => (
+                  <div key={review.id} className="border-b pb-4 last:border-b-0">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          {review.reviewer.image ? (
+                            <Image
+                              src={review.reviewer.image}
+                              alt={review.reviewer.username || "Reviewer"}
+                              width={40}
+                              height={40}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-600">
+                              {review.reviewer.username?.charAt(0).toUpperCase() || "U"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">
+                            {review.reviewer.username || "Anonymous"}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-2">
+                          {[...Array(5)].map((_, i) => (
+                            <span
+                              key={i}
+                              className={`text-sm ${
+                                i < review.rating ? "text-yellow-400" : "text-gray-300"
+                              }`}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-gray-600">{review.comment}</p>
+                        )}
+                        {review.product && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Review for: {review.product.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
+        </section>
 
-          {/* Shop Policies */}
-          <div className="mt-6">
-            <ShopPolicies 
-              processingTime={seller.processingTime}
-              returnsPolicy={seller.returnsPolicy}
-              exchangesPolicy={seller.exchangesPolicy}
-              damagesPolicy={seller.damagesPolicy}
-              nonReturnableItems={seller.nonReturnableItems}
-              refundPolicy={seller.refundPolicy}
-              careInstructions={seller.careInstructions}
-            />
-          </div>
+        {/* ABOUT SECTION */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">About This Shop</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Shop Description & Maker Image */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Shop Description */}
+              {seller.shopDescription && (
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">About the Maker</h3>
+                  <p className="text-gray-600 leading-relaxed">{seller.shopDescription}</p>
+                  
+                  {/* Maker Image */}
+                  {seller.sellerImage && (
+                    <div className="mt-4">
+                      <Image
+                        src={seller.sellerImage}
+                        alt="Maker"
+                        width={200}
+                        height={200}
+                        className="w-32 h-32 rounded-lg object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
-          {/* Excluded Countries */}
-          <div className="mt-6">
-            <ExcludedCountries 
-              excludedCountries={seller.excludedCountries}
-            />
-          </div>
-        </aside>
-
-        {/* Product Grid */}
-        <section className="col-span-9">
-          <h2 className="text-lg font-semibold mb-4">Products</h2>
-          {seller.products.length === 0 ? (
-            <p className="text-gray-500">No products available.</p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {seller.products.map((product, index) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  index={index} 
-                />
-              ))}
+              {/* FAQ Section - Placeholder for now */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-semibold mb-4">Frequently Asked Questions</h3>
+                <p className="text-gray-500 text-center py-4">
+                  FAQ section coming soon...
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* Shop Policies */}
+            <div className="space-y-6">
+              <ShopPolicies
+                processingTime={seller.processingTime}
+                returnsPolicy={seller.returnsPolicy}
+                exchangesPolicy={seller.exchangesPolicy}
+                damagesPolicy={seller.damagesPolicy}
+                nonReturnableItems={seller.nonReturnableItems}
+                refundPolicy={seller.refundPolicy}
+                careInstructions={seller.careInstructions}
+              />
+            </div>
+          </div>
         </section>
       </div>
     </div>
