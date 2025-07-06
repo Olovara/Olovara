@@ -28,6 +28,7 @@ export const updateSellerInfo = async (values: z.infer<typeof SellerInfoSchema>)
 
   const { 
     isVacationMode,
+    acceptsCustom,
     businessName, 
     taxId, 
     businessAddress, 
@@ -53,6 +54,7 @@ export const updateSellerInfo = async (values: z.infer<typeof SellerInfoSchema>)
     await db.seller.update({
       where: { userId: session.user.id },
       data: {
+        acceptsCustom,
         encryptedBusinessName: encryptedBusinessName.encrypted,
         businessNameIV: encryptedBusinessName.iv,
         businessNameSalt: encryptedBusinessName.salt,
@@ -99,6 +101,7 @@ export const getSellerInfo = async () => {
     const seller = await db.seller.findUnique({
       where: { userId: session.user.id },
       select: {
+        acceptsCustom: true,
         encryptedBusinessName: true,
         businessNameIV: true,
         businessNameSalt: true,
@@ -150,6 +153,7 @@ export const getSellerInfo = async () => {
     
     const decryptedData = {
       isVacationMode: seller.user.status === "VACATION",
+      acceptsCustom: seller.acceptsCustom,
       businessName: decryptData(seller.encryptedBusinessName, seller.businessNameIV, seller.businessNameSalt),
       taxId: decryptData(seller.encryptedTaxId, seller.taxIdIV, seller.taxIdSalt),
       taxCountry: seller.taxCountry,

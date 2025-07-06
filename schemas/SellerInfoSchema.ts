@@ -7,6 +7,8 @@ const SUPPORTED_COUNTRY_CODES = getOnboardingCountries().map(country => country.
 export const SellerInfoSchema = z.object({
   // Vacation mode
   isVacationMode: z.boolean().default(false),
+  // Custom orders
+  acceptsCustom: z.boolean().default(false),
   // Tax fields
   businessName: z.string().min(3, "Business name is required"),
   taxId: z.string().min(1, "Tax ID is required"),

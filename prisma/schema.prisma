@@ -128,6 +128,7 @@ model User {
   sentMessages          Message[]              @relation("MessageSender")
   blogPosts             BlogPost[]
   blogComments          BlogComment[]
+  customOrderSubmissions CustomOrderSubmission[]
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -245,6 +246,7 @@ model Seller {
   addresses              Address[]
   shippingProfiles       ShippingProfile[]
   reviews                Review[]
+  customOrderForms       CustomOrderForm[]
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Onboarding progress fields
@@ -782,4 +784,76 @@ model UserActivityLog {
   success   Boolean?
   details   Json? // Optional: { orderId, productId, errorCode, ... }
   createdAt DateTime @default(now())
+}
+
+// Custom Order Form Models
+model CustomOrderForm {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId    String
+  seller      Seller   @relation(fields: [sellerId], references: [userId])
+  title       String
+  description String?
+  isActive    Boolean  @default(true)
+  fields      CustomOrderFormField[]
+  submissions CustomOrderSubmission[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([isActive])
+}
+
+model CustomOrderFormField {
+  id                String           @id @default(auto()) @map("_id") @db.ObjectId
+  formId            String
+  form              CustomOrderForm  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label             String
+  type              String // "text", "textarea", "number", "email", "phone", "select", "multiselect", "file", "date", "boolean"
+  required          Boolean          @default(false)
+  placeholder       String?
+  helpText          String?
+  options           String[]         @default([]) // For select/multiselect fields
+  validation        Json? // Custom validation rules
+  order             Int // Field order in the form
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  responses         CustomOrderSubmissionResponse[]
+
+  @@index([formId])
+  @@index([order])
+}
+
+model CustomOrderSubmission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  formId    String
+  form      CustomOrderForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId    String // Required - customer must be logged in
+  user      User   @relation(fields: [userId], references: [id])
+  customerEmail String
+  customerName  String?
+  status    String  @default("PENDING") // "PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED"
+  responses CustomOrderSubmissionResponse[]
+  notes     String? // Seller's notes on the submission
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([formId])
+  @@index([userId])
+  @@index([status])
+  @@index([customerEmail])
+}
+
+model CustomOrderSubmissionResponse {
+  id         String                @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId String
+  submission CustomOrderSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  fieldId    String
+  field      CustomOrderFormField  @relation(fields: [fieldId], references: [id])
+  value      String // Store response as string, parse based on field type
+  createdAt  DateTime              @default(now())
+
+  @@unique([submissionId, fieldId])
+  @@index([submissionId])
+  @@index([fieldId])
 }

@@ -41,6 +41,7 @@ const SellerInfoForm = () => {
     resolver: zodResolver(SellerInfoSchema),
     defaultValues: {
       isVacationMode: false,
+      acceptsCustom: false,
       businessName: "",
       taxId: "",
       businessAddress: "",
@@ -117,9 +118,11 @@ const SellerInfoForm = () => {
       </CardHeader>
       <CardContent className="flex flex-col gap-y-6">
         
-        {/* Vacation Mode Section */}
+        {/* Shop Status Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Shop Status</h3>
+          
+          {/* Vacation Mode */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">Vacation Mode</Label>
@@ -133,6 +136,44 @@ const SellerInfoForm = () => {
               disabled={isPending}
             />
           </div>
+
+          {/* Custom Orders */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">Accept Custom Orders</Label>
+              <div className="text-sm text-muted-foreground">
+                Allow customers to request custom orders through a form you create. You&apos;ll be able to design your own form to collect the information you need.
+              </div>
+            </div>
+            <Switch
+              checked={form.watch("acceptsCustom")}
+              onCheckedChange={(checked) => form.setValue("acceptsCustom", checked)}
+              disabled={isPending}
+            />
+          </div>
+
+          {form.watch("acceptsCustom") && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">Custom Orders Enabled</h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p>Great! Now you can create a custom order form in your dashboard. This will help you collect all the information you need from customers without back-and-forth messages.</p>
+                    <p className="mt-2">
+                      <a href="/seller/dashboard/custom-orders" className="font-medium underline">
+                        Go to Custom Orders →
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <Separator className="my-4" />

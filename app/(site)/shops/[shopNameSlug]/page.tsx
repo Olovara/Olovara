@@ -2,6 +2,7 @@ import React from "react";
 import { db } from "@/lib/db";
 import Image from "next/image";
 import ContactSellerButton from "@/components/shared/ContactSellerButton";
+import CustomOrderButton from "@/components/shared/CustomOrderButton";
 import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";
 import ExcludedCountries from "@/components/shop/ExcludedCountries";
@@ -237,11 +238,16 @@ export default async function ShopPage({ params }: ShopPageProps) {
               </div>
             </div>
 
-            {/* Contact Button */}
-            <div className="flex-shrink-0">
+            {/* Contact & Custom Order Buttons */}
+            <div className="flex-shrink-0 flex items-center gap-2">
               <ContactSellerButton
                 sellerId={seller.id}
                 sellerName={seller.shopName}
+              />
+              <CustomOrderButton
+                sellerId={seller.id}
+                sellerName={seller.shopName}
+                acceptsCustom={seller.acceptsCustom}
               />
             </div>
           </div>
