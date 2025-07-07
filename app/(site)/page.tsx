@@ -23,7 +23,6 @@ export default function Home() {
           <Link href="/products" className={buttonVariants()}>
             Shop Now
           </Link>
-          <Button variant="ghost">Our quality promise &rarr;</Button>
         </div>
       </div>
       <ProductRow category="newest" />

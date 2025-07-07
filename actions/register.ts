@@ -2,6 +2,7 @@
 
 import * as z from "zod";
 import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
 
 import { RegisterSchema } from "@/schemas";
 import { db } from "@/lib/db";
@@ -10,6 +11,7 @@ import { generateVerificationToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/mail";
 import { rateLimit } from "@/lib/rate-limit";
 import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
+import { getUserLocationPreferences } from "@/lib/ipinfo";
 
 const verifyRecaptcha = async (token: string) => {
   try {
@@ -54,6 +56,30 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
 
   const { username, password, email, recaptchaToken } = validatedFields.data;
 
+  // Get client IP address for location detection and fraud prevention
+  const headersList = await headers();
+  const forwarded = headersList.get('x-forwarded-for');
+  const realIP = headersList.get('x-real-ip');
+  const clientIP = forwarded?.split(',')[0] || realIP || '';
+
+  // Get location preferences for the user
+  let locationData = null;
+  let preferredCurrency = 'USD'; // Default currency
+  try {
+    if (clientIP) {
+      const locationPreferences = await getUserLocationPreferences(clientIP);
+      locationData = {
+        country: locationPreferences.countryCode,
+        countryName: locationPreferences.countryName,
+        continent: locationPreferences.continent,
+      };
+      preferredCurrency = locationPreferences.currency;
+    }
+  } catch (error) {
+    console.error('Error getting location preferences during registration:', error);
+    // Don't fail registration if location detection fails
+  }
+
   // Verify reCAPTCHA
   const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
   if (!isRecaptchaValid) {
@@ -89,6 +115,13 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
       password: hashedPassword,
       role: ROLES.MEMBER,
       permissions: createRolePermissions(ROLES.MEMBER),
+      // Store IP and location information for fraud detection
+      signupIP: clientIP || null,
+      signupLocation: locationData,
+      lastLoginIP: clientIP || null,
+      lastLoginAt: new Date(),
+      // Set preferred currency based on detected location
+      preferredCurrency: preferredCurrency,
     },
   });
 

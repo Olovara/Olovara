@@ -53,7 +53,7 @@ export function createLocationFilterWhereClause(userCountryCode: string) {
       OR: [
         {
           excludedCountries: {
-            not: {
+            NOT: {
               has: userCountryCode
             }
           }
