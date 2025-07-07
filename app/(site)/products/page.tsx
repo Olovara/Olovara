@@ -10,6 +10,9 @@ import { Prisma } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Filter } from "lucide-react";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createLocationFilterWhereClause } from "@/lib/product-filtering";
+import { LocationFilterInfo } from "@/components/LocationFilterNotice";
 
 export const metadata: Metadata = {
   title: "Products | Yarnnu",
@@ -31,6 +34,9 @@ interface ProductsPageProps {
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  // Get user's country code for location-based filtering
+  const userCountryCode = await getUserCountryCode();
+
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
   const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
@@ -53,6 +59,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       {
         status: "ACTIVE", // Only show active products
       },
+      // Add location-based filtering
+      createLocationFilterWhereClause(userCountryCode || ""),
       ...(searchParams.q
         ? [
             {
@@ -154,6 +162,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           isVeteranOwned: true,
           isSustainable: true,
           isCharitable: true,
+          excludedCountries: true,
         },
       },
     },
@@ -186,6 +195,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
         {/* Products Grid */}
         <div className="w-full lg:w-4/5">
+          {/* Location Filter Info */}
+          <LocationFilterInfo />
+          
           {/* Pagination Info */}
           {totalPages > 1 && (
             <div className="mb-6">

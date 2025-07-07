@@ -5,6 +5,8 @@ import { FilterBar } from "@/components/filter-bar";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import ProductCard from "@/components/ProductCard";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createLocationFilterWhereClause } from "@/lib/product-filtering";
 
 
 interface PrimaryCategoryPageProps {
@@ -46,6 +48,9 @@ export default async function PrimaryCategoryPage({
   params,
   searchParams,
 }: PrimaryCategoryPageProps) {
+  // Get user's country code for location-based filtering
+  const userCountryCode = await getUserCountryCode();
+
   const primaryCategory = CategoriesMap.PRIMARY.find(
     (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
   );
@@ -81,6 +86,8 @@ export default async function PrimaryCategoryPage({
           lte: priceRange[1],
         },
       },
+      // Add location-based filtering
+      createLocationFilterWhereClause(userCountryCode || ""),
       ...(q
         ? [
             {
@@ -141,6 +148,7 @@ export default async function PrimaryCategoryPage({
           isVeteranOwned: true,
           isSustainable: true,
           isCharitable: true,
+          excludedCountries: true,
         },
       },
     },

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { Suspense } from "react";
 import ProductCard from "./ProductCard";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createLocationFilterWhereClause } from "@/lib/product-filtering";
 
 interface iAppProps {
   category: "newest" | "templates" | "uikits" | "ACCESORIES" | "random";
@@ -10,6 +12,8 @@ interface iAppProps {
 
 async function getData({ category }: iAppProps) {
   try {
+    // Get user's country code for location-based filtering
+    const userCountryCode = await getUserCountryCode();
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
@@ -18,7 +22,8 @@ async function getData({ category }: iAppProps) {
         // First get the total count of active products
         const totalProducts = await db.product.count({
           where: { 
-            status: "ACTIVE"
+            status: "ACTIVE",
+            ...createLocationFilterWhereClause(userCountryCode || ""),
           }
         });
 
@@ -27,7 +32,8 @@ async function getData({ category }: iAppProps) {
 
         const data = await db.product.findMany({
           where: { 
-            status: "ACTIVE"
+            status: "ACTIVE",
+            ...createLocationFilterWhereClause(userCountryCode || ""),
           },
           select: {
             id: true,
@@ -79,7 +85,8 @@ async function getData({ category }: iAppProps) {
         const data = await db.product.findMany({
           where: { 
             primaryCategory: "ACCESORIES",
-            status: "ACTIVE"
+            status: "ACTIVE",
+            ...createLocationFilterWhereClause(userCountryCode || ""),
           },
           select: {
             id: true,
@@ -130,7 +137,8 @@ async function getData({ category }: iAppProps) {
         const data = await db.product.findMany({
           where: { 
             createdAt: { gte: fiveDaysAgo },
-            status: "ACTIVE"
+            status: "ACTIVE",
+            ...createLocationFilterWhereClause(userCountryCode || ""),
           },
           select: {
             id: true,

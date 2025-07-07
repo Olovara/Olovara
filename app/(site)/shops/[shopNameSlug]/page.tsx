@@ -9,13 +9,15 @@ import ExcludedCountries from "@/components/shop/ExcludedCountries";
 import { ExternalLink, MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon, PinterestIcon, TikTokIcon } from "@/components/ui/social-icon";
 import { decryptData } from "@/lib/encryption";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createLocationFilterWhereClause } from "@/lib/product-filtering";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
 }
 
 // Fetch seller and products
-async function getShopData(shopNameSlug: string) {
+async function getShopData(shopNameSlug: string, userCountryCode?: string) {
   const seller = await db.seller.findUnique({
     where: { shopNameSlug }, // Fetch using the slug
     select: {
@@ -46,7 +48,6 @@ async function getShopData(shopNameSlug: string) {
       // Social media links
       facebookUrl: true,
       instagramUrl: true,
-      twitterUrl: true,
       pinterestUrl: true,
       tiktokUrl: true,
       // Address for location
@@ -65,6 +66,8 @@ async function getShopData(shopNameSlug: string) {
       products: {
         where: {
           status: "ACTIVE", // Only include active products
+          // Add location-based filtering if user country is detected
+          ...(userCountryCode ? createLocationFilterWhereClause(userCountryCode) : {}),
         },
         select: {
           id: true,
@@ -117,7 +120,9 @@ async function getShopData(shopNameSlug: string) {
 }
 
 export default async function ShopPage({ params }: ShopPageProps) {
-  const seller = await getShopData(params.shopNameSlug);
+  // Get user's country code for location-based filtering
+  const userCountryCode = await getUserCountryCode();
+  const seller = await getShopData(params.shopNameSlug, userCountryCode || undefined);
 
   if (!seller) {
     return (

@@ -4,6 +4,8 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Filters } from "@/components/filters";
 import ProductCard from "@/components/ProductCard";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createLocationFilterWhereClause } from "@/lib/product-filtering";
 
 interface TertiaryCategoryPageProps {
   params: {
@@ -47,6 +49,9 @@ export default async function TertiaryCategoryPage({
   params,
   searchParams,
 }: TertiaryCategoryPageProps) {
+  // Get user's country code for location-based filtering
+  const userCountryCode = await getUserCountryCode();
+
   const { primaryCategoryId, secondaryCategoryId, tertiaryCategoryId } = params;
 
   const primaryCategory = CategoriesMap.PRIMARY.find(
@@ -70,6 +75,8 @@ export default async function TertiaryCategoryPage({
       secondaryCategory: secondaryCategoryId,
       tertiaryCategory: tertiaryCategoryId,
       status: "ACTIVE",
+      // Add location-based filtering
+      ...createLocationFilterWhereClause(userCountryCode || ""),
     },
     select: {
       id: true,
@@ -97,6 +104,7 @@ export default async function TertiaryCategoryPage({
           isVeteranOwned: true,
           isSustainable: true,
           isCharitable: true,
+          excludedCountries: true,
         },
       },
     },
