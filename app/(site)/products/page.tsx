@@ -130,12 +130,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const totalProducts = await db.product.count({ where });
   const totalPages = Math.ceil(totalProducts / pageSize);
 
-  // Fetch products with pagination
-  const products = await db.product.findMany({
+  // Fetch products with pagination (without location filtering at DB level)
+  const allProducts = await db.product.findMany({
     where,
     orderBy,
     skip: (currentPage - 1) * pageSize,
-    take: pageSize,
+    take: pageSize * 2, // Fetch more to account for filtering
     select: {
       id: true,
       name: true,
@@ -167,6 +167,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       },
     },
   });
+
+  // Apply location filtering in memory
+  const products = userCountryCode 
+    ? allProducts.filter(product => {
+        if (!product.seller) return true;
+        const excludedCountries = product.seller.excludedCountries || [];
+        return !excludedCountries.includes(userCountryCode);
+      }).slice(0, pageSize)
+    : allProducts.slice(0, pageSize);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[2000px]">

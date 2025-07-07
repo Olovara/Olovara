@@ -46,29 +46,10 @@ export function createLocationFilterWhereClause(userCountryCode: string) {
     return {};
   }
 
-  return {
-    seller: {
-      // Only include products where the seller doesn't exclude the user's country
-      // OR where the seller has no exclusions (ships worldwide)
-      OR: [
-        {
-          excludedCountries: {
-            NOT: {
-              has: userCountryCode
-            }
-          }
-        },
-        {
-          excludedCountries: {
-            equals: []
-          }
-        },
-        {
-          excludedCountries: null
-        }
-      ]
-    }
-  } as any; // Type assertion to handle Prisma's complex types
+  // Temporarily disable location filtering at database level due to Prisma array filtering issues
+  // We'll handle location filtering in memory instead
+  console.log('Location filtering disabled at database level for user country:', userCountryCode);
+  return {};
 }
 
 /**
