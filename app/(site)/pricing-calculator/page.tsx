@@ -12,6 +12,8 @@ import PricingOverviewSection from "@/components/pricing-calculator/PricingOverv
 import PricingBreakdownSection from "@/components/pricing-calculator/PricingBreakdownSection";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 
 Chart.register(ArcElement, Tooltip, Legend);
 
@@ -50,8 +52,12 @@ export default function PricingCalculator() {
   const [websiteFeePercent, setWebsiteFeePercent] = useState(10);
   const [websiteFeeDollar, setWebsiteFeeDollar] = useState(0);
   
-  // Toggle between website and craft show costs
+  // Toggle between Website and Craft Show Costs
   const [isWebsiteMode, setIsWebsiteMode] = useState(false);
+  
+  // Toggle between Calculate Price and Calculate Profit modes
+  const [isReverseMode, setIsReverseMode] = useState(false);
+  const [desiredSellingPrice, setDesiredSellingPrice] = useState(0);
 
   // Calculate other costs
   const totalOtherCosts = otherCosts.reduce(
@@ -71,27 +77,49 @@ export default function PricingCalculator() {
     totalOtherCosts +
     (isWebsiteMode ? 0 : totalBoothFees);
 
-  // Initial selling price before fees
-  let sellingPrice =
-    totalCost *
-    (1 + markup / 100) *
-    (1 - discount / 100) *
-    (1 + salesTax / 100);
+  let sellingPrice: number;
+  let profit: number;
+  let transactionFees: number;
+  let websiteFees: number;
 
-  // Calculate transaction fees based on this initial selling price
-  const transactionFees =
-    (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
+  if (isReverseMode) {
+    // Reverse calculation: Calculate profit from desired selling price
+    sellingPrice = desiredSellingPrice;
+    
+    // Calculate transaction fees based on the desired selling price
+    transactionFees = (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
+    
+    // Calculate website fees if in website mode
+    websiteFees = isWebsiteMode
+      ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
+      : 0;
+    
+    // Calculate profit: Selling Price - Total Cost - Transaction Fees - Website Fees
+    profit = sellingPrice - totalCost - transactionFees - websiteFees;
+  } else {
+    // Forward calculation: Calculate selling price from costs + markup
+    // Initial selling price before fees
+    sellingPrice =
+      totalCost *
+      (1 + markup / 100) *
+      (1 - discount / 100) *
+      (1 + salesTax / 100);
 
-  // Calculate website fees if in website mode
-  const websiteFees = isWebsiteMode
-    ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
-    : 0;
+    // Calculate transaction fees based on this initial selling price
+    transactionFees =
+      (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
 
-  // Final selling price, including all fees
-  sellingPrice += transactionFees + websiteFees;
+    // Calculate website fees if in website mode
+    websiteFees = isWebsiteMode
+      ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
+      : 0;
 
-  // Calculate profit
-  const profit = sellingPrice - (totalCost + transactionFees + websiteFees);
+    // Final selling price, including all fees
+    sellingPrice += transactionFees + websiteFees;
+
+    // Calculate profit
+    profit = sellingPrice - (totalCost + transactionFees + websiteFees);
+  }
 
   // Function to update costs dynamically
   const updateField = (
@@ -193,6 +221,54 @@ export default function PricingCalculator() {
         salesTax={salesTax}
         setSalesTax={setSalesTax}
       />
+
+      {/* Toggle between Calculate Price and Calculate Profit modes */}
+      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+        <Switch
+          id="calculation-mode"
+          checked={isReverseMode}
+          onCheckedChange={setIsReverseMode}
+        />
+        <Label htmlFor="calculation-mode" className="text-lg font-semibold">
+          {isReverseMode ? "Reverse Calculation" : "Forward Calculation"}
+        </Label>
+      </div>
+
+      {/* Explanation of calculation modes */}
+      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+        <h3 className="font-semibold text-purple-900 mb-2">
+          {isReverseMode ? "Reverse Calculation Mode" : "Forward Calculation Mode"}
+        </h3>
+        <p className="text-purple-800 text-sm">
+          {isReverseMode 
+            ? "Enter your desired selling price to see what profit you would make. Perfect for checking if a specific price point is profitable or comparing different price options."
+            : "Calculate the selling price based on your costs and markup percentage. This is the traditional approach to pricing your products."
+          }
+        </p>
+      </div>
+
+      {/* Desired Selling Price Input (only show in reverse mode) */}
+      {isReverseMode && (
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-4">Desired Selling Price</h2>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="desired-price" className="text-sm font-medium">
+              What price do you want to sell for?
+            </Label>
+            <Input
+              id="desired-price"
+              type="number"
+              value={desiredSellingPrice}
+              onChange={(e) => setDesiredSellingPrice(parseFloat(e.target.value) || 0)}
+              placeholder="0.00"
+              className="w-32"
+            />
+          </div>
+          <p className="text-sm text-gray-600 mt-2">
+            Enter your desired selling price to see what profit you would make
+          </p>
+        </Card>
+      )}
 
       <PricingBreakdownSection
         totalMaterialCost={totalMaterialCost}
