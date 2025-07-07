@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Trash2, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Packaging {
   description: string;
@@ -22,9 +22,10 @@ interface Packaging {
 interface Props {
   packaging: any[];
   setPackaging: (value: any[]) => void;
+  onTotalChange?: (total: number) => void;
 }
 
-export default function PackagingSection({ packaging, setPackaging }: Props) {
+export default function PackagingSection({ packaging, setPackaging, onTotalChange }: Props) {
   const [miscCost, setMiscCost] = useState<string>(""); // State for Miscellaneous Cost
 
   // Function to update material values
@@ -49,12 +50,19 @@ export default function PackagingSection({ packaging, setPackaging }: Props) {
     packaging.reduce((sum, packaging) => sum + packaging.total, 0) +
     parseFloat(miscCost || "0");
 
+  // Report total back to parent component
+  useEffect(() => {
+    if (onTotalChange) {
+      onTotalChange(totalPackagingCost);
+    }
+  }, [totalPackagingCost, onTotalChange]);
+
   return (
     <div className="p-4 border rounded-lg">
       <h2 className="text-lg font-semibold mb-4">Packaging Cost</h2>
 
-      {/* Table Structure using shadcn */}
-      <div className="overflow-x-auto">
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -141,6 +149,98 @@ export default function PackagingSection({ packaging, setPackaging }: Props) {
         </Table>
       </div>
 
+      {/* Mobile Card View - Hidden on desktop */}
+      <div className="md:hidden space-y-4">
+        {packaging.map((item, index) => (
+          <div key={index} className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Packaging {index + 1}</h4>
+              <Button
+                onClick={() =>
+                  setPackaging(packaging.filter((_, i) => i !== index))
+                }
+                variant="ghost"
+                size="sm"
+              >
+                <Trash2 size={16} className="text-red-500" />
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <Input
+                  value={item.description}
+                  onChange={(e) =>
+                    updatePackaging(
+                      index,
+                      "description",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Item Cost</label>
+                  <Input
+                    type="number"
+                    value={item.cost}
+                    onChange={(e) =>
+                      updatePackaging(
+                        index,
+                        "cost",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Cost"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Item Size</label>
+                  <Input
+                    type="number"
+                    value={item.size}
+                    onChange={(e) =>
+                      updatePackaging(
+                        index,
+                        "size",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Size"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Quantity Used</label>
+                <Input
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) =>
+                    updatePackaging(
+                      index,
+                      "quantity",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Quantity"
+                />
+              </div>
+              
+              <div className="text-right">
+                <span className="font-semibold text-lg">
+                  Total: ${item.total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Add Packaging Button */}
       <div className="mt-4">
         <Button
@@ -156,19 +256,19 @@ export default function PackagingSection({ packaging, setPackaging }: Props) {
       </div>
 
       {/* Miscellaneous Costs Input */}
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <span className="font-semibold">Miscellaneous Costs:</span>
         <Input
           type="number"
           value={miscCost}
           onChange={(e) => setMiscCost(e.target.value)}
           placeholder="Misc."
-          className="w-32"
+          className="w-full sm:w-32"
         />
       </div>
 
       {/* Total Packaging Cost */}
-      <div className="mt-2 flex items-center justify-between border-t pt-2">
+      <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t pt-2 gap-2">
         <span className="font-semibold">Total Packaging Cost:</span>
         <span className="font-semibold text-lg">
           ${totalPackagingCost.toFixed(2)}

@@ -29,6 +29,11 @@ export default function PricingCalculator() {
     { description: "", total: "" },
   ]);
 
+  // State to track total costs from each section (including misc costs)
+  const [totalMaterialCost, setTotalMaterialCost] = useState(0);
+  const [totalPackagingCost, setTotalPackagingCost] = useState(0);
+  const [totalLaborCost, setTotalLaborCost] = useState(0);
+
   const [discount, setDiscount] = useState(0);
   const [markup, setMarkup] = useState(0);
   const [salesTax, setSalesTax] = useState(0);
@@ -48,19 +53,7 @@ export default function PricingCalculator() {
   // Toggle between website and craft show costs
   const [isWebsiteMode, setIsWebsiteMode] = useState(false);
 
-  // Calculate total costs
-  const totalMaterialCost = materials.reduce(
-    (acc, item) => acc + (item.total || 0),
-    0
-  );
-  const totalPackagingCost = packaging.reduce(
-    (acc, item) => acc + (item.total || 0),
-    0
-  );
-  const totalLaborCost = labor.reduce(
-    (acc, item) => acc + (item.total || 0),
-    0
-  );
+  // Calculate other costs
   const totalOtherCosts = otherCosts.reduce(
     (acc, item) => acc + parseFloat(item.total || "0"),
     0
@@ -133,11 +126,23 @@ export default function PricingCalculator() {
         spend more time making
       </h1>
 
-      <MaterialsSection materials={materials} setMaterials={setMaterials} />
+      <MaterialsSection 
+        materials={materials} 
+        setMaterials={setMaterials} 
+        onTotalChange={setTotalMaterialCost}
+      />
 
-      <LaborSection labor={labor} setLabor={setLabor} />
+      <LaborSection 
+        labor={labor} 
+        setLabor={setLabor} 
+        onTotalChange={setTotalLaborCost}
+      />
 
-      <PackagingSection packaging={packaging} setPackaging={setPackaging} />
+      <PackagingSection 
+        packaging={packaging} 
+        setPackaging={setPackaging} 
+        onTotalChange={setTotalPackagingCost}
+      />
 
       {/* Toggle between Website and Craft Show Costs */}
       <div className="flex items-center space-x-2 p-4 border rounded-lg">
@@ -196,6 +201,7 @@ export default function PricingCalculator() {
         totalOtherCosts={totalOtherCosts}
         totalBoothFees={isWebsiteMode ? 0 : totalBoothFees}
         transactionFees={transactionFees}
+        websiteFees={websiteFees}
         totalCost={totalCost}
         sellingPrice={sellingPrice}
         profit={profit}
