@@ -94,7 +94,6 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
       // Social media links
       facebookUrl: true,
       instagramUrl: true,
-      twitterUrl: true,
       pinterestUrl: true,
       tiktokUrl: true,
       products: {

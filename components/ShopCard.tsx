@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Seller } from "@prisma/client";
-import { FacebookIcon, Instagram, Twitter, ExternalLink } from "lucide-react";
+import { FacebookIcon, InstagramIcon, PinterestIcon, TikTokIcon } from "./ui/social-icon";
+import { ExternalLink } from "lucide-react";
 
 interface ShopCardProps {
   shop: {
@@ -15,7 +16,6 @@ interface ShopCardProps {
     acceptsCustom: boolean;
     facebookUrl: string | null;
     instagramUrl: string | null;
-    twitterUrl: string | null;
     pinterestUrl: string | null;
     tiktokUrl: string | null;
     products: {
@@ -28,10 +28,9 @@ export function ShopCard({ shop }: ShopCardProps) {
   // Social media links with icons
   const socialLinks = [
     { url: shop.facebookUrl || undefined, icon: FacebookIcon, label: "Facebook" },
-    { url: shop.instagramUrl || undefined, icon: Instagram, label: "Instagram" },
-    { url: shop.twitterUrl || undefined, icon: Twitter, label: "Twitter" },
-    { url: shop.pinterestUrl || undefined, icon: ExternalLink, label: "Pinterest" },
-    { url: shop.tiktokUrl || undefined, icon: ExternalLink, label: "TikTok" },
+    { url: shop.instagramUrl || undefined, icon: InstagramIcon, label: "Instagram" },
+    { url: shop.pinterestUrl || undefined, icon: PinterestIcon, label: "Pinterest" },
+    { url: shop.tiktokUrl || undefined, icon: TikTokIcon, label: "TikTok" },
   ].filter(link => link.url);
 
   return (

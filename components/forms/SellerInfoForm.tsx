@@ -52,7 +52,6 @@ const SellerInfoForm = () => {
       additionalTaxRegistrations: "",
       facebookUrl: "",
       instagramUrl: "",
-      twitterUrl: "",
       pinterestUrl: "",
       tiktokUrl: "",
     },
@@ -363,15 +362,6 @@ const SellerInfoForm = () => {
               <Input
                 placeholder="https://instagram.com/yourhandle"
                 {...form.register("instagramUrl")}
-                disabled={isPending}
-              />
-            </div>
-
-            <div className="flex flex-col gap-y-2">
-              <Label>Twitter/X</Label>
-              <Input
-                placeholder="https://twitter.com/yourhandle"
-                {...form.register("twitterUrl")}
                 disabled={isPending}
               />
             </div>

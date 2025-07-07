@@ -39,7 +39,6 @@ export const updateSellerInfo = async (values: z.infer<typeof SellerInfoSchema>)
     additionalTaxRegistrations,
     facebookUrl,
     instagramUrl,
-    twitterUrl,
     pinterestUrl,
     tiktokUrl
   } = validatedFields.data;
@@ -67,7 +66,6 @@ export const updateSellerInfo = async (values: z.infer<typeof SellerInfoSchema>)
         additionalTaxRegistrationsSalt: encryptedAdditionalTaxRegistrations?.salt || null,
         facebookUrl: facebookUrl || null,
         instagramUrl: instagramUrl || null,
-        twitterUrl: twitterUrl || null,
         pinterestUrl: pinterestUrl || null,
         tiktokUrl: tiktokUrl || null,
       },
@@ -114,7 +112,6 @@ export const getSellerInfo = async () => {
         additionalTaxRegistrationsSalt: true,
         facebookUrl: true,
         instagramUrl: true,
-        twitterUrl: true,
         pinterestUrl: true,
         tiktokUrl: true,
         user: {
@@ -168,7 +165,6 @@ export const getSellerInfo = async () => {
       businessPostalCode: businessAddress ? decryptData(businessAddress.encryptedPostal, businessAddress.postalIV, businessAddress.postalSalt) : "",
       facebookUrl: seller.facebookUrl || "",
       instagramUrl: seller.instagramUrl || "",
-      twitterUrl: seller.twitterUrl || "",
       pinterestUrl: seller.pinterestUrl || "",
       tiktokUrl: seller.tiktokUrl || "",
     };

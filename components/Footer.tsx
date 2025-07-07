@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { LocationModal } from "./LocationModal";
+import NewsletterSubscriptionForm from "./NewsletterSubscriptionForm";
+import { RedditIcon } from "./ui/social-icon";
 
 const Footer = () => {
   const pathname = usePathname();
@@ -43,7 +45,7 @@ const Footer = () => {
 
             {/* Quick Links Section */}
             <div className="bg-gray-50 py-10 px-6 sm:px-12 md:px-20 lg:px-32">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 text-center sm:text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 text-center sm:text-left">
                 {/* Marketplace Links */}
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900">
@@ -165,6 +167,29 @@ const Footer = () => {
                       </Link>
                     </li>
                   </ul>
+                </div>
+
+                {/* Newsletter Subscription and Social Links */}
+                <div className="text-center sm:text-left">
+                  <NewsletterSubscriptionForm variant="compact" />
+                  
+                  {/* Social Media Links */}
+                  <div className="mt-6">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                      Follow Us
+                    </h4>
+                    <div className="flex justify-center sm:justify-start space-x-3">
+                      <a
+                        href="https://www.reddit.com/r/Yarnnu/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-8 h-8 bg-gray-200 hover:bg-purple-300 rounded-full transition-colors"
+                        aria-label="Follow us on Reddit"
+                      >
+                        <RedditIcon className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

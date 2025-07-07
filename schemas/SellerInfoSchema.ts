@@ -23,7 +23,6 @@ export const SellerInfoSchema = z.object({
   // Social media links
   facebookUrl: z.string().url("Must be a valid Facebook URL").optional().or(z.literal("")),
   instagramUrl: z.string().url("Must be a valid Instagram URL").optional().or(z.literal("")),
-  twitterUrl: z.string().url("Must be a valid Twitter URL").optional().or(z.literal("")),
   pinterestUrl: z.string().url("Must be a valid Pinterest URL").optional().or(z.literal("")),
   tiktokUrl: z.string().url("Must be a valid TikTok URL").optional().or(z.literal("")),
 }).superRefine((data, ctx) => {

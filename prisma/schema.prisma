@@ -238,7 +238,6 @@ model Seller {
   // Social media links
   facebookUrl            String?
   instagramUrl           String?
-  twitterUrl             String?
   pinterestUrl           String?
   tiktokUrl              String?
   products               Product[]
@@ -856,4 +855,22 @@ model CustomOrderSubmissionResponse {
   @@unique([submissionId, fieldId])
   @@index([submissionId])
   @@index([fieldId])
+}
+
+// Newsletter Subscription Model
+model NewsletterSubscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique // Email address for subscription
+  firstName String?  // Optional first name
+  lastName  String?  // Optional last name
+  isActive  Boolean  @default(true) // Whether subscription is active
+  source    String?  // Where they subscribed from (e.g., "website", "checkout", "popup")
+  ipAddress String?  // IP address for tracking
+  userAgent String?  // User agent for tracking
+  location  Json?    // Location data if available
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([createdAt])
 }

@@ -6,7 +6,8 @@ import CustomOrderButton from "@/components/shared/CustomOrderButton";
 import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";
 import ExcludedCountries from "@/components/shop/ExcludedCountries";
-import { FacebookIcon, Instagram, Twitter, ExternalLink, MapPin } from "lucide-react";
+import { ExternalLink, MapPin } from "lucide-react";
+import { FacebookIcon, InstagramIcon, PinterestIcon, TikTokIcon } from "@/components/ui/social-icon";
 import { decryptData } from "@/lib/encryption";
 
 interface ShopPageProps {
@@ -129,10 +130,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
   // Social media links with icons
   const socialLinks = [
     { url: seller.facebookUrl || undefined, icon: FacebookIcon, label: "Facebook" },
-    { url: seller.instagramUrl || undefined, icon: Instagram, label: "Instagram" },
-    { url: seller.twitterUrl || undefined, icon: Twitter, label: "Twitter" },
-    { url: seller.pinterestUrl || undefined, icon: ExternalLink, label: "Pinterest" },
-    { url: seller.tiktokUrl || undefined, icon: ExternalLink, label: "TikTok" },
+    { url: seller.instagramUrl || undefined, icon: InstagramIcon, label: "Instagram" },
+    { url: seller.pinterestUrl || undefined, icon: PinterestIcon, label: "Pinterest" },
+    { url: seller.tiktokUrl || undefined, icon: TikTokIcon, label: "TikTok" },
   ].filter(link => link.url);
 
   // Get location from default address

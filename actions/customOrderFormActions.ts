@@ -333,6 +333,9 @@ export async function submitCustomOrderForm(values: any) {
     return { error: "Authentication required" };
   }
 
+  // At this point, we know session.user.id exists
+  const userId = session.user.id;
+
   try {
     const validatedData = CustomOrderSubmissionSchema.parse(values);
 
@@ -383,7 +386,7 @@ export async function submitCustomOrderForm(values: any) {
       const submission = await tx.customOrderSubmission.create({
         data: {
           formId: validatedData.formId,
-          userId: session.user.id,
+          userId: userId,
           customerEmail: validatedData.customerEmail,
           customerName: validatedData.customerName,
         },
