@@ -31,14 +31,11 @@ interface Application {
   username: string;
   email: string;
   craftingProcess: string;
-  portfolio: string;
+  productTypes: string;
   interestInJoining: string;
-  // New fields for enhanced application review
-  websiteOrShopLinks?: string;
-  socialMediaProfiles?: string;
-  location?: string;
+  // Simplified fields for enhanced application review
+  onlinePresence?: string;
   yearsOfExperience?: string;
-  productTypes?: string;
   birthdate?: string;
   agreeToHandmadePolicy?: boolean;
   certifyOver18?: boolean;
@@ -128,7 +125,7 @@ export function ApplicationActions({
   };
 
   // Helper function to check if this is a legacy application
-  const isLegacyApplication = !application.websiteOrShopLinks || application.websiteOrShopLinks === "Legacy Application";
+  const isLegacyApplication = !application.onlinePresence || application.onlinePresence === "Legacy Application";
 
   return (
     <>
@@ -161,8 +158,8 @@ export function ApplicationActions({
                   <p className="mt-1">{application.email || "N/A"}</p>
                 </div>
                 <div>
-                  <strong className="text-sm text-gray-600">Location:</strong>
-                  <p className="mt-1">{application.location || "N/A"}</p>
+                  <strong className="text-sm text-gray-600">Online Presence:</strong>
+                  <p className="mt-1">{application.onlinePresence || "N/A"}</p>
                 </div>
                 <div>
                   <strong className="text-sm text-gray-600">Years of Experience:</strong>
@@ -194,44 +191,7 @@ export function ApplicationActions({
 
             <Separator />
 
-            {/* Online Presence */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Online Presence</h3>
-              <div className="space-y-4">
-                <div>
-                  <strong className="text-sm text-gray-600">Portfolio/Shop Links:</strong>
-                  <p className="mt-1 text-sm">
-                    {application.portfolio ? (
-                      <a href={application.portfolio} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {application.portfolio}
-                      </a>
-                    ) : "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <strong className="text-sm text-gray-600">Website/Shop Links:</strong>
-                  <p className="mt-1 text-sm">
-                    {application.websiteOrShopLinks ? (
-                      <a href={application.websiteOrShopLinks} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {application.websiteOrShopLinks}
-                      </a>
-                    ) : "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <strong className="text-sm text-gray-600">Social Media Profiles:</strong>
-                  <p className="mt-1 text-sm">
-                    {application.socialMediaProfiles ? (
-                      <a href={application.socialMediaProfiles} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {application.socialMediaProfiles}
-                      </a>
-                    ) : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            <Separator />
 
             {/* Motivation */}
             <div className="space-y-4">
@@ -270,14 +230,9 @@ export function ApplicationActions({
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Scammer Detection</h3>
                   <div className="space-y-2 text-sm">
-                    {!application.websiteOrShopLinks && (
+                    {!application.onlinePresence && (
                       <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
-                        ⚠️ No website/shop links provided
-                      </div>
-                    )}
-                    {!application.socialMediaProfiles && (
-                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
-                        ⚠️ No social media profiles provided
+                        ⚠️ No online presence (portfolio/shop links) provided
                       </div>
                     )}
                     {application.craftingProcess.length < 50 && (

@@ -39,13 +39,10 @@ const SellerApplicationForm = () => {
     resolver: zodResolver(SellerApplicationSchema),
     defaultValues: {
       craftingProcess: "",
-      portfolio: "",
-      interestInJoining: "",
-      websiteOrShopLinks: "",
-      socialMediaProfiles: "",
-      location: "",
-      yearsOfExperience: "",
       productTypes: "",
+      interestInJoining: "",
+      onlinePresence: "",
+      yearsOfExperience: "",
       birthdate: "",
       agreeToHandmadePolicy: false,
       certifyOver18: false,
@@ -82,7 +79,7 @@ const SellerApplicationForm = () => {
     <div className="w-full flex justify-center py-16 px-4">
       <motion.form 
         onSubmit={form.handleSubmit(onSubmit)} 
-        className="space-y-6 w-full max-w-4xl"
+        className="space-y-6 w-full max-w-3xl"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -91,7 +88,7 @@ const SellerApplicationForm = () => {
           <CardHeader className="space-y-4">
             <CardTitle className="text-3xl font-bold">Seller Application</CardTitle>
             <CardDescription className="text-lg">
-              Please fill in the information below to start selling on Yarnnu
+              Tell us about your handmade business to start selling on Yarnnu
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-y-8">
@@ -102,63 +99,7 @@ const SellerApplicationForm = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <h3 className="text-xl font-semibold text-purple-800">Basic Information</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Location *</Label>
-                  <Input
-                    placeholder="City, State/Province, Country"
-                    {...form.register("location")}
-                    disabled={isPending}
-                    type="text"
-                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                  />
-                  {form.formState.errors.location && (
-                    <p className="text-sm text-red-500">{form.formState.errors.location.message}</p>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Years of Experience *</Label>
-                  <Input
-                    placeholder="e.g., 3 years, 5+ years"
-                    {...form.register("yearsOfExperience")}
-                    disabled={isPending}
-                    type="text"
-                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                  />
-                  {form.formState.errors.yearsOfExperience && (
-                    <p className="text-sm text-red-500">{form.formState.errors.yearsOfExperience.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-y-3">
-                <Label className="text-lg font-semibold">Date of Birth *</Label>
-                <Input
-                  placeholder="MM/DD/YYYY"
-                  {...form.register("birthdate")}
-                  disabled={isPending}
-                  type="date"
-                  className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                />
-                {form.formState.errors.birthdate && (
-                  <p className="text-sm text-red-500">{form.formState.errors.birthdate.message}</p>
-                )}
-              </div>
-            </motion.div>
-
-            <Separator className="my-6" />
-
-            {/* Crafting Information Section */}
-            <motion.div 
-              className="space-y-6"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h3 className="text-xl font-semibold text-purple-800">Crafting Information</h3>
+              <h3 className="text-xl font-semibold text-purple-800">About Your Crafting</h3>
               
               <div className="flex flex-col gap-y-3">
                 <Label className="text-lg font-semibold">Crafting Process *</Label>
@@ -166,7 +107,7 @@ const SellerApplicationForm = () => {
                   placeholder="Tell us about your crafting process and what you make. This helps us understand your unique style and products."
                   {...form.register("craftingProcess")}
                   disabled={isPending}
-                  className="min-h-[150px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                 />
                 {form.formState.errors.craftingProcess && (
                   <p className="text-sm text-red-500">{form.formState.errors.craftingProcess.message}</p>
@@ -185,6 +126,33 @@ const SellerApplicationForm = () => {
                   <p className="text-sm text-red-500">{form.formState.errors.productTypes.message}</p>
                 )}
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-y-3">
+                  <Label className="text-lg font-semibold">Years of Experience (Optional)</Label>
+                  <Input
+                    placeholder="e.g., 3 years, 5+ years, just starting"
+                    {...form.register("yearsOfExperience")}
+                    disabled={isPending}
+                    type="text"
+                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-y-3">
+                  <Label className="text-lg font-semibold">Date of Birth *</Label>
+                  <Input
+                    placeholder="MM/DD/YYYY"
+                    {...form.register("birthdate")}
+                    disabled={isPending}
+                    type="date"
+                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                  {form.formState.errors.birthdate && (
+                    <p className="text-sm text-red-500">{form.formState.errors.birthdate.message}</p>
+                  )}
+                </div>
+              </div>
             </motion.div>
 
             <Separator className="my-6" />
@@ -194,50 +162,22 @@ const SellerApplicationForm = () => {
               className="space-y-6"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.2 }}
             >
-              <h3 className="text-xl font-semibold text-purple-800">Online Presence</h3>
+              <h3 className="text-xl font-semibold text-purple-800">Online Presence (Optional)</h3>
               
               <div className="flex flex-col gap-y-3">
-                <Label className="text-lg font-semibold">Portfolio/Shop Links *</Label>
+                <Label className="text-lg font-semibold">Portfolio, Website, or Social Media</Label>
                 <Input
-                  placeholder="Share a link to your portfolio, Etsy shop, or social media"
-                  {...form.register("portfolio")}
+                  placeholder="Share any links to your portfolio, Etsy shop, website, Instagram, etc. (optional)"
+                  {...form.register("onlinePresence")}
                   disabled={isPending}
                   type="text"
                   className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                 />
-                {form.formState.errors.portfolio && (
-                  <p className="text-sm text-red-500">{form.formState.errors.portfolio.message}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-y-3">
-                <Label className="text-lg font-semibold">Website or Shop Links *</Label>
-                <Input
-                  placeholder="Your website, online shop, or marketplace profiles"
-                  {...form.register("websiteOrShopLinks")}
-                  disabled={isPending}
-                  type="text"
-                  className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                />
-                {form.formState.errors.websiteOrShopLinks && (
-                  <p className="text-sm text-red-500">{form.formState.errors.websiteOrShopLinks.message}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-y-3">
-                <Label className="text-lg font-semibold">Social Media Profiles *</Label>
-                <Input
-                  placeholder="Instagram, Facebook, TikTok, Pinterest, etc."
-                  {...form.register("socialMediaProfiles")}
-                  disabled={isPending}
-                  type="text"
-                  className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                />
-                {form.formState.errors.socialMediaProfiles && (
-                  <p className="text-sm text-red-500">{form.formState.errors.socialMediaProfiles.message}</p>
-                )}
+                <p className="text-sm text-gray-600">
+                  Don&apos;t worry if you don&apos;t have these yet! Many successful sellers start without an online presence.
+                </p>
               </div>
             </motion.div>
 
@@ -248,7 +188,7 @@ const SellerApplicationForm = () => {
               className="space-y-6"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.3 }}
             >
               <h3 className="text-xl font-semibold text-purple-800">Why Join Yarnnu?</h3>
               
@@ -258,7 +198,7 @@ const SellerApplicationForm = () => {
                   placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
                   {...form.register("interestInJoining")}
                   disabled={isPending}
-                  className="min-h-[150px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                 />
                 {form.formState.errors.interestInJoining && (
                   <p className="text-sm text-red-500">{form.formState.errors.interestInJoining.message}</p>
@@ -273,7 +213,7 @@ const SellerApplicationForm = () => {
               className="space-y-6"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.4 }}
             >
               <h3 className="text-xl font-semibold text-purple-800">Legal Agreements</h3>
               
@@ -341,7 +281,7 @@ const SellerApplicationForm = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.5 }}
               className="w-full"
             >
               <Submitbutton title="Submit Application" isPending={isPending} />

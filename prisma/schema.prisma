@@ -291,14 +291,12 @@ model SellerApplication {
   id                  String  @id @default(auto()) @map("_id") @db.ObjectId
   userId              String  @unique
   craftingProcess     String
-  portfolio           String
-  interestInJoining   String
-  // New fields for enhanced application
-  websiteOrShopLinks  String
-  socialMediaProfiles String
-  location            String
-  yearsOfExperience   String
   productTypes        String
+  interestInJoining   String
+  // Optional fields
+  onlinePresence      String?
+  yearsOfExperience   String?
+  // Required legal fields
   birthdate           String
   agreeToHandmadePolicy Boolean
   certifyOver18       Boolean
@@ -831,9 +829,31 @@ model CustomOrderSubmission {
   user      User   @relation(fields: [userId], references: [id])
   customerEmail String
   customerName  String?
-  status    String  @default("PENDING") // "PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED"
+  status    String  @default("PENDING") // "PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED", "READY_FOR_FINAL_PAYMENT"
   responses CustomOrderSubmissionResponse[]
   notes     String? // Seller's notes on the submission
+  
+  // Payment fields
+  materialsDepositAmount Int? // Amount in cents for materials deposit
+  finalPaymentAmount     Int? // Amount in cents for final payment (excluding materials)
+  totalAmount            Int? // Total amount in cents (materials + final)
+  currency               String @default("USD")
+  
+  // Payment status
+  materialsDepositPaid   Boolean @default(false)
+  finalPaymentPaid       Boolean @default(false)
+  materialsDepositSessionId String? // Stripe session ID for materials payment
+  finalPaymentSessionId     String? // Stripe session ID for final payment
+  
+  // Shipping information (filled when ready for final payment)
+  shippingAddress        Json? // Encrypted shipping address
+  shippingAddressIV      String?
+  shippingAddressSalt    String?
+  shippingCost           Int? // Shipping cost in cents
+  
+  // Payment records
+  payments               CustomOrderPayment[]
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -855,6 +875,34 @@ model CustomOrderSubmissionResponse {
   @@unique([submissionId, fieldId])
   @@index([submissionId])
   @@index([fieldId])
+}
+
+// Custom Order Payment Records (for tracking payments)
+model CustomOrderPayment {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId      String
+  submission        CustomOrderSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  paymentType       String // "MATERIALS_DEPOSIT" or "FINAL_PAYMENT"
+  amount            Int // Amount in cents
+  currency          String @default("USD")
+  stripeSessionId   String
+  stripePaymentIntentId String?
+  status            String @default("PENDING") // "PENDING", "COMPLETED", "FAILED", "REFUNDED"
+  platformFee       Int @default(0) // Platform fee in cents
+  sellerAmount      Int // Amount that goes to seller in cents
+  
+  // Tax information
+  taxAmount         Int @default(0)
+  taxJurisdiction   String?
+  taxRate           Float?
+  taxType           String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([submissionId])
+  @@index([stripeSessionId])
+  @@index([status])
 }
 
 // Newsletter Subscription Model
