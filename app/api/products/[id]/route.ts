@@ -1,10 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
 import { ObjectId } from "mongodb";
+import { z } from "zod";
 
 const utapi = new UTApi();
+
+// Schema for updating product sales
+const updateProductSaleSchema = z.object({
+  onSale: z.boolean().optional(),
+  discount: z.number().min(0).max(100).optional(),
+  saleStartDate: z.string().optional(), // ISO date string
+  saleEndDate: z.string().optional(), // ISO date string
+  saleStartTime: z.string().optional(),
+  saleEndTime: z.string().optional(),
+});
 
 export async function GET(
   req: Request,
@@ -69,6 +80,69 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       );
     }
 
+    // Check if this is a sale-only update
+    const isSaleUpdate = Object.keys(data).every(key => 
+      ['onSale', 'discount', 'saleStartDate', 'saleEndDate', 'saleStartTime', 'saleEndTime'].includes(key)
+    );
+
+    if (isSaleUpdate) {
+      // Handle sale-only updates
+      try {
+        const validatedData = updateProductSaleSchema.parse(data);
+        
+        // Get the product to check ownership
+        const product = await db.product.findUnique({
+          where: { id: id, userId: session.user.id },
+        });
+
+        if (!product) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Product not found or not owned by user" }),
+            { status: 404 }
+          );
+        }
+
+        // Prepare update data
+        const saleUpdateData: any = { ...validatedData };
+        
+        // Convert date strings to Date objects if provided
+        if (validatedData.saleStartDate) {
+          saleUpdateData.saleStartDate = new Date(validatedData.saleStartDate);
+        }
+        if (validatedData.saleEndDate) {
+          saleUpdateData.saleEndDate = new Date(validatedData.saleEndDate);
+        }
+
+        // If turning off sale, clear sale-related fields
+        if (validatedData.onSale === false) {
+          saleUpdateData.discount = null;
+          saleUpdateData.saleStartDate = null;
+          saleUpdateData.saleEndDate = null;
+          saleUpdateData.saleStartTime = null;
+          saleUpdateData.saleEndTime = null;
+        }
+
+        // Update the product
+        const updatedProduct = await db.product.update({
+          where: { id: id },
+          data: saleUpdateData,
+        });
+
+        return new Response(
+          JSON.stringify({ success: true, product: updatedProduct }),
+          { status: 200 }
+        );
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Invalid sale data", details: error.errors }),
+            { status: 400 }
+          );
+        }
+        throw error;
+      }
+    }
+
     // --- Step 1: Fetch CURRENT product state BEFORE update --- 
     const currentProduct = await db.product.findUnique({
       where: { id: id, userId: session.user.id }, // Also verify ownership here
@@ -104,8 +178,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           console.error("[ERROR] Failed to delete files from UploadThing:", deleteError);
         }
       }
-    } 
-    
+    }
+
     // Handle productFile deletion if needed
     if (updateData.productFile !== currentProduct.productFile) {
       if (currentProduct.productFile) {
@@ -135,6 +209,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       discountEndDate: updateData.discountEndDate 
         ? new Date(updateData.discountEndDate) 
         : null,
+      // Handle new sale fields
+      saleStartDate: updateData.saleStartDate ? new Date(updateData.saleStartDate) : null,
+      saleEndDate: updateData.saleEndDate ? new Date(updateData.saleEndDate) : null,
+      saleStartTime: updateData.saleStartTime || null,
+      saleEndTime: updateData.saleEndTime || null,
       price: Number(updateData.price),
       stock: Number(updateData.stock),
       shippingCost: Number(updateData.shippingCost),

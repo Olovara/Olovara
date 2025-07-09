@@ -246,6 +246,7 @@ model Seller {
   shippingProfiles       ShippingProfile[]
   reviews                Review[]
   customOrderForms       CustomOrderForm[]
+  discountCodes          DiscountCode[]
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Onboarding progress fields
@@ -361,6 +362,14 @@ model Product {
   order                 Order[]
   dropDate              DateTime?
   dropTime              String? // Time component for product drop
+  
+  // Enhanced sale scheduling
+  saleStartDate         DateTime? // When the sale starts
+  saleEndDate           DateTime? // When the sale ends
+  saleStartTime         String? // Time component for sale start
+  saleEndTime           String? // Time component for sale end
+  originalPrice         Int? // Store original price before sale for easy restoration
+  
   discountEndDate       DateTime?
   discountEndTime       String? // Time component for discount end
   reviews               Review[]
@@ -447,6 +456,12 @@ model Order {
   shippingAddressIV        String
   shippingAddressSalt      String
   discount                 Json?
+  
+  // Discount code fields
+  discountCodeId           String? // Applied discount code
+  discountCodeAmount       Float @default(0) // Amount saved from discount code
+  discountCodeUsed         String? // The actual code that was used
+  
   // Exchange rate fields
   exchangeRate             Float? // The exchange rate used for this order (e.g., 1.2 for USD to EUR)
   baseCurrency             String        @default("USD") // The original currency (usually USD)
@@ -458,6 +473,7 @@ model Order {
   user                     User          @relation(fields: [userId], references: [id])
   seller                   Seller        @relation(fields: [sellerId], references: [userId])
   product                  Product       @relation(fields: [productId], references: [id])
+  discountCodeUsage        DiscountCodeUsage?
 
   //Tracability and fraud detection
   buyerIp                  String?
@@ -921,4 +937,58 @@ model NewsletterSubscription {
 
   @@index([isActive])
   @@index([createdAt])
+}
+
+// Discount Code Models
+model DiscountCode {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId              String
+  seller                Seller   @relation(fields: [sellerId], references: [userId])
+  code                  String   @unique // The actual discount code (e.g., "SUMMER20")
+  name                  String // Display name for the discount
+  description           String? // Optional description
+  discountType          String // "PERCENTAGE" or "FIXED_AMOUNT"
+  discountValue         Int // Percentage (1-100) or amount in cents
+  minimumOrderAmount    Int? // Minimum order amount in cents to apply discount
+  maximumDiscountAmount Int? // Maximum discount amount in cents (for percentage discounts)
+  
+  // Usage limits
+  maxUses               Int? // Maximum times this code can be used
+  maxUsesPerCustomer    Int? // Maximum times per customer
+  currentUses           Int   @default(0) // Current usage count
+  
+  // Expiration
+  expiresAt             DateTime?
+  isActive              Boolean @default(true)
+  
+  // Applicability
+  appliesToAllProducts  Boolean @default(true) // If false, use product-specific rules
+  applicableProductIds  String[] @default([]) // Specific product IDs
+  applicableCategories  String[] @default([]) // Category names to apply to
+  
+  // Stacking rules
+  stackableWithProductSales Boolean @default(true) // Can be used with product-level sales
+  
+  // Tracking
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  usages                DiscountCodeUsage[]
+
+  @@index([sellerId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model DiscountCodeUsage {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  discountCodeId String
+  discountCode   DiscountCode  @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
+  orderId        String @unique
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId         String // Customer who used the code
+  discountAmount Int // Amount of discount applied in cents
+  usedAt         DateTime @default(now())
+
+  @@index([discountCodeId])
+  @@index([userId])
 }

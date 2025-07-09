@@ -11,6 +11,7 @@ import { auth } from "@/auth";
 import Script from "next/script";
 import { headers } from "next/headers";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
+import { PostHogProvider, PostHogPageview } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -87,19 +88,22 @@ export default async function RootLayout({
           inter.className
         )}
       >
-        <SessionProvider session={session}>
-          <LocationProvider>
-            <OnboardingSurveyProvider>
-              <SocketProvider>
-                <main className="relative flex min-h-screen flex-col">
-                  {children}
-                </main>
-                <SessionUpdateListener />
-              </SocketProvider>
-            </OnboardingSurveyProvider>
-          </LocationProvider>
-          <Toaster position="top-center" richColors />
-        </SessionProvider>
+        <PostHogProvider>
+          <SessionProvider session={session}>
+            <LocationProvider>
+              <OnboardingSurveyProvider>
+                <SocketProvider>
+                  <main className="relative flex min-h-screen flex-col">
+                    {children}
+                  </main>
+                  <SessionUpdateListener />
+                  <PostHogPageview />
+                </SocketProvider>
+              </OnboardingSurveyProvider>
+            </LocationProvider>
+            <Toaster position="top-center" richColors />
+          </SessionProvider>
+        </PostHogProvider>
       </body>
     </html>
   );
