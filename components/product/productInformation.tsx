@@ -26,6 +26,8 @@ import { CategoriesMap } from "@/data/categories";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
+import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 // Update the SUPPORTED_CURRENCIES to match the schema
 const SUPPORTED_CURRENCIES = [
@@ -62,6 +64,8 @@ export const ProductInfoSection = ({
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
   const currentStatus = watch("status");
   const selectedCurrency = watch("currency") || "USD";
+  const { data: session } = useSession();
+  const currentUser = session?.user;
 
   // Get currency info for the selected currency
   const getCurrencyInfo = (currencyCode: string) => {
@@ -149,6 +153,56 @@ export const ProductInfoSection = ({
               placeholder="Product name"
               {...register("name", { required: "Product name is required" })}
             />
+          </div>
+        )}
+      />
+
+      {/* SKU */}
+      <FormField
+        control={control}
+        name="sku"
+        render={({ field }) => (
+          <div className="flex flex-col gap-y-2">
+            <Label>SKU (Stock Keeping Unit)</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Leave blank to auto-generate"
+                {...register("sku")}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  const productName = watch("name");
+                  if (!productName) {
+                    toast.error("Please enter a product name first");
+                    return;
+                  }
+                  
+                  try {
+                    // Import the function dynamically to avoid SSR issues
+                    const { generateUniqueSKU } = await import("@/lib/sku-generator");
+                    if (!currentUser?.id) {
+                      toast.error("User not authenticated");
+                      return;
+                    }
+                    const generatedSKU = await generateUniqueSKU(productName, currentUser.id);
+                    setValue("sku", generatedSKU);
+                    toast.success("SKU generated successfully!");
+                  } catch (error) {
+                    console.error("Error generating SKU:", error);
+                    toast.error("Failed to generate SKU");
+                  }
+                }}
+                disabled={!watch("name")}
+              >
+                Generate
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              SKU helps you track inventory. Leave blank to auto-generate, or enter your own.
+            </p>
           </div>
         )}
       />

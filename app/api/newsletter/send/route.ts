@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NewsletterSendSchema } from "@/schemas/NewsletterSchema";
 import { Resend } from "resend";
@@ -20,13 +19,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch user permissions from database
+    // Fetch user permissions and role from database
     const dbUser = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { permissions: true }
+      select: { permissions: true, role: true }
     });
 
-    if (!dbUser?.permissions?.includes('SEND_BROADCASTS')) {
+    // SUPER_ADMIN has all permissions, so bypass the check
+    if (dbUser?.role !== 'SUPER_ADMIN' && !dbUser?.permissions?.includes('SEND_BROADCASTS')) {
       return NextResponse.json(
         { error: "Insufficient permissions to send newsletters" },
         { status: 403 }
@@ -155,13 +155,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch user permissions from database
+    // Fetch user permissions and role from database
     const dbUser = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { permissions: true }
+      select: { permissions: true, role: true }
     });
 
-    if (!dbUser?.permissions?.includes('SEND_BROADCASTS')) {
+    // SUPER_ADMIN has all permissions, so bypass the check
+    if (dbUser?.role !== 'SUPER_ADMIN' && !dbUser?.permissions?.includes('SEND_BROADCASTS')) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }

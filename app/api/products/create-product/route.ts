@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { hasPermission } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { Permission } from "@/data/roles-and-permissions";
+import { generateUniqueSKU } from "@/lib/sku-generator";
 
 // Remove the Edge Runtime configuration
 // export const runtime = "edge";
@@ -23,6 +24,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "You must be logged in" },
         { status: 401 }
+      );
+    }
+
+    // Fetch seller record to confirm user is a seller
+    const seller = await db.seller.findUnique({
+      where: { userId },
+      select: { id: true, userId: true },
+    });
+    if (!seller) {
+      return NextResponse.json(
+        { error: "Seller account not found" },
+        { status: 403 }
       );
     }
 
@@ -50,6 +63,7 @@ export async function POST(req: NextRequest) {
 
     const {
       name,
+      sku,
       price,
       description,
       status,
@@ -103,10 +117,29 @@ export async function POST(req: NextRequest) {
 
     //console.log("Creating product with sanitized data...");
 
-    // --- Step 1: Prepare clean data for product creation ---
+    // --- Step 1: Generate SKU if not provided ---
+    let finalSku = sku;
+    if (!sku || sku.trim() === "") {
+      try {
+        finalSku = await generateUniqueSKU(name, seller.userId);
+        console.log("[SKU GENERATION] Generated SKU:", finalSku);
+      } catch (error) {
+        console.error("[SKU GENERATION] Error generating SKU:", error);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Failed to generate SKU",
+          }),
+          { status: 500 }
+        );
+      }
+    }
+
+    // --- Step 2: Prepare clean data for product creation ---
     const cleanData = {
-      userId,
+      userId: seller.userId, // Use seller's userId for Product
       name,
+      sku: finalSku,
       price: Number(price),
       currency,
       description: description || "",

@@ -125,6 +125,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       name: initialData?.name || "",
+      sku: initialData?.sku || "",
       price: initialData?.price ? initialData.price / 100 : 0,
       description: initialData?.description || { html: "", text: "" },
       images: initialData?.images || [],
@@ -228,9 +229,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (form.formState.isDirty || tempImages.length > 0) {
         e.preventDefault();
-        const message = "You have unsaved changes. Are you sure you want to leave?";
-        e.returnValue = message;
-        return message;
+        // Modern browsers ignore the return value, but we still need to call preventDefault()
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
 
@@ -323,6 +323,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     setMaterialTags([]);
     form.reset({
       name: "",
+      sku: "",
       price: 0,
       description: { html: "", text: "" },
       images: [],

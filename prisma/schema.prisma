@@ -327,6 +327,7 @@ model Product {
   id                    String           @id @default(auto()) @map("_id") @db.ObjectId
   userId                String
   name                  String
+  sku                   String?          // Stock Keeping Unit - optional, auto-generated if not provided
   description           Json
   price                 Int
   currency              String           @default("USD") // Store the currency code (e.g., USD, EUR, GBP)
@@ -383,6 +384,8 @@ model Product {
   taxCategory String  @default("PHYSICAL_GOODS")
   taxCode     String?
   taxExempt   Boolean @default(false)
+
+  @@unique([userId, sku], name: "unique_sku_per_seller")
 }
 
 model Suggestion {

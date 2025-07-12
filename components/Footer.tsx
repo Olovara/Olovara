@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { LocationModal } from "./LocationModal";
 import NewsletterSubscriptionForm from "./NewsletterSubscriptionForm";
-import { RedditIcon } from "./ui/social-icon";
+import { PinterestIcon, RedditIcon } from "./ui/social-icon";
 
 const Footer = () => {
   const pathname = usePathname();
@@ -187,6 +187,15 @@ const Footer = () => {
                         aria-label="Follow us on Reddit"
                       >
                         <RedditIcon className="w-4 h-4" />
+                      </a>
+                      <a
+                        href="https://www.pinterest.com/yarnnumarketplace/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-8 h-8 bg-gray-200 hover:bg-purple-300 rounded-full transition-colors"
+                        aria-label="Follow us on Pinterest"
+                      >
+                        <PinterestIcon className="w-4 h-4" />
                       </a>
                     </div>
                   </div>

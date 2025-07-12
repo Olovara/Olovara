@@ -43,6 +43,7 @@ export const ProductSchema = z
     name: z.string().min(1, {
       message: "Please enter your product's name, required.",
     }),
+    sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
     description: descriptionJsonSchema,
     options: z
       .array(
