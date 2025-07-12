@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
     // check if the account is actually fully onboarded
     let stripeConnected = seller.stripeConnected && !!seller.connectedAccountId;
     
-    if (seller.connectedAccountId && !seller.stripeConnected) {
+    // Skip verification for temp accounts - they should be replaced with real accounts during onboarding
+    if (seller.connectedAccountId && !seller.stripeConnected && !seller.connectedAccountId.startsWith('temp_')) {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         const account = await stripe.accounts.retrieve(seller.connectedAccountId);
