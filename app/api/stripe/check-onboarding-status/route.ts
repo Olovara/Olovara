@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, alreadyConnected: true });
     }
 
+    // Skip verification for temp accounts - they should be replaced with real accounts during onboarding
+    if (connectedAccountId.startsWith('temp_')) {
+      return NextResponse.json({ 
+        success: true, 
+        connected: false,
+        message: "Temporary account - needs to be replaced with real Stripe account"
+      });
+    }
+
     // Check the Stripe account status
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     
