@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { decryptData } from "@/lib/encryption";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,27 +12,49 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get the seller's business address
+    // Get the seller's business address and tax country
     const seller = await db.seller.findUnique({
       where: {
         userId: session.user.id,
       },
-      include: {
+      select: {
+        taxCountry: true,
         addresses: {
           where: {
             isBusinessAddress: true,
+          },
+          select: {
+            encryptedCountry: true,
+            countryIV: true,
+            countrySalt: true,
           },
           take: 1,
         },
       },
     });
 
-    if (!seller?.addresses?.[0]?.encryptedCountry) {
-      return new NextResponse("No business address found", { status: 404 });
+    if (!seller) {
+      return new NextResponse("Seller not found", { status: 404 });
     }
 
-    // Return the tax country if no business address is found
-    return NextResponse.json({ country: seller.taxCountry });
+    // Try to get country from business address first, then fall back to tax country
+    let country = seller.taxCountry;
+    
+    if (seller.addresses?.[0]?.encryptedCountry) {
+      try {
+        const address = seller.addresses[0];
+        country = decryptData(address.encryptedCountry, address.countryIV, address.countrySalt);
+      } catch (error) {
+        console.error("Error decrypting country:", error);
+        // Fall back to tax country
+      }
+    }
+
+    if (!country) {
+      return new NextResponse("No country information found", { status: 404 });
+    }
+
+    return NextResponse.json({ country });
   } catch (error) {
     console.error("[SELLER_COUNTRY_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         encryptedBusinessName: true,
         encryptedTaxId: true,
         taxIdVerified: true,
+        shippingProfileCreated: true,
         shippingProfiles: {
           select: { id: true },
           take: 1,
@@ -69,7 +70,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const shippingProfileCreated = seller.shippingProfiles.length > 0;
+    // Use the database field, but also check if there are actually shipping profiles
+    // This ensures consistency between the flag and actual data
+    const shippingProfileCreated = seller.shippingProfileCreated && seller.shippingProfiles.length > 0;
 
     // Calculate completion percentage
     let completionPercentage = 0;

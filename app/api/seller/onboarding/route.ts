@@ -23,6 +23,10 @@ export async function GET(request: NextRequest) {
             shopProfileComplete: true,
             shippingProfileCreated: true,
             isFullyActivated: true,
+            shippingProfiles: {
+              select: { id: true },
+              take: 1,
+            },
           }
         }
       }
@@ -64,12 +68,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Use the database field, but also check if there are actually shipping profiles
+    // This ensures consistency between the flag and actual data
+    const shippingProfileCreated = user.seller.shippingProfileCreated && user.seller.shippingProfiles.length > 0;
+
     // Calculate completion percentage
     let completionPercentage = 0;
     if (user.seller.applicationAccepted) completionPercentage += 20;
     if (user.seller.shopProfileComplete) completionPercentage += 20;
     if (stripeConnected) completionPercentage += 20;
-    if (user.seller.shippingProfileCreated) completionPercentage += 20;
+    if (shippingProfileCreated) completionPercentage += 20;
     if (user.seller.isFullyActivated) completionPercentage += 20;
 
     // Determine current step
@@ -80,7 +88,7 @@ export async function GET(request: NextRequest) {
       currentStep = 'profile_completed';
     } else if (!stripeConnected) {
       currentStep = 'stripe_connected';
-    } else if (!user.seller.shippingProfileCreated) {
+    } else if (!shippingProfileCreated) {
       currentStep = 'shipping_profile_created';
     } else {
       currentStep = 'fully_activated';
@@ -90,7 +98,7 @@ export async function GET(request: NextRequest) {
       applicationAccepted: user.seller.applicationAccepted,
       stripeConnected: stripeConnected,
       shopProfileComplete: user.seller.shopProfileComplete,
-      shippingProfileCreated: user.seller.shippingProfileCreated,
+      shippingProfileCreated: shippingProfileCreated,
       isFullyActivated: user.seller.isFullyActivated,
       currentStep,
       completionPercentage,

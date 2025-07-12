@@ -117,7 +117,7 @@ const SellerOnboardingDashboard = () => {
         }
         return (
           <Button asChild size="sm" className="mt-2">
-            <Link href="/seller/dashboard/settings/shipping">
+            <Link href="/seller/dashboard/settings#shipping">
               Create Shipping Profile
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>

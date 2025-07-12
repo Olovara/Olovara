@@ -93,7 +93,7 @@ export function RoleManager({ userId, currentRole, username, currentUser }: Role
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          newRole: selectedRole,
+          role: selectedRole,
           reason: reason.trim(),
         }),
       });

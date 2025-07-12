@@ -1286,6 +1286,53 @@ export async function updateUserRole(
       },
     });
 
+    // If the new role is ADMIN or SUPER_ADMIN, create or update Admin document
+    if (newRole === 'ADMIN' || newRole === 'SUPER_ADMIN') {
+      try {
+        // Check if admin record already exists
+        const existingAdmin = await db.admin.findUnique({
+          where: { userId }
+        });
+
+        if (existingAdmin) {
+          // Update existing admin record
+          await db.admin.update({
+            where: { userId },
+            data: {
+              role: newRole,
+              isActive: true
+            }
+          });
+          console.log(`Admin record updated for user ${userId} with role ${newRole}`);
+        } else {
+          // Create new admin record
+          await createAdmin(userId, newRole);
+          console.log(`Admin record created for user ${userId} with role ${newRole}`);
+        }
+      } catch (adminError) {
+        console.error("Error creating/updating admin record:", adminError);
+        // Don't fail the entire operation if admin record creation fails
+      }
+    } else {
+      // If role is not ADMIN or SUPER_ADMIN, deactivate any existing admin record
+      try {
+        const existingAdmin = await db.admin.findUnique({
+          where: { userId }
+        });
+
+        if (existingAdmin) {
+          await db.admin.update({
+            where: { userId },
+            data: { isActive: false }
+          });
+          console.log(`Admin record deactivated for user ${userId}`);
+        }
+      } catch (adminError) {
+        console.error("Error deactivating admin record:", adminError);
+        // Don't fail the entire operation if admin record deactivation fails
+      }
+    }
+
     console.log(`User ${userId} role updated to ${newRole} by ${updatedBy}`);
 
     return {
