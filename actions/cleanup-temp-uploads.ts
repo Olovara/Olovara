@@ -57,14 +57,15 @@ export async function cleanupTempUploads(productId: string, fileUrls: string[]) 
         console.log('[DEBUG] Deleted records after direct URL comparison:', deleteResult);
       }
     } else {
-      // Delete the records directly
+      // Delete the temporary upload records since the form was successfully submitted
+      // This prevents orphaned files and cleans up the temporary tracking
       const deleteResult = await db.temporaryUpload.deleteMany({
         where: {
           id: { in: tempUploads.map(upload => upload.id) }
         }
       });
       console.log('[DEBUG] deleteMany result:', deleteResult);
-      console.log('[DEBUG] Deleted records after association');
+      console.log('[DEBUG] Deleted temporary upload records after successful submission');
     }
     
     return { success: true };

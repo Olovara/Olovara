@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Submitbutton } from "@/components/SubmitButtons";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useIsClient } from "@/hooks/use-is-client";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,7 @@ import { UploadButton } from "@uploadthing/react";
 import { ourFileRouter } from "@/app/api/uploadthing/core";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 
 const SellerAboutForm = () => {
   const isClient = useIsClient();
@@ -34,6 +35,13 @@ const SellerAboutForm = () => {
   const [success, setSuccess] = useState<string>("");
   const [isPending, setIsPending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Add state to track temporary uploads
+  const [tempImages, setTempImages] = useState<string[]>([]);
+  const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  
+  // Add a ref to track if form was submitted successfully
+  const formSubmittedRef = useRef(false);
 
   const form = useForm<z.infer<typeof SellerAboutSchema>>({
     resolver: zodResolver(SellerAboutSchema),
@@ -77,6 +85,44 @@ const SellerAboutForm = () => {
     fetchSellerAbout();
   }, [form]);
 
+  // Add cleanup function for temporary uploads
+  const cleanupTempImages = useCallback(async () => {
+    // Only clean up if the form was submitted successfully
+    if (tempImages.length > 0 && formSubmittedRef.current) {
+      try {
+        // For about form cleanup, we don't have a product ID, so pass empty string
+        const result = await cleanupTempUploads("", tempImages);
+        console.log('[DEBUG] About form cleanup result:', result);
+        setTempImages([]); // Clear the temp images after cleanup
+      } catch (error) {
+        console.error('Error cleaning up temporary images:', error);
+      }
+    }
+  }, [tempImages]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      void cleanupTempImages();
+    };
+  }, [cleanupTempImages]);
+
+  // Add beforeunload handler to warn about unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty || tempImages.length > 0) {
+        e.preventDefault();
+        // Modern browsers ignore the return value, but we still need to call preventDefault()
+        return "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [form.formState.isDirty, tempImages]);
+
   const onSubmit = async (values: z.infer<typeof SellerAboutSchema>) => {
     try {
       console.log("Form submission started with values:", values);
@@ -92,6 +138,23 @@ const SellerAboutForm = () => {
         throw new Error(result.error);
       }
 
+      // Set the flag to indicate successful submission
+      formSubmittedRef.current = true;
+      
+      // Clean up temporary uploads after successful submission
+      if (tempImages.length > 0) {
+        console.log('[DEBUG] About form submitted successfully, cleaning up temporary uploads');
+        const cleanupResult = await cleanupTempUploads("", tempImages);
+        console.log('[DEBUG] Cleanup result:', cleanupResult);
+        
+        if (!cleanupResult.success) {
+          console.error('[ERROR] Cleanup failed:', cleanupResult.error);
+        }
+        
+        // Clear temp images after cleanup
+        setTempImages([]);
+      }
+
       toast.success(result.message || "Successfully saved your shop information.");
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -103,7 +166,24 @@ const SellerAboutForm = () => {
   };
 
   const removeImage = (field: keyof z.infer<typeof SellerAboutSchema>) => {
+    const currentImage = form.getValues(field);
+    if (currentImage) {
+      // If it's a temporary image, remove it from temp tracking
+      if (tempImages.includes(currentImage)) {
+        const updatedTempImages = tempImages.filter(img => img !== currentImage);
+        setTempImages(updatedTempImages);
+      }
+    }
     form.setValue(field, undefined);
+  };
+
+  // Helper function to handle image upload success
+  const handleImageUploadSuccess = (field: keyof z.infer<typeof SellerAboutSchema>, fileUrl: string) => {
+    form.setValue(field, fileUrl);
+    // Track as temporary upload
+    setTempImages(prev => [...prev, fileUrl]);
+    setTempUploadsCreated(true);
+    toast.success("Image uploaded successfully!");
   };
 
   if (!isClient || isLoading) return <Spinner />;
@@ -117,20 +197,21 @@ const SellerAboutForm = () => {
         </CardDescription>
       </CardHeader>
       
-      {/* Debug form errors */}
-      {Object.keys(form.formState.errors).length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <h4 className="text-sm font-medium text-red-800 mb-2">Form Validation Errors:</h4>
-          <ul className="text-sm text-red-700 space-y-1">
-            {Object.entries(form.formState.errors).map(([field, error]) => (
-              <li key={field}>
-                <strong>{field}:</strong> {error?.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
       <CardContent className="flex flex-col gap-y-6">
+        {/* Debug form errors */}
+        {Object.keys(form.formState.errors).length > 0 && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+            <h4 className="text-sm font-medium text-red-800 mb-2">Form Validation Errors:</h4>
+            <ul className="text-sm text-red-700 space-y-1">
+              {Object.entries(form.formState.errors).map(([field, error]) => (
+                <li key={field}>
+                  <strong>{field}:</strong> {error?.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
         {/* Shop Name */}
         <div className="flex flex-col gap-y-2">
           <Label>Shop Name *</Label>
@@ -185,8 +266,6 @@ const SellerAboutForm = () => {
           </p>
         </div>
 
-        <Separator className="my-4" />
-
         {/* Email Address (Read-only) */}
         <div className="flex flex-col gap-y-2">
           <Label>Email Address</Label>
@@ -205,6 +284,7 @@ const SellerAboutForm = () => {
         {/* Image Uploads */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Shop Images</h3>
+          
           {/* Seller Image */}
           <div className="flex flex-col gap-y-2">
             <Label>Seller Profile Image</Label>
@@ -236,14 +316,14 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
+              
               <div className="flex-1">
                 <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
                       const fileUrl = res[0].url || res[0].ufsUrl;
-                      form.setValue("sellerImage", fileUrl);
-                      toast.success("Profile image uploaded!");
+                      handleImageUploadSuccess("sellerImage", fileUrl);
                     }
                   }}
                   onUploadError={(error) => {
@@ -291,14 +371,14 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
+              
               <div className="flex-1">
                 <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
                       const fileUrl = res[0].url || res[0].ufsUrl;
-                      form.setValue("shopBannerImage", fileUrl);
-                      toast.success("Banner image uploaded!");
+                      handleImageUploadSuccess("shopBannerImage", fileUrl);
                     }
                   }}
                   onUploadError={(error) => {
@@ -346,14 +426,14 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
+              
               <div className="flex-1">
                 <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
                       const fileUrl = res[0].url || res[0].ufsUrl;
-                      form.setValue("shopLogoImage", fileUrl);
-                      toast.success("Logo uploaded!");
+                      handleImageUploadSuccess("shopLogoImage", fileUrl);
                     }
                   }}
                   onUploadError={(error) => {
