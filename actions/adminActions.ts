@@ -1267,6 +1267,137 @@ export async function setupAdminSellerApplicationNotifications(userId: string) {
   }
 }
 
+interface GetContactSubmissionsParams {
+  search?: string;
+  reason?: string;
+  page?: number;
+}
+
+interface ContactSubmissionsResponse {
+  data: Array<{
+    id: string;
+    name: string;
+    email: string;
+    reason: string;
+    helpDescription: string;
+    createdAt: Date;
+  }>;
+  total: number;
+  totalPages: number;
+  thisMonth: number;
+  thisWeek: number;
+  today: number;
+}
+
+export async function getContactSubmissions({
+  search = "",
+  reason = "",
+  page = 1,
+}: GetContactSubmissionsParams): Promise<ContactSubmissionsResponse> {
+  try {
+    const currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has MANAGE_CONTENT permission
+    const hasManageContent = currentUserData.permissions?.includes('MANAGE_CONTENT');
+    
+    if (!hasManageContent) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    const pageSize = 10;
+    const skip = (page - 1) * pageSize;
+
+    // Build where clause
+    const whereClause: any = {};
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { helpDescription: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    
+    if (reason && reason !== "all") {
+      whereClause.reason = reason;
+    }
+
+    // Get submissions with pagination
+    const [submissions, total] = await Promise.all([
+      db.contactUs.findMany({
+        where: whereClause,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+      }),
+      db.contactUs.count({ where: whereClause }),
+    ]);
+
+    // Get stats
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const [thisMonth, thisWeek, today] = await Promise.all([
+      db.contactUs.count({
+        where: { createdAt: { gte: startOfMonth } },
+      }),
+      db.contactUs.count({
+        where: { createdAt: { gte: startOfWeek } },
+      }),
+      db.contactUs.count({
+        where: { createdAt: { gte: startOfDay } },
+      }),
+    ]);
+
+    return {
+      data: submissions,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+      thisMonth,
+      thisWeek,
+      today,
+    };
+  } catch (error) {
+    console.error("Error fetching contact submissions:", error);
+    throw error;
+  }
+}
+
+export async function getContactSubmissionById(id: string) {
+  try {
+    const currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has MANAGE_CONTENT permission
+    const hasManageContent = currentUserData.permissions?.includes('MANAGE_CONTENT');
+    
+    if (!hasManageContent) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    const submission = await db.contactUs.findUnique({
+      where: { id },
+    });
+
+    return submission;
+  } catch (error) {
+    console.error("Error fetching contact submission:", error);
+    return null;
+  }
+}
+
 export async function updateUserRole(
   userId: string,
   newRole: string,

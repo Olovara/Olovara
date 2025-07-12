@@ -22,12 +22,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { toast } from "sonner";
 
 const ContactUsFormContent = () => {
   const isClient = useIsClient();
   const { executeRecaptcha } = useGoogleReCaptcha();
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const Reason = [
@@ -61,7 +60,7 @@ const ContactUsFormContent = () => {
     }
 
     if (!executeRecaptcha) {
-      setError("reCAPTCHA not available");
+      toast.error("reCAPTCHA not available. Please refresh the page and try again.");
       return;
     }
 
@@ -70,13 +69,15 @@ const ContactUsFormContent = () => {
 
     startTransition(() => {
       contactUs({ ...values, recaptchaToken: token }).then((data) => {
-        if (data.success) setSuccess(data.success);
-        if (data.error) setError(data.error);
+        if (data.success) {
+          toast.success("Thank you! Your message has been sent successfully. We'll get back to you soon.");
+          form.reset();
+        }
+        if (data.error) {
+          toast.error(data.error);
+        }
       });
     });
-    form.reset();
-    setSuccess("");
-    setError("");
   };
 
   if (!isClient) return <Spinner />;

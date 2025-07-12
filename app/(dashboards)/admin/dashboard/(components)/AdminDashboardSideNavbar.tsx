@@ -2,7 +2,7 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send } from "lucide-react";
+import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -108,6 +108,21 @@ export default function AdminDashboardSideNavbar() {
                 <Mail className="h-3 w-3" />
               </div>
               Messages
+            </Link>
+            <Link
+              className={clsx(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                {
+                  "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                    pathname === "/admin/dashboard/contact-submissions",
+                }
+              )}
+              href="/admin/dashboard/contact-submissions"
+            >
+              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                <MessageSquare className="h-3 w-3" />
+              </div>
+              Contact Submissions
             </Link>
             <Link
               className={clsx(

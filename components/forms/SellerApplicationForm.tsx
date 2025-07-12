@@ -26,6 +26,7 @@ import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/components/providers/PermissionProvider";
+import { DatePicker } from "@/components/ui/date-picker";
 
 
 const SellerApplicationForm = () => {
@@ -35,6 +36,7 @@ const SellerApplicationForm = () => {
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   const [isPending, startTransition] = useTransition();
 
@@ -56,7 +58,14 @@ const SellerApplicationForm = () => {
   const onSubmit = (values: z.infer<typeof SellerApplicationSchema>) => {
     startTransition(async () => {
       console.log("SellerApplicationForm - Starting form submission...");
-      const result = await sellerApplication(values);
+      
+      // Convert selected date to string format for the form
+      const formData = {
+        ...values,
+        birthdate: selectedDate ? selectedDate.toISOString().split('T')[0] : "",
+      };
+      
+      const result = await sellerApplication(formData);
       
       if (result.success) {
         console.log("SellerApplicationForm - Application submitted successfully");
@@ -161,11 +170,11 @@ const SellerApplicationForm = () => {
 
                 <div className="flex flex-col gap-y-3">
                   <Label className="text-lg font-semibold">Date of Birth *</Label>
-                  <Input
-                    placeholder="MM/DD/YYYY"
-                    {...form.register("birthdate")}
+                  <DatePicker
+                    date={selectedDate}
+                    onDateChange={setSelectedDate}
+                    placeholder="Select your date of birth"
                     disabled={isPending}
-                    type="date"
                     className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                   />
                   {form.formState.errors.birthdate && (
