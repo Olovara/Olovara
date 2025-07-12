@@ -21,6 +21,21 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
     // Handle Stripe connection completion
     const handleStripeConnection = async () => {
       try {
+        // Check if the Stripe account is fully onboarded
+        const response = await fetch('/api/stripe/check-onboarding-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            connectedAccountId: params.connectedAccountId
+          })
+        });
+
+        if (response.ok) {
+          console.log("Stripe onboarding status checked successfully");
+        }
+
         // Clear any cached permissions to force fresh fetch
         if (typeof window !== 'undefined') {
           localStorage.removeItem('yarnnu_user_permissions');
@@ -39,7 +54,7 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
     };
 
     handleStripeConnection();
-  }, []);
+  }, [params.connectedAccountId]);
 
   return (
     <section className="w-full min-h-[80vh] flex items-center justify-center">

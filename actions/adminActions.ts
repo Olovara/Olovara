@@ -1080,7 +1080,10 @@ export async function getAdminsForSellerApplicationNotification() {
   try {
     console.log("Fetching admins for seller application notification...");
     
-    const admins = await db.admin.findMany({
+    // First, get admins from the Admin table
+    // NOTE: Currently Admin table queries return 0 results, likely due to database environment/migration issues
+    // The User table fallback is working correctly for current super admin accounts
+    const adminTableAdmins = await db.admin.findMany({
       where: {
         isActive: true,
         user: {
@@ -1095,38 +1098,120 @@ export async function getAdminsForSellerApplicationNotification() {
         user: {
           select: {
             email: true,
-            username: true
+            username: true,
+            status: true
           }
         }
       }
     });
 
-    console.log(`Found ${admins.length} active admins with SUPER_ADMIN or SELLER_MANAGER role`);
+    console.log(`Found ${adminTableAdmins.length} active admins in Admin table with SUPER_ADMIN or SELLER_MANAGER role`);
+    
+    // Debug: Let's also check what admins exist without the status filter
+    const allAdminsInTable = await db.admin.findMany({
+      include: {
+        user: {
+          select: {
+            email: true,
+            username: true,
+            status: true
+          }
+        }
+      }
+    });
+    
+    console.log(`Total admins in Admin table: ${allAdminsInTable.length}`);
+    allAdminsInTable.forEach(admin => {
+      console.log(`Admin record: userId=${admin.userId}, role=${admin.role}, isActive=${admin.isActive}, userStatus=${admin.user?.status}`);
+    });
+    
+    // Test simpler queries to isolate the issue
+    const superAdminAdmins = await db.admin.findMany({
+      where: { role: 'SUPER_ADMIN' }
+    });
+    console.log(`Admins with SUPER_ADMIN role: ${superAdminAdmins.length}`);
+    
+    const activeAdmins = await db.admin.findMany({
+      where: { isActive: true }
+    });
+    console.log(`Active admins: ${activeAdmins.length}`);
+    
+    // Let's also check if we can find your specific admin record by userId
+    const yourAdminRecord = await db.admin.findUnique({
+      where: { userId: '681948f56125257664f88194' }
+    });
+    console.log(`Your specific admin record:`, yourAdminRecord);
+    
+    // And let's check if the user exists
+    const yourUserRecord = await db.user.findUnique({
+      where: { id: '681948f56125257664f88194' }
+    });
+    console.log(`Your user record:`, yourUserRecord ? {
+      id: yourUserRecord.id,
+      username: yourUserRecord.username,
+      email: yourUserRecord.email,
+      role: yourUserRecord.role,
+      status: yourUserRecord.status
+    } : null);
+
+    // Also get users with SUPER_ADMIN role from the User table (for backward compatibility)
+    const superAdminUsers = await db.user.findMany({
+      where: {
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE'
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true
+      }
+    });
+
+    console.log(`Found ${superAdminUsers.length} users with SUPER_ADMIN role in User table`);
+
+    // Combine both sources
+    const allAdmins = [
+      ...adminTableAdmins,
+      ...superAdminUsers.map(user => ({
+        userId: user.id,
+        role: 'SUPER_ADMIN',
+        isActive: true,
+        user: {
+          email: user.email,
+          username: user.username
+        }
+      }))
+    ];
+
+    console.log(`Total admins found: ${allAdmins.length}`);
 
     // Filter admins who have the specific notification preference enabled for email
-    const filteredAdmins = admins.filter(admin => {
-      if (!admin.notificationPreferences) {
-        console.log(`Admin ${admin.userId} has no notification preferences`);
-        return false;
+    const filteredAdmins = allAdmins.filter(admin => {
+      console.log(`Checking admin ${admin.userId} (role: ${admin.role})`);
+      
+      // For users from User table (no Admin record), always include them
+      if (!('notificationPreferences' in admin) || !admin.notificationPreferences) {
+        console.log(`Admin ${admin.userId} has no notification preferences - including as fallback`);
+        return true; // Include super admins even without specific preferences
       }
       
       const preferences = admin.notificationPreferences as any[];
-      console.log(`Admin ${admin.userId} preferences:`, preferences);
+      console.log(`Admin ${admin.userId} has ${preferences.length} notification preferences:`, preferences);
       
       // Look for the specific notification type with email enabled
-      const sellerAppNotification = preferences.find(pref => 
-        pref.notificationType === ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED
-      );
+      const sellerAppNotification = preferences.find(pref => {
+        console.log(`Checking preference:`, pref);
+        return pref.notificationType === ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED;
+      });
       
-      if (sellerAppNotification && sellerAppNotification.emailEnabled) {
+      console.log(`Seller app notification found for admin ${admin.userId}:`, sellerAppNotification);
+      
+      if (sellerAppNotification && (sellerAppNotification.emailEnabled || sellerAppNotification.email)) {
         console.log(`Admin ${admin.userId} has seller application email notifications enabled`);
         return true;
       } else {
         console.log(`Admin ${admin.userId} does not have seller application email notifications enabled`);
-        // For debugging, let's also check if the admin has any notification preferences at all
-        if (preferences.length > 0) {
-          console.log(`Admin ${admin.userId} has ${preferences.length} notification preferences:`, preferences);
-        }
+        console.log(`Email enabled check:`, sellerAppNotification?.emailEnabled, sellerAppNotification?.email);
         return false;
       }
     });
@@ -1137,7 +1222,7 @@ export async function getAdminsForSellerApplicationNotification() {
     // send to all SUPER_ADMIN users as a critical notification
     if (filteredAdmins.length === 0) {
       console.log("No admins with specific notification preferences found, falling back to all SUPER_ADMIN users");
-      const superAdmins = admins.filter(admin => admin.role === ADMIN_ROLES.SUPER_ADMIN);
+      const superAdmins = allAdmins.filter(admin => admin.role === ADMIN_ROLES.SUPER_ADMIN);
       console.log(`Found ${superAdmins.length} SUPER_ADMIN users for fallback notification`);
       return superAdmins;
     }

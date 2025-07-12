@@ -443,6 +443,35 @@ export async function POST(req: Request) {
 
           return NextResponse.json({ success: true, orderId: order.id });
         }
+        case "account.updated": {
+          const account = event.data.object as Stripe.Account;
+          console.log(`🏦 Account updated: ${account.id}, charges_enabled: ${account.charges_enabled}, payouts_enabled: ${account.payouts_enabled}`);
+
+          // Check if the account is fully onboarded (can accept charges and payouts)
+          if (account.charges_enabled && account.payouts_enabled) {
+            try {
+              // Find the seller with this connected account ID
+              const seller = await db.seller.findUnique({
+                where: { connectedAccountId: account.id },
+                select: { id: true, userId: true, stripeConnected: true }
+              });
+
+              if (seller && !seller.stripeConnected) {
+                // Update the seller's stripeConnected status
+                await db.seller.update({
+                  where: { id: seller.id },
+                  data: { stripeConnected: true }
+                });
+
+                console.log(`✅ Stripe account ${account.id} fully onboarded for seller ${seller.id}`);
+              }
+            } catch (error) {
+              console.error("❌ Error updating seller stripeConnected status:", error);
+            }
+          }
+
+          return NextResponse.json({ received: true });
+        }
         case "charge.succeeded": {
           // Just log this event
           const charge = event.data.object as Stripe.Charge;

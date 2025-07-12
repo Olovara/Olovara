@@ -16,8 +16,10 @@ export async function GET(request: NextRequest) {
       include: {
         seller: {
           select: {
+            id: true,
             applicationAccepted: true,
             stripeConnected: true,
+            connectedAccountId: true,
             shopProfileComplete: true,
             shippingProfileCreated: true,
             isFullyActivated: true,
@@ -39,11 +41,34 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Check Stripe connection status - if we have a connectedAccountId but stripeConnected is false,
+    // check if the account is actually fully onboarded
+    let stripeConnected = user.seller.stripeConnected && !!user.seller.connectedAccountId;
+    
+    if (user.seller.connectedAccountId && !user.seller.stripeConnected) {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        const account = await stripe.accounts.retrieve(user.seller.connectedAccountId);
+        
+        if (account.charges_enabled && account.payouts_enabled) {
+          // Update the database to reflect the actual status
+          await db.seller.update({
+            where: { id: user.seller.id },
+            data: { stripeConnected: true }
+          });
+          stripeConnected = true;
+        }
+      } catch (error) {
+        console.warn("Could not verify Stripe account status:", error);
+        // Keep stripeConnected as false if we can't verify
+      }
+    }
+
     // Calculate completion percentage
     let completionPercentage = 0;
     if (user.seller.applicationAccepted) completionPercentage += 20;
     if (user.seller.shopProfileComplete) completionPercentage += 20;
-    if (user.seller.stripeConnected) completionPercentage += 20;
+    if (stripeConnected) completionPercentage += 20;
     if (user.seller.shippingProfileCreated) completionPercentage += 20;
     if (user.seller.isFullyActivated) completionPercentage += 20;
 
@@ -53,7 +78,7 @@ export async function GET(request: NextRequest) {
       currentStep = 'application_approved';
     } else if (!user.seller.shopProfileComplete) {
       currentStep = 'profile_completed';
-    } else if (!user.seller.stripeConnected) {
+    } else if (!stripeConnected) {
       currentStep = 'stripe_connected';
     } else if (!user.seller.shippingProfileCreated) {
       currentStep = 'shipping_profile_created';
@@ -63,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     const onboardingData = {
       applicationAccepted: user.seller.applicationAccepted,
-      stripeConnected: user.seller.stripeConnected,
+      stripeConnected: stripeConnected,
       shopProfileComplete: user.seller.shopProfileComplete,
       shippingProfileCreated: user.seller.shippingProfileCreated,
       isFullyActivated: user.seller.isFullyActivated,

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const seller = await db.seller.findUnique({
       where: { userId },
       select: {
+        id: true,
         applicationAccepted: true,
         stripeConnected: true,
         connectedAccountId: true,
@@ -44,7 +45,30 @@ export async function GET(request: NextRequest) {
     // Determine completion status
     const applicationApproved = application?.applicationApproved || false;
     const profileCompleted = !!(seller.encryptedBusinessName && seller.encryptedTaxId && seller.taxIdVerified);
-    const stripeConnected = seller.stripeConnected && !!seller.connectedAccountId;
+    
+    // Check Stripe connection status - if we have a connectedAccountId but stripeConnected is false,
+    // check if the account is actually fully onboarded
+    let stripeConnected = seller.stripeConnected && !!seller.connectedAccountId;
+    
+    if (seller.connectedAccountId && !seller.stripeConnected) {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        const account = await stripe.accounts.retrieve(seller.connectedAccountId);
+        
+        if (account.charges_enabled && account.payouts_enabled) {
+          // Update the database to reflect the actual status
+          await db.seller.update({
+            where: { id: seller.id },
+            data: { stripeConnected: true }
+          });
+          stripeConnected = true;
+        }
+      } catch (error) {
+        console.warn("Could not verify Stripe account status:", error);
+        // Keep stripeConnected as false if we can't verify
+      }
+    }
+    
     const shippingProfileCreated = seller.shippingProfiles.length > 0;
 
     // Calculate completion percentage
