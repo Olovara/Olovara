@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProtectedLink } from "./shared/ProtectedLink";
-import { useCurrentPermissions } from "@/hooks/use-current-permissions";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 import { PERMISSIONS, Role } from "@/data/roles-and-permissions";
 
 interface iAppProps {
@@ -27,52 +27,37 @@ interface iAppProps {
 }
 
 export function UserNav({ userInfo }: iAppProps) {
-  const permissions = useCurrentPermissions();
+  const { hasPermission } = usePermissions();
 
-  const canAccessAdminDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_ADMIN_DASHBOARD.value
-  );
-  const canAccessSellerDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_SELLER_DASHBOARD.value
-  );
-  const canAccessMemberDashboard = permissions.includes(
-    PERMISSIONS.ACCESS_MEMBER_DASHBOARD.value
-  );
+  // Role-based checks (simpler and more reliable for navigation)
+  const isAdmin = userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN";
+  const isSeller = userInfo?.role === "SELLER";
+  const isMember = userInfo?.role === "MEMBER";
 
-  const canManageAdminSettings = permissions.includes(
-    PERMISSIONS.MANAGE_ADMIN_SETTINGS.value
-  );
-  const canManageSellerSettings = permissions.includes(
-    PERMISSIONS.MANAGE_SELLER_SETTINGS.value
-  );
-  const canManageMemberSettings = permissions.includes(
-    PERMISSIONS.MANAGE_MEMBER_SETTINGS.value
-  );
+  // Permission-based checks for specific features
+  const canManageProducts = hasPermission(PERMISSIONS.MANAGE_PRODUCTS.value);
+  const canViewOrders = hasPermission(PERMISSIONS.VIEW_ORDERS.value);
+  const canManageOrders = hasPermission(PERMISSIONS.MANAGE_ORDERS.value);
 
-  const canManageProducts = permissions.includes(PERMISSIONS.MANAGE_PRODUCTS.value);
-  const canViewOrders = permissions.includes(PERMISSIONS.VIEW_ORDERS.value);
-  const canManageOrders = permissions.includes(PERMISSIONS.MANAGE_ORDERS.value);
-
+  // Determine dashboard route based on role
   let dashboardRoute: string | null = null;
-  if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
+  if (isAdmin) {
     dashboardRoute = "/admin/dashboard";
-  } else if (canAccessSellerDashboard) {
+  } else if (isSeller) {
     dashboardRoute = "/seller/dashboard";
-  } else if (canAccessMemberDashboard) {
+  } else if (isMember) {
     dashboardRoute = "/member/dashboard";
   }
 
+  // Determine settings route based on role
   let settingsRoute: string | null = null;
-  if (userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN") {
+  if (isAdmin) {
     settingsRoute = "/admin/dashboard/settings";
-  } else if (canManageSellerSettings) {
+  } else if (isSeller) {
     settingsRoute = "/seller/dashboard/settings";
-  } else if (canManageMemberSettings) {
+  } else if (isMember) {
     settingsRoute = "/member/dashboard/settings";
   }
-
-  const isSeller = canAccessSellerDashboard;
-  const isAdmin = userInfo?.role === "SUPER_ADMIN" || userInfo?.role === "ADMIN";
 
   return (
     <DropdownMenu>

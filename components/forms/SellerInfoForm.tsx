@@ -86,14 +86,20 @@ const SellerInfoForm = () => {
       setError("");
       setSuccess("");
 
-      const result = await updateSellerInfo(values);
+      // Send plain text data to the action (encryption is handled server-side)
+      const result = await updateSellerInfo({
+        businessName: values.businessName,
+        taxId: values.taxId,
+        additionalTaxRegistrations: values.additionalTaxRegistrations,
+        taxCountry: values.taxCountry,
+      });
 
       if (result.error) {
         toast.error(result.error);
         throw new Error(result.error);
       }
 
-      toast.success(result.success || "Successfully saved your business information.");
+      toast.success(result.message || "Successfully saved your business information.");
     } catch (error) {
       console.error("Error submitting form:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to save business information";

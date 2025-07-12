@@ -1,93 +1,62 @@
 "use server";
 
-import * as z from "zod";
-import { db } from "@/lib/db";
-import { SellerInfoSchema } from "@/schemas/SellerInfoSchema";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/data/roles-and-permissions";
-import { encryptData } from "@/lib/encryption";
-import { updateUserSession } from "@/lib/session-update";
+import { db } from "@/lib/db";
+import { encryptSellerTaxInfo } from "@/lib/encryption";
+import { currentUser } from "@/lib/auth";
 
-export const updateSellerInfo = async (values: z.infer<typeof SellerInfoSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
-
-  const canManageSettings = await hasPermission(session.user.id, "MANAGE_SELLER_SETTINGS" as Permission);
-  if (!canManageSettings) {
-    return { error: "You don't have permission to perform this action." };
-  }
-
-  const validatedFields = SellerInfoSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields." };
-  }
-
-  const { 
-    isVacationMode,
-    acceptsCustom,
-    businessName, 
-    taxId, 
-    businessAddress, 
-    businessCity, 
-    businessState, 
-    businessPostalCode, 
-    taxCountry, 
-    additionalTaxRegistrations,
-    facebookUrl,
-    instagramUrl,
-    pinterestUrl,
-    tiktokUrl
-  } = validatedFields.data;
-
+export async function updateSellerInfo(data: {
+  // Plain text tax information (will be encrypted internally)
+  businessName: string;
+  taxId: string;
+  additionalTaxRegistrations?: string;
+  taxCountry: string;
+}) {
   try {
-    // Encrypt sensitive tax information
-    const encryptedBusinessName = encryptData(businessName);
-    const encryptedTaxId = encryptData(taxId);
-    const encryptedAdditionalTaxRegistrations = additionalTaxRegistrations ? encryptData(additionalTaxRegistrations) : null;
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
 
-    // Update seller information
+    // Encrypt the tax information using the helper function
+    const encryptedTaxInfo = encryptSellerTaxInfo({
+      businessName: data.businessName,
+      taxId: data.taxId,
+      additionalTaxRegistrations: data.additionalTaxRegistrations,
+    });
+
+    // Update seller tax information
     await db.seller.update({
       where: { userId: session.user.id },
       data: {
-        acceptsCustom,
-        encryptedBusinessName: encryptedBusinessName.encrypted,
-        businessNameIV: encryptedBusinessName.iv,
-        businessNameSalt: encryptedBusinessName.salt,
-        encryptedTaxId: encryptedTaxId.encrypted,
-        taxIdIV: encryptedTaxId.iv,
-        taxIdSalt: encryptedTaxId.salt,
-        taxCountry,
-        encryptedAdditionalTaxRegistrations: encryptedAdditionalTaxRegistrations?.encrypted || null,
-        additionalTaxRegistrationsIV: encryptedAdditionalTaxRegistrations?.iv || null,
-        additionalTaxRegistrationsSalt: encryptedAdditionalTaxRegistrations?.salt || null,
-        facebookUrl: facebookUrl || null,
-        instagramUrl: instagramUrl || null,
-        pinterestUrl: pinterestUrl || null,
-        tiktokUrl: tiktokUrl || null,
-      },
+        encryptedBusinessName: encryptedTaxInfo.encryptedBusinessName,
+        businessNameIV: encryptedTaxInfo.businessNameIV,
+        businessNameSalt: encryptedTaxInfo.businessNameSalt,
+        encryptedTaxId: encryptedTaxInfo.encryptedTaxId,
+        taxIdIV: encryptedTaxInfo.taxIdIV,
+        taxIdSalt: encryptedTaxInfo.taxIdSalt,
+        encryptedAdditionalTaxRegistrations: encryptedTaxInfo.encryptedAdditionalTaxRegistrations,
+        additionalTaxRegistrationsIV: encryptedTaxInfo.additionalTaxRegistrationsIV,
+        additionalTaxRegistrationsSalt: encryptedTaxInfo.additionalTaxRegistrationsSalt,
+        taxCountry: data.taxCountry,
+        taxIdVerified: false, // Reset verification when tax info is updated
+        taxIdVerificationDate: null,
+        taxIdVerificationMethod: null,
+        taxIdVerificationNotes: null,
+      }
     });
 
-    // Update user status for vacation mode
-    await db.user.update({
-      where: { id: session.user.id },
-      data: {
-        status: isVacationMode ? "VACATION" : "ACTIVE",
-      },
-    });
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's tax information has been updated in the database
+    console.log("Seller tax information updated for user:", session.user.id);
 
-    // Update session to reflect changes
-    await updateUserSession(session.user.id);
-
-    return { success: "Business information updated successfully." };
+    return { success: true, message: "Business information updated successfully!" };
   } catch (error) {
-    console.error("Error updating seller info:", error);
-    return { error: "Something went wrong while updating business information." };
+    console.error("Error updating seller tax information:", error);
+    return { success: false, error: "Failed to update seller tax information" };
   }
-};
+}
 
 export const getSellerInfo = async () => {
   const session = await auth();

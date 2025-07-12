@@ -111,8 +111,25 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== ROLES.ADMIN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  // Check if user is authenticated
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 403 }
+    );
+  }
+
+  // Fetch user permissions from database
+  const dbUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { permissions: true }
+  });
+
+  if (!dbUser?.permissions?.includes('MANAGE_POLICIES')) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 403 }
+    );
   }
 
   const { content } = await req.json();

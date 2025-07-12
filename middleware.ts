@@ -8,7 +8,6 @@ import {
   authRoutes,
   publicRoutes,
 } from "@/routes";
-import { ROUTE_PERMISSIONS } from "@/data/roles-and-permissions";
 
 const { auth } = NextAuth(authConfig);
 
@@ -47,7 +46,6 @@ function getRateLimit(identifier: string, limit: number = 100, windowMs: number 
 export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
-  const userPermissions = (req.auth?.user?.permissions as string[]) || [];
 
   // Rate limiting for all requests
   const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
@@ -116,25 +114,8 @@ export default auth(async (req) => {
     return response;
   }
 
-  // Check permissions for protected routes
-  if (isAuthorized) {
-    const matchingRoute = Object.entries(ROUTE_PERMISSIONS).find(([route]) =>
-      nextUrl.pathname.startsWith(route)
-    );
-
-    if (matchingRoute) {
-      const requiredPermissions = matchingRoute[1];
-      const hasRequiredPermission = requiredPermissions.some((permissionValue) =>
-        userPermissions.includes(permissionValue)
-      );
-
-      if (!hasRequiredPermission) {
-        // Redirect to home page for unauthorized access TODO: Make an unauthorized page for better UX
-        return Response.redirect(new URL("/", nextUrl));
-      }
-    }
-  }
-
+  // For all other routes, just check if user is authenticated
+  // Authorization (permission checks) will be handled by components and API routes
   if (!isAuthorized && !isPublicRoute) {
     // If this is a logout redirect, send to home page
     if (isLogoutRedirect) {

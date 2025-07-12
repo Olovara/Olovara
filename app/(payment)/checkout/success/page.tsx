@@ -1,13 +1,17 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import CheckoutSuccessClient from "./CheckoutSuccessClient";
+import { PermissionProvider } from "@/components/providers/PermissionProvider";
 
 export default async function CheckoutSuccessPage() {
   const session = await auth();
-  
-  if (!session?.user) {
-    redirect("/login");
+
+  if (!session?.user?.id) {
+    return <div>Not authenticated</div>;
   }
-  
-  return <CheckoutSuccessClient userRole={session.user.role} />;
+
+  return (
+    <PermissionProvider>
+      <CheckoutSuccessClient />
+    </PermissionProvider>
+  );
 } 

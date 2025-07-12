@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { OrderStatus } from "@prisma/client";
 import { ObjectId } from "mongodb";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
 
 export async function POST(
   request: NextRequest,
@@ -19,7 +20,7 @@ export async function POST(
 
     // Check authentication
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -27,6 +28,20 @@ export async function POST(
     }
 
     const userId = session.user.id;
+
+    // Fetch user permissions from database
+    const dbUser = await db.user.findUnique({
+      where: { id: userId },
+      select: { permissions: true }
+    });
+
+    // Check if user has permission to manage orders
+    if (!dbUser?.permissions?.includes(PERMISSIONS.MANAGE_ORDERS.value)) {
+      return NextResponse.json(
+        { error: "Insufficient permissions to manage orders" },
+        { status: 403 }
+      );
+    }
     
     // Get the order
     const order = await db.order.findUnique({

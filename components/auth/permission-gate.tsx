@@ -13,7 +13,7 @@ const PermissionGate = ({
   children,
   requiredPermission,
 }: PermissionGateProps) => {
-  const permissions = useCurrentPermissions();
+  const { hasPermission } = useCurrentPermissions();
 
   // Get the permission value from the permission object
   const permissionObject = PERMISSIONS[requiredPermission];
@@ -26,9 +26,9 @@ const PermissionGate = ({
   }
 
   const permissionValue = permissionObject.value;
-  const hasPermission = permissions.includes(permissionValue);
+  const userHasPermission = hasPermission(permissionValue);
 
-  if (!hasPermission) {
+  if (!userHasPermission) {
     return (
       <FormError message="You don't have permission to view this content!" />
     );

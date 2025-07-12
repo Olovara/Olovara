@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "next-auth/react";
+import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 
 interface BlogCategory {
   id: string;
@@ -59,6 +60,7 @@ interface CategoryFormData {
 export default function BlogCategoriesPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const { permissions, loading: permissionsLoading } = useCurrentPermissions();
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,7 +74,7 @@ export default function BlogCategoriesPage() {
     isActive: true,
   });
 
-  const isAdmin = session?.user?.permissions?.includes('MANAGE_CONTENT');
+  const isAdmin = permissions?.includes('MANAGE_CONTENT');
 
   useEffect(() => {
     fetchCategories();

@@ -1,198 +1,121 @@
 "use server";
 
-import * as z from "zod";
-
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { SellerSchema } from "@/schemas/SellerSchema";
+import { encryptSellerTaxInfo } from "@/lib/encryption";
+import { currentUser } from "@/lib/auth";
 
-import { auth } from "@/auth"; // Adjust to your auth method
-import { encryptData } from "@/lib/encryption"; // Make sure this import exists
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/data/roles-and-permissions";
-import { markShopProfileComplete } from "./sellerOnboardingActions";
-import { updateUserSession } from "@/lib/session-update";
-
-export const sellerInformation = async (values: z.infer<typeof SellerSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
-
-  const canManageSettings = await hasPermission(session.user.id, "MANAGE_SELLER_SETTINGS" as Permission);
-  if (!canManageSettings) {
-    return { error: "You don't have permission to perform this action." };
-  }
-
-  const validatedFields = SellerSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields." };
-  }
-
+export async function updateSellerInformation(data: {
+  shopName: string;
+  shopDescription: string;
+  preferredCurrency: string;
+  preferredWeightUnit: string;
+  preferredDimensionUnit: string;
+  preferredDistanceUnit: string;
+  isWomanOwned: boolean;
+  isMinorityOwned: boolean;
+  isLGBTQOwned: boolean;
+  isVeteranOwned: boolean;
+  isSustainable: boolean;
+  isCharitable: boolean;
+  valuesPreferNotToSay: boolean;
+  // Plain text tax information (will be encrypted internally)
+  businessName: string;
+  taxId: string;
+  businessAddress: string;
+  businessCity: string;
+  businessState?: string;
+  businessPostalCode: string;
+  taxCountry: string;
+  additionalTaxRegistrations?: string;
+}) {
   try {
-    // Encrypt sensitive data
-    const { encrypted: encryptedBusinessName, iv: businessNameIV, salt: businessNameSalt } = 
-      await encryptData(validatedFields.data.businessName);
-    const { encrypted: encryptedTaxId, iv: taxIdIV, salt: taxIdSalt } = 
-      await encryptData(validatedFields.data.taxId);
-
-    // Encrypt address fields
-    const { encrypted: encryptedStreet, iv: streetIV, salt: streetSalt } = 
-      await encryptData(validatedFields.data.businessAddress);
-    const { encrypted: encryptedCity, iv: cityIV, salt: citySalt } = 
-      await encryptData(validatedFields.data.businessCity);
-    const { encrypted: encryptedPostal, iv: postalIV, salt: postalSalt } = 
-      await encryptData(validatedFields.data.businessPostalCode);
-    const { encrypted: encryptedCountry, iv: countryIV, salt: countrySalt } = 
-      await encryptData(validatedFields.data.taxCountry);
-
-    // Encrypt state if provided
-    let stateData = null;
-    if (validatedFields.data.businessState) {
-      stateData = await encryptData(validatedFields.data.businessState);
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
     }
 
-    // Prepare data for database
-    const dbData = {
-      shopName: validatedFields.data.shopName,
-      shopDescription: validatedFields.data.shopDescription,
-      preferredCurrency: validatedFields.data.preferredCurrency,
-      preferredWeightUnit: validatedFields.data.preferredWeightUnit,
-      preferredDimensionUnit: validatedFields.data.preferredDimensionUnit,
-      preferredDistanceUnit: validatedFields.data.preferredDistanceUnit,
-      isWomanOwned: validatedFields.data.isWomanOwned,
-      isMinorityOwned: validatedFields.data.isMinorityOwned,
-      isLGBTQOwned: validatedFields.data.isLGBTQOwned,
-      isVeteranOwned: validatedFields.data.isVeteranOwned,
-      isSustainable: validatedFields.data.isSustainable,
-      isCharitable: validatedFields.data.isCharitable,
-      valuesPreferNotToSay: validatedFields.data.valuesPreferNotToSay,
-      taxCountry: validatedFields.data.taxCountry,
-      shopNameSlug: validatedFields.data.shopName.toLowerCase().replace(/\s+/g, '-'),
-      encryptedBusinessName,
-      businessNameIV,
-      businessNameSalt,
-      encryptedTaxId,
-      taxIdIV,
-      taxIdSalt,
-    };
-
-    // Check if seller exists
-    const existingSeller = await db.seller.findUnique({
-      where: { userId: session.user.id },
-      include: {
-        addresses: {
-          where: {
-            isBusinessAddress: true
-          }
-        }
+    // Check if shop name is already taken by another seller
+    const existingSeller = await db.seller.findFirst({
+      where: {
+        shopName: data.shopName,
+        userId: { not: session.user.id }
       }
     });
 
     if (existingSeller) {
-      // Update existing seller
-      await db.seller.update({
-        where: { userId: session.user.id },
-        data: dbData,
-      });
+      return { success: false, error: "Shop name is already taken" };
+    }
 
-      // Update or create business address
-      if (existingSeller.addresses.length > 0) {
-        // Update existing business address
-        await db.address.update({
-          where: { id: existingSeller.addresses[0].id },
-          data: {
-            encryptedStreet,
-            streetIV,
-            streetSalt,
-            encryptedCity,
-            cityIV,
-            citySalt,
-            encryptedState: stateData?.encrypted,
-            stateIV: stateData?.iv,
-            stateSalt: stateData?.salt,
-            encryptedPostal,
-            postalIV,
-            postalSalt,
-            encryptedCountry,
-            countryIV,
-            countrySalt,
-            isBusinessAddress: true,
-            isDefault: true,
-          }
-        });
-      } else {
-        // Create new business address
-        await db.address.create({
-          data: {
-            encryptedStreet,
-            streetIV,
-            streetSalt,
-            encryptedCity,
-            cityIV,
-            citySalt,
-            encryptedState: stateData?.encrypted,
-            stateIV: stateData?.iv,
-            stateSalt: stateData?.salt,
-            encryptedPostal,
-            postalIV,
-            postalSalt,
-            encryptedCountry,
-            countryIV,
-            countrySalt,
-            isBusinessAddress: true,
-            isDefault: true,
-            seller: {
-              connect: {
-                userId: session.user.id
-              }
-            }
-          }
-        });
+    // Generate shop name slug
+    const shopNameSlug = data.shopName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    // Check if slug is already taken
+    const existingSlug = await db.seller.findFirst({
+      where: {
+        shopNameSlug: shopNameSlug,
+        userId: { not: session.user.id }
       }
-    } else {
-      // Create new seller
-      const newSeller = await db.seller.create({
-        data: {
-          ...dbData,
-          userId: session.user.id,
-          addresses: {
-            create: {
-              encryptedStreet,
-              streetIV,
-              streetSalt,
-              encryptedCity,
-              cityIV,
-              citySalt,
-              encryptedState: stateData?.encrypted,
-              stateIV: stateData?.iv,
-              stateSalt: stateData?.salt,
-              encryptedPostal,
-              postalIV,
-              postalSalt,
-              encryptedCountry,
-              countryIV,
-              countrySalt,
-              isBusinessAddress: true,
-              isDefault: true,
-            }
-          }
-        }
-      });
+    });
+
+    if (existingSlug) {
+      return { success: false, error: "Shop name generates a URL that is already taken" };
     }
 
-    // Mark shop profile as complete if it's not already
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (!currentOnboarding?.shopProfileComplete) {
-      await markShopProfileComplete();
-    } else {
-      // If already complete, just update the session to ensure it's current
-      await updateUserSession(session.user.id);
-    }
+    // Encrypt the tax information using the helper function
+    const encryptedTaxInfo = encryptSellerTaxInfo({
+      businessName: data.businessName,
+      taxId: data.taxId,
+      additionalTaxRegistrations: data.additionalTaxRegistrations,
+    });
 
-    return { success: "Seller information updated successfully." };
+    // Update seller information
+    await db.seller.update({
+      where: { userId: session.user.id },
+      data: {
+        shopName: data.shopName,
+        shopNameSlug: shopNameSlug,
+        shopDescription: data.shopDescription,
+        isWomanOwned: data.isWomanOwned,
+        isMinorityOwned: data.isMinorityOwned,
+        isLGBTQOwned: data.isLGBTQOwned,
+        isVeteranOwned: data.isVeteranOwned,
+        isSustainable: data.isSustainable,
+        isCharitable: data.isCharitable,
+        valuesPreferNotToSay: data.valuesPreferNotToSay,
+        preferredCurrency: data.preferredCurrency,
+        preferredWeightUnit: data.preferredWeightUnit,
+        preferredDimensionUnit: data.preferredDimensionUnit,
+        preferredDistanceUnit: data.preferredDistanceUnit,
+        // Use the encrypted tax information
+        encryptedBusinessName: encryptedTaxInfo.encryptedBusinessName,
+        businessNameIV: encryptedTaxInfo.businessNameIV,
+        businessNameSalt: encryptedTaxInfo.businessNameSalt,
+        encryptedTaxId: encryptedTaxInfo.encryptedTaxId,
+        taxIdIV: encryptedTaxInfo.taxIdIV,
+        taxIdSalt: encryptedTaxInfo.taxIdSalt,
+        encryptedAdditionalTaxRegistrations: encryptedTaxInfo.encryptedAdditionalTaxRegistrations,
+        additionalTaxRegistrationsIV: encryptedTaxInfo.additionalTaxRegistrationsIV,
+        additionalTaxRegistrationsSalt: encryptedTaxInfo.additionalTaxRegistrationsSalt,
+        taxCountry: data.taxCountry,
+        taxIdVerified: false, // Reset verification when tax info is updated
+        taxIdVerificationDate: null,
+        taxIdVerificationMethod: null,
+        taxIdVerificationNotes: null,
+      }
+    });
+
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's information has been updated in the database
+    console.log("Seller information updated for user:", session.user.id);
+
+    return { success: true, message: "Seller information updated successfully!" };
   } catch (error) {
     console.error("Error updating seller information:", error);
-    return { error: "Failed to update seller information." };
+    return { success: false, error: "Failed to update seller information" };
   }
-};
+}

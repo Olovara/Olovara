@@ -5,11 +5,12 @@ import { NewsletterSubscriptionWithTrackingSchema } from "@/schemas/NewsletterSu
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    
+
     // Get client IP and user agent for tracking
-    const ipAddress = req.headers.get("x-forwarded-for") || 
-                     req.headers.get("x-real-ip") || 
-                     "unknown";
+    const ipAddress =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // Validate the request body
@@ -29,18 +30,18 @@ export async function POST(req: NextRequest) {
       if (!existingSubscription.isActive) {
         await db.newsletterSubscription.update({
           where: { email: validatedData.email },
-          data: { 
+          data: {
             isActive: true,
             updatedAt: new Date(),
           },
         });
-        
+
         return NextResponse.json(
           { message: "Newsletter subscription reactivated successfully!" },
           { status: 200 }
         );
       }
-      
+
       // If already active, return success
       return NextResponse.json(
         { message: "You're already subscribed to our newsletter!" },
@@ -62,19 +63,18 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { 
+      {
         message: "Successfully subscribed to newsletter!",
         subscription: {
           id: subscription.id,
           email: subscription.email,
-        }
+        },
       },
       { status: 201 }
     );
-
   } catch (error) {
     console.error("Newsletter subscription error:", error);
-    
+
     if (error instanceof Error && error.message.includes("Invalid email")) {
       return NextResponse.json(
         { error: "Please enter a valid email address" },
@@ -116,7 +116,6 @@ export async function GET(req: NextRequest) {
       subscribed: !!subscription && subscription.isActive,
       subscription,
     });
-
   } catch (error) {
     console.error("Newsletter subscription check error:", error);
     return NextResponse.json(
@@ -124,4 +123,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

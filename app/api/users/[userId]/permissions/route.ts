@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addUserPermission, removeUserPermission } from "@/actions/adminActions";
 import { ObjectId } from "mongodb";
+import { auth } from "@/auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
+    // Get current user for grantedBy parameter
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     // Validate that the userId is a valid ObjectID
     if (!ObjectId.isValid(params.userId)) {
       return NextResponse.json(
@@ -24,10 +31,13 @@ export async function POST(
       );
     }
 
-    const result = await addUserPermission(params.userId, permission, reason);
+    const result = await addUserPermission(params.userId, permission, reason || "Granted by admin", session.user.id);
     
     if (result.success) {
-      return NextResponse.json(result);
+      return NextResponse.json({
+        ...result,
+        message: "Permission added successfully."
+      });
     } else {
       return NextResponse.json(
         { error: result.error },
@@ -48,6 +58,12 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
+    // Get current user for removedBy parameter
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     // Validate that the userId is a valid ObjectID
     if (!ObjectId.isValid(params.userId)) {
       return NextResponse.json(
@@ -66,10 +82,13 @@ export async function DELETE(
       );
     }
 
-    const result = await removeUserPermission(params.userId, permission);
+    const result = await removeUserPermission(params.userId, permission, session.user.id);
     
     if (result.success) {
-      return NextResponse.json(result);
+      return NextResponse.json({
+        ...result,
+        message: "Permission removed successfully."
+      });
     } else {
       return NextResponse.json(
         { error: result.error },

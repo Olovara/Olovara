@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { generateIV, generateSalt } from "@/lib/encryption";
 
 export async function POST(req: Request) {
   try {
@@ -13,11 +12,23 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       encryptedStreet,
+      streetIV,
+      streetSalt,
       encryptedStreet2,
+      street2IV,
+      street2Salt,
       encryptedCity,
+      cityIV,
+      citySalt,
       encryptedState,
+      stateIV,
+      stateSalt,
       encryptedPostal,
+      postalIV,
+      postalSalt,
       encryptedCountry,
+      countryIV,
+      countrySalt,
       isDefault,
       isBusinessAddress,
     } = body;
@@ -40,21 +51,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Generate IVs and salts for each field
-    const streetIV = generateIV();
-    const streetSalt = generateSalt();
-    const street2IV = encryptedStreet2 ? generateIV() : null;
-    const street2Salt = encryptedStreet2 ? generateSalt() : null;
-    const cityIV = generateIV();
-    const citySalt = generateSalt();
-    const stateIV = encryptedState ? generateIV() : null;
-    const stateSalt = encryptedState ? generateSalt() : null;
-    const postalIV = generateIV();
-    const postalSalt = generateSalt();
-    const countryIV = generateIV();
-    const countrySalt = generateSalt();
-
-    // Create the new address
+    // Create the new address with pre-encrypted data
     const address = await db.address.create({
       data: {
         encryptedStreet,

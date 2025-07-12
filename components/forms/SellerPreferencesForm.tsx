@@ -117,7 +117,7 @@ const SellerPreferencesForm = () => {
         throw new Error(result.error);
       }
 
-      toast.success(result.success || "Successfully saved your preferences.");
+      toast.success(result.message || "Successfully saved your preferences.");
     } catch (error) {
       console.error("Error submitting form:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to save preferences";

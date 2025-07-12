@@ -1,47 +1,40 @@
 "use server";
 
-import * as z from "zod";
-import { db } from "@/lib/db";
-import { SellerAboutSchema } from "@/schemas/SellerAboutSchema";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/data/roles-and-permissions";
-import { updateUserSession } from "@/lib/session-update";
+import { db } from "@/lib/db";
+import { encryptData } from "@/lib/encryption";
+import { currentUser } from "@/lib/auth";
 
-export const updateSellerAbout = async (values: z.infer<typeof SellerAboutSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
-
-  const canManageSettings = await hasPermission(session.user.id, "MANAGE_SELLER_SETTINGS" as Permission);
-  if (!canManageSettings) {
-    return { error: "You don't have permission to perform this action." };
-  }
-
-  const validatedFields = SellerAboutSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields." };
-  }
-
-  const { shopName, shopTagLine, shopDescription, shopAnnouncement, sellerImage, shopBannerImage, shopLogoImage } = validatedFields.data;
-
+export async function updateSellerAbout(data: {
+  shopName: string;
+  shopTagLine?: string;
+  shopDescription: string;
+  shopAnnouncement?: string;
+  sellerImage?: string;
+  shopBannerImage?: string;
+  shopLogoImage?: string;
+}) {
   try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
     // Check if shop name is already taken by another seller
     const existingSeller = await db.seller.findFirst({
       where: {
-        shopName: shopName,
+        shopName: data.shopName,
         userId: { not: session.user.id }
       }
     });
 
     if (existingSeller) {
-      return { error: "Shop name is already taken." };
+      return { success: false, error: "Shop name is already taken" };
     }
 
     // Generate shop name slug
-    const shopNameSlug = shopName
+    const shopNameSlug = data.shopName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
@@ -55,33 +48,34 @@ export const updateSellerAbout = async (values: z.infer<typeof SellerAboutSchema
     });
 
     if (existingSlug) {
-      return { error: "Shop name generates a URL that is already taken. Please choose a different name." };
+      return { success: false, error: "Shop name generates a URL that is already taken" };
     }
 
-    // Update seller information
+    // Update seller profile
     await db.seller.update({
       where: { userId: session.user.id },
       data: {
-        shopName,
-        shopNameSlug,
-        shopTagLine,
-        shopDescription,
-        shopAnnouncement,
-        sellerImage,
-        shopBannerImage,
-        shopLogoImage,
-      },
+        shopName: data.shopName,
+        shopNameSlug: shopNameSlug,
+        shopTagLine: data.shopTagLine,
+        shopDescription: data.shopDescription,
+        shopAnnouncement: data.shopAnnouncement,
+        sellerImage: data.sellerImage,
+        shopBannerImage: data.shopBannerImage,
+        shopLogoImage: data.shopLogoImage,
+      }
     });
 
-    // Update session to reflect changes
-    await updateUserSession(session.user.id);
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's profile has been updated in the database
+    console.log("Seller about information updated for user:", session.user.id);
 
-    return { success: "Shop information updated successfully." };
+    return { success: true, message: "Shop information updated successfully!" };
   } catch (error) {
     console.error("Error updating seller about:", error);
-    return { error: "Something went wrong while updating shop information." };
+    return { success: false, error: "Failed to update seller information" };
   }
-};
+}
 
 export const getSellerAbout = async () => {
   const session = await auth();

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { ROLES } from "@/data/roles-and-permissions";
 import { createBlogPostSchema } from "@/schemas/BlogPostSchema";
 import { z } from "zod";
 
@@ -9,8 +8,21 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     
-    // Check if user is authenticated and is an admin
-    if (!session || session.user.role !== ROLES.ADMIN) {
+    // Check if user is authenticated
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 403 }
+      );
+    }
+
+    // Fetch user permissions from database
+    const dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { permissions: true }
+    });
+
+    if (!dbUser?.permissions?.includes('MANAGE_CONTENT')) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }

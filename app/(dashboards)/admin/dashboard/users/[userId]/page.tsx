@@ -1,7 +1,5 @@
-import { getUserPermissions, addUserPermission, removeUserPermission } from "@/actions/adminActions";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { getUserPermissions } from "@/actions/adminActions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,20 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
 import { PermissionManager } from "@/components/admin/PermissionManager";
 import { RoleManager } from "@/components/admin/RoleManager";
-import { currentUser } from "@/lib/auth";
+import { currentUserWithPermissions } from "@/lib/auth";
 
 interface UserDetailsPageProps {
   params: {
@@ -33,7 +24,7 @@ interface UserDetailsPageProps {
 export default async function UserDetailsPage({ params }: UserDetailsPageProps) {
   try {
     const user = await getUserPermissions(params.userId);
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!user) {
       notFound();

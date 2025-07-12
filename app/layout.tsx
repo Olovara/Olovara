@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 import { LocationProvider } from "@/components/providers/LocationProvider";
-import { SessionUpdateListener } from "@/components/SessionUpdateListener";
+import { PermissionProvider } from "@/components/providers/PermissionProvider";
 import { auth } from "@/auth";
 import Script from "next/script";
 import { headers } from "next/headers";
@@ -90,17 +90,18 @@ export default async function RootLayout({
       >
         <PostHogProvider>
           <SessionProvider session={session}>
-            <LocationProvider>
-              <OnboardingSurveyProvider>
-                <SocketProvider>
-                  <main className="relative flex min-h-screen flex-col">
-                    {children}
-                  </main>
-                  <SessionUpdateListener />
-                  <PostHogPageview />
-                </SocketProvider>
-              </OnboardingSurveyProvider>
-            </LocationProvider>
+            <PermissionProvider>
+              <LocationProvider>
+                <OnboardingSurveyProvider>
+                  <SocketProvider>
+                    <main className="relative flex min-h-screen flex-col">
+                      {children}
+                    </main>
+                    <PostHogPageview />
+                  </SocketProvider>
+                </OnboardingSurveyProvider>
+              </LocationProvider>
+            </PermissionProvider>
             <Toaster position="top-center" richColors />
           </SessionProvider>
         </PostHogProvider>

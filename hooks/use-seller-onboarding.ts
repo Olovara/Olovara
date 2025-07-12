@@ -72,22 +72,9 @@ export function useSellerOnboarding() {
     loading: false,
     error: null,
     refresh: async () => {
-      // Trigger session update instead of page reload
-      try {
-        await fetch("/api/auth/trigger-session-update", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ reason: 'Manual onboarding status refresh' }),
-        });
-        // Force page reload to get updated data
-        window.location.reload();
-      } catch (error) {
-        console.error("Error refreshing onboarding status:", error);
-        // Fallback to page reload
-        window.location.reload();
-      }
+      // Force a page reload to refresh the session and permissions
+      console.log("Refreshing seller onboarding status...");
+      window.location.reload();
     },
   };
 } 

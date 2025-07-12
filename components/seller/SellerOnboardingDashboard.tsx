@@ -6,14 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Circle, AlertCircle, ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
-import { useSellerOnboarding } from "@/hooks/use-seller-onboarding";
-import { useSessionUpdate } from "@/hooks/use-session-update";
+import { useSellerOnboardingAPI } from "@/hooks/use-seller-onboarding-api";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import Link from "next/link";
 
 const SellerOnboardingDashboard = () => {
-  const { status: onboardingData, loading, error } = useSellerOnboarding();
-  const { triggerSessionUpdate, forceSessionRefresh } = useSessionUpdate();
+  const { status: onboardingData, loading, error, refresh } = useSellerOnboardingAPI();
+
+  const handleRefreshStatus = async () => {
+    await refresh();
+  };
 
   if (loading) {
     return (
@@ -184,7 +186,7 @@ const SellerOnboardingDashboard = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => forceSessionRefresh()}
+              onClick={handleRefreshStatus}
               className="flex items-center gap-2"
             >
               <RefreshCw className="h-4 w-4" />

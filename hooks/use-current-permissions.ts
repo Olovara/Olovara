@@ -1,8 +1,25 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 
 export const useCurrentPermissions = () => {
-  const session = useSession();
-  return session.data?.user?.permissions || [];
+  const { 
+    permissions, 
+    loading, 
+    error, 
+    hasPermission, 
+    hasAnyPermission, 
+    hasAllPermissions, 
+    refreshPermissions 
+  } = usePermissions();
+
+  return {
+    permissions,
+    loading,
+    error,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    refreshPermissions,
+  };
 }; 

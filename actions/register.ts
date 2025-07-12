@@ -14,6 +14,12 @@ import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
 import { getUserLocationPreferences } from "@/lib/ipinfo";
 
 const verifyRecaptcha = async (token: string) => {
+  // Skip reCAPTCHA verification on localhost for development
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Development mode: Skipping reCAPTCHA verification");
+    return true;
+  }
+
   try {
     const response = await fetch(
       `https://www.google.com/recaptcha/api/siteverify`,

@@ -25,10 +25,13 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { usePermissions } from "@/components/providers/PermissionProvider";
+
 
 const SellerApplicationForm = () => {
   const isClient = useIsClient();
   const router = useRouter();
+  const { refreshPermissions } = usePermissions();
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
@@ -51,21 +54,38 @@ const SellerApplicationForm = () => {
   });
 
   const onSubmit = (values: z.infer<typeof SellerApplicationSchema>) => {
-    startTransition(() => {
-      sellerApplication(values).then((data) => {
-        if (data.success) {
-          setSuccess(data.success);
-          toast.success(data.success);
-          // Redirect to seller dashboard after a short delay
-          setTimeout(() => {
-            router.push("/seller/dashboard");
-          }, 1500);
+    startTransition(async () => {
+      console.log("SellerApplicationForm - Starting form submission...");
+      const result = await sellerApplication(values);
+      
+      if (result.success) {
+        console.log("SellerApplicationForm - Application submitted successfully");
+        setSuccess(result.success);
+        toast.success(result.success);
+        
+        // Clear any cached permissions to force fresh fetch
+        console.log("SellerApplicationForm - Clearing cached permissions...");
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('yarnnu_user_permissions');
+          localStorage.removeItem('yarnnu_user_role');
+          localStorage.removeItem('yarnnu_permissions_timestamp');
         }
-        if (data?.error) {
-          setError(data.error);
-          toast.error(data.error);
-        }
-      });
+        
+        // Force a complete page reload to refresh the session with new role and permissions
+        console.log("SellerApplicationForm - Forcing page reload in 2 seconds...");
+        
+        // Redirect to seller dashboard with a fresh session
+        setTimeout(() => {
+          console.log("SellerApplicationForm - Redirecting to seller dashboard...");
+          window.location.href = "/seller/dashboard";
+        }, 2000);
+      }
+      
+      if (result?.error) {
+        console.error("SellerApplicationForm - Application submission failed:", result.error);
+        setError(result.error);
+        toast.error(result.error);
+      }
     });
 
     form.reset();

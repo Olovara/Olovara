@@ -37,7 +37,6 @@ export default async function AdminDashboardSellerApplications({
   console.log("Page Session Debug:", {
     hasSession: !!session,
     userId: session?.user?.id,
-    role: session?.user?.role,
     email: session?.user?.email
   });
 
@@ -48,7 +47,6 @@ export default async function AdminDashboardSellerApplications({
       select: { role: true }
     });
     console.log("Database Role Check:", {
-      sessionRole: session.user.role,
       dbRole: dbUser?.role,
       userId: session.user.id
     });

@@ -42,9 +42,9 @@ const SellerAboutForm = () => {
       shopTagLine: "",
       shopDescription: "",
       shopAnnouncement: "",
-      sellerImage: "",
-      shopBannerImage: "",
-      shopLogoImage: "",
+      sellerImage: undefined,
+      shopBannerImage: undefined,
+      shopLogoImage: undefined,
     },
   });
 
@@ -55,10 +55,16 @@ const SellerAboutForm = () => {
         if (result.error) {
           setError(result.error);
         } else if (result.data) {
-          // Convert nulls to empty strings for form compatibility
-          const safeData = Object.fromEntries(
-            Object.entries(result.data).map(([k, v]) => [k, v ?? ""])
-          );
+          // Convert nulls to undefined for optional fields, keep empty strings for required fields
+          const safeData = {
+            shopName: result.data.shopName || "",
+            shopDescription: result.data.shopDescription || "",
+            shopTagLine: result.data.shopTagLine || undefined,
+            shopAnnouncement: result.data.shopAnnouncement || undefined,
+            sellerImage: result.data.sellerImage || undefined,
+            shopBannerImage: result.data.shopBannerImage || undefined,
+            shopLogoImage: result.data.shopLogoImage || undefined,
+          };
           form.reset(safeData);
         }
       } catch (error) {
@@ -73,18 +79,20 @@ const SellerAboutForm = () => {
 
   const onSubmit = async (values: z.infer<typeof SellerAboutSchema>) => {
     try {
+      console.log("Form submission started with values:", values);
       setIsPending(true);
       setError("");
       setSuccess("");
 
       const result = await updateSellerAbout(values);
+      console.log("Form submission result:", result);
 
       if (result.error) {
         toast.error(result.error);
         throw new Error(result.error);
       }
 
-      toast.success(result.success || "Successfully saved your shop information.");
+      toast.success(result.message || "Successfully saved your shop information.");
     } catch (error) {
       console.error("Error submitting form:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to save shop information";
@@ -95,7 +103,7 @@ const SellerAboutForm = () => {
   };
 
   const removeImage = (field: keyof z.infer<typeof SellerAboutSchema>) => {
-    form.setValue(field, "");
+    form.setValue(field, undefined);
   };
 
   if (!isClient || isLoading) return <Spinner />;
@@ -108,6 +116,20 @@ const SellerAboutForm = () => {
           Tell customers about your shop and upload images to make it stand out
         </CardDescription>
       </CardHeader>
+      
+      {/* Debug form errors */}
+      {Object.keys(form.formState.errors).length > 0 && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <h4 className="text-sm font-medium text-red-800 mb-2">Form Validation Errors:</h4>
+          <ul className="text-sm text-red-700 space-y-1">
+            {Object.entries(form.formState.errors).map(([field, error]) => (
+              <li key={field}>
+                <strong>{field}:</strong> {error?.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <CardContent className="flex flex-col gap-y-6">
         {/* Shop Name */}
         <div className="flex flex-col gap-y-2">

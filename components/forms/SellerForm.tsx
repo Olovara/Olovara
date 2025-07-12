@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { SellerSchema } from "@/schemas/SellerSchema";
-import { sellerInformation } from "@/actions/sellerInformation";
+import { updateSellerInformation } from "@/actions/sellerInformation";
 import { getSellerData } from "@/actions/getSellerData";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
@@ -139,14 +139,14 @@ const SellerForm = () => {
       setSuccess("");
 
       // Send raw data to server action
-      const result = await sellerInformation(values);
+      const result = await updateSellerInformation(values);
 
       if (result.error) {
         toast.error(result.error);
         throw new Error(result.error);
       }
 
-      toast.success(result.success || "Successfully saved your shop information.");
+      toast.success(result.message || "Successfully saved your shop information.");
       
       // Refresh the page to get updated session data with new permissions TODO: Modify to only do this the first time saving
       setTimeout(() => {

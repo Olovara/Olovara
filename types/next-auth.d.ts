@@ -1,11 +1,9 @@
-import { Role, Permission } from "@/data/roles-and-permissions";
 import NextAuth, { type DefaultSession } from "next-auth";
 
 export type ExtendedUser = DefaultSession["user"] & {
-  role: Role;
+  // Role is now fetched via API, not stored in session
   isTwoFactorEnabled: boolean;
   isOAuth: boolean;
-  permissions: string[];
   sellerOnboarding?: {
     applicationAccepted: boolean;
     stripeConnected: boolean;
@@ -23,10 +21,9 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: Role;
+    // Role is now fetched via API, not stored in JWT
     isTwoFactorEnabled?: boolean;
     isOAuth?: boolean;
-    permissions?: string[];
     sellerOnboarding?: {
       applicationAccepted: boolean;
       stripeConnected: boolean;

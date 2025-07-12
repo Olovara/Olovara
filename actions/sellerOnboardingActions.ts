@@ -1,284 +1,151 @@
 "use server";
 
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { updateUserSession } from "@/lib/session-update";
-import { triggerCompleteSessionUpdate } from "@/lib/session-utils";
-import { FULL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
+import { auth } from "@/auth";
+import { currentUser } from "@/lib/auth";
 
-// Action to grant full seller permissions (including product permissions)
-export async function grantFullSellerPermissions() {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    const userId = session.user.id;
-
-    // Get current user permissions
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { permissions: true },
-    });
-
-    if (!user) {
-      return { success: false, error: "User not found" };
-    }
-
-    const existingPermissions = user.permissions as any[] || [];
-    
-    // Create permission objects for full seller permissions
-    const newPermissions = FULL_SELLER_PERMISSIONS.map(permission => ({
-      permission,
-      grantedAt: new Date(),
-      grantedBy: 'system',
-      reason: 'Full seller permissions granted upon onboarding completion',
-      expiresAt: null,
-    }));
-
-    // Combine existing and new permissions, avoiding duplicates
-    const updatedPermissions = [...existingPermissions];
-    newPermissions.forEach(newPerm => {
-      const exists = updatedPermissions.some(existing => existing.permission === newPerm.permission);
-      if (!exists) {
-        updatedPermissions.push(newPerm);
-      }
-    });
-
-    // Update user with new permissions
-    await db.user.update({
-      where: { id: userId },
-      data: { permissions: updatedPermissions },
-    });
-
-    // Update session to reflect changes
-    await updateUserSession(userId);
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error granting full seller permissions:", error);
-    return { success: false, error: "Failed to grant full seller permissions" };
-  }
-}
-
-// Action to mark shop profile as complete
 export async function markShopProfileComplete() {
   try {
     const session = await auth();
+    
     if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
+      throw new Error("Not authenticated");
     }
 
-    const userId = session.user.id;
-
-    // Check if profile is already complete in session
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (currentOnboarding?.shopProfileComplete) {
-      // Already complete, just update session to ensure it's current
-      await updateUserSession(userId);
-      return { success: true };
-    }
-
-    // Update database to mark as complete
+    // Update seller profile to mark as complete
     await db.seller.update({
-      where: { userId },
-      data: { shopProfileComplete: true },
+      where: { userId: session.user.id },
+      data: { shopProfileComplete: true }
     });
 
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, userId, 'Shop profile completed');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Shop profile marked as complete for user:", session.user.id);
 
     return { success: true };
   } catch (error) {
     console.error("Error marking shop profile complete:", error);
-    return { success: false, error: "Failed to update profile completion" };
+    return { success: false, error: "Failed to mark shop profile complete" };
   }
 }
 
-// Action to mark Stripe as connected
-export async function markStripeConnected() {
+export async function markStripeConnected(userId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    const userId = session.user.id;
-
-    // Check if Stripe is already connected in session
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (currentOnboarding?.stripeConnected) {
-      // Already connected, just update session to ensure it's current
-      await updateUserSession(userId);
-      return { success: true };
-    }
-
-    // Update database to mark as connected
+    // Update seller to mark Stripe as connected
     await db.seller.update({
       where: { userId },
-      data: { stripeConnected: true },
+      data: { stripeConnected: true }
     });
 
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, userId, 'Stripe account connected');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Stripe marked as connected for user:", userId);
 
     return { success: true };
   } catch (error) {
     console.error("Error marking Stripe connected:", error);
-    return { success: false, error: "Failed to update Stripe connection" };
+    return { success: false, error: "Failed to mark Stripe connected" };
   }
 }
 
-// Action to mark shipping profile as created
-export async function markShippingProfileCreated() {
+export async function markShippingProfileCreated(userId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    const userId = session.user.id;
-
-    // Check if shipping profile is already created in session
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (currentOnboarding?.shippingProfileCreated) {
-      // Already created, just update session to ensure it's current
-      await updateUserSession(userId);
-      return { success: true };
-    }
-
-    // Update database to mark as created
+    // Update seller to mark shipping profile as created
     await db.seller.update({
       where: { userId },
-      data: { shippingProfileCreated: true },
+      data: { shippingProfileCreated: true }
     });
 
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, userId, 'Shipping profile created');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Shipping profile marked as created for user:", userId);
 
     return { success: true };
   } catch (error) {
     console.error("Error marking shipping profile created:", error);
-    return { success: false, error: "Failed to update shipping profile creation" };
+    return { success: false, error: "Failed to mark shipping profile created" };
   }
 }
 
-// Action to mark seller as fully activated
-export async function markFullyActivated() {
+export async function markSellerFullyActivated(userId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    const userId = session.user.id;
-
-    // Check if seller is already fully activated in session
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (currentOnboarding?.isFullyActivated) {
-      // Already activated, just update session to ensure it's current
-      await updateUserSession(userId);
-      return { success: true };
-    }
-
-    // Update database to mark as fully activated
+    // Update seller to mark as fully activated
     await db.seller.update({
       where: { userId },
-      data: { isFullyActivated: true },
+      data: { isFullyActivated: true }
     });
 
-    // Grant full seller permissions (including product permissions)
-    await grantFullSellerPermissions();
-
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, userId, 'Seller account fully activated');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Seller marked as fully activated for user:", userId);
 
     return { success: true };
   } catch (error) {
     console.error("Error marking seller fully activated:", error);
-    return { success: false, error: "Failed to activate seller account" };
+    return { success: false, error: "Failed to mark seller fully activated" };
   }
 }
 
-// Action to check and update onboarding status based on current data
-export async function checkAndUpdateOnboardingStatus() {
+export async function getSellerOnboardingStatus(userId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    const userId = session.user.id;
-
-    // Get current seller status
     const seller = await db.seller.findUnique({
       where: { userId },
       select: {
         applicationAccepted: true,
         stripeConnected: true,
-        connectedAccountId: true,
-        encryptedBusinessName: true,
-        encryptedTaxId: true,
-        taxIdVerified: true,
-        shippingProfiles: {
-          select: { id: true },
-          take: 1,
-        },
         shopProfileComplete: true,
         shippingProfileCreated: true,
         isFullyActivated: true,
-      },
+      }
     });
 
     if (!seller) {
-      return { success: false, error: "Seller not found" };
+      return { success: false, error: "Seller profile not found" };
     }
 
-    // Check each step and update if needed
-    const profileCompleted = !!(seller.encryptedBusinessName && seller.encryptedTaxId && seller.taxIdVerified);
-    const stripeConnected = seller.stripeConnected && !!seller.connectedAccountId;
-    const shippingProfileCreated = seller.shippingProfiles.length > 0;
-    const fullyActivated = seller.applicationAccepted && profileCompleted && stripeConnected && shippingProfileCreated;
+    return {
+      success: true,
+      onboardingStatus: seller
+    };
+  } catch (error) {
+    console.error("Error getting seller onboarding status:", error);
+    return { success: false, error: "Failed to get onboarding status" };
+  }
+}
 
-    // Update fields if they don't match current state
-    const updates: any = {};
+export async function updateSellerOnboardingStep(userId: string, step: string, completed: boolean) {
+  try {
+    const updateData: any = {};
     
-    if (profileCompleted !== seller.shopProfileComplete) {
-      updates.shopProfileComplete = profileCompleted;
-    }
-    
-    if (stripeConnected !== seller.stripeConnected) {
-      updates.stripeConnected = stripeConnected;
-    }
-    
-    if (shippingProfileCreated !== seller.shippingProfileCreated) {
-      updates.shippingProfileCreated = shippingProfileCreated;
-    }
-    
-    if (fullyActivated !== seller.isFullyActivated) {
-      updates.isFullyActivated = fullyActivated;
+    switch (step) {
+      case 'shopProfileComplete':
+        updateData.shopProfileComplete = completed;
+        break;
+      case 'stripeConnected':
+        updateData.stripeConnected = completed;
+        break;
+      case 'shippingProfileCreated':
+        updateData.shippingProfileCreated = completed;
+        break;
+      case 'isFullyActivated':
+        updateData.isFullyActivated = completed;
+        break;
+      default:
+        throw new Error(`Invalid onboarding step: ${step}`);
     }
 
-    // Apply updates if any
-    if (Object.keys(updates).length > 0) {
-      await db.seller.update({
-        where: { userId },
-        data: updates,
-      });
+    await db.seller.update({
+      where: { userId },
+      data: updateData
+    });
 
-      // If seller is now fully activated, grant full permissions
-      if (updates.isFullyActivated && fullyActivated) {
-        await grantFullSellerPermissions();
-      }
-
-      // Update session to reflect changes
-      await updateUserSession(userId);
-    }
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log(`Onboarding step ${step} updated for user:`, userId);
 
     return { success: true };
   } catch (error) {
-    console.error("Error checking onboarding status:", error);
-    return { success: false, error: "Failed to check onboarding status" };
+    console.error("Error updating seller onboarding step:", error);
+    return { success: false, error: "Failed to update onboarding step" };
   }
 } 

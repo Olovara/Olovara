@@ -1,68 +1,79 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { markShippingProfileCreated } from "@/actions/sellerOnboardingActions";
-import { updateUserSession } from "@/lib/session-update";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
+    
     if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { name, rates, isDefault, countryOfOrigin } = body;
+    const { name, countryOfOrigin, rates } = await request.json();
 
-    // If this is set as default, unset any existing default profiles
-    if (isDefault) {
-      await db.shippingProfile.updateMany({
-        where: {
-          sellerId: session.user.id,
-          isDefault: true,
-        },
-        data: {
-          isDefault: false,
-        },
-      });
+    if (!name || !countryOfOrigin || !rates || !Array.isArray(rates)) {
+      return NextResponse.json(
+        { error: "Name, country of origin, and rates array are required" },
+        { status: 400 }
+      );
     }
 
+    // Get the seller profile
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
+    });
+
+    if (!seller) {
+      return NextResponse.json({ error: "Seller profile not found" }, { status: 404 });
+    }
+
+    // Create shipping profile with rates
     const shippingProfile = await db.shippingProfile.create({
       data: {
         name,
-        isDefault,
         countryOfOrigin,
         sellerId: session.user.id,
         rates: {
           create: rates.map((rate: any) => ({
             zone: rate.zone,
+            isInternational: rate.isInternational || false,
             price: rate.price,
-            currency: rate.currency,
+            currency: rate.currency || "USD",
             estimatedDays: rate.estimatedDays,
             additionalItem: rate.additionalItem,
             serviceLevel: rate.serviceLevel,
-            isFreeShipping: rate.isFreeShipping,
-          })),
-        },
+            isFreeShipping: rate.isFreeShipping || false,
+          }))
+        }
       },
       include: {
-        rates: true,
-      },
+        rates: true
+      }
     });
 
-    // Mark shipping profile creation as complete if it's not already
-    const currentOnboarding = session.user.sellerOnboarding;
-    if (!currentOnboarding?.shippingProfileCreated) {
-      await markShippingProfileCreated();
-    } else {
-      // If already complete, just update the session to ensure it's current
-      await updateUserSession(session.user.id);
-    }
+    // Update seller to mark shipping profile as created
+    await db.seller.update({
+      where: { userId: session.user.id },
+      data: { shippingProfileCreated: true }
+    });
 
-    return NextResponse.json(shippingProfile);
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Shipping profile created successfully for user:", session.user.id);
+
+    return NextResponse.json({
+      success: true,
+      shippingProfile
+    });
+
   } catch (error) {
-    console.error("[SHIPPING_PROFILES_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("Error creating shipping profile:", error);
+    return NextResponse.json(
+      { error: "Failed to create shipping profile" },
+      { status: 500 }
+    );
   }
 }
 

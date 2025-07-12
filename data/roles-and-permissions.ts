@@ -123,6 +123,7 @@ export const PERMISSIONS = {
   MANAGE_SELLER_SETTINGS: { value: 'MANAGE_SELLER_SETTINGS', group: 'System Management', label: 'Manage Seller Settings' },
   MANAGE_MEMBER_SETTINGS: { value: 'MANAGE_MEMBER_SETTINGS', group: 'System Management', label: 'Manage Member Settings' },
   MANAGE_CURRENCIES: { value: 'MANAGE_CURRENCIES', group: 'System Management', label: 'Manage Currencies' },
+  MANAGE_POLICIES: { value: 'MANAGE_POLICIES', group: 'System Management', label: 'Manage Policies' },
   
   // Analytics
   VIEW_ANALYTICS: { value: 'VIEW_ANALYTICS', group: 'Analytics', label: 'View Analytics' },

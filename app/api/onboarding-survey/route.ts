@@ -68,11 +68,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Fetch user permissions from database
+    const dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { permissions: true }
+    });
+
     // Check if user has permission to view onboarding surveys
-    const userPermissions = session.user.permissions as string[] || [];
-    const hasPermission = userPermissions.includes(PERMISSIONS.VIEW_ONBOARDING_SURVEYS.value);
-    
-    if (!hasPermission) {
+    if (!dbUser?.permissions?.includes(PERMISSIONS.VIEW_ONBOARDING_SURVEYS.value)) {
       return NextResponse.json({ error: "Forbidden - Insufficient permissions" }, { status: 403 });
     }
 

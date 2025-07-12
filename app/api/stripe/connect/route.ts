@@ -1,58 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripeConnect } from "@/lib/stripe";
-import { headers } from "next/headers";
-import { updateUserSession } from "@/lib/session-update";
 
-export async function POST(req: Request) {
-  const body = await req.text();
-
-  const signature = headers().get("Stripe-Signature") as string;
-
-  let event;
-
+export async function POST(request: NextRequest) {
   try {
-    event = stripeConnect.instance.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_CONNECT_WEBHOOK_SECRET as string
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Get the seller profile
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true, userId: true, connectedAccountId: true }
+    });
+
+    if (!seller) {
+      return NextResponse.json({ error: "Seller profile not found" }, { status: 404 });
+    }
+
+    // Check if already connected
+    if (seller.connectedAccountId && !seller.connectedAccountId.startsWith('temp_')) {
+      return NextResponse.json({ 
+        error: "Stripe account already connected",
+        connectedAccountId: seller.connectedAccountId 
+      }, { status: 400 });
+    }
+
+    // Create Stripe Connect account link
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    
+    const accountLink = await stripe.accountLinks.create({
+      account: seller.connectedAccountId,
+      refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard`,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${seller.connectedAccountId}`,
+      type: 'account_onboarding',
+    });
+
+    // Update seller to mark as connected
+    await db.seller.update({
+      where: { userId: session.user.id },
+      data: { stripeConnected: true }
+    });
+
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's onboarding status has been updated in the database
+    console.log("Stripe account connected successfully for user:", session.user.id);
+
+    return NextResponse.json({
+      success: true,
+      url: accountLink.url
+    });
+
+  } catch (error) {
+    console.error("Error creating Stripe Connect account link:", error);
+    return NextResponse.json(
+      { error: "Failed to create Stripe Connect account link" },
+      { status: 500 }
     );
-  } catch (error: unknown) {
-    return new Response("webhook error", { status: 400 });
   }
-
-  switch (event.type) {
-    case "account.updated": {
-      const account = event.data.object;
-
-      // Find the seller with this connectedAccountId
-      const seller = await db.seller.findUnique({
-        where: {
-          connectedAccountId: account.id,
-        },
-      });
-
-      if (seller) {
-        // Update the stripeConnected field on the Seller model
-        await db.seller.update({
-          where: {
-            id: seller.id,
-          },
-          data: {
-            stripeConnected:
-              account.capabilities?.transfers === "active" &&
-              account.capabilities?.card_payments === "active",
-          },
-        });
-
-        // Update user session to reflect Stripe connection status
-        await updateUserSession(seller.userId);
-      }
-      break;
-    }
-    default: {
-      console.log("unhandled event");
-    }
-  }
-
-  return new Response(null, { status: 200 });
 }

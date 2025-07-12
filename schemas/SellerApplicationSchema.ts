@@ -16,13 +16,13 @@ const calculateAge = (birthDate: Date): number => {
 export const SellerApplicationSchema = z.object({
   // Core crafting information (required)
   craftingProcess: z.string().min(30, {
-    message: "Please enter your crafting process, required.",
+    message: "Please provide a detailed description of your crafting process (at least 30 characters).",
   }),
   productTypes: z.string().min(10, { 
-    message: "Please describe the types of products you make." 
+    message: "Please describe the types of products you make (at least 10 characters)." 
   }),
   interestInJoining: z.string().min(6, {
-    message: "Please enter the reason for your interest in joining, required",
+    message: "Please provide a more detailed explanation of your interest in joining Yarnnu (at least 6 characters).",
   }),
   
   // Optional online presence (single field)

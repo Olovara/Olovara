@@ -8,7 +8,6 @@ export async function getAuthUserId() {
         console.log("Auth session:", {
             exists: !!session,
             userId: session?.user?.id,
-            role: session?.user?.role,
             email: session?.user?.email
         });
 
@@ -41,19 +40,15 @@ export async function getAuthUserId() {
         console.log("Database user check:", {
             exists: !!dbUser,
             role: dbUser?.role,
-            sessionRole: session.user?.role,
             hasSellerProfile: !!dbUser?.seller,
             sellerApplicationAccepted: dbUser?.seller?.applicationAccepted
         });
 
-        // If there's a role mismatch, log it
-        if (dbUser?.role !== session.user?.role) {
-            console.error("Role mismatch detected:", {
-                sessionRole: session.user?.role,
-                dbRole: dbUser?.role,
-                userId: userId
-            });
-        }
+        // Log the role from database
+        console.log("User role from database:", {
+            dbRole: dbUser?.role,
+            userId: userId
+        });
 
         return userId;
     } catch (error) {
@@ -68,7 +63,6 @@ export async function getUserRole(): Promise<Role> {
         console.log("getUserRole session:", {
             exists: !!session,
             userId: session?.user?.id,
-            role: session?.user?.role,
             email: session?.user?.email
         });
 
@@ -77,14 +71,7 @@ export async function getUserRole(): Promise<Role> {
             throw new Error("Unauthorized: No session found");
         }
 
-        const role = session.user.role;
-
-        if (!role) {
-            console.error("Authentication failed: Role missing in session");
-            throw new Error("Unauthorized: Role missing");
-        }
-
-        // Verify role in database with seller profile check
+        // Fetch role from database since it's no longer stored in session
         const dbUser = await db.user.findUnique({
             where: { id: session.user.id },
             select: { 
@@ -98,23 +85,18 @@ export async function getUserRole(): Promise<Role> {
             }
         });
         
+        if (!dbUser?.role) {
+            console.error("Authentication failed: Role missing in database");
+            throw new Error("Unauthorized: Role missing");
+        }
+        
         console.log("Database role check:", {
-            sessionRole: role,
-            dbRole: dbUser?.role,
-            match: role === dbUser?.role,
+            dbRole: dbUser.role,
             hasSellerProfile: !!dbUser?.seller,
             sellerApplicationAccepted: dbUser?.seller?.applicationAccepted
         });
 
-        if (dbUser?.role !== role) {
-            console.error("Role mismatch between session and database:", {
-                sessionRole: role,
-                dbRole: dbUser?.role,
-                userId: session.user.id
-            });
-        }
-
-        return role;
+        return dbUser.role as Role;
     } catch (error) {
         console.error("getUserRole error:", error);
         throw error;

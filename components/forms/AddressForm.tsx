@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { encryptData } from "@/lib/encryption";
+import { encryptAddress } from "@/lib/encryption";
 import { getOnboardingCountriesByZone } from "@/data/countries";
 
 const addressSchema = z.object({
@@ -95,26 +95,19 @@ export default function AddressForm({ type, onSuccess, initialData }: AddressFor
     try {
       setLoading(true);
 
-      // Encrypt address data
-      const encryptedData = {
-        encryptedStreet: encryptData(data.street1).encrypted,
-        streetIV: encryptData(data.street1).iv,
-        streetSalt: encryptData(data.street1).salt,
-        encryptedStreet2: data.street2 ? encryptData(data.street2).encrypted : null,
-        street2IV: data.street2 ? encryptData(data.street2).iv : null,
-        street2Salt: data.street2 ? encryptData(data.street2).salt : null,
-        encryptedCity: encryptData(data.city).encrypted,
-        cityIV: encryptData(data.city).iv,
-        citySalt: encryptData(data.city).salt,
-        encryptedState: data.state ? encryptData(data.state).encrypted : null,
-        stateIV: data.state ? encryptData(data.state).iv : null,
-        stateSalt: data.state ? encryptData(data.state).salt : null,
-        encryptedPostal: encryptData(data.postalCode).encrypted,
-        postalIV: encryptData(data.postalCode).iv,
-        postalSalt: encryptData(data.postalCode).salt,
-        encryptedCountry: encryptData(data.country).encrypted,
-        countryIV: encryptData(data.country).iv,
-        countrySalt: encryptData(data.country).salt,
+      // Use the encryptAddress helper function to encrypt all address fields at once
+      const encryptedData = encryptAddress({
+        street: data.street1,
+        street2: data.street2,
+        city: data.city,
+        state: data.state,
+        postalCode: data.postalCode,
+        country: data.country,
+      });
+
+      // Add the non-encrypted fields
+      const addressData = {
+        ...encryptedData,
         isDefault: data.isDefault,
         isBusinessAddress: data.isBusinessAddress,
       };
@@ -124,7 +117,7 @@ export default function AddressForm({ type, onSuccess, initialData }: AddressFor
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(encryptedData),
+        body: JSON.stringify(addressData),
       });
 
       if (!response.ok) {

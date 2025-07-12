@@ -7,7 +7,8 @@ import { auth } from "@/auth";
 import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
-import { updateUserSession } from "@/lib/session-update";
+import { encryptData } from "@/lib/encryption";
+
 import { generateReferralCode } from "@/lib/utils";
 
 export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
@@ -81,6 +82,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       console.log(`Generated unique referral code: ${referralCode}`);
 
+      // Properly encrypt temporary tax information
+      const tempBusinessName = "Temporary Business Name";
+      const tempTaxId = "Temporary Tax ID";
+      
+      const encryptedBusinessName = encryptData(tempBusinessName);
+      const encryptedTaxId = encryptData(tempTaxId);
+
       await tx.seller.create({
         data: {
           shopName: tempShopName,
@@ -89,13 +97,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           shopProfileComplete: false, // Will be set to true when profile is completed
           shippingProfileCreated: false, // Will be set to true when shipping profile is created
           isFullyActivated: false, // Will be set to true when all steps are completed
-          // Required encrypted fields with temporary values
-          encryptedBusinessName: "Temporary Business Name",
-          businessNameIV: "temp-iv",
-          businessNameSalt: "temp-salt",
-          encryptedTaxId: "Temporary Tax ID",
-          taxIdIV: "temp-iv",
-          taxIdSalt: "temp-salt",
+          // Required encrypted fields with properly encrypted temporary values
+          encryptedBusinessName: encryptedBusinessName.encrypted,
+          businessNameIV: encryptedBusinessName.iv,
+          businessNameSalt: encryptedBusinessName.salt,
+          encryptedTaxId: encryptedTaxId.encrypted,
+          taxIdIV: encryptedTaxId.iv,
+          taxIdSalt: encryptedTaxId.salt,
           taxCountry: "US", // Default to US, can be updated later
           // Use unique temporary connectedAccountId to avoid constraint issues
           connectedAccountId: uniqueConnectedAccountId,
@@ -126,6 +134,12 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       if (user) {
         const existingPermissions = user.permissions as any[] || [];
         
+        console.log("SellerApplication - Current user permissions:", {
+          userId,
+          existingPermissionsCount: existingPermissions.length,
+          existingPermissions: existingPermissions.map(p => p.permission)
+        });
+        
         // Create permission objects for initial seller permissions
         const newPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
           permission,
@@ -135,6 +149,12 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           expiresAt: null,
         }));
 
+        console.log("SellerApplication - Granting new permissions:", {
+          userId,
+          newPermissionsCount: newPermissions.length,
+          newPermissions: newPermissions.map(p => p.permission)
+        });
+
         // Combine existing and new permissions, avoiding duplicates
         const updatedPermissions = [...existingPermissions];
         newPermissions.forEach(newPerm => {
@@ -142,6 +162,12 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           if (!exists) {
             updatedPermissions.push(newPerm);
           }
+        });
+
+        console.log("SellerApplication - Final permissions after update:", {
+          userId,
+          finalPermissionsCount: updatedPermissions.length,
+          finalPermissions: updatedPermissions.map(p => p.permission)
         });
 
         // Update user with new permissions
@@ -154,23 +180,36 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       return application;
     });
 
-    // Update session to include seller onboarding data
-    await updateUserSession(userId);
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's role and permissions have been updated in the database
+    console.log("Seller application submitted successfully. User role and permissions updated.");
 
     // Send notifications to admins (outside of transaction to avoid blocking)
     try {
+      console.log("Starting admin notification process...");
       const admins = await getAdminsForSellerApplicationNotification();
+      console.log(`Found ${admins.length} admins to notify`);
+      
       const applicant = await db.user.findUnique({
         where: { id: userId },
         select: { username: true, email: true }
       });
 
+      console.log("Applicant details:", {
+        username: applicant?.username,
+        email: applicant?.email,
+        hasEmail: !!applicant?.email
+      });
+
       if (applicant && applicant.email && admins.length > 0) {
+        console.log(`Sending notifications to ${admins.length} admins...`);
+        
         // Send emails to all relevant admins
         const emailPromises = admins
           .filter(admin => admin.user.email) // Only send to admins with valid emails
-          .map(admin => 
-            sendSellerApplicationNotificationEmail(
+          .map(admin => {
+            console.log(`Sending email to admin: ${admin.user.email} (${admin.user.username})`);
+            return sendSellerApplicationNotificationEmail(
               admin.user.email!,
               admin.user.username || 'Admin',
               applicant.username || 'Unknown',
@@ -179,12 +218,19 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
             ).catch(error => {
               console.error(`Failed to send notification to admin ${admin.user.email}:`, error);
               return null; // Don't fail the whole process if one email fails
-            })
-          );
+            });
+          });
 
         // Wait for all emails to be sent (but don't block the response)
-        Promise.all(emailPromises).then(() => {
-          console.log(`Sent seller application notifications to ${emailPromises.length} admins`);
+        Promise.all(emailPromises).then((results) => {
+          const successfulEmails = results.filter(result => result !== null).length;
+          console.log(`Successfully sent seller application notifications to ${successfulEmails} out of ${emailPromises.length} admins`);
+        });
+      } else {
+        console.log("No admins to notify or missing applicant email:", {
+          hasApplicant: !!applicant,
+          hasApplicantEmail: !!applicant?.email,
+          adminsCount: admins.length
         });
       }
     } catch (notificationError) {

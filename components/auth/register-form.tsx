@@ -31,7 +31,9 @@ const RegisterForm = () => {
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string>(
+    process.env.NODE_ENV === 'development' ? 'dev-token' : ""
+  );
 
   const [isPending, startTransition] = useTransition();
 
@@ -48,13 +50,17 @@ const RegisterForm = () => {
   });
 
   const onSubmit = (values: z.infer<typeof RegisterSchema>) => {
-    if (!recaptchaToken) {
+    // Skip reCAPTCHA check in development mode
+    if (process.env.NODE_ENV !== 'development' && !recaptchaToken) {
       setError("Please complete the reCAPTCHA verification.");
       return;
     }
 
+    // Use a dummy token in development mode
+    const token = process.env.NODE_ENV === 'development' ? 'dev-token' : recaptchaToken;
+
     startTransition(() => {
-      register({ ...values, recaptchaToken }).then((data) => {
+      register({ ...values, recaptchaToken: token }).then((data) => {
         if (data.success) setSuccess(data.success);
         if (data?.error) setError(data.error);
       });
@@ -192,7 +198,7 @@ const RegisterForm = () => {
           />
           <Button
             type="submit"
-            disabled={isPending || !recaptchaToken}
+            disabled={isPending || (process.env.NODE_ENV !== 'development' && !recaptchaToken)}
             className="w-full hover:bg-purple-400"
           >
             Register

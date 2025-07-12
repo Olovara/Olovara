@@ -21,21 +21,17 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
     // Handle Stripe connection completion
     const handleStripeConnection = async () => {
       try {
-        // Trigger session update to reflect Stripe connection
-        const response = await fetch("/api/auth/trigger-session-update", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ reason: 'Stripe account connected' }),
-        });
-        
-        if (response.ok) {
-          // Refresh the page to get updated session data
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
+        // Clear any cached permissions to force fresh fetch
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('yarnnu_user_permissions');
+          localStorage.removeItem('yarnnu_user_role');
+          localStorage.removeItem('yarnnu_permissions_timestamp');
         }
+        
+        // Refresh the page to get updated session data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } catch (error) {
         console.error("Error handling Stripe connection:", error);
         toast.error("Failed to update onboarding status");

@@ -1,7 +1,6 @@
-import { useSession } from "next-auth/react";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 
 export const useCurrentRole = () => {
-  const session = useSession();
-
-  return session.data?.user?.role;
+  const { role } = usePermissions();
+  return role;
 }; 

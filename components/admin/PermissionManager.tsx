@@ -1,16 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { getPermissionGroups } from "@/data/roles-and-permissions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,10 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 
 interface PermissionManagerProps {
   userId: string;
@@ -39,30 +40,30 @@ interface PermissionManagerProps {
 }
 
 export function PermissionManager({ userId, userPermissions }: PermissionManagerProps) {
-  const [selectedPermission, setSelectedPermission] = useState<string>("");
-  const [reason, setReason] = useState<string>("");
+  const [selectedPermission, setSelectedPermission] = useState("");
+  const [reason, setReason] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
-  const [permissionToRemove, setPermissionToRemove] = useState<string | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [permissionToRemove, setPermissionToRemove] = useState<string | null>(null);
+  
+  const { refreshPermissions } = usePermissions();
 
-  // Get permission groups from the data file
-  const permissionGroups = getPermissionGroups();
-
-  // Get currently assigned permission values
-  const assignedPermissions = userPermissions.map((perm: any) => perm.permission);
-
-  // Filter out assigned permissions to show only unassigned ones
   const getUnassignedPermissions = () => {
+    const assignedPermissions = new Set(userPermissions.map((p: any) => p.permission));
+    
     const unassignedGroups: Record<string, { value: string; label: string }[]> = {};
     
-    Object.entries(permissionGroups).forEach(([groupName, permissions]) => {
-      const unassignedInGroup = permissions.filter(
-        permission => !assignedPermissions.includes(permission.value)
-      );
-      
-      if (unassignedInGroup.length > 0) {
-        unassignedGroups[groupName] = unassignedInGroup;
+    Object.entries(PERMISSIONS).forEach(([key, permission]) => {
+      if (!assignedPermissions.has(permission.value)) {
+        const group = permission.group;
+        if (!unassignedGroups[group]) {
+          unassignedGroups[group] = [];
+        }
+        unassignedGroups[group].push({
+          value: permission.value,
+          label: permission.label
+        });
       }
     });
     
@@ -93,11 +94,12 @@ export function PermissionManager({ userId, userPermissions }: PermissionManager
       const result = await response.json();
       
       if (response.ok && result.success) {
-        toast.success(`${result.message}. User's session has been updated.`);
+        toast.success(`${result.message}. User's permissions have been updated.`);
         setSelectedPermission("");
         setReason("");
-        // Refresh the page to show updated permissions
-        window.location.reload();
+        
+        // Refresh permissions for the current user if they're managing their own permissions
+        await refreshPermissions();
       } else {
         toast.error(result.error || "Failed to add permission");
       }
@@ -118,9 +120,10 @@ export function PermissionManager({ userId, userPermissions }: PermissionManager
       const result = await response.json();
       
       if (response.ok && result.success) {
-        toast.success(`${result.message}. User's session has been updated.`);
-        // Refresh the page to show updated permissions
-        window.location.reload();
+        toast.success(`${result.message}. User's permissions have been updated.`);
+        
+        // Refresh permissions for the current user if they're managing their own permissions
+        await refreshPermissions();
       } else {
         toast.error(result.error || "Failed to remove permission");
       }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import GoogleProvider from "next-auth/providers/google";
 import type { Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import { getUserPermissions } from "@/lib/permissions";
 
 export const currentUser = async () => {
   try {
@@ -19,16 +20,45 @@ export const currentUser = async () => {
   }
 };
 
+// Get current user with permissions from database
+export const currentUserWithPermissions = async () => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return null;
+    }
+
+    // Fetch permissions from database
+    const permissions = await getUserPermissions(session.user.id);
+    
+    return {
+      ...session.user,
+      permissions: permissions
+    };
+  } catch (error) {
+    console.error("Error getting current user with permissions:", error);
+    return null;
+  }
+};
+
 // A utility function to get the current role of the user
+// Note: Role is now fetched via API, not stored in session
 export const currentRole = async () => {
   try {
     const session = await auth(); // Retrieve the session
 
-    if (!session) {
-      throw new Error("No session found"); // You can throw an error if there's no session
+    if (!session?.user?.id) {
+      return null;
     }
 
-    return session.user?.role; // Return the user's role from the session if it exists
+    // Fetch role from database via API
+    const response = await fetch('/api/auth/permissions');
+    if (!response.ok) {
+      throw new Error('Failed to fetch user role');
+    }
+
+    const data = await response.json();
+    return data.role || 'MEMBER';
   } catch (error) {
     console.error("Error fetching current role:", error); // Log error for debugging
     return null; // You can also return `null` or `undefined` here to handle the error gracefully

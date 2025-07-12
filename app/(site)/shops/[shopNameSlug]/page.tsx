@@ -1,7 +1,7 @@
 import React from "react";
 import { db } from "@/lib/db";
 import Image from "next/image";
-import ContactSellerButton from "@/components/shared/ContactSellerButton";
+import { ContactSellerButton } from "@/components/shared/ContactSellerButton";
 import CustomOrderButton from "@/components/shared/CustomOrderButton";
 import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";

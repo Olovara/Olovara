@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"; // Use the global Prisma instance
 import { User, AccountStatus } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
-import { currentUser } from "@/lib/auth";
+import { currentUser, currentUserWithPermissions } from "@/lib/auth";
 import { 
   PERMISSIONS, 
   getPermissionValue, 
@@ -14,8 +14,6 @@ import {
   ADMIN_NOTIFICATION_TYPES,
   INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
-import { updateUserSession } from "@/lib/session-update";
-import { triggerCompleteSessionUpdate } from "@/lib/session-utils";
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 import { ObjectId } from "mongodb";
 
@@ -76,7 +74,7 @@ export async function getUsers({
 export async function getAllSellers() {
   try {
     console.log("Starting getAllSellers...");
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -140,7 +138,7 @@ export async function getAllSellers() {
 
 export async function getApprovedSellers() {
   try {
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -189,7 +187,7 @@ export async function getApprovedSellers() {
 export async function getUnapprovedSellers() {
   try {
     console.log("Starting getUnapprovedSellers...");
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -262,7 +260,7 @@ export async function approveApplication(applicationId: string) {
     }
 
     // Verify that the current user has APPROVE_SELLERS permission
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -350,8 +348,9 @@ export async function approveApplication(applicationId: string) {
       // Don't fail the approval process if email fails
     }
 
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, currentUserData.id || 'system', 'Seller application approved');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's role and permissions have been updated in the database
+    console.log(`Seller application approved for user ${userId}. User role and permissions updated.`);
 
     return { success: true };
   } catch (error) {
@@ -367,7 +366,7 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
       throw new Error("Invalid application ID format");
     }
 
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
     
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -450,8 +449,9 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
       // Don't fail the rejection process if email fails
     }
 
-    // Trigger complete session update with WebSocket notification
-    await triggerCompleteSessionUpdate(userId, currentUserData.id || 'system', 'Seller application rejected');
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's role and permissions have been updated in the database
+    console.log(`Seller application rejected for user ${userId}. User role and permissions updated.`);
 
     return { success: true };
   } catch (error) {
@@ -462,7 +462,7 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
 
 export async function getAllUsers() {
   try {
-    const user = await currentUser();
+    const user = await currentUserWithPermissions();
 
     if (!user) {
       throw new Error("Not authenticated");
@@ -504,7 +504,7 @@ export async function getUserPermissions(userId: string) {
       throw new Error("Invalid user ID format");
     }
 
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -569,140 +569,95 @@ export async function getUserPermissions(userId: string) {
   }
 }
 
-export async function addUserPermission(userId: string, permission: string, reason?: string) {
+export async function addUserPermission(
+  userId: string,
+  permission: string,
+  reason: string,
+  grantedBy: string
+) {
   try {
-    const currentUserData = await currentUser();
-
-    if (!currentUserData) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user has MANAGE_PERMISSIONS permission
-    const hasManagePermissions = currentUserData.permissions?.includes('MANAGE_PERMISSIONS');
-    
-    if (!hasManagePermissions) {
-      throw new Error("Forbidden: Insufficient permissions");
-    }
-
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { permissions: true },
-    });
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Check if permission already exists
-    const existingPermissions = user.permissions as any[];
-    const permissionExists = existingPermissions.some(p => p.permission === permission);
-
-    if (permissionExists) {
-      throw new Error("Permission already exists for this user");
-    }
-
-    // Add new permission
-    const newPermission = {
-      permission,
-      grantedAt: new Date(),
-      grantedBy: currentUserData.id,
-      reason: reason || "Granted by admin",
-    };
-
-    const updatedPermissions = [...existingPermissions, newPermission];
-
+    // Add permission to user
     await db.user.update({
       where: { id: userId },
-      data: { permissions: updatedPermissions },
+      data: {
+        permissions: {
+          push: {
+            permission,
+            grantedAt: new Date(),
+            grantedBy,
+            reason,
+            expiresAt: null,
+          },
+        },
+      },
     });
 
-    // Update user's session to include new permissions
-    await updateUserSession(userId);
+    console.log(`Permission ${permission} added to user ${userId} by ${grantedBy}`);
 
-    // Send real-time session update notification
-    try {
-      const emitSessionUpdate = (global as any).emitSessionUpdate;
-      if (typeof emitSessionUpdate === "function") {
-        emitSessionUpdate(
-          userId, 
-          currentUserData.email || currentUserData.id || "Unknown Admin",
-          `Permission "${permission}" added: ${reason || "Granted by admin"}`
-        );
-      }
-    } catch (socketError) {
-      console.error("Error sending session update notification:", socketError);
-      // Don't fail the permission update if socket notification fails
-    }
-
-    return { success: true, message: "Permission added successfully" };
+    return {
+      success: true,
+      message: `Permission "${permission}" has been granted to the user.`,
+    };
   } catch (error) {
     console.error("Error adding user permission:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to add permission" };
+    return {
+      success: false,
+      error: "Failed to add permission",
+    };
   }
 }
 
-export async function removeUserPermission(userId: string, permission: string) {
+export async function removeUserPermission(
+  userId: string,
+  permission: string,
+  removedBy: string
+) {
   try {
-    const currentUserData = await currentUser();
-
-    if (!currentUserData) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user has MANAGE_PERMISSIONS permission
-    const hasManagePermissions = currentUserData.permissions?.includes('MANAGE_PERMISSIONS');
-    
-    if (!hasManagePermissions) {
-      throw new Error("Forbidden: Insufficient permissions");
-    }
-
+    // Get current user permissions
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { permissions: true },
     });
 
     if (!user) {
-      throw new Error("User not found");
+      return {
+        success: false,
+        error: "User not found",
+      };
     }
 
-    // Remove the permission
-    const existingPermissions = user.permissions as any[];
-    const updatedPermissions = existingPermissions.filter(p => p.permission !== permission);
+    // Filter out the permission to remove
+    const updatedPermissions = (user.permissions as any[]).filter(
+      (p: any) => p.permission !== permission
+    );
 
+    // Update user permissions
     await db.user.update({
       where: { id: userId },
-      data: { permissions: updatedPermissions },
+      data: {
+        permissions: updatedPermissions as any,
+      },
     });
 
-    // Update user's session to reflect removed permissions
-    await updateUserSession(userId);
+    console.log(`Permission ${permission} removed from user ${userId} by ${removedBy}`);
 
-    // Send real-time session update notification
-    try {
-      const emitSessionUpdate = (global as any).emitSessionUpdate;
-      if (typeof emitSessionUpdate === "function") {
-        emitSessionUpdate(
-          userId, 
-          currentUserData.email || currentUserData.id || "Unknown Admin",
-          `Permission "${permission}" removed by admin`
-        );
-      }
-    } catch (socketError) {
-      console.error("Error sending session update notification:", socketError);
-      // Don't fail the permission update if socket notification fails
-    }
-
-    return { success: true, message: "Permission removed successfully" };
+    return {
+      success: true,
+      message: `Permission "${permission}" has been removed from the user.`,
+    };
   } catch (error) {
     console.error("Error removing user permission:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to remove permission" };
+    return {
+      success: false,
+      error: "Failed to remove permission",
+    };
   }
 }
 
 // Dashboard Statistics Functions
 export async function getDashboardStats() {
   try {
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -833,7 +788,7 @@ export async function getDashboardStats() {
 
 export async function getRecentActivity() {
   try {
-    const currentUserData = await currentUser();
+    const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
@@ -1123,6 +1078,8 @@ function generateTaskId(): string {
 // Function to get admins who should receive email notifications for seller applications
 export async function getAdminsForSellerApplicationNotification() {
   try {
+    console.log("Fetching admins for seller application notification...");
+    
     const admins = await db.admin.findMany({
       where: {
         isActive: true,
@@ -1144,14 +1101,47 @@ export async function getAdminsForSellerApplicationNotification() {
       }
     });
 
-    // Filter admins who have the specific notification preference
+    console.log(`Found ${admins.length} active admins with SUPER_ADMIN or SELLER_MANAGER role`);
+
+    // Filter admins who have the specific notification preference enabled for email
     const filteredAdmins = admins.filter(admin => {
-      if (!admin.notificationPreferences) return false;
+      if (!admin.notificationPreferences) {
+        console.log(`Admin ${admin.userId} has no notification preferences`);
+        return false;
+      }
       
-      const preferences = admin.notificationPreferences as string[];
-      return preferences.includes(ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED);
+      const preferences = admin.notificationPreferences as any[];
+      console.log(`Admin ${admin.userId} preferences:`, preferences);
+      
+      // Look for the specific notification type with email enabled
+      const sellerAppNotification = preferences.find(pref => 
+        pref.notificationType === ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED
+      );
+      
+      if (sellerAppNotification && sellerAppNotification.emailEnabled) {
+        console.log(`Admin ${admin.userId} has seller application email notifications enabled`);
+        return true;
+      } else {
+        console.log(`Admin ${admin.userId} does not have seller application email notifications enabled`);
+        // For debugging, let's also check if the admin has any notification preferences at all
+        if (preferences.length > 0) {
+          console.log(`Admin ${admin.userId} has ${preferences.length} notification preferences:`, preferences);
+        }
+        return false;
+      }
     });
 
+    console.log(`Found ${filteredAdmins.length} admins with seller application email notifications enabled`);
+    
+    // Fallback: If no admins have specific notification preferences, 
+    // send to all SUPER_ADMIN users as a critical notification
+    if (filteredAdmins.length === 0) {
+      console.log("No admins with specific notification preferences found, falling back to all SUPER_ADMIN users");
+      const superAdmins = admins.filter(admin => admin.role === ADMIN_ROLES.SUPER_ADMIN);
+      console.log(`Found ${superAdmins.length} SUPER_ADMIN users for fallback notification`);
+      return superAdmins;
+    }
+    
     return filteredAdmins;
   } catch (error) {
     console.error("Error fetching admins for seller application notification:", error);
@@ -1199,64 +1189,29 @@ export async function updateUserRole(
   updatedBy: string
 ) {
   try {
-    const currentUserData = await currentUser();
-
-    if (!currentUserData) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user has MANAGE_ROLES permission
-    const hasManageRoles = currentUserData.permissions?.includes('MANAGE_ROLES');
+    // Get role permissions
+    const { ROLE_PERMISSIONS, createRolePermissions } = await import("@/data/roles-and-permissions");
     
-    if (!hasManageRoles) {
-      throw new Error("Forbidden: Insufficient permissions. MANAGE_ROLES permission required.");
-    }
-
-    // Validate the new role
-    const validRoles = ["ADMIN", "MEMBER", "SELLER"];
-    if (!validRoles.includes(newRole)) {
-      return { error: "Invalid role" };
-    }
-
-    // Update the user's role
-    const updatedUser = await db.user.update({
+    // Update user role
+    await db.user.update({
       where: { id: userId },
-      data: { role: newRole },
+      data: {
+        role: newRole,
+        permissions: createRolePermissions(newRole as any, updatedBy),
+      },
     });
 
-    // Log the role change (using console for now)
-    console.log(`Role change logged: User ${updatedBy} changed user ${userId} role to ${newRole}. Reason: ${reason}`);
+    console.log(`User ${userId} role updated to ${newRole} by ${updatedBy}`);
 
-    // Update user session to reflect new role
-    await updateUserSession(userId);
-
-    // Emit WebSocket event for real-time session update
-    try {
-      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/socket/session-update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          updatedBy,
-          reason: `Role changed to ${newRole}: ${reason}`,
-        }),
-      });
-
-      if (response.ok) {
-        console.log("WebSocket session update sent successfully");
-      } else {
-        console.log("WebSocket session update failed, but role was updated");
-      }
-    } catch (error) {
-      console.log("WebSocket session update error:", error);
-      // Continue anyway - the role was still updated successfully
-    }
-
-    return { success: true, user: updatedUser };
+    return {
+      success: true,
+      message: `User role has been updated to "${newRole}".`,
+    };
   } catch (error) {
     console.error("Error updating user role:", error);
-    return { error: error instanceof Error ? error.message : "Failed to update user role" };
+    return {
+      success: false,
+      error: "Failed to update user role",
+    };
   }
 }

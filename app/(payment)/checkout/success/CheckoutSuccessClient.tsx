@@ -6,16 +6,14 @@ import { CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 
-interface CheckoutSuccessClientProps {
-  userRole: string;
-}
-
-export default function CheckoutSuccessClient({ userRole }: CheckoutSuccessClientProps) {
+export default function CheckoutSuccessClient() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [isLoading, setIsLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const { role } = usePermissions();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -38,7 +36,7 @@ export default function CheckoutSuccessClient({ userRole }: CheckoutSuccessClien
 
   // Determine the orders page URL based on user role
   const getOrdersPageUrl = () => {
-    if (userRole === "SELLER") {
+    if (role === "SELLER") {
       return "/seller/dashboard/my-purchases";
     } else {
       return "/member/dashboard/my-purchases";

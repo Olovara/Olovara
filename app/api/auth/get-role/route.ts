@@ -1,17 +1,23 @@
 import { auth } from "@/auth";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ id: null, role: null, permissions: [] });
   }
 
-  // Return the user ID, role and permissions to maintain compatibility with client-side code
+  // Fetch role and permissions from the database
+  const dbUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, permissions: true }
+  });
+
   return NextResponse.json({ 
     id: session.user.id,
-    role: session.user.role,
-    permissions: session.user.permissions || []
+    role: dbUser?.role || null,
+    permissions: dbUser?.permissions || []
   });
 }

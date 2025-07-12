@@ -13,22 +13,26 @@ export const submitCustomerFeedback = async (values: z.infer<typeof CustomerFeed
 
   const { heardFrom, overallExperience, placedOrder, orderNumber, experience, improvements, returnLikelihood, email, recaptchaToken } = validatedFields.data;
 
-  // Verify reCAPTCHA token
-  if (recaptchaToken) {
-    const response = await fetch(
-      `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`,
-      {
-        method: "POST",
+  // Verify reCAPTCHA token (skip in development)
+  if (process.env.NODE_ENV !== 'development') {
+    if (recaptchaToken) {
+      const response = await fetch(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!data.success || data.score < 0.5) {
+        return { error: "reCAPTCHA verification failed." };
       }
-    );
-
-    const data = await response.json();
-
-    if (!data.success || data.score < 0.5) {
-      return { error: "reCAPTCHA verification failed." };
+    } else {
+      return { error: "reCAPTCHA token missing." };
     }
   } else {
-    return { error: "reCAPTCHA token missing." };
+    console.log("Development mode: Skipping reCAPTCHA verification for customer feedback");
   }
 
   await db.customerFeedback.create({

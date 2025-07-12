@@ -1,16 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ROLES } from "@/data/roles-and-permissions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,10 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { Shield, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { ROLES } from "@/data/roles-and-permissions";
+import { usePermissions } from "@/components/providers/PermissionProvider";
 
 interface RoleManagerProps {
   userId: string;
@@ -41,10 +42,12 @@ interface RoleManagerProps {
 }
 
 export function RoleManager({ userId, currentRole, username, currentUser }: RoleManagerProps) {
-  const [selectedRole, setSelectedRole] = useState<string>(currentRole);
-  const [reason, setReason] = useState<string>("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("");
+  const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const { refreshPermissions } = usePermissions();
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -57,7 +60,7 @@ export function RoleManager({ userId, currentRole, username, currentUser }: Role
       case 'MEMBER':
         return <Badge variant="outline">Member</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>;
+        return <Badge variant="outline">{role}</Badge>;
     }
   };
 
@@ -102,8 +105,9 @@ export function RoleManager({ userId, currentRole, username, currentUser }: Role
         setIsDialogOpen(false);
         setSelectedRole("");
         setReason("");
-        // Refresh the page to show updated data
-        window.location.reload();
+        
+        // Refresh permissions for the current user if they're managing their own role
+        await refreshPermissions();
       } else {
         toast.error(result.error || "Failed to update user role");
       }

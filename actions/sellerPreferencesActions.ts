@@ -1,72 +1,57 @@
 "use server";
 
-import * as z from "zod";
-import { db } from "@/lib/db";
-import { SellerPreferencesSchema } from "@/schemas/SellerPreferencesSchema";
 import { auth } from "@/auth";
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/data/roles-and-permissions";
-import { updateUserSession } from "@/lib/session-update";
+import { db } from "@/lib/db";
+import { currentUser } from "@/lib/auth";
 
-export const updateSellerPreferences = async (values: z.infer<typeof SellerPreferencesSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
-
-  const canManageSettings = await hasPermission(session.user.id, "MANAGE_SELLER_SETTINGS" as Permission);
-  if (!canManageSettings) {
-    return { error: "You don't have permission to perform this action." };
-  }
-
-  const validatedFields = SellerPreferencesSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields." };
-  }
-
-  const { 
-    preferredCurrency, 
-    preferredWeightUnit, 
-    preferredDimensionUnit, 
-    preferredDistanceUnit,
-    isWomanOwned,
-    isMinorityOwned,
-    isLGBTQOwned,
-    isVeteranOwned,
-    isSustainable,
-    isCharitable,
-    valuesPreferNotToSay
-  } = validatedFields.data;
-
+export async function updateSellerPreferences(data: {
+  preferredCurrency: string;
+  preferredWeightUnit: string;
+  preferredDimensionUnit: string;
+  preferredDistanceUnit: string;
+  isWomanOwned: boolean;
+  isMinorityOwned: boolean;
+  isLGBTQOwned: boolean;
+  isVeteranOwned: boolean;
+  isSustainable: boolean;
+  isCharitable: boolean;
+  valuesPreferNotToSay: boolean;
+}) {
   try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
     // Update seller preferences
     await db.seller.update({
       where: { userId: session.user.id },
       data: {
-        preferredCurrency,
-        preferredWeightUnit,
-        preferredDimensionUnit,
-        preferredDistanceUnit,
-        isWomanOwned,
-        isMinorityOwned,
-        isLGBTQOwned,
-        isVeteranOwned,
-        isSustainable,
-        isCharitable,
-        valuesPreferNotToSay,
-      },
+        preferredCurrency: data.preferredCurrency,
+        preferredWeightUnit: data.preferredWeightUnit,
+        preferredDimensionUnit: data.preferredDimensionUnit,
+        preferredDistanceUnit: data.preferredDistanceUnit,
+        isWomanOwned: data.isWomanOwned,
+        isMinorityOwned: data.isMinorityOwned,
+        isLGBTQOwned: data.isLGBTQOwned,
+        isVeteranOwned: data.isVeteranOwned,
+        isSustainable: data.isSustainable,
+        isCharitable: data.isCharitable,
+        valuesPreferNotToSay: data.valuesPreferNotToSay,
+      }
     });
 
-    // Update session to reflect changes
-    await updateUserSession(session.user.id);
+    // Note: Session refresh is now handled by the client-side page reload
+    // The user's preferences have been updated in the database
+    console.log("Seller preferences updated for user:", session.user.id);
 
-    return { success: "Preferences updated successfully." };
+    return { success: true, message: "Preferences updated successfully!" };
   } catch (error) {
     console.error("Error updating seller preferences:", error);
-    return { error: "Something went wrong while updating preferences." };
+    return { success: false, error: "Failed to update seller preferences" };
   }
-};
+}
 
 export const getSellerPreferences = async () => {
   const session = await auth();
