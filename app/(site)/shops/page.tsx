@@ -7,6 +7,8 @@ import {
   PaginationInfoAndSizeSelector,
 } from "@/components/PaginationComponent";
 import { ShopFilters } from "@/components/ShopFilters";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 export const metadata: Metadata = {
   title: "Shops | Yarnnu",
@@ -33,6 +35,12 @@ interface ShopsPageProps {
 }
 
 export default async function ShopsPage({ searchParams }: ShopsPageProps) {
+  // Get user's country code for location-based filtering
+  const userCountryCode = await getUserCountryCode();
+  // Get centralized filter configuration
+  const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
+  const productWhere = await createProductFilterWhereClause({}, filterConfig);
+
   const values = searchParams.values?.split(",") || [];
   const sortBy = searchParams.sortBy || "newest";
   const currentPage = Number(searchParams.page) || 1;
@@ -97,9 +105,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
       pinterestUrl: true,
       tiktokUrl: true,
       products: {
-        where: {
-          status: "ACTIVE",
-        },
+        where: productWhere,
         select: {
           id: true,
         },

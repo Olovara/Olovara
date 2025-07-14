@@ -11,10 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Filter } from "lucide-react";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createLocationFilterWhereClause } from "@/lib/product-filtering";
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 import { LocationFilterInfo } from "@/components/LocationFilterNotice";
-import { auth } from "@/auth";
-import { canUserAccessTestEnvironment } from "@/lib/test-environment";
 
 export const metadata: Metadata = {
   title: "Products | Yarnnu",
@@ -39,11 +37,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
   
-  // Check if user has test environment access
-  const session = await auth();
-  const canAccessTest = session?.user?.id 
-    ? await canUserAccessTestEnvironment(session.user.id)
-    : false;
+  // Get centralized filter configuration
+  const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
 
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
@@ -55,8 +50,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const pageSize = Number(searchParams.size) || 24;
   const values = searchParams.values?.split(",") || [];
 
-  // Build where clause
-  const where: Prisma.ProductWhereInput = {
+  // Build additional filters
+  const additionalFilters: Prisma.ProductWhereInput = {
     AND: [
       {
         price: {
@@ -64,13 +59,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           lte: priceRange[1] * 100, // Convert to cents
         },
       },
-      {
-        status: "ACTIVE", // Only show active products
-      },
-      // Filter out test products unless user has test environment access
-      ...(canAccessTest ? [] : [{ isTestProduct: false }]),
-      // Add location-based filtering
-      createLocationFilterWhereClause(userCountryCode || ""),
       ...(searchParams.q
         ? [
             {
@@ -121,6 +109,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         : []),
     ],
   };
+
+  // Use centralized filtering
+  const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
 
   // Build orderBy clause
   const orderBy = (() => {

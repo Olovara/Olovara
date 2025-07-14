@@ -6,8 +6,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import ProductCard from "@/components/ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createLocationFilterWhereClause } from "@/lib/product-filtering";
-
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 interface PrimaryCategoryPageProps {
   params: {
@@ -50,6 +49,8 @@ export default async function PrimaryCategoryPage({
 }: PrimaryCategoryPageProps) {
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
+  // Get centralized filter configuration
+  const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
 
   const primaryCategory = CategoriesMap.PRIMARY.find(
     (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
@@ -73,21 +74,16 @@ export default async function PrimaryCategoryPage({
   const itemsPerPage = 12;
   const selectedValues = values?.split(",") || [];
 
-  // Build where clause
-  const where: Prisma.ProductWhereInput = {
+  // Build additional filters
+  const additionalFilters: Prisma.ProductWhereInput = {
     AND: [
       {
         primaryCategory: primaryCategoryId,
-        status: "ACTIVE", // Only show active products
-      },
-      {
         price: {
           gte: priceRange[0],
           lte: priceRange[1],
         },
       },
-      // Add location-based filtering
-      createLocationFilterWhereClause(userCountryCode || ""),
       ...(q
         ? [
             {
@@ -111,6 +107,9 @@ export default async function PrimaryCategoryPage({
         : []),
     ],
   };
+
+  // Use centralized filtering
+  const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
 
   // Get total count for pagination
   const totalProducts = await db.product.count({ where });

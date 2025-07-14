@@ -1,13 +1,19 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getUserCountryCode } from "@/actions/locationFilterActions";
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 export async function getPriceRange(category?: string) {
   try {
-    const where = {
-      status: "ACTIVE",
-      ...(category ? { primaryCategory: category } : {}),
-    };
+    // Get user's country code for location-based filtering
+    const userCountryCode = await getUserCountryCode();
+    // Get centralized filter configuration
+    const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
+    // Build additional filters
+    const additionalFilters = category ? { primaryCategory: category } : {};
+    // Use centralized filtering
+    const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
 
     const [minPrice, maxPrice] = await Promise.all([
       db.product.findFirst({

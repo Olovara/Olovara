@@ -10,14 +10,21 @@ import { ExternalLink, MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon, PinterestIcon, TikTokIcon } from "@/components/ui/social-icon";
 import { decryptData } from "@/lib/encryption";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createLocationFilterWhereClause } from "@/lib/product-filtering";
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
+import { auth } from "@/auth";
+import { canUserAccessTestEnvironment } from "@/lib/test-environment";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
 }
 
 // Fetch seller and products
-async function getShopData(shopNameSlug: string, userCountryCode?: string) {
+async function getShopData(shopNameSlug: string, userCountryCode?: string, canAccessTest: boolean = false) {
+  // Get centralized filter configuration
+  const filterConfig = await getProductFilterConfig(userCountryCode, canAccessTest);
+  // Use centralized filtering for products
+  const productWhere = await createProductFilterWhereClause({}, filterConfig);
+
   const seller = await db.seller.findUnique({
     where: { shopNameSlug }, // Fetch using the slug
     select: {
@@ -64,11 +71,7 @@ async function getShopData(shopNameSlug: string, userCountryCode?: string) {
         take: 1,
       },
       products: {
-        where: {
-          status: "ACTIVE", // Only include active products
-          // Add location-based filtering if user country is detected
-          ...(userCountryCode ? createLocationFilterWhereClause(userCountryCode) : {}),
-        },
+        where: productWhere,
         select: {
           id: true,
           name: true,
@@ -122,7 +125,8 @@ async function getShopData(shopNameSlug: string, userCountryCode?: string) {
 export default async function ShopPage({ params }: ShopPageProps) {
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
-  const seller = await getShopData(params.shopNameSlug, userCountryCode || undefined);
+  // For shop page, test access is not needed for public view, so pass false
+  const seller = await getShopData(params.shopNameSlug, userCountryCode || undefined, false);
 
   if (!seller) {
     return (

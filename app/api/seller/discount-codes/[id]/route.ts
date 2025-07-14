@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { getCurrencyDecimals } from "@/data/units";
 
-// Schema for updating discount codes
+// Schema for updating discount codes - now accepts currency amounts instead of cents
 const updateDiscountCodeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().optional(),
   discountType: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]).optional(),
-  discountValue: z.number().min(0).optional(),
-  minimumOrderAmount: z.number().min(0).optional(),
-  maximumDiscountAmount: z.number().min(0).optional(),
+  discountValue: z.number().min(0).optional(), // Now in currency units (e.g., dollars, euros)
+  minimumOrderAmount: z.number().min(0).optional(), // Now in currency units
+  maximumDiscountAmount: z.number().min(0).optional(), // Now in currency units
   maxUses: z.number().min(0).optional(),
   maxUsesPerCustomer: z.number().min(0).optional(),
   expiresAt: z.string().optional(), // ISO date string
@@ -34,15 +35,7 @@ export async function GET(
 
     const discountCode = await db.discountCode.findUnique({
       where: { id: params.id },
-      include: {
-        seller: true,
-        usages: {
-          include: {
-            order: true,
-          },
-          orderBy: { usedAt: "desc" },
-        },
-      },
+      include: { seller: true },
     });
 
     if (!discountCode) {
@@ -85,34 +78,74 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateDiscountCodeSchema.parse(body);
 
-    // Get the discount code to check ownership
+    // Get the existing discount code to check permissions
     const existingCode = await db.discountCode.findUnique({
       where: { id: params.id },
+      include: { seller: true },
     });
 
     if (!existingCode) {
       return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
     }
 
-    // Verify the user is the seller
+    // Check if user is the seller
     if (session.user.id !== existingCode.sellerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Validate discount value if being updated
-    if (validatedData.discountType === "PERCENTAGE" && validatedData.discountValue && validatedData.discountValue > 100) {
-      return NextResponse.json(
-        { error: "Percentage discount cannot exceed 100%" },
-        { status: 400 }
-      );
+    if (validatedData.discountValue !== undefined) {
+      const discountType = validatedData.discountType || existingCode.discountType;
+      if (discountType === "PERCENTAGE" && validatedData.discountValue > 100) {
+        return NextResponse.json(
+          { error: "Percentage discount cannot exceed 100%" },
+          { status: 400 }
+        );
+      }
     }
+
+    // Convert currency amounts to cents if they're being updated
+    const decimals = getCurrencyDecimals(existingCode.seller.preferredCurrency);
+    const multiplier = Math.pow(10, decimals);
+
+    let discountValueInCents = undefined;
+    if (validatedData.discountValue !== undefined) {
+      const discountType = validatedData.discountType || existingCode.discountType;
+      discountValueInCents = discountType === "PERCENTAGE" 
+        ? validatedData.discountValue // Keep percentage as-is
+        : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
+    }
+
+    const minimumOrderAmountInCents = validatedData.minimumOrderAmount !== undefined
+      ? validatedData.minimumOrderAmount 
+        ? Math.round(validatedData.minimumOrderAmount * multiplier)
+        : null
+      : undefined;
+
+    const maximumDiscountAmountInCents = validatedData.maximumDiscountAmount !== undefined
+      ? validatedData.maximumDiscountAmount
+        ? Math.round(validatedData.maximumDiscountAmount * multiplier)
+        : null
+      : undefined;
 
     // Update the discount code
     const updatedCode = await db.discountCode.update({
       where: { id: params.id },
       data: {
-        ...validatedData,
-        expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : undefined,
+        ...(validatedData.name !== undefined && { name: validatedData.name }),
+        ...(validatedData.description !== undefined && { description: validatedData.description }),
+        ...(validatedData.discountType !== undefined && { discountType: validatedData.discountType }),
+        ...(discountValueInCents !== undefined && { discountValue: discountValueInCents }),
+        ...(minimumOrderAmountInCents !== undefined && { minimumOrderAmount: minimumOrderAmountInCents }),
+        ...(maximumDiscountAmountInCents !== undefined && { maximumDiscountAmount: maximumDiscountAmountInCents }),
+        ...(validatedData.maxUses !== undefined && { maxUses: validatedData.maxUses || null }),
+        ...(validatedData.maxUsesPerCustomer !== undefined && { maxUsesPerCustomer: validatedData.maxUsesPerCustomer || null }),
+        ...(validatedData.expiresAt !== undefined && { expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null }),
+        ...(validatedData.isActive !== undefined && { isActive: validatedData.isActive }),
+        ...(validatedData.appliesToAllProducts !== undefined && { appliesToAllProducts: validatedData.appliesToAllProducts }),
+        ...(validatedData.applicableProductIds !== undefined && { applicableProductIds: validatedData.applicableProductIds }),
+        ...(validatedData.applicableCategories !== undefined && { applicableCategories: validatedData.applicableCategories }),
+        ...(validatedData.stackableWithProductSales !== undefined && { stackableWithProductSales: validatedData.stackableWithProductSales }),
       },
     });
 
@@ -147,7 +180,7 @@ export async function PATCH(
     const body = await request.json();
     const { isActive } = body;
 
-    // Get the discount code to check ownership
+    // Get the existing discount code to check permissions
     const existingCode = await db.discountCode.findUnique({
       where: { id: params.id },
     });
@@ -156,7 +189,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
     }
 
-    // Verify the user is the seller
+    // Check if user is the seller
     if (session.user.id !== existingCode.sellerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -188,7 +221,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get the discount code to check ownership
+    // Get the existing discount code to check permissions
     const existingCode = await db.discountCode.findUnique({
       where: { id: params.id },
     });
@@ -197,7 +230,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
     }
 
-    // Verify the user is the seller
+    // Check if user is the seller
     if (session.user.id !== existingCode.sellerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

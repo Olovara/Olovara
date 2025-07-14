@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, X, Tag } from "lucide-react";
+import { SUPPORTED_CURRENCIES } from "@/data/units";
 
 interface DiscountCodeInputProps {
   sellerId: string;
@@ -14,6 +15,7 @@ interface DiscountCodeInputProps {
   onDiscountRemoved: () => void;
   appliedDiscountCode?: string;
   appliedDiscountAmount?: number;
+  currency?: string; // Add currency prop
 }
 
 export default function DiscountCodeInput({
@@ -24,10 +26,14 @@ export default function DiscountCodeInput({
   onDiscountRemoved,
   appliedDiscountCode,
   appliedDiscountAmount,
+  currency = "USD", // Default to USD
 }: DiscountCodeInputProps) {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+
+  // Get currency info for display
+  const currencyInfo = SUPPORTED_CURRENCIES.find(c => c.code === currency) || SUPPORTED_CURRENCIES[0];
 
   const handleApplyDiscount = async () => {
     if (!code.trim()) {
@@ -76,6 +82,17 @@ export default function DiscountCodeInput({
     }
   };
 
+  // Format discount amount in the correct currency
+  const formatDiscountAmount = (amount: number) => {
+    const amountInCurrency = amount / Math.pow(10, currencyInfo.decimals);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: currencyInfo.decimals,
+      maximumFractionDigits: currencyInfo.decimals,
+    }).format(amountInCurrency);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center space-x-2">
@@ -92,7 +109,7 @@ export default function DiscountCodeInput({
                 {appliedDiscountCode}
               </p>
               <p className="text-xs text-green-600">
-                -${((appliedDiscountAmount || 0) / 100).toFixed(2)} applied
+                -{formatDiscountAmount(appliedDiscountAmount || 0)} applied
               </p>
             </div>
           </div>

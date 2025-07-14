@@ -182,7 +182,8 @@ export default async function SalesPromotionsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Quick Actions */}
+      {/* Quick Actions (hidden for now) TODO: Unhide when its functionality is required */}
+      {/*
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
@@ -216,6 +217,7 @@ export default async function SalesPromotionsPage() {
           </Button>
         </CardContent>
       </Card>
+      */}
 
       {/* Tips Section */}
       <Card>

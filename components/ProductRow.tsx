@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import ProductCard from "./ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createLocationFilterWhereClause } from "@/lib/product-filtering";
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 interface iAppProps {
   category: "newest" | "templates" | "uikits" | "ACCESORIES" | "random";
@@ -14,27 +14,20 @@ async function getData({ category }: iAppProps) {
   try {
     // Get user's country code for location-based filtering
     const userCountryCode = await getUserCountryCode();
+    // Get centralized filter configuration
+    const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
+
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
     switch (category) {
       case "random": {
-        // First get the total count of active products
-        const totalProducts = await db.product.count({
-          where: { 
-            status: "ACTIVE",
-            ...createLocationFilterWhereClause(userCountryCode || ""),
-          }
-        });
-
-        // Calculate a random offset
+        // Get total count of filtered products
+        const productWhere = await createProductFilterWhereClause({}, filterConfig);
+        const totalProducts = await db.product.count({ where: productWhere });
         const randomOffset = Math.floor(Math.random() * Math.max(0, totalProducts - 4));
-
         const data = await db.product.findMany({
-          where: { 
-            status: "ACTIVE",
-            ...createLocationFilterWhereClause(userCountryCode || ""),
-          },
+          where: productWhere,
           select: {
             id: true,
             userId: true,
@@ -78,16 +71,12 @@ async function getData({ category }: iAppProps) {
           skip: randomOffset,
           take: 4,
         });
-
         return { data, title: "Featured Products", link: "/products" };
       }
       case "ACCESORIES": {
+        const productWhere = await createProductFilterWhereClause({ primaryCategory: "ACCESORIES" }, filterConfig);
         const data = await db.product.findMany({
-          where: { 
-            primaryCategory: "ACCESORIES",
-            status: "ACTIVE",
-            ...createLocationFilterWhereClause(userCountryCode || ""),
-          },
+          where: productWhere,
           select: {
             id: true,
             userId: true,
@@ -130,16 +119,12 @@ async function getData({ category }: iAppProps) {
           },
           take: 5,
         });
-
         return { data, title: "Accessories", link: "/products/accessories" };
       }
       case "newest": {
+        const productWhere = await createProductFilterWhereClause({ createdAt: { gte: fiveDaysAgo } }, filterConfig);
         const data = await db.product.findMany({
-          where: { 
-            createdAt: { gte: fiveDaysAgo },
-            status: "ACTIVE",
-            ...createLocationFilterWhereClause(userCountryCode || ""),
-          },
+          where: productWhere,
           select: {
             id: true,
             userId: true,
@@ -183,7 +168,6 @@ async function getData({ category }: iAppProps) {
           orderBy: { createdAt: "desc" },
           take: 4,
         });
-
         return { data, title: "Newest Products", link: "/products" };
       }
       default: {

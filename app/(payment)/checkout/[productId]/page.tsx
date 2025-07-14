@@ -442,6 +442,7 @@ export default function CheckoutPage() {
                   onDiscountRemoved={handleDiscountRemoved}
                   appliedDiscountCode={appliedDiscountCode}
                   appliedDiscountAmount={appliedDiscountAmount}
+                  currency={product.currency}
                 />
               </div>
 

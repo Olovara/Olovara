@@ -5,8 +5,7 @@ import { notFound } from "next/navigation";
 import { Filters } from "@/components/filters";
 import ProductCard from "@/components/ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createLocationFilterWhereClause } from "@/lib/product-filtering";
-
+import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 interface CategoryPageProps {
   params: {
@@ -48,6 +47,8 @@ export default async function SecondaryCategoryPage({
 }: CategoryPageProps) {
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
+  // Get centralized filter configuration
+  const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
 
   const { primaryCategoryId, secondaryCategoryId } = params;
 
@@ -62,15 +63,18 @@ export default async function SecondaryCategoryPage({
     notFound();
   }
 
+  // Build additional filters
+  const additionalFilters = {
+    primaryCategory: primaryCategoryId,
+    secondaryCategory: secondaryCategoryId,
+  };
+
+  // Use centralized filtering
+  const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
+
   // Fetch products for this category
   const products = await db.product.findMany({
-    where: {
-      primaryCategory: primaryCategoryId,
-      secondaryCategory: secondaryCategoryId,
-      status: "ACTIVE",
-      // Add location-based filtering
-      ...createLocationFilterWhereClause(userCountryCode || ""),
-    },
+    where,
     select: {
       id: true,
       name: true,

@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { getCurrencyDecimals } from "@/data/units";
 
-// Schema for creating discount codes
+// Schema for creating discount codes - now accepts currency amounts instead of cents
 const createDiscountCodeSchema = z.object({
   sellerId: z.string(),
   code: z.string().min(1).max(20),
   name: z.string().min(1).max(100),
   description: z.string().optional(),
   discountType: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]),
-  discountValue: z.number().min(0),
-  minimumOrderAmount: z.number().min(0).optional(),
-  maximumDiscountAmount: z.number().min(0).optional(),
+  discountValue: z.number().min(0), // Now in currency units (e.g., dollars, euros)
+  minimumOrderAmount: z.number().min(0).optional(), // Now in currency units
+  maximumDiscountAmount: z.number().min(0).optional(), // Now in currency units
   maxUses: z.number().min(0).optional(),
   maxUsesPerCustomer: z.number().min(0).optional(),
   expiresAt: z.string().optional(), // ISO date string
@@ -90,9 +91,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if seller exists
+    // Check if seller exists and get their preferred currency
     const seller = await db.seller.findUnique({
       where: { userId: validatedData.sellerId },
+      select: {
+        id: true,
+        preferredCurrency: true,
+      },
     });
 
     if (!seller) {
@@ -121,6 +126,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert currency amounts to cents
+    const decimals = getCurrencyDecimals(seller.preferredCurrency);
+    const multiplier = Math.pow(10, decimals);
+
+    // Convert amounts to cents for storage
+    const discountValueInCents = validatedData.discountType === "PERCENTAGE" 
+      ? validatedData.discountValue // Keep percentage as-is
+      : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
+
+    const minimumOrderAmountInCents = validatedData.minimumOrderAmount 
+      ? Math.round(validatedData.minimumOrderAmount * multiplier)
+      : null;
+
+    const maximumDiscountAmountInCents = validatedData.maximumDiscountAmount
+      ? Math.round(validatedData.maximumDiscountAmount * multiplier)
+      : null;
+
     // Create the discount code
     const discountCode = await db.discountCode.create({
       data: {
@@ -129,9 +151,9 @@ export async function POST(request: NextRequest) {
         name: validatedData.name,
         description: validatedData.description,
         discountType: validatedData.discountType,
-        discountValue: validatedData.discountValue,
-        minimumOrderAmount: validatedData.minimumOrderAmount || null,
-        maximumDiscountAmount: validatedData.maximumDiscountAmount || null,
+        discountValue: discountValueInCents,
+        minimumOrderAmount: minimumOrderAmountInCents,
+        maximumDiscountAmount: maximumDiscountAmountInCents,
         maxUses: validatedData.maxUses || null,
         maxUsesPerCustomer: validatedData.maxUsesPerCustomer || null,
         expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,

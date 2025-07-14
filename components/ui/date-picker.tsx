@@ -25,6 +25,7 @@ interface DatePickerProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  disablePastDates?: boolean // New prop to disable past dates
 }
 
 export function DatePicker({
@@ -33,6 +34,7 @@ export function DatePicker({
   placeholder = "Select date",
   disabled = false,
   className,
+  disablePastDates = false, // Default to false to maintain backward compatibility
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [currentMonth, setCurrentMonth] = React.useState<Date>(date || new Date())
@@ -55,6 +57,9 @@ export function DatePicker({
     newDate.setFullYear(parseInt(year))
     setCurrentMonth(newDate)
   }
+
+  // Function to disable past dates if disablePastDates is true
+  const disabledDays = disablePastDates ? { before: new Date() } : undefined
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -119,6 +124,7 @@ export function DatePicker({
               onDateChange?.(date)
               setOpen(false)
             }}
+            disabled={disabledDays} // Pass disabled days to calendar
             className="rounded-md border-0"
           />
         </div>

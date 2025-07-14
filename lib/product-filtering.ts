@@ -1,4 +1,68 @@
 import { doesSellerShipToCountry } from "@/lib/country-exclusions";
+import { auth } from "@/auth";
+import { canUserAccessTestEnvironment } from "@/lib/test-environment";
+import { Prisma } from "@prisma/client";
+
+/**
+ * Centralized product filtering configuration
+ * This handles all product filtering logic in one place
+ */
+export interface ProductFilterConfig {
+  userCountryCode?: string;
+  canAccessTest?: boolean;
+  includeTestProducts?: boolean; // Override for admin/seller dashboards
+}
+
+/**
+ * Create a complete Prisma where clause for product filtering
+ * This centralizes all filtering logic including:
+ * - Test product filtering
+ * - Location-based filtering
+ * - Status filtering
+ * - Seller status filtering (exclude suspended sellers)
+ * - Any additional filters
+ */
+export async function createProductFilterWhereClause(
+  additionalFilters: Prisma.ProductWhereInput = {},
+  config: ProductFilterConfig = {}
+): Promise<Prisma.ProductWhereInput> {
+  // Get user's test environment access if not provided
+  let canAccessTest = config.canAccessTest;
+  if (canAccessTest === undefined) {
+    const session = await auth();
+    canAccessTest = session?.user?.id 
+      ? await canUserAccessTestEnvironment(session.user.id)
+      : false;
+  }
+
+  // Build the base where clause
+  const where: Prisma.ProductWhereInput = {
+    AND: [
+      // Always filter by active status
+      { status: "ACTIVE" },
+      
+      // Test product filtering (unless explicitly overridden)
+      ...(config.includeTestProducts || canAccessTest ? [] : [{ isTestProduct: false }]),
+      
+      // Filter out products from suspended sellers
+      {
+        seller: {
+          user: {
+            status: "ACTIVE" // Only show products from active sellers
+          }
+        }
+      },
+      
+      // Location-based filtering (handled at DB level when possible)
+      ...(config.userCountryCode ? [createLocationFilterWhereClause(config.userCountryCode)] : []),
+      
+      // Additional filters passed in
+      ...Object.keys(additionalFilters).length > 0 ? [additionalFilters] : [],
+    ],
+  };
+
+  return where;
+}
 
 /**
  * Filter products based on user's location and seller country exclusions
@@ -78,4 +142,24 @@ export function getAvailableProductCount(
   }).length;
 
   return totalProducts - excludedCount;
+}
+
+/**
+ * Helper function to get user's country code and test access in one call
+ * This reduces boilerplate in components
+ */
+export async function getProductFilterConfig(
+  userCountryCode?: string,
+  includeTestProducts: boolean = false
+): Promise<ProductFilterConfig> {
+  const session = await auth();
+  const canAccessTest = session?.user?.id 
+    ? await canUserAccessTestEnvironment(session.user.id)
+    : false;
+
+  return {
+    userCountryCode,
+    canAccessTest,
+    includeTestProducts,
+  };
 } 
