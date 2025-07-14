@@ -6,6 +6,8 @@ import { ObjectId } from "mongodb";
 import Link from "next/link";
 import ProductActions from "@/components/ProductPageActions";
 import ProductDetails from "@/components/ProductDetails";
+import { auth } from "@/auth";
+import { canUserAccessTestEnvironment } from "@/lib/test-environment";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -31,9 +33,17 @@ async function getData(id: string) {
       return null;
     }
 
+    // Check if user has test environment access
+    const session = await auth();
+    const canAccessTest = session?.user?.id 
+      ? await canUserAccessTestEnvironment(session.user.id)
+      : false;
+
     const product = await db.product.findUnique({
       where: {
         id,
+        // Filter out test products unless user has test environment access
+        ...(canAccessTest ? {} : { isTestProduct: false }),
       },
       include: {
       seller: {

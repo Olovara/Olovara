@@ -3,6 +3,7 @@
 import * as z from "zod";
 import { db } from "@/lib/db";
 import { CustomerFeedbackSchema } from "@/schemas/CustomerFeedbackSchema";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 export const submitCustomerFeedback = async (values: z.infer<typeof CustomerFeedbackSchema>) => {
   const validatedFields = CustomerFeedbackSchema.safeParse(values);
@@ -13,26 +14,15 @@ export const submitCustomerFeedback = async (values: z.infer<typeof CustomerFeed
 
   const { heardFrom, overallExperience, placedOrder, orderNumber, experience, improvements, returnLikelihood, email, recaptchaToken } = validatedFields.data;
 
-  // Verify reCAPTCHA token (skip in development)
-  if (process.env.NODE_ENV !== 'development') {
-    if (recaptchaToken) {
-      const response = await fetch(
-        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`,
-        {
-          method: "POST",
-        }
-      );
+  // Verify reCAPTCHA token
+  if (!recaptchaToken) {
+    return { error: "Security verification failed. Please try again." };
+  }
 
-      const data = await response.json();
-
-      if (!data.success || data.score < 0.5) {
-        return { error: "reCAPTCHA verification failed." };
-      }
-    } else {
-      return { error: "reCAPTCHA token missing." };
-    }
-  } else {
-    console.log("Development mode: Skipping reCAPTCHA verification for customer feedback");
+  const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'feedback_form', 0.5);
+  if (!recaptchaResult.success) {
+    console.error("reCAPTCHA verification failed:", recaptchaResult.error);
+    return { error: "Security verification failed. Please try again." };
   }
 
   await db.customerFeedback.create({

@@ -1,5 +1,6 @@
-// Currency configurations
+// Currency configurations - Updated to match all supported countries
 export const SUPPORTED_CURRENCIES = [
+  // Major currencies
   { code: "USD", decimals: 2, symbol: "$", name: "US Dollar" },
   { code: "EUR", decimals: 2, symbol: "€", name: "Euro" },
   { code: "GBP", decimals: 2, symbol: "£", name: "British Pound" },
@@ -8,6 +9,40 @@ export const SUPPORTED_CURRENCIES = [
   { code: "JPY", decimals: 0, symbol: "¥", name: "Japanese Yen" },
   { code: "INR", decimals: 2, symbol: "₹", name: "Indian Rupee" },
   { code: "SGD", decimals: 2, symbol: "S$", name: "Singapore Dollar" },
+  
+  // European currencies
+  { code: "CHF", decimals: 2, symbol: "Fr", name: "Swiss Franc" },
+  { code: "DKK", decimals: 2, symbol: "kr", name: "Danish Krone" },
+  { code: "NOK", decimals: 2, symbol: "kr", name: "Norwegian Krone" },
+  { code: "SEK", decimals: 2, symbol: "kr", name: "Swedish Krona" },
+  { code: "CZK", decimals: 2, symbol: "Kč", name: "Czech Koruna" },
+  { code: "HUF", decimals: 0, symbol: "Ft", name: "Hungarian Forint" },
+  { code: "BGN", decimals: 2, symbol: "лв", name: "Bulgarian Lev" },
+  { code: "RON", decimals: 2, symbol: "lei", name: "Romanian Leu" },
+  { code: "GIP", decimals: 2, symbol: "£", name: "Gibraltar Pound" },
+  
+  // Asian currencies
+  { code: "HKD", decimals: 2, symbol: "HK$", name: "Hong Kong Dollar" },
+  { code: "THB", decimals: 2, symbol: "฿", name: "Thai Baht" },
+  { code: "MYR", decimals: 2, symbol: "RM", name: "Malaysian Ringgit" },
+  { code: "IDR", decimals: 0, symbol: "Rp", name: "Indonesian Rupiah" },
+  
+  // Oceania currencies
+  { code: "NZD", decimals: 2, symbol: "NZ$", name: "New Zealand Dollar" },
+  
+  // South American currencies
+  { code: "BRL", decimals: 2, symbol: "R$", name: "Brazilian Real" },
+  { code: "MXN", decimals: 2, symbol: "$", name: "Mexican Peso" },
+  
+  // African currencies
+  { code: "ZAR", decimals: 2, symbol: "R", name: "South African Rand" },
+  { code: "GHS", decimals: 2, symbol: "₵", name: "Ghanaian Cedi" },
+  { code: "KES", decimals: 2, symbol: "KSh", name: "Kenyan Shilling" },
+  { code: "NGN", decimals: 2, symbol: "₦", name: "Nigerian Naira" },
+  { code: "XOF", decimals: 0, symbol: "CFA", name: "West African CFA Franc" },
+  
+  // Middle East currencies
+  { code: "AED", decimals: 2, symbol: "د.إ", name: "UAE Dirham" },
 ] as const;
 
 // Weight unit configurations

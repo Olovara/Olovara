@@ -12,41 +12,7 @@ import { sendVerificationEmail } from "@/lib/mail";
 import { rateLimit } from "@/lib/rate-limit";
 import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
 import { getUserLocationPreferences } from "@/lib/ipinfo";
-
-const verifyRecaptcha = async (token: string) => {
-  // Skip reCAPTCHA verification on localhost for development
-  if (process.env.NODE_ENV === 'development') {
-    console.log("Development mode: Skipping reCAPTCHA verification");
-    return true;
-  }
-
-  try {
-    const response = await fetch(
-      `https://www.google.com/recaptcha/api/siteverify`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          secret: process.env.RECAPTCHA_SECRET_KEY!,
-          response: token,
-        }),
-      }
-    );
-
-    const data = await response.json();
-    
-    // Log the response for debugging
-    console.log("reCAPTCHA response:", data);
-    
-    // Check if the verification was successful and the score is above threshold
-    return data.success && data.score >= 0.5;
-  } catch (error) {
-    console.error("reCAPTCHA verification error:", error);
-    return false;
-  }
-};
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 export const register = async (values: z.infer<typeof RegisterSchema>) => {
   const validatedFields = RegisterSchema.safeParse(values);
@@ -66,7 +32,29 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
   const headersList = await headers();
   const forwarded = headersList.get('x-forwarded-for');
   const realIP = headersList.get('x-real-ip');
-  const clientIP = forwarded?.split(',')[0] || realIP || '';
+  const cfConnectingIP = headersList.get('cf-connecting-ip'); // Cloudflare
+  const xClientIP = headersList.get('x-client-ip');
+  
+  // Try different IP headers in order of preference
+  let clientIP = '';
+  if (cfConnectingIP) {
+    clientIP = cfConnectingIP;
+  } else if (realIP) {
+    clientIP = realIP;
+  } else if (xClientIP) {
+    clientIP = xClientIP;
+  } else if (forwarded) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    clientIP = forwarded.split(',')[0].trim();
+  }
+
+  console.log('IP detection during registration:', {
+    cfConnectingIP,
+    realIP,
+    xClientIP,
+    forwarded,
+    finalClientIP: clientIP
+  });
 
   // Get location preferences for the user
   let locationData = null;
@@ -80,15 +68,28 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
         continent: locationPreferences.continent,
       };
       preferredCurrency = locationPreferences.currency;
+      
+      // Debug logging
+      console.log('Registration location detection:', {
+        ip: clientIP,
+        countryCode: locationPreferences.countryCode,
+        countryName: locationPreferences.countryName,
+        detectedCurrency: locationPreferences.currency,
+        isSupported: locationPreferences.isSupported
+      });
+    } else {
+      console.log('No client IP available for location detection during registration');
     }
   } catch (error) {
     console.error('Error getting location preferences during registration:', error);
     // Don't fail registration if location detection fails
   }
 
+  console.log('Final preferred currency for registration:', preferredCurrency);
+
   // Verify reCAPTCHA
-  const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
-  if (!isRecaptchaValid) {
+  const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'register', 0.5);
+  if (!recaptchaResult.success) {
     return { error: "reCAPTCHA verification failed. Please try again." };
   }
 

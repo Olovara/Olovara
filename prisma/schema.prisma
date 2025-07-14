@@ -31,6 +31,7 @@ enum OrderStatus {
   COMPLETED
   PENDING_TRANSFER
   PENDING
+  HELD
   FAILED
   CANCELLED
   REFUNDED
@@ -129,6 +130,7 @@ model User {
   blogPosts             BlogPost[]
   blogComments          BlogComment[]
   customOrderSubmissions CustomOrderSubmission[]
+  abandonedCarts        AbandonedCart[]
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -144,6 +146,12 @@ model User {
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
+  
+  // Test environment access
+  canAccessTestEnvironment Boolean @default(false) // Can see and interact with test products
+  testEnvironmentAccessGrantedAt DateTime? // When test access was granted
+  testEnvironmentAccessGrantedBy String? // Who granted test access (admin ID)
+  
   DeviceFingerprint DeviceFingerprint[]
   UserActivityLog   UserActivityLog[]
   temporaryUploads  TemporaryUpload[]
@@ -385,6 +393,9 @@ model Product {
   taxCode     String?
   taxExempt   Boolean @default(false)
 
+  // Test environment
+  isTestProduct Boolean @default(false) // Whether this is a test product (only visible to test users)
+
   @@unique([userId, sku], name: "unique_sku_per_seller")
 }
 
@@ -458,6 +469,9 @@ model Order {
   encryptedShippingAddress String
   shippingAddressIV        String
   shippingAddressSalt      String
+  encryptedBillingAddress  String?
+  billingAddressIV         String?
+  billingAddressSalt       String?
   discount                 Json?
   
   // Discount code fields
@@ -482,6 +496,10 @@ model Order {
   buyerIp                  String?
   buyerLocation            Json?
   buyerDeviceId            String?
+  
+  // Digital download tracking
+  digitalDownloadAttempted Boolean @default(false)
+  digitalDownloadedAt      DateTime?
 }
 
 model HandmadeGuidelines {
@@ -800,6 +818,58 @@ model UserActivityLog {
   success   Boolean?
   details   Json? // Optional: { orderId, productId, errorCode, ... }
   createdAt DateTime @default(now())
+}
+
+// Abandoned Cart Analytics Model
+model AbandonedCart {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId         String   @unique // Unique session identifier
+  userId            String?  // Optional - can be guest checkout
+  user              User?    @relation(fields: [userId], references: [id])
+  
+  // Product information
+  productId         String
+  productName       String
+  price             Int // In cents
+  quantity          Int
+  total             Int // In cents
+  isDigital         Boolean
+  sellerId          String?
+  
+  // Checkout progress
+  stepsCompleted    String[] // Array of completed steps
+  lastStep          String?  // Last step before abandonment
+  timeSpent         Int      // Time spent in seconds
+  abandonmentReason String?  // Why they abandoned
+  
+  // User behavior
+  fieldInteractions String[] // Which form fields they interacted with
+  pageViews         Int      @default(1)
+  scrollDepth       Float?   // Percentage of page scrolled
+  
+  // Technical details
+  userAgent         String?
+  ipAddress         String?
+  location          Json?    // Geographic location data
+  deviceType        String?  // mobile, desktop, tablet
+  
+  // Recovery attempts
+  recoveryEmailsSent Int     @default(0)
+  lastRecoveryEmail  DateTime?
+  recovered          Boolean @default(false)
+  recoveredAt        DateTime?
+  
+  // Metadata
+  metadata          Json?    // Additional tracking data
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+  @@index([sellerId])
+  @@index([abandonmentReason])
+  @@index([createdAt])
+  @@index([recovered])
 }
 
 // Custom Order Form Models

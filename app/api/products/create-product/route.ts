@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       dropTime,
       discountEndDate,
       currency = "USD",
+      isTestProduct = false,
     } = data;
 
     // Basic validation for required fields
@@ -173,6 +174,7 @@ export async function POST(req: NextRequest) {
       dropDate: dropDate ? new Date(dropDate) : null,
       dropTime: dropTime || null,
       discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
+      isTestProduct,
     };
     console.log("[PRE-CREATE] Data prepared for db.product.create:", cleanData);
 

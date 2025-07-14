@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripeCheckout } from "@/lib/stripe";
-import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { ObjectId } from "mongodb";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { checkDigitalRefundEligibility } from "@/lib/refund-policy";
+import { stripeSecret } from "@/lib/stripe";
 
 export async function POST(
-  request: NextRequest,
+  req: Request,
   { params }: { params: { orderId: string } }
 ) {
   try {
@@ -22,119 +21,116 @@ export async function POST(
     // Check authentication
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
-
-    // Fetch user permissions from database
-    const dbUser = await db.user.findUnique({
-      where: { id: userId },
-      select: { permissions: true }
-    });
-
-    // Check if user has permission to refund orders
-    if (!dbUser?.permissions?.includes(PERMISSIONS.REFUND_ORDERS.value)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions to refund orders" },
-        { status: 403 }
-      );
+    const orderId = params.orderId;
+    if (!orderId) {
+      return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
     }
-    
-    // Get the order
-    const order = await db.order.findUnique({
-      where: { id: params.orderId },
-      include: { seller: true },
+
+    // Check if the order belongs to the authenticated user
+    const order = await db.order.findFirst({
+      where: {
+        id: orderId,
+        userId: session.user.id,
+      },
+      select: {
+        id: true,
+        stripeSessionId: true,
+        totalAmount: true,
+        isDigital: true,
+        digitalDownloadAttempted: true,
+        digitalDownloadedAt: true,
+        status: true,
+        paymentStatus: true,
+      },
     });
 
     if (!order) {
-      return NextResponse.json(
-        { error: "Order not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Verify the user is the seller of this order
-    if (order.sellerId !== userId) {
-      return NextResponse.json(
-        { error: "You are not authorized to refund this order." },
-        { status: 403 }
-      );
+    // Check refund eligibility
+    const refundDecision = await checkDigitalRefundEligibility(orderId);
+
+    if (!refundDecision.canRefund) {
+      return NextResponse.json({
+        error: "Refund not allowed",
+        reason: refundDecision.reason,
+        downloadAttempted: refundDecision.downloadAttempted,
+        downloadedAt: refundDecision.downloadedAt,
+      }, { status: 403 });
     }
 
-    // Check if the order is already refunded or cancelled
-    if (order.status === OrderStatus.REFUNDED) {
-      return NextResponse.json(
-        { error: "This order is already refunded." },
-        { status: 400 }
-      );
+    // If digital product was downloaded, deny refund
+    if (order.isDigital && order.digitalDownloadAttempted) {
+      return NextResponse.json({
+        error: "Refund denied - digital product has been downloaded",
+        reason: "Digital products cannot be refunded after download to prevent fraud",
+        downloadAttempted: true,
+        downloadedAt: order.digitalDownloadedAt,
+      }, { status: 403 });
     }
 
-    if (order.status === OrderStatus.CANCELLED) {
-      return NextResponse.json(
-        { error: "Cannot refund a cancelled order." },
-        { status: 400 }
-      );
-    }
-
-    // Check if the order has a Stripe session ID
-    if (!order.stripeSessionId) {
-      return NextResponse.json(
-        { error: "No payment information found for this order." },
-        { status: 400 }
-      );
-    }
-
+    // Process the refund through Stripe
     try {
-      // Get the Stripe session to find the payment intent
-      const stripeSession = await stripeCheckout.instance.checkout.sessions.retrieve(order.stripeSessionId);
-      
+      // Get the payment intent from the session
+      const stripeSession = await stripeSecret.instance.checkout.sessions.retrieve(
+        order.stripeSessionId,
+        { expand: ['payment_intent'] }
+      );
+
       if (!stripeSession.payment_intent) {
-        return NextResponse.json(
-          { error: "No payment information found for this order." },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Payment intent not found" }, { status: 400 });
       }
 
-      // Process the refund through Stripe
-      const refund = await stripeCheckout.instance.refunds.create({
-        payment_intent: stripeSession.payment_intent as string,
+      const paymentIntentId = typeof stripeSession.payment_intent === 'string' 
+        ? stripeSession.payment_intent 
+        : stripeSession.payment_intent.id;
+
+      // Create refund
+      const refund = await stripeSecret.instance.refunds.create({
+        payment_intent: paymentIntentId,
         amount: Math.round(order.totalAmount * 100), // Convert to cents
-        reason: "requested_by_customer",
-      });
-
-      if (refund.status !== "succeeded") {
-        return NextResponse.json(
-          { error: "Failed to process refund. Please try again." },
-          { status: 500 }
-        );
-      }
-
-      // Update the order status to REFUNDED
-      await db.order.update({
-        where: { id: params.orderId },
-        data: {
-          status: OrderStatus.REFUNDED,
-          paymentStatus: PaymentStatus.REFUNDED
+        reason: 'requested_by_customer',
+        metadata: {
+          orderId: order.id,
+          refundedBy: session?.user?.id || 'unknown',
+          refundReason: 'Customer requested refund',
+          digitalDownloadAttempted: order.digitalDownloadAttempted?.toString() || 'false',
         },
       });
 
-      return NextResponse.json({ success: "Order refunded successfully." });
+      // Update order status
+      await db.order.update({
+        where: { id: orderId },
+        data: {
+          status: "REFUNDED",
+          paymentStatus: "REFUNDED",
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        refundId: refund.id,
+        amount: refund.amount / 100, // Convert back to dollars
+        reason: refundDecision.reason,
+      });
+
     } catch (stripeError) {
-      console.error("Stripe error:", stripeError);
-      return NextResponse.json(
-        { error: "Failed to process refund with Stripe. Please check your Stripe configuration." },
-        { status: 500 }
-      );
+      console.error("Stripe refund error:", stripeError);
+      return NextResponse.json({ 
+        error: "Failed to process refund through Stripe",
+        details: stripeError instanceof Error ? stripeError.message : "Unknown error"
+      }, { status: 500 });
     }
+
   } catch (error) {
-    console.error("Error in refund order API:", error);
-    return NextResponse.json(
-      { error: "Failed to refund order" },
-      { status: 500 }
-    );
+    console.error("Refund API error:", error);
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 });
   }
 } 

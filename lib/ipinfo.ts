@@ -86,15 +86,12 @@ export async function getUserLocationPreferences(ip?: string): Promise<UserLocat
     const continent = ipInfo.continent || getContinentFromCountry(countryCode);
 
     if (country) {
-      // Country is in our supported list
-      const isCurrencySupported = SUPPORTED_CURRENCIES.some(
-        c => c.code === country.currency
-      );
-
+      // Country is in our supported list - use its currency
+      // All currencies from supported countries are now in SUPPORTED_CURRENCIES
       return {
         countryCode: country.code,
         countryName: country.name,
-        currency: isCurrencySupported ? (country.currency as CurrencyCode) : 'USD',
+        currency: country.currency as CurrencyCode,
         continent: continent,
         isSupported: country.status === 'supported',
         canOnboardSellers: country.canOnboardSellers,

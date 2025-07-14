@@ -11,6 +11,13 @@ interface ProductActionsProps {
   maxStock: number;
   dropDate?: Date | null;
   dropTime?: string | null;
+  isDigital?: boolean;
+  price?: number;
+  shippingCost?: number;
+  handlingFee?: number;
+  sellerId?: string;
+  onSale?: boolean;
+  discount?: number | null;
 }
 
 export default function ProductActions({
@@ -18,6 +25,13 @@ export default function ProductActions({
   maxStock,
   dropDate,
   dropTime,
+  isDigital = false,
+  price = 0,
+  shippingCost = 0,
+  handlingFee = 0,
+  sellerId,
+  onSale = false,
+  discount = null,
 }: ProductActionsProps) {
   const [quantity, setQuantity] = useState(1);
   const [isDropActive, setIsDropActive] = useState(false);
@@ -61,8 +75,17 @@ export default function ProductActions({
             quantity={quantity}
             setQuantity={setQuantity}
           />
-          <div className="pb-3"></div>
-          <CheckoutButton productId={productId} quantity={quantity} />
+          <CheckoutButton 
+            productId={productId} 
+            quantity={quantity}
+            isDigital={isDigital}
+            price={price}
+            shippingCost={shippingCost}
+            handlingFee={handlingFee}
+            sellerId={sellerId}
+            onSale={onSale}
+            discount={discount}
+          />
         </>
       ) : (
         <Button disabled className="w-full">

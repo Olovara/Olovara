@@ -32,6 +32,9 @@ import { ProductFileSection } from "../product/productFile";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { getSellerPreferences } from "@/actions/getSellerPreferences";
+import { useTestEnvironment } from "@/hooks/useTestEnvironment";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -121,6 +124,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
     preferredDimensionUnit: "in" as DimensionUnit,
   });
 
+  const { canAccessTest, loading: testAccessLoading } = useTestEnvironment();
+
   const form = useForm<z.infer<typeof ProductSchema>>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
@@ -155,6 +160,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
       currency: initialData?.currency || sellerPreferences.preferredCurrency,
+      isTestProduct: initialData?.isTestProduct || false,
     }
   });
 
@@ -179,6 +185,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
     console.log('[DEBUG] ProductForm - Current images state:', images);
     setValue('images', images);
   }, [images, setValue]);
+
+  // Ensure shipping cost is 0 when free shipping is enabled
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'freeShipping' && value.freeShipping) {
+        setValue('shippingCost', 0);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, setValue]);
 
   // Update the description handling useEffect
   useEffect(() => {
@@ -350,6 +366,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       discountEndTime: "",
       howItsMade: "",
       productFile: null,
+      isTestProduct: false,
     });
   };
 
@@ -428,6 +445,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
         {/* Product Drop Section */}
         <ProductDropSection form={form} />
+
+        {canAccessTest && (
+          <div className="space-y-2">
+            <Label htmlFor="isTestProduct">Test Product</Label>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isTestProduct"
+                checked={form.watch("isTestProduct") || false}
+                onCheckedChange={(checked) => form.setValue("isTestProduct", checked as boolean)}
+              />
+              <Label htmlFor="isTestProduct" className="text-sm font-normal">
+                Mark as test product (only visible to test users)
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Test products are only visible to users with test environment access.
+            </p>
+          </div>
+        )}
 
         {/* Submit Button */}
         <Submitbutton 

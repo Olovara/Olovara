@@ -3,6 +3,10 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeCheckout, stripeSecret } from "@/lib/stripe";
 import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
+import { calculateShippingCost } from "@/lib/shipping-calculator";
+import { decryptOrderData } from "@/lib/encryption";
+import { validateDiscountCode, calculateDiscount, calculateProductSaleDiscount } from "@/lib/discount-calculator";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 import type { Stripe } from "stripe";
 
 interface ProductDescription {
@@ -13,15 +17,22 @@ interface ProductDescription {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json();
-    const { productId, quantity, preferredCurrency } = body;
+    const { productId, quantity, preferredCurrency, discountCode, shippingAddress, billingAddress, recaptchaToken } = body;
 
     if (!productId || !quantity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Verify reCAPTCHA token
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'checkout', 0.5);
+    if (!recaptchaResult.success) {
+      console.error("reCAPTCHA verification failed:", recaptchaResult.error);
+      return NextResponse.json({ 
+        error: "Security verification failed. Please try again.",
+        details: "reCAPTCHA verification failed",
+        recaptchaError: recaptchaResult.error
+      }, { status: 403 });
     }
 
     // Fetch the product and seller information
@@ -35,11 +46,42 @@ export async function POST(req: Request) {
         currency: true,
         shippingCost: true,
         handlingFee: true,
+        isDigital: true,
+        onSale: true,
+        discount: true,
+        saleStartDate: true,
+        saleEndDate: true,
+        saleStartTime: true,
+        saleEndTime: true,
         seller: {
           select: {
             id: true,
             connectedAccountId: true,
             userId: true,
+            excludedCountries: true,
+            addresses: {
+              where: { isDefault: true },
+              select: { encryptedCountry: true, countryIV: true, countrySalt: true }
+            },
+            shippingProfiles: {
+              where: { isDefault: true },
+              select: {
+                id: true,
+                countryOfOrigin: true,
+                rates: {
+                  select: {
+                    zone: true,
+                    isInternational: true,
+                    price: true,
+                    currency: true,
+                    estimatedDays: true,
+                    additionalItem: true,
+                    serviceLevel: true,
+                    isFreeShipping: true
+                  }
+                }
+              }
+            }
           },
         },
         taxCode: true,
@@ -50,6 +92,72 @@ export async function POST(req: Request) {
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Calculate shipping cost dynamically if seller has shipping profiles
+    let finalShippingCost = product.shippingCost || 0;
+    let sellerOriginCountry = "";
+    
+    // Get seller's country from their default address or shipping profile
+    if (product.seller?.addresses && product.seller.addresses.length > 0) {
+      // Decrypt the seller's country from their default address
+      const sellerAddress = product.seller.addresses[0];
+      sellerOriginCountry = decryptOrderData(
+        sellerAddress.encryptedCountry, 
+        sellerAddress.countryIV, 
+        sellerAddress.countrySalt
+      );
+    } else if (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0) {
+      // Fallback to shipping profile country of origin
+      const defaultProfile = product.seller.shippingProfiles[0];
+      sellerOriginCountry = defaultProfile.countryOfOrigin;
+    }
+    
+        // If still no country found, we can't calculate dynamic shipping
+    if (!sellerOriginCountry) {
+      console.warn(`No seller country found for product ${productId}, using static shipping cost`);
+    } else if (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0) {
+      // Get user's country from shipping address or fallback
+      const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
+      
+      // Calculate shipping cost based on origin and destination
+      const defaultProfile = product.seller.shippingProfiles[0];
+      const shippingCalculation = calculateShippingCost(
+        defaultProfile.rates,
+        sellerOriginCountry,
+        userCountry,
+        parseInt(quantity.toString())
+      );
+      
+      if (shippingCalculation) {
+        finalShippingCost = shippingCalculation.price;
+        console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry}`);
+      }
+    }
+
+    // Calculate product sale discount
+    const saleDiscount = calculateProductSaleDiscount(product);
+    const productPriceAfterSale = product.price - saleDiscount;
+
+    // Calculate total order value in dollars (not cents) for authentication check
+    const productPriceInDollars = productPriceAfterSale / 100;
+    const shippingCostInDollars = finalShippingCost / 100;
+    const handlingFeeInDollars = (product.handlingFee || 0) / 100;
+    const totalOrderValue = (productPriceInDollars + shippingCostInDollars + handlingFeeInDollars) * parseInt(quantity.toString());
+
+    // Check if authentication is required
+    const requiresAuth = totalOrderValue >= 100 || product.isDigital;
+
+    if (requiresAuth && !session?.user) {
+      return NextResponse.json({ 
+        error: "Authentication required", 
+        details: totalOrderValue >= 100 
+          ? "Orders over $100 require a signed-in account for fraud prevention." 
+          : "Digital items require a signed-in account for fraud prevention.",
+        requiresAuth: true,
+        orderValue: totalOrderValue,
+        isDigital: product.isDigital
+      }, { status: 401 });
     }
 
     if (!product.seller?.connectedAccountId) {
@@ -66,8 +174,8 @@ export async function POST(req: Request) {
     }
 
     // Calculate amounts in cents
-    const productPriceInCents = product.price; // Already in cents
-    const shippingCostInCents = product.shippingCost || 0; // Get from product, default to 0
+    const productPriceInCents = productPriceAfterSale; // Price after sale discount
+    const shippingCostInCents = finalShippingCost;
     const handlingFeeInCents = product.handlingFee || 0;
     const parsedQuantity = parseInt(quantity.toString());
 
@@ -143,14 +251,53 @@ export async function POST(req: Request) {
         checkoutCurrency = preferredCurrency.toLowerCase();
       } catch (error) {
         console.error('Error converting currency:', error);
-        // Fallback to original currency if conversion fails
         console.log('Falling back to original currency:', product.currency);
       }
     }
 
     const totalProductPriceInCents = finalProductPriceInCents * parsedQuantity;
+    const totalOrderAmountInCents = totalProductPriceInCents + finalShippingAndHandlingInCents;
+
+    // Validate discount code if provided
+    let discountAmount = 0;
+    let discountCodeId = null;
+    let discountCodeUsed = null;
+
+    if (discountCode) {
+      const validationResult = await validateDiscountCode(
+        discountCode,
+        product.seller.id,
+        productId,
+        totalOrderAmountInCents,
+        session?.user?.id
+      );
+
+      if (!validationResult.isValid) {
+        return NextResponse.json({ 
+          error: validationResult.error,
+          details: "Discount code validation failed"
+        }, { status: 400 });
+      }
+
+      // Check if discount can be stacked with product sale
+      if (product.onSale && validationResult.discountCode && !validationResult.discountCode.stackableWithProductSales) {
+        return NextResponse.json({ 
+          error: "This discount code cannot be used with products on sale",
+          details: "The discount code does not allow stacking with product sales"
+        }, { status: 400 });
+      }
+
+      if (validationResult.discountCode) {
+        discountAmount = validationResult.discountCode.discountAmount;
+        discountCodeId = validationResult.discountCode.id;
+        discountCodeUsed = validationResult.discountCode.code;
+      }
+    }
+
+    // Calculate final amount after discount
+    const finalOrderAmountInCents = Math.max(0, totalOrderAmountInCents - discountAmount);
     
-    // Calculate platform fee only on the product price (not including shipping/handling)
+    // Calculate platform fee only on the product price (not including shipping/handling or discounts)
     const platformFeeInCents = Math.round(totalProductPriceInCents * (PLATFORM_FEE_PERCENT / 100));
 
     // Handle description in new JSON format
@@ -169,42 +316,66 @@ export async function POST(req: Request) {
       }
     }
 
+    // Create line items for Stripe checkout
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+    // Add product line item
+    lineItems.push({
+      price_data: {
+        currency: checkoutCurrency,
+        product_data: {
+          name: product.name,
+          description: productDescription,
+          tax_code: product.taxCode || undefined,
+          metadata: {
+            tax_category: product.taxCategory || 'PHYSICAL_GOODS',
+            tax_exempt: product.taxExempt ? 'true' : 'false'
+          }
+        },
+        unit_amount: finalProductPriceInCents,
+        tax_behavior: product.taxExempt ? 'exclusive' : 'inclusive',
+      },
+      quantity: parsedQuantity,
+    });
+
+    // Add shipping & handling line item
+    if (finalShippingAndHandlingInCents > 0) {
+      lineItems.push({
+        price_data: {
+          currency: checkoutCurrency,
+          product_data: {
+            name: 'Shipping & Handling',
+            description: 'Shipping and handling fees for your order',
+            tax_code: 'txcd_92010001', // Standard shipping tax code
+          },
+          unit_amount: finalShippingAndHandlingInCents,
+          tax_behavior: 'inclusive',
+        },
+        quantity: 1,
+      });
+    }
+
+    // Add discount line item if applicable
+    if (discountAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: checkoutCurrency,
+          product_data: {
+            name: `Discount: ${discountCodeUsed}`,
+            description: 'Applied discount',
+          },
+          unit_amount: -discountAmount, // Negative amount for discount
+          tax_behavior: 'inclusive',
+        },
+        quantity: 1,
+      });
+    }
+
     // Create a checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: checkoutCurrency,
-            product_data: {
-              name: product.name,
-              description: productDescription,
-              tax_code: product.taxCode || undefined,
-              metadata: {
-                tax_category: product.taxCategory || 'PHYSICAL_GOODS',
-                tax_exempt: product.taxExempt ? 'true' : 'false'
-              }
-            },
-            unit_amount: finalProductPriceInCents,
-            tax_behavior: product.taxExempt ? 'exclusive' : 'inclusive',
-          },
-          quantity: parsedQuantity,
-        },
-        {
-          price_data: {
-            currency: checkoutCurrency,
-            product_data: {
-              name: 'Shipping & Handling',
-              description: 'Shipping and handling fees for your order',
-              tax_code: 'txcd_92010001', // Standard shipping tax code
-            },
-            unit_amount: finalShippingAndHandlingInCents,
-            tax_behavior: 'inclusive',
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       automatic_tax: {
         enabled: true,
         liability: {
@@ -214,11 +385,14 @@ export async function POST(req: Request) {
       tax_id_collection: {
         enabled: true,
       },
-      shipping_address_collection: {
-        allowed_countries: ['US', 'CA', 'GB', 'AU', 'JP', 'IN', 'SG', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'IE', 'NZ'],
-      },
+      // Only collect shipping address if not provided from checkout page
+      ...(shippingAddress ? {} : {
+        shipping_address_collection: {
+          allowed_countries: ['US', 'CA', 'GB', 'AU', 'JP', 'IN', 'SG', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'IE', 'NZ'],
+        },
+      }),
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/product/${productId}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/${productId}`,
       metadata: {
         productId,
         quantity: parsedQuantity.toString(),
@@ -231,8 +405,25 @@ export async function POST(req: Request) {
         originalPrice: finalProductPriceInCents.toString(),
         taxCategory: product.taxCategory,
         taxExempt: product.taxExempt.toString(),
+        isDigital: product.isDigital.toString(),
+        requiresAuth: requiresAuth.toString(),
+        orderValue: totalOrderValue.toString(),
+        sellerOriginCountry: sellerOriginCountry,
+        userCountry: shippingAddress?.country || req.headers.get('x-user-country') || 'US',
+        dynamicShipping: (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0).toString(),
+        // Discount information
+        discountCodeId: discountCodeId || '',
+        discountCodeUsed: discountCodeUsed || '',
+        discountAmount: discountAmount.toString(),
+        saleDiscount: saleDiscount.toString(),
+        finalOrderAmount: finalOrderAmountInCents.toString(),
+        // Shipping address information
+        shippingAddressProvided: shippingAddress ? 'true' : 'false',
+        // Billing address information
+        billingAddressProvided: billingAddress ? 'true' : 'false',
+        billingAddressSameAsShipping: billingAddress && shippingAddress && 
+          JSON.stringify(billingAddress) === JSON.stringify(shippingAddress) ? 'true' : 'false',
       },
-      // Add payment intent data for connected account
       payment_intent_data: {
         transfer_data: {
           destination: product.seller.connectedAccountId,

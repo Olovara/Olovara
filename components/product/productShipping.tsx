@@ -78,6 +78,13 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
     }
   }, [shippingProfiles, selectedProfileId, setValue]);
 
+  // Ensure shipping cost is 0 when free shipping is selected
+  useEffect(() => {
+    if (freeShipping) {
+      setValue("shippingCost", 0);
+    }
+  }, [freeShipping, setValue]);
+
   if (isDigital) {
     return null;
   }
@@ -92,6 +99,7 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
             setValue("freeShipping", checked);
             if (checked) {
               setValue("shippingProfileId", null);
+              setValue("shippingCost", 0); // Set shipping cost to 0 when free shipping is selected
             }
           }}
         />

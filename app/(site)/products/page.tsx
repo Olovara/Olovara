@@ -13,6 +13,8 @@ import { Filter } from "lucide-react";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createLocationFilterWhereClause } from "@/lib/product-filtering";
 import { LocationFilterInfo } from "@/components/LocationFilterNotice";
+import { auth } from "@/auth";
+import { canUserAccessTestEnvironment } from "@/lib/test-environment";
 
 export const metadata: Metadata = {
   title: "Products | Yarnnu",
@@ -36,6 +38,12 @@ interface ProductsPageProps {
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
+  
+  // Check if user has test environment access
+  const session = await auth();
+  const canAccessTest = session?.user?.id 
+    ? await canUserAccessTestEnvironment(session.user.id)
+    : false;
 
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
@@ -59,6 +67,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       {
         status: "ACTIVE", // Only show active products
       },
+      // Filter out test products unless user has test environment access
+      ...(canAccessTest ? [] : [{ isTestProduct: false }]),
       // Add location-based filtering
       createLocationFilterWhereClause(userCountryCode || ""),
       ...(searchParams.q

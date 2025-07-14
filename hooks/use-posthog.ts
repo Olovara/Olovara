@@ -119,12 +119,121 @@ export const useMarketplaceAnalytics = () => {
     })
   }, [track])
 
+  // New abandoned cart tracking functions
+  const trackCheckoutStarted = useCallback((cartData: {
+    productId: string;
+    productName: string;
+    price: number;
+    quantity: number;
+    total: number;
+    isDigital: boolean;
+    sellerId?: string;
+    discountCode?: string;
+    discountAmount?: number;
+  }) => {
+    track('checkout_started', {
+      product_id: cartData.productId,
+      product_name: cartData.productName,
+      price: cartData.price,
+      quantity: cartData.quantity,
+      total: cartData.total,
+      is_digital: cartData.isDigital,
+      seller_id: cartData.sellerId,
+      discount_code: cartData.discountCode,
+      discount_amount: cartData.discountAmount,
+      timestamp: new Date().toISOString()
+    })
+  }, [track])
+
+  const trackCheckoutStep = useCallback((step: string, cartData: any, stepData?: any) => {
+    track('checkout_step_completed', {
+      step,
+      product_id: cartData.productId,
+      total: cartData.total,
+      step_data: stepData,
+      timestamp: new Date().toISOString()
+    })
+  }, [track])
+
+  const trackCheckoutAbandoned = useCallback((cartData: {
+    productId: string;
+    productName: string;
+    price: number;
+    quantity: number;
+    total: number;
+    isDigital: boolean;
+    sellerId?: string;
+    lastStep?: string;
+    timeSpent?: number;
+    reason?: string;
+  }) => {
+    track('checkout_abandoned', {
+      product_id: cartData.productId,
+      product_name: cartData.productName,
+      price: cartData.price,
+      quantity: cartData.quantity,
+      total: cartData.total,
+      is_digital: cartData.isDigital,
+      seller_id: cartData.sellerId,
+      last_step: cartData.lastStep,
+      time_spent_seconds: cartData.timeSpent,
+      abandonment_reason: cartData.reason,
+      timestamp: new Date().toISOString()
+    })
+  }, [track])
+
+  const trackCheckoutCompleted = useCallback((cartData: {
+    productId: string;
+    productName: string;
+    price: number;
+    quantity: number;
+    total: number;
+    isDigital: boolean;
+    sellerId?: string;
+    timeSpent: number;
+    stepsCompleted: string[];
+  }) => {
+    track('checkout_completed', {
+      product_id: cartData.productId,
+      product_name: cartData.productName,
+      price: cartData.price,
+      quantity: cartData.quantity,
+      total: cartData.total,
+      is_digital: cartData.isDigital,
+      seller_id: cartData.sellerId,
+      time_spent_seconds: cartData.timeSpent,
+      steps_completed: cartData.stepsCompleted,
+      timestamp: new Date().toISOString()
+    })
+  }, [track])
+
+  const trackCheckoutError = useCallback((error: {
+    type: string;
+    message: string;
+    step: string;
+    cartData: any;
+  }) => {
+    track('checkout_error', {
+      error_type: error.type,
+      error_message: error.message,
+      step: error.step,
+      product_id: error.cartData.productId,
+      total: error.cartData.total,
+      timestamp: new Date().toISOString()
+    })
+  }, [track])
+
   return {
     trackProductView,
     trackAddToCart,
     trackPurchase,
     trackSearch,
     trackSellerAction,
+    trackCheckoutStarted,
+    trackCheckoutStep,
+    trackCheckoutAbandoned,
+    trackCheckoutCompleted,
+    trackCheckoutError,
     identify,
     setUserProperties
   }

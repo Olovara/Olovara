@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Submitbutton } from "@/components/SubmitButtons";
+import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { useIsClient } from "@/hooks/use-is-client";
 import { ContactUsSchema } from "@/schemas/ContactUsSchema";
@@ -21,13 +22,13 @@ import { contactUs } from "@/actions/contact-us";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
-import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { ReCaptcha } from "@/components/ui/recaptcha";
 import { toast } from "sonner";
 
 const ContactUsFormContent = () => {
   const isClient = useIsClient();
-  const { executeRecaptcha } = useGoogleReCaptcha();
   const [isPending, startTransition] = useTransition();
+  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
 
   const Reason = [
     { id: "BILLING", name: "Billing Questions" },
@@ -59,16 +60,17 @@ const ContactUsFormContent = () => {
       return;
     }
 
-    if (!executeRecaptcha) {
-      toast.error("reCAPTCHA not available. Please refresh the page and try again.");
+    // Check if reCAPTCHA token is available (skip in development)
+    if (process.env.NODE_ENV !== 'development' && !recaptchaToken) {
+      toast.error("Security verification in progress. Please wait a moment and try again.");
       return;
     }
 
-    // Get reCAPTCHA token
-    const token = await executeRecaptcha("contact_form");
-
     startTransition(() => {
-      contactUs({ ...values, recaptchaToken: token }).then((data) => {
+      contactUs({ 
+        ...values, 
+        recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : recaptchaToken 
+      }).then((data) => {
         if (data.success) {
           toast.success("Thank you! Your message has been sent successfully. We'll get back to you soon.");
           form.reset();
@@ -148,9 +150,27 @@ const ContactUsFormContent = () => {
                   <Textarea placeholder="Type your message here..." {...form.register("helpDescription")} disabled={isPending} />
                 </FormControl>
               </FormItem>
+
+              {/* Security Verification - Invisible reCAPTCHA v3 */}
+              <div className="hidden">
+                <ReCaptcha
+                  action="contact_form"
+                  onVerify={(token) => setRecaptchaToken(token)}
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Submitbutton title="Submit" isPending={isPending} />
+              {process.env.NODE_ENV === 'development' || recaptchaToken ? (
+                <Submitbutton title="Submit" isPending={isPending} />
+              ) : (
+                <Button 
+                  type="submit" 
+                  disabled={true}
+                  className="bg-gray-400 cursor-not-allowed"
+                >
+                  Security verification in progress...
+                </Button>
+              )}
             </CardFooter>
           </form>
         </Card>
@@ -160,19 +180,7 @@ const ContactUsFormContent = () => {
 };
 
 const ContactUsForm = () => {
-  return (
-    <GoogleReCaptchaProvider
-      reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-      scriptProps={{
-        async: false,
-        defer: false,
-        appendTo: "head",
-        nonce: undefined,
-      }}
-    >
-      <ContactUsFormContent />
-    </GoogleReCaptchaProvider>
-  );
+  return <ContactUsFormContent />;
 };
 
 export default ContactUsForm;

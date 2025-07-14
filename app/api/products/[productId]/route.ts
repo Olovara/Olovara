@@ -19,7 +19,7 @@ const updateProductSaleSchema = z.object({
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { productId: string } }
 ) {
   try {
     const session = await auth();
@@ -28,12 +28,12 @@ export async function GET(
     }
 
     // Validate that the ID is a valid ObjectID before querying
-    if (!ObjectId.isValid(params.id)) {
+    if (!ObjectId.isValid(params.productId)) {
       return new NextResponse("Invalid product ID format", { status: 400 });
     }
 
     const product = await db.product.findUnique({
-      where: { id: params.id },
+      where: { id: params.productId },
       include: {
         seller: {
           select: {
@@ -56,7 +56,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: { productId: string } }) {
   try {
     const session = await auth();
 
@@ -70,10 +70,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const data = await req.json();
     console.log('[API INPUT] Received update data:', data);
 
-    const { id } = params;
+    const { productId } = params;
     const updateData = data;
 
-    if (!id) {
+    if (!productId) {
       return new Response(
         JSON.stringify({ success: false, error: "Product ID is required" }),
         { status: 400 }
@@ -92,7 +92,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         
         // Get the product to check ownership
         const product = await db.product.findUnique({
-          where: { id: id, userId: session.user.id },
+          where: { id: productId, userId: session.user.id },
         });
 
         if (!product) {
@@ -124,7 +124,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
         // Update the product
         const updatedProduct = await db.product.update({
-          where: { id: id },
+          where: { id: productId },
           data: saleUpdateData,
         });
 
@@ -145,7 +145,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     // --- Step 1: Fetch CURRENT product state BEFORE update --- 
     const currentProduct = await db.product.findUnique({
-      where: { id: id, userId: session.user.id }, // Also verify ownership here
+      where: { id: productId, userId: session.user.id }, // Also verify ownership here
       select: { images: true, productFile: true }
     });
 
@@ -200,47 +200,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
 
-    // --- Step 3: Prepare clean data for update --- 
-    const cleanData = {
-      ...updateData,
-      images: updateData.images, 
-      dropDate: updateData.dropDate ? new Date(updateData.dropDate) : null,
-      dropTime: updateData.dropTime || null,
-      discountEndDate: updateData.discountEndDate 
-        ? new Date(updateData.discountEndDate) 
-        : null,
-      // Handle new sale fields
-      saleStartDate: updateData.saleStartDate ? new Date(updateData.saleStartDate) : null,
-      saleEndDate: updateData.saleEndDate ? new Date(updateData.saleEndDate) : null,
-      saleStartTime: updateData.saleStartTime || null,
-      saleEndTime: updateData.saleEndTime || null,
-      price: Number(updateData.price),
-      stock: Number(updateData.stock),
-      shippingCost: Number(updateData.shippingCost),
-      handlingFee: Number(updateData.handlingFee),
-      discount: updateData.discount ? Number(updateData.discount) : null,
-      // Handle tertiary category (can be null/undefined)
-      tertiaryCategory: updateData.tertiaryCategory || null,
-    };
-
-    // --- Step 4: Update the product in the database ---
-    const result = await db.$transaction(async (tx) => {
-      const product = await tx.product.update({
-        where: { id },
-        data: cleanData,
-      });
-
-      return product;
+    // --- Step 3: Update the product ---
+    const updatedProduct = await db.product.update({
+      where: { id: productId },
+      data: updateData,
     });
 
     return new Response(
-      JSON.stringify({ success: true, product: result }),
+      JSON.stringify({ success: true, product: updatedProduct }),
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error("[PRODUCT_PATCH]", error);
     return new Response(
-      JSON.stringify({ success: false, error: "Internal Server Error" }),
+      JSON.stringify({ success: false, error: "Internal server error" }),
       { status: 500 }
     );
   }

@@ -63,8 +63,30 @@ export const ProductSchema = z
       message: "Please add at least one image.",
     }),
     isDigital: z.boolean().default(false),
-    shippingCost: createMonetarySchema("shippingCost").default(0),
-    handlingFee: createMonetarySchema("handlingFee").default(0),
+    shippingCost: z.preprocess(
+      (val) => {
+        if (typeof val === "string") return parseFloat(val);
+        if (typeof val === "number") return val;
+        return 0;
+      },
+      z.number()
+        .min(0, "shippingCost must be at least $0")
+        .refine((val) => Number.isFinite(val), {
+          message: "shippingCost must be a valid number",
+        })
+    ).default(0),
+    handlingFee: z.preprocess(
+      (val) => {
+        if (typeof val === "string") return parseFloat(val);
+        if (typeof val === "number") return val;
+        return 0;
+      },
+      z.number()
+        .min(0, "handlingFee must be at least $0")
+        .refine((val) => Number.isFinite(val), {
+          message: "handlingFee must be a valid number",
+        })
+    ).default(0),
     stock: z
       .number()
       .int()
@@ -120,6 +142,7 @@ export const ProductSchema = z
     taxCode: z.string().optional(),
     taxExempt: z.boolean().default(false),
     shippingProfileId: z.string().nullable(),
+    isTestProduct: z.boolean().default(false),
   })
   .transform((data) => {
     // Convert all monetary values to smallest unit
@@ -206,11 +229,12 @@ export const ProductSchema = z
     if (!data.isDigital) {
       console.log("Validating physical product fields...");
 
-      if (data.shippingCost === undefined) {
-        console.log("Validation Error: Shipping cost missing.");
+      // Only require shipping cost if free shipping is not selected
+      if (!data.freeShipping && (data.shippingCost === undefined || data.shippingCost <= 0)) {
+        console.log("Validation Error: Shipping cost required when free shipping is not selected.");
         ctx.addIssue({
           code: "custom",
-          message: "Shipping cost is required for physical products.",
+          message: "Shipping cost is required when free shipping is not selected.",
           path: ["shippingCost"],
         });
       }

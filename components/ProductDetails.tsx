@@ -154,6 +154,13 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             maxStock={data.stock} 
             dropDate={data.dropDate}
             dropTime={data.dropTime}
+            isDigital={data.isDigital}
+            price={data.price}
+            shippingCost={data.shippingCost || 0}
+            handlingFee={data.handlingFee || 0}
+            sellerId={data.seller?.shopName ? data.seller.shopName : undefined}
+            onSale={Boolean(isOnSale)}
+            discount={data.discount}
           />
 
           {/* How It's Made Section */}
@@ -205,8 +212,12 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
       {data.isDigital && data.productFile && (
         <div className="mt-8 bg-green-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Digital Download</h3>
+          {/*
+            Use the secure download API route to prevent unauthorized access.
+            The API will check if the user has a completed, paid order before redirecting to the file.
+          */}
           <a
-            href={data.productFile}
+            href={`/api/download/${data.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline hover:text-blue-800"

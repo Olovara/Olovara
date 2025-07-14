@@ -15,6 +15,66 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // export const runtime = 'edge';
 export const dynamic = "force-dynamic";
 
+// Helper function to determine hold period in days
+async function determineHoldPeriod(sellerId: string, isDigital: boolean): Promise<number> {
+  try {
+    // Get seller account details with user reputation data
+    const seller = await db.seller.findUnique({
+      where: { id: sellerId },
+      select: {
+        createdAt: true,
+        user: {
+          select: {
+            accountReputation: true,
+            numChargebacks: true,
+            numRefunds: true,
+            numDisputes: true,
+          },
+        },
+      },
+    });
+
+    if (!seller) {
+      console.warn(`⚠️ Seller not found for hold period calculation: ${sellerId}`);
+      return 7; // Default to 7 days for unknown sellers
+    }
+
+    // Calculate account age in days
+    const accountAgeInDays = Math.floor((Date.now() - seller.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Digital items always have minimum 2-day hold
+    if (isDigital) {
+      return Math.max(2, calculateHoldPeriod(accountAgeInDays, seller));
+    }
+
+    return calculateHoldPeriod(accountAgeInDays, seller);
+  } catch (error) {
+    console.error("❌ Error determining hold period:", error);
+    return 7; // Default to 7 days on error
+  }
+}
+
+// Helper function to calculate hold period based on account age and reputation
+function calculateHoldPeriod(accountAgeInDays: number, seller: any): number {
+  // Check if seller is trusted (good reputation, low chargebacks/disputes)
+  const isTrusted = seller.user?.accountReputation === "TRUSTED" && 
+                   seller.user?.numChargebacks <= 1 && 
+                   seller.user?.numDisputes <= 1;
+
+  // New seller (less than 30 days): 10 days
+  if (accountAgeInDays < 30) {
+    return 10;
+  }
+
+  // Trusted seller (30+ days, good reputation): 1 day
+  if (isTrusted) {
+    return 1;
+  }
+
+  // Not trusted seller: 7 days
+  return 7;
+}
+
 export async function POST(req: Request) {
   console.log("🔔 Webhook received");
   
@@ -95,22 +155,39 @@ export async function POST(req: Request) {
           // Create preliminary order
           const buyerEmail = session.customer_details?.email || "";
           const buyerName = session.customer_details?.name || "";
-          const shippingAddress = session.shipping_details?.address
-            ? JSON.stringify({
-                city: session.shipping_details.address.city || "",
-                country: session.shipping_details.address.country || "",
-                line1: session.shipping_details.address.line1 || "",
-                line2: session.shipping_details.address.line2 || "",
-                postal_code: session.shipping_details.address.postal_code || "",
-                state: session.shipping_details.address.state || "",
-              })
-            : null;
+          
+          // Use shipping address from checkout page if provided, otherwise from Stripe
+          let shippingAddress = null;
+          if (session.metadata.shippingAddressProvided === 'true') {
+            // Shipping address was collected on our checkout page
+            // We'll need to store it in the order metadata or create a separate field
+            shippingAddress = "Address collected on checkout page"; // Placeholder
+          } else {
+            // Use Stripe's shipping details
+            shippingAddress = session.shipping_details?.address
+              ? JSON.stringify({
+                  city: session.shipping_details.address.city || "",
+                  country: session.shipping_details.address.country || "",
+                  line1: session.shipping_details.address.line1 || "",
+                  line2: session.shipping_details.address.line2 || "",
+                  postal_code: session.shipping_details.address.postal_code || "",
+                  state: session.shipping_details.address.state || "",
+                })
+              : null;
+          }
 
           const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV, salt: buyerEmailSalt } = encryptOrderData(buyerEmail);
           const { encrypted: encryptedBuyerName, iv: buyerNameIV, salt: buyerNameSalt } = encryptOrderData(buyerName);
           const { encrypted: encryptedShippingAddress, iv: shippingAddressIV, salt: shippingAddressSalt } = shippingAddress 
             ? encryptOrderData(shippingAddress)
             : { encrypted: "", iv: "", salt: "" };
+
+          // Get discount information from metadata
+          const discountCodeId = session.metadata.discountCodeId;
+          const discountCodeUsed = session.metadata.discountCodeUsed;
+          const discountAmount = parseInt(session.metadata.discountAmount || "0");
+          const saleDiscount = parseInt(session.metadata.saleDiscount || "0");
+          const finalOrderAmount = parseInt(session.metadata.finalOrderAmount || "0");
 
           const preliminaryOrderData = {
             userId: session.metadata.userId || "",
@@ -125,7 +202,7 @@ export async function POST(req: Request) {
             productId: session.metadata.productId || "",
             productName: product.name,
             quantity: parseInt(session.metadata.quantity || "1"),
-            totalAmount: parseInt(session.metadata.productPrice || "0") + parseInt(session.metadata.shippingAndHandling || "0"),
+            totalAmount: finalOrderAmount || (parseInt(session.metadata.productPrice || "0") + parseInt(session.metadata.shippingAndHandling || "0")),
             productPrice: parseInt(session.metadata.productPrice || "0"),
             shippingCost: parseInt(session.metadata.shippingAndHandling || "0"),
             stripeFee: 0, // Placeholder
@@ -137,7 +214,15 @@ export async function POST(req: Request) {
             encryptedShippingAddress,
             shippingAddressIV,
             shippingAddressSalt,
-            discount: null,
+            discount: discountAmount > 0 ? JSON.stringify({
+              discountCodeId,
+              discountCodeUsed,
+              discountAmount,
+              saleDiscount,
+            }) : null,
+            discountCodeId: discountCodeId || null,
+            discountCodeAmount: discountAmount,
+            discountCodeUsed: discountCodeUsed || null,
             completedAt: product.isDigital ? new Date() : null,
             taxAmount: session.total_details?.amount_tax || 0,
             taxBreakdown: session.total_details?.breakdown ? JSON.stringify(session.total_details.breakdown) : null,
@@ -152,6 +237,34 @@ export async function POST(req: Request) {
 
           const order = await db.order.create({ data: preliminaryOrderData });
           console.log(`✅ Created preliminary order: ${order.id}`);
+
+          // Create discount usage record if discount code was used
+          if (discountCodeId && discountAmount > 0) {
+            try {
+              await db.discountCodeUsage.create({
+                data: {
+                  discountCodeId,
+                  orderId: order.id,
+                  userId: session.metadata.userId || 'guest',
+                  discountAmount,
+                },
+              });
+
+              // Update discount code usage count
+              await db.discountCode.update({
+                where: { id: discountCodeId },
+                data: {
+                  currentUses: {
+                    increment: 1,
+                  },
+                },
+              });
+
+              console.log(`✅ Created discount usage record for code: ${discountCodeUsed}`);
+            } catch (error) {
+              console.error("❌ Error creating discount usage record:", error);
+            }
+          }
 
           // Retrieve Charge and Balance Transaction to get the exact fee
           const paymentIntent = await stripeSecret.instance.paymentIntents.retrieve(session.payment_intent as string);
@@ -242,8 +355,16 @@ export async function POST(req: Request) {
           console.log(`- Original price: ${originalPrice} ${sellerCurrency}`);
           console.log(`- Exchange rate: ${exchangeRate?.rate || 1}`);
 
-          // Create transfer to seller with automatic currency conversion
-          const transfer = await stripeSecret.instance.transfers.create({
+          // Determine hold period based on seller account age and trust status
+          const holdPeriodDays = await determineHoldPeriod(session.metadata.sellerId, product.isDigital);
+          console.log(`⏰ Hold period determined: ${holdPeriodDays} days for ${product.isDigital ? 'digital' : 'physical'} product`);
+
+          // Calculate transfer date (hold period from now)
+          const transferDate = new Date();
+          transferDate.setDate(transferDate.getDate() + holdPeriodDays);
+
+          // Create transfer to seller with scheduled transfer
+          const transferParams: Stripe.TransferCreateParams = {
             amount: amountToSeller,
             currency: product.currency.toLowerCase(), // Use product's currency
             destination: product.seller.connectedAccountId,
@@ -257,9 +378,33 @@ export async function POST(req: Request) {
               convertedAmount: amountToSeller.toString(), // Store the converted amount
               exchangeRate: exchangeRate?.rate?.toString() || "1", // Store the exchange rate used
               baseCurrency: product.currency.toUpperCase(), // Store the base currency
-            }
-          });
-          console.log(`💰 Created transfer to seller: ${transfer.id} (${product.currency.toUpperCase()} to ${sellerCurrency})`);
+              holdPeriodDays: holdPeriodDays.toString(),
+              scheduledTransferDate: transferDate.toISOString(),
+            },
+          };
+
+          // For holds, we'll use Stripe's transfer schedule feature
+          // Note: This requires the connected account to have transfers enabled
+          if (holdPeriodDays > 0) {
+            // Use the delay_days parameter for scheduled transfers
+            (transferParams as any).delay_days = holdPeriodDays;
+          }
+
+          const transfer = await stripeSecret.instance.transfers.create(transferParams);
+          console.log(`💰 Created ${holdPeriodDays > 0 ? 'scheduled' : 'immediate'} transfer to seller: ${transfer.id} (${product.currency.toUpperCase()} to ${sellerCurrency})`);
+
+          // Determine order status based on hold period and product type
+          let orderStatus: OrderStatus;
+          if (product.isDigital) {
+            // Digital products are completed immediately (payment confirmed)
+            orderStatus = OrderStatus.COMPLETED;
+          } else if (holdPeriodDays > 0) {
+            // Physical products with holds
+            orderStatus = "HELD" as OrderStatus;
+          } else {
+            // Physical products without holds
+            orderStatus = OrderStatus.PENDING;
+          }
 
           // Update order with transfer ID, currency info, exchange rate, and finalize status
           await db.order.update({
@@ -267,7 +412,7 @@ export async function POST(req: Request) {
             data: {
               stripeTransferId: transfer.id,
               currency: sellerCurrency, // Store the seller's preferred currency
-              status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING,
+              status: orderStatus,
               paymentStatus: PaymentStatus.PAID,
               completedAt: product.isDigital ? new Date() : null,
               // Add exchange rate information
@@ -476,6 +621,92 @@ export async function POST(req: Request) {
           // Just log this event
           const charge = event.data.object as Stripe.Charge;
           console.log(`💰 Charge succeeded: ${charge.id}, PI: ${charge.payment_intent}`);
+          return NextResponse.json({ received: true });
+        }
+        case "transfer.created": {
+          const transfer = event.data.object as Stripe.Transfer;
+          console.log(`💰 Transfer created: ${transfer.id}`);
+          
+          // Update order status if this is a held transfer
+          if (transfer.metadata?.orderId) {
+            try {
+              const order = await db.order.findUnique({
+                where: { id: transfer.metadata.orderId },
+                select: { id: true, status: true, isDigital: true }
+              });
+
+              if (order && order.status === ("HELD" as any)) {
+                console.log(`✅ Transfer created for held order: ${order.id}`);
+              }
+            } catch (error) {
+              console.error("❌ Error updating order for transfer created:", error);
+            }
+          }
+          
+          return NextResponse.json({ received: true });
+        }
+        case "transfer.updated": {
+          const transfer = event.data.object as Stripe.Transfer;
+          console.log(`💰 Transfer updated: ${transfer.id}`);
+          
+          // Update order status from HELD to PENDING when transfer is completed
+          if (transfer.metadata?.orderId && transfer.object === 'transfer') {
+            try {
+              const order = await db.order.findUnique({
+                where: { id: transfer.metadata.orderId },
+                select: { id: true, status: true, isDigital: true }
+              });
+
+              if (order && order.status === ("HELD" as any)) {
+                await db.order.update({
+                  where: { id: order.id },
+                  data: { 
+                    status: OrderStatus.PENDING,
+                    completedAt: new Date()
+                  }
+                });
+                console.log(`✅ Updated order ${order.id} from HELD to PENDING after transfer completed`);
+              }
+            } catch (error) {
+              console.error("❌ Error updating order status after transfer updated:", error);
+            }
+          }
+          
+          return NextResponse.json({ received: true });
+        }
+        case "charge.refunded": {
+          const charge = event.data.object as Stripe.Charge;
+          console.log(`💰 Charge refunded: ${charge.id}`);
+          
+          // Find the order associated with this charge and revoke download access
+          if (charge.payment_intent) {
+            try {
+              const order = await db.order.findFirst({
+                where: { 
+                  stripeSessionId: { contains: charge.payment_intent as string }
+                },
+                select: { id: true, isDigital: true }
+              });
+
+              if (order && order.isDigital) {
+                // Update order status to REFUNDED
+                await db.order.update({
+                  where: { id: order.id },
+                  data: {
+                    status: "REFUNDED",
+                    paymentStatus: "REFUNDED",
+                  }
+                });
+                
+                console.log(`✅ Order ${order.id} marked as refunded. Download access revoked.`);
+                
+                // Note: The download API will now deny access because status is REFUNDED
+              }
+            } catch (error) {
+              console.error("❌ Error updating order after refund:", error);
+            }
+          }
+          
           return NextResponse.json({ received: true });
         }
         default: {
