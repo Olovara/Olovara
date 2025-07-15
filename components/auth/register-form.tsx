@@ -25,15 +25,16 @@ import FormError from "../form-error";
 import FormSuccess from "../form-success";
 import { register } from "@/actions/register";
 import { ReCaptcha } from "../ui/recaptcha";
+import { validateHoneypot } from "@/lib/recaptcha";
 
 const RegisterForm = () => {
   const isClient = useIsClient();
 
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [recaptchaToken, setRecaptchaToken] = useState<string>(
-    process.env.NODE_ENV === 'development' ? 'dev-token' : ""
-  );
+  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
+  const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
 
@@ -50,17 +51,28 @@ const RegisterForm = () => {
   });
 
   const onSubmit = (values: z.infer<typeof RegisterSchema>) => {
-    // Skip reCAPTCHA check in development mode
-    if (process.env.NODE_ENV !== 'development' && !recaptchaToken) {
-      setError("Please complete the reCAPTCHA verification.");
+    // Step 1: Check honeypot first (before any reCAPTCHA calls)
+    if (!validateHoneypot(values.website)) {
+      // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
+      console.log("Bot detected via honeypot field");
       return;
     }
 
-    // Use a dummy token in development mode
-    const token = process.env.NODE_ENV === 'development' ? 'dev-token' : recaptchaToken;
+    // Step 2: Trigger reCAPTCHA verification
+    setShouldTriggerRecaptcha(true);
+    setRecaptchaError(null);
+  };
+
+  const handleRecaptchaSuccess = (token: string) => {
+    setRecaptchaToken(token);
+    setShouldTriggerRecaptcha(false);
+    
+    // Step 3: Submit the form with the token
+    const values = form.getValues();
+    const finalToken = process.env.NODE_ENV === 'development' ? 'dev-token' : token;
 
     startTransition(() => {
-      register({ ...values, recaptchaToken: token }).then((data) => {
+      register({ ...values, recaptchaToken: finalToken }).then((data) => {
         if (data.success) setSuccess(data.success);
         if (data?.error) setError(data.error);
       });
@@ -69,6 +81,13 @@ const RegisterForm = () => {
     form.reset();
     setSuccess("");
     setError("");
+    setRecaptchaToken("");
+  };
+
+  const handleRecaptchaError = (error: string) => {
+    setRecaptchaError(error);
+    setShouldTriggerRecaptcha(false);
+    setError("Security verification failed. Please try again.");
   };
 
   if (!isClient) return <Spinner />;
@@ -194,14 +213,16 @@ const RegisterForm = () => {
           {success && <FormSuccess message={success} />}
           <ReCaptcha
             action="register"
-            onVerify={(token) => setRecaptchaToken(token)}
+            onVerify={handleRecaptchaSuccess}
+            onError={handleRecaptchaError}
+            trigger={shouldTriggerRecaptcha}
           />
           <Button
             type="submit"
-            disabled={isPending || (process.env.NODE_ENV !== 'development' && !recaptchaToken)}
+            disabled={isPending || shouldTriggerRecaptcha}
             className="w-full hover:bg-purple-400"
           >
-            Register
+            {isPending || shouldTriggerRecaptcha ? "Processing..." : "Register"}
           </Button>
         </form>
       </Form>

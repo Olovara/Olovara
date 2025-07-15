@@ -11,6 +11,17 @@ export interface RecaptchaVerificationResult {
 }
 
 /**
+ * Validate honeypot field to detect bots
+ * @param honeypotValue - The value from the honeypot field
+ * @returns boolean - true if honeypot is valid (empty), false if bot detected
+ */
+export function validateHoneypot(honeypotValue: string): boolean {
+  // Honeypot should be empty for real users
+  // Bots often fill out all fields including hidden ones
+  return !honeypotValue || honeypotValue.trim() === '';
+}
+
+/**
  * Verify a reCAPTCHA token on the server side
  * @param token - The reCAPTCHA token from the client
  * @param action - The action that was performed (e.g., 'checkout', 'register')

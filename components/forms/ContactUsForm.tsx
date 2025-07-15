@@ -24,11 +24,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import { ReCaptcha } from "@/components/ui/recaptcha";
 import { toast } from "sonner";
+import { validateHoneypot } from "@/lib/recaptcha";
 
 const ContactUsFormContent = () => {
   const isClient = useIsClient();
   const [isPending, startTransition] = useTransition();
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
+  const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
 
   const Reason = [
     { id: "BILLING", name: "Billing Questions" },
@@ -54,32 +57,45 @@ const ContactUsFormContent = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof ContactUsSchema>) => {
-    // Check honeypot first
-    if (values.website) {
-      // If the honeypot field is filled, silently fail
+    // Step 1: Check honeypot first (before any reCAPTCHA calls)
+    if (!validateHoneypot(values.website)) {
+      // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
+      console.log("Bot detected via honeypot field");
       return;
     }
 
-    // Check if reCAPTCHA token is available (skip in development)
-    if (process.env.NODE_ENV !== 'development' && !recaptchaToken) {
-      toast.error("Security verification in progress. Please wait a moment and try again.");
-      return;
-    }
+    // Step 2: Trigger reCAPTCHA verification
+    setShouldTriggerRecaptcha(true);
+    setRecaptchaError(null);
+  };
 
+  const handleRecaptchaSuccess = (token: string) => {
+    setRecaptchaToken(token);
+    setShouldTriggerRecaptcha(false);
+    
+    // Step 3: Submit the form with the token
+    const values = form.getValues();
     startTransition(() => {
       contactUs({ 
         ...values, 
-        recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : recaptchaToken 
+        recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : token 
       }).then((data) => {
         if (data.success) {
           toast.success("Thank you! Your message has been sent successfully. We'll get back to you soon.");
           form.reset();
+          setRecaptchaToken("");
         }
         if (data.error) {
           toast.error(data.error);
         }
       });
     });
+  };
+
+  const handleRecaptchaError = (error: string) => {
+    setRecaptchaError(error);
+    setShouldTriggerRecaptcha(false);
+    toast.error("Security verification failed. Please try again.");
   };
 
   if (!isClient) return <Spinner />;
@@ -155,22 +171,18 @@ const ContactUsFormContent = () => {
               <div className="hidden">
                 <ReCaptcha
                   action="contact_form"
-                  onVerify={(token) => setRecaptchaToken(token)}
+                  onVerify={handleRecaptchaSuccess}
+                  onError={handleRecaptchaError}
+                  trigger={shouldTriggerRecaptcha}
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end">
-              {process.env.NODE_ENV === 'development' || recaptchaToken ? (
-                <Submitbutton title="Submit" isPending={isPending} />
-              ) : (
-                <Button 
-                  type="submit" 
-                  disabled={true}
-                  className="bg-gray-400 cursor-not-allowed"
-                >
-                  Security verification in progress...
-                </Button>
-              )}
+            
+            <CardFooter>
+              <Submitbutton 
+                title={isPending ? "Submitting..." : "Submit"} 
+                isPending={isPending || shouldTriggerRecaptcha} 
+              />
             </CardFooter>
           </form>
         </Card>
@@ -179,8 +191,4 @@ const ContactUsFormContent = () => {
   );
 };
 
-const ContactUsForm = () => {
-  return <ContactUsFormContent />;
-};
-
-export default ContactUsForm;
+export default ContactUsFormContent;

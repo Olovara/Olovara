@@ -35,9 +35,13 @@ export default function CheckoutPage() {
   // Get user's detected country or default to US
   const userCountry = locationPreferences?.countryCode || 'US';
 
-  // State
+  // State for product and form data
   const [product, setProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
+  const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [appliedDiscountCode, setAppliedDiscountCode] = useState<string>("");
   const [appliedDiscountAmount, setAppliedDiscountAmount] = useState<number>(0);
   const [shippingAddress, setShippingAddress] = useState({
@@ -57,8 +61,6 @@ export default function CheckoutPage() {
     country: userCountry,
   });
   const [sameAsShipping, setSameAsShipping] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState<string>("");
 
   // Update country when location is detected
   useEffect(() => {
@@ -243,12 +245,16 @@ export default function CheckoutPage() {
   const handleContinue = async () => {
     if (!validate()) return;
     
-    // Check if reCAPTCHA token is available (skip in development)
-    if (process.env.NODE_ENV !== 'development' && !recaptchaToken) {
-      toast.error("Security verification in progress. Please wait a moment and try again.");
-      return;
-    }
+    // Step 1: Trigger reCAPTCHA verification
+    setShouldTriggerRecaptcha(true);
+    setRecaptchaError(null);
+  };
+
+  const handleRecaptchaSuccess = async (token: string) => {
+    setRecaptchaToken(token);
+    setShouldTriggerRecaptcha(false);
     
+    // Step 2: Proceed with payment after reCAPTCHA success
     setLoading(true);
     
     try {
@@ -274,7 +280,7 @@ export default function CheckoutPage() {
           discountCode: appliedDiscountCode || undefined,
           shippingAddress: !product.isDigital ? shippingAddress : undefined,
           billingAddress: !product.isDigital ? (sameAsShipping ? shippingAddress : billingAddress) : undefined,
-          recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : recaptchaToken,
+          recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : token,
         }),
       });
 
@@ -319,6 +325,12 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRecaptchaError = (error: string) => {
+    setRecaptchaError(error);
+    setShouldTriggerRecaptcha(false);
+    toast.error("Security verification failed. Please try again.");
   };
 
   // Track when user leaves the page
@@ -654,7 +666,9 @@ export default function CheckoutPage() {
               <div className="hidden">
                 <ReCaptcha
                   action="checkout"
-                  onVerify={(token) => setRecaptchaToken(token)}
+                  onVerify={handleRecaptchaSuccess}
+                  onError={handleRecaptchaError}
+                  trigger={shouldTriggerRecaptcha}
                 />
               </div>
 
@@ -662,13 +676,13 @@ export default function CheckoutPage() {
               <div className="p-6">
                 <Button 
                   onClick={handleContinue} 
-                  disabled={loading || (process.env.NODE_ENV !== 'development' && !recaptchaToken)} 
+                  disabled={loading || shouldTriggerRecaptcha} 
                   className="w-full h-12 text-lg font-semibold bg-purple-600 hover:bg-purple-700"
                 >
-                  {loading ? (
+                  {loading || shouldTriggerRecaptcha ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Processing...
+                      {shouldTriggerRecaptcha ? "Verifying security..." : "Processing..."}
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">

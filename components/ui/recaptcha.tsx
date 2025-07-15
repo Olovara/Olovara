@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Script from "next/script";
 
 declare global {
@@ -14,29 +14,43 @@ declare global {
 
 interface ReCaptchaProps {
   onVerify: (token: string) => void;
+  onError?: (error: string) => void;
   action: string;
+  trigger?: boolean; // New prop to control when to execute
 }
 
-export const ReCaptcha = ({ onVerify, action }: ReCaptchaProps) => {
+export const ReCaptcha = ({ onVerify, onError, action, trigger = false }: ReCaptchaProps) => {
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const isReady = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const executeReCaptcha = useCallback(async () => {
+    if (!isReady.current || !trigger) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const token = await window.grecaptcha.execute(siteKey!, {
         action,
       });
       onVerify(token);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "reCAPTCHA verification failed";
       console.error("reCAPTCHA error:", error);
+      setError(errorMessage);
+      onError?.(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-  }, [siteKey, action, onVerify]);
+  }, [siteKey, action, onVerify, onError, trigger]);
 
   useEffect(() => {
-    if (isReady.current) {
+    if (trigger && isReady.current) {
       executeReCaptcha();
     }
-  }, [executeReCaptcha]);
+  }, [trigger, executeReCaptcha]);
 
   // Show development message instead of reCAPTCHA in development mode
   if (process.env.NODE_ENV === 'development') {
@@ -56,10 +70,20 @@ export const ReCaptcha = ({ onVerify, action }: ReCaptchaProps) => {
         onLoad={() => {
           window.grecaptcha.ready(() => {
             isReady.current = true;
-            executeReCaptcha();
+            // Don't execute immediately - wait for trigger
           });
         }}
       />
+      {isLoading && (
+        <div className="text-sm text-gray-600">
+          🔒 Verifying security...
+        </div>
+      )}
+      {error && (
+        <div className="text-sm text-red-600">
+          ⚠️ {error}
+        </div>
+      )}
     </>
   );
 }; 

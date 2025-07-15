@@ -3,7 +3,7 @@
 import * as z from "zod";
 import { db } from "@/lib/db";
 import { ContactUsSchema } from "@/schemas/ContactUsSchema";
-import { verifyRecaptcha } from "@/lib/recaptcha";
+import { verifyRecaptcha, validateHoneypot } from "@/lib/recaptcha";
 
 export const contactUs = async (values: z.infer<typeof ContactUsSchema>) => {
   const validatedFields = ContactUsSchema.safeParse(values);
@@ -12,9 +12,15 @@ export const contactUs = async (values: z.infer<typeof ContactUsSchema>) => {
     return { error: "Invalid fields." };
   }
 
-  const { name, email, reason, helpDescription, recaptchaToken } = validatedFields.data;
+  const { name, email, reason, helpDescription, website, recaptchaToken } = validatedFields.data;
 
-  // Verify reCAPTCHA token
+  // Step 1: Validate honeypot first (server-side double-check)
+  if (!validateHoneypot(website)) {
+    console.log("Bot detected via honeypot field in contact form");
+    return { error: "Invalid submission." };
+  }
+
+  // Step 2: Verify reCAPTCHA token
   if (!recaptchaToken) {
     return { error: "Security verification failed. Please try again." };
   }

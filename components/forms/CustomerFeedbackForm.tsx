@@ -20,16 +20,10 @@ import { FormProvider, useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { submitCustomerFeedback } from "@/actions/customer-feedback";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import { ReCaptcha } from "@/components/ui/recaptcha";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { validateHoneypot } from "@/lib/recaptcha";
 
 const CustomerFeedbackFormContent = () => {
   const isClient = useIsClient();
@@ -37,6 +31,8 @@ const CustomerFeedbackFormContent = () => {
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
+  const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
 
   const heardFromOptions = [
     { id: "SOCIAL_MEDIA", name: "Social Media" },
@@ -62,25 +58,29 @@ const CustomerFeedbackFormContent = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof CustomerFeedbackSchema>) => {
-    // Check honeypot first
-    if (values.website) {
-      // If the honeypot field is filled, silently fail
+    // Step 1: Check honeypot first (before any reCAPTCHA calls)
+    if (!validateHoneypot(values.website)) {
+      // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
+      console.log("Bot detected via honeypot field");
       return;
     }
 
-    // Check if reCAPTCHA token is available (skip in development)
-    if (process.env.NODE_ENV !== "development" && !recaptchaToken) {
-      setError(
-        "Security verification in progress. Please wait a moment and try again."
-      );
-      return;
-    }
+    // Step 2: Trigger reCAPTCHA verification
+    setShouldTriggerRecaptcha(true);
+    setRecaptchaError(null);
+  };
 
+  const handleRecaptchaSuccess = (token: string) => {
+    setRecaptchaToken(token);
+    setShouldTriggerRecaptcha(false);
+    
+    // Step 3: Submit the form with the token
+    const values = form.getValues();
     startTransition(() => {
       submitCustomerFeedback({
         ...values,
         recaptchaToken:
-          process.env.NODE_ENV === "development" ? "dev-token" : recaptchaToken,
+          process.env.NODE_ENV === "development" ? "dev-token" : token,
       }).then((data) => {
         if (data.success) setSuccess(data.success);
         if (data.error) setError(data.error);
@@ -89,6 +89,13 @@ const CustomerFeedbackFormContent = () => {
     form.reset();
     setSuccess("");
     setError("");
+    setRecaptchaToken("");
+  };
+
+  const handleRecaptchaError = (error: string) => {
+    setRecaptchaError(error);
+    setShouldTriggerRecaptcha(false);
+    setError("Security verification failed. Please try again.");
   };
 
   if (!isClient) return <Spinner />;
@@ -123,10 +130,7 @@ const CustomerFeedbackFormContent = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>How did you hear about Yarnnu?</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an option" />
@@ -149,44 +153,22 @@ const CustomerFeedbackFormContent = () => {
                 name="overallExperience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      How would you rate your overall experience?
-                    </FormLabel>
+                    <FormLabel>Overall Experience (1-5 stars)</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value))
-                        }
-                        defaultValue={field.value?.toString()}
-                        className="flex flex-col space-y-1"
-                      >
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                          <div
-                            key={rating}
-                            className="flex items-center space-x-2"
+                      <div className="flex space-x-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Button
+                            key={star}
+                            type="button"
+                            variant={field.value >= star ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => field.onChange(star)}
+                            className="w-10 h-10 p-0"
                           >
-                            <RadioGroupItem
-                              value={rating.toString()}
-                              id={`rating-${rating}`}
-                            />
-                            <label
-                              htmlFor={`rating-${rating}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {rating} -{" "}
-                              {rating === 1
-                                ? "Poor"
-                                : rating === 2
-                                  ? "Fair"
-                                  : rating === 3
-                                    ? "Good"
-                                    : rating === 4
-                                      ? "Very Good"
-                                      : "Excellent"}
-                            </label>
-                          </div>
+                            ★
+                          </Button>
                         ))}
-                      </RadioGroup>
+                      </div>
                     </FormControl>
                   </FormItem>
                 )}
@@ -197,45 +179,19 @@ const CustomerFeedbackFormContent = () => {
                 name="placedOrder"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Have you placed an order with us?</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex flex-col space-y-1"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="YES" id="order-yes" />
-                          <label
-                            htmlFor="order-yes"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Yes, I have placed an order
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem
-                            value="PLANNING"
-                            id="order-planning"
-                          />
-                          <label
-                            htmlFor="order-planning"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            I&apos;m planning to place an order
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="NO" id="order-no" />
-                          <label
-                            htmlFor="order-no"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            No, I haven&apos;t placed an order
-                          </label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
+                    <FormLabel>Have you placed an order?</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an option" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="YES">Yes</SelectItem>
+                        <SelectItem value="PLANNING">Planning to</SelectItem>
+                        <SelectItem value="NO">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </FormItem>
                 )}
               />
@@ -247,7 +203,7 @@ const CustomerFeedbackFormContent = () => {
                   <FormItem>
                     <FormLabel>Order Number (if applicable)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your order number" {...field} />
+                      <Input placeholder="Enter order number" {...field} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -261,7 +217,7 @@ const CustomerFeedbackFormContent = () => {
                     <FormLabel>Tell us about your experience</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Please share your experience with Yarnnu..."
+                        placeholder="Share your experience with Yarnnu..."
                         {...field}
                       />
                     </FormControl>
@@ -274,10 +230,10 @@ const CustomerFeedbackFormContent = () => {
                 name="improvements"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>What could we improve? (Optional)</FormLabel>
+                    <FormLabel>Suggestions for improvement (optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Any suggestions for improvement..."
+                        placeholder="What could we do better?"
                         {...field}
                       />
                     </FormControl>
@@ -290,44 +246,22 @@ const CustomerFeedbackFormContent = () => {
                 name="returnLikelihood"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      How likely are you to return to Yarnnu?
-                    </FormLabel>
+                    <FormLabel>How likely are you to return? (1-5)</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value))
-                        }
-                        defaultValue={field.value?.toString()}
-                        className="flex flex-col space-y-1"
-                      >
-                        {[1, 2, 3, 4, 5].map((likelihood) => (
-                          <div
-                            key={likelihood}
-                            className="flex items-center space-x-2"
+                      <div className="flex space-x-2">
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <Button
+                            key={rating}
+                            type="button"
+                            variant={field.value >= rating ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => field.onChange(rating)}
+                            className="w-10 h-10 p-0"
                           >
-                            <RadioGroupItem
-                              value={likelihood.toString()}
-                              id={`likelihood-${likelihood}`}
-                            />
-                            <label
-                              htmlFor={`likelihood-${likelihood}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {likelihood} -{" "}
-                              {likelihood === 1
-                                ? "Very Unlikely"
-                                : likelihood === 2
-                                  ? "Unlikely"
-                                  : likelihood === 3
-                                    ? "Maybe"
-                                    : likelihood === 4
-                                      ? "Likely"
-                                      : "Very Likely"}
-                            </label>
-                          </div>
+                            {rating}
+                          </Button>
                         ))}
-                      </RadioGroup>
+                      </div>
                     </FormControl>
                   </FormItem>
                 )}
@@ -350,22 +284,17 @@ const CustomerFeedbackFormContent = () => {
               <div className="hidden">
                 <ReCaptcha
                   action="feedback_form"
-                  onVerify={(token) => setRecaptchaToken(token)}
+                  onVerify={handleRecaptchaSuccess}
+                  onError={handleRecaptchaError}
+                  trigger={shouldTriggerRecaptcha}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              {process.env.NODE_ENV === "development" || recaptchaToken ? (
-                <Submitbutton title="Submit Feedback" isPending={isPending} />
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={true}
-                  className="bg-gray-400 cursor-not-allowed"
-                >
-                  Security verification in progress...
-                </Button>
-              )}
+              <Submitbutton 
+                title={isPending ? "Submitting..." : "Submit Feedback"} 
+                isPending={isPending || shouldTriggerRecaptcha} 
+              />
             </CardFooter>
           </form>
         </Card>
@@ -374,8 +303,4 @@ const CustomerFeedbackFormContent = () => {
   );
 };
 
-const CustomerFeedbackForm = () => {
-  return <CustomerFeedbackFormContent />;
-};
-
-export default CustomerFeedbackForm;
+export default CustomerFeedbackFormContent;
