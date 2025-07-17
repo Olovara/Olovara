@@ -20,13 +20,26 @@ export async function canUserAccessTestEnvironment(userId: string): Promise<bool
 
     if (!user) return false;
 
+    // Debug logging
+    console.log('[DEBUG] Test Environment Access Check:', {
+      userId,
+      userRole: user.role,
+      canAccessTestEnvironment: user.canAccessTestEnvironment,
+      adminRole: user.admin?.role,
+      isSuperAdmin: user.role === "SUPER_ADMIN",
+      hasAdminRole: !!user.admin?.role
+    });
+
     // Admins always have access
     if (user.role === "SUPER_ADMIN" || user.admin?.role) {
+      console.log('[DEBUG] Test Environment Access - GRANTED (Admin)');
       return true;
     }
 
     // Check if user has explicit test environment access
-    return user.canAccessTestEnvironment;
+    const hasExplicitAccess = user.canAccessTestEnvironment;
+    console.log('[DEBUG] Test Environment Access - Explicit access:', hasExplicitAccess);
+    return hasExplicitAccess;
   } catch (error) {
     console.error("Error checking test environment access:", error);
     return false;

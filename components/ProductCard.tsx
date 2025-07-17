@@ -46,6 +46,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDropActive, setIsDropActive] = useState<boolean>(false);
   const [convertedPrice, setConvertedPrice] = useState<string>("");
+  const [convertedDiscountedPrice, setConvertedDiscountedPrice] = useState<string>("");
   const { formatPrice } = useCurrency();
 
   useEffect(() => {
@@ -59,9 +60,18 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   // Convert price when product or currency changes
   useEffect(() => {
     if (product) {
+      // Format original price
       formatPrice(product.price, true)
         .then(setConvertedPrice)
         .catch(console.error);
+      
+      // Format discounted price if there's a discount
+      if (product.discount && product.discount > 0) {
+        const discountedAmount = product.price * (1 - product.discount / 100);
+        formatPrice(discountedAmount, true)
+          .then(setConvertedDiscountedPrice)
+          .catch(console.error);
+      }
     }
   }, [product, formatPrice]);
 
@@ -110,6 +120,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const imageUrlsToUse = validUrls.length > 0 ? validUrls : ["/placeholder.jpg"];
 
   const isDropProduct = product.dropDate && product.dropTime;
+  const isOnSale = product.discount && product.discount > 0;
 
   return (
     <Link
@@ -125,10 +136,41 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
         </div>
+        
+        {/* Product Name - First */}
         <h3 className="mt-4 font-medium text-sm text-gray-700 line-clamp-2">
           {product.name}
         </h3>
-        <p className="mt-1 text-sm text-gray-500">{categoryDisplay}</p>
+        
+        {/* Shop Name - Second */}
+        {product.seller?.shopName && (
+          <p className="mt-1 text-sm text-gray-500">
+            {product.seller.shopName}
+          </p>
+        )}
+        
+        {/* Price - Third with sale indication */}
+        <div className="mt-1">
+          {isOnSale ? (
+            <div className="flex items-center gap-2">
+              <span className="line-through text-sm text-gray-400">
+                {convertedPrice}
+              </span>
+              <span className="font-medium text-sm text-green-600">
+                {convertedDiscountedPrice}
+              </span>
+              <span className="text-xs text-green-600 font-medium">
+                -{product.discount}%
+              </span>
+            </div>
+          ) : (
+            <p className="font-medium text-sm text-gray-900">
+              {convertedPrice}
+            </p>
+          )}
+        </div>
+        
+        {/* Drop countdown (if applicable) */}
         {isDropProduct && (
           <div className="mt-1">
             <p className="text-xs text-gray-400">Drops in:</p>
@@ -140,9 +182,6 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             />
           </div>
         )}
-        <p className="mt-1 font-medium text-sm text-gray-900">
-          {convertedPrice}
-        </p>
       </div>
     </Link>
   );

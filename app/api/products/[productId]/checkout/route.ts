@@ -34,6 +34,7 @@ export async function GET(
         seller: {
           select: {
             id: true,
+            userId: true,
             shopName: true,
             shopNameSlug: true,
           },
@@ -88,6 +89,7 @@ export async function GET(
       currency: product.currency,
       seller: {
         id: product.seller.id,
+        userId: product.seller.userId,
         shopName: product.seller.shopName,
         shopNameSlug: product.seller.shopNameSlug,
       },

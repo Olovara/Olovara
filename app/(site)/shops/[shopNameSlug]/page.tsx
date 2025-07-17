@@ -87,6 +87,19 @@ async function getShopData(shopNameSlug: string, userCountryCode?: string, canAc
           stock: true,
           dropDate: true,
           dropTime: true,
+          seller: {
+            select: {
+              shopName: true,
+              shopNameSlug: true,
+              isWomanOwned: true,
+              isMinorityOwned: true,
+              isLGBTQOwned: true,
+              isVeteranOwned: true,
+              isSustainable: true,
+              isCharitable: true,
+              excludedCountries: true,
+            },
+          },
         },
       },
       reviews: {

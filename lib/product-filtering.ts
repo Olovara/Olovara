@@ -2,6 +2,7 @@ import { doesSellerShipToCountry } from "@/lib/country-exclusions";
 import { auth } from "@/auth";
 import { canUserAccessTestEnvironment } from "@/lib/test-environment";
 import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
 
 /**
  * Centralized product filtering configuration
@@ -35,6 +36,13 @@ export async function createProductFilterWhereClause(
       : false;
   }
 
+  // Debug logging for test product filtering
+  console.log('[DEBUG] Product Filtering - User test access:', {
+    canAccessTest,
+    includeTestProducts: config.includeTestProducts,
+    userId: (await auth())?.user?.id
+  });
+
   // Build the base where clause
   const where: Prisma.ProductWhereInput = {
     AND: [
@@ -45,11 +53,11 @@ export async function createProductFilterWhereClause(
       ...(config.includeTestProducts || canAccessTest ? [] : [{ isTestProduct: false }]),
       
       // Filter out products from suspended sellers
+      // Use seller existence check instead of nested relationship query
+      // This avoids the Prisma issue with seller.user.status nested queries
       {
         seller: {
-          user: {
-            status: "ACTIVE" // Only show products from active sellers
-          }
+          isNot: null // Only show products that have a seller profile
         }
       },
       
@@ -61,7 +69,74 @@ export async function createProductFilterWhereClause(
     ],
   };
 
+  // Debug logging for final where clause
+  console.log('[DEBUG] Product Filtering - Final where clause:', JSON.stringify(where, null, 2));
+
   return where;
+}
+
+/**
+ * Debug function to log product query results
+ * This helps identify why test products might not be showing up
+ */
+export async function debugProductQuery(where: Prisma.ProductWhereInput) {
+  try {
+    const products = await db.product.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        isTestProduct: true,
+        seller: {
+          select: {
+            userId: true,
+            shopName: true,
+            shopNameSlug: true,
+            isWomanOwned: true,
+            isMinorityOwned: true,
+            isLGBTQOwned: true,
+            isVeteranOwned: true,
+            isSustainable: true,
+            isCharitable: true,
+            excludedCountries: true,
+            user: {
+              select: {
+                status: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    console.log('[DEBUG] Products returned by query:', products.length);
+    products.forEach(product => {
+      console.log(`- ${product.name} (ID: ${product.id})`);
+      console.log(`  Status: ${product.status}`);
+      console.log(`  isTestProduct: ${product.isTestProduct}`);
+      console.log(`  Seller Status: ${product.seller?.user?.status || 'No seller'}`);
+      console.log(`  Shop Name: ${product.seller?.shopName || 'No shop name'}`);
+    });
+
+    const testProducts = products.filter(p => p.isTestProduct);
+    console.log(`[DEBUG] Test products in results: ${testProducts.length}`);
+    
+    // Filter out products from inactive sellers (since we can't do this in the DB query)
+    const productsWithActiveSellers = products.filter(product => {
+      if (!product.seller) return false;
+      return product.seller.user?.status === 'ACTIVE';
+    });
+    
+    console.log(`[DEBUG] Products with active sellers: ${productsWithActiveSellers.length}`);
+    const testProductsWithActiveSellers = productsWithActiveSellers.filter(p => p.isTestProduct);
+    console.log(`[DEBUG] Test products with active sellers: ${testProductsWithActiveSellers.length}`);
+    
+    return productsWithActiveSellers; // Return the filtered results
+  } catch (error) {
+    console.error('[DEBUG] Error in debugProductQuery:', error);
+    return [];
+  }
 }
 
 /**

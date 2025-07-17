@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Filter } from "lucide-react";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
+import { createProductFilterWhereClause, getProductFilterConfig, debugProductQuery } from "@/lib/product-filtering";
 import { LocationFilterInfo } from "@/components/LocationFilterNotice";
 
 export const metadata: Metadata = {
@@ -113,6 +113,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   // Use centralized filtering
   const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
 
+  // Debug: Log what products are actually being returned and filter by seller status
+  const productsWithActiveSellers = await debugProductQuery(where);
+
   // Build orderBy clause
   const orderBy = (() => {
     switch (sortBy) {
@@ -127,13 +130,17 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     }
   })();
 
-  // Get total count for pagination
-  const totalProducts = await db.product.count({ where });
+  // Get total count for pagination (use the filtered count)
+  const totalProducts = productsWithActiveSellers.length;
   const totalPages = Math.ceil(totalProducts / pageSize);
 
-  // Fetch products with pagination (without location filtering at DB level)
+  // Fetch products with pagination and full details
   const allProducts = await db.product.findMany({
-    where,
+    where: {
+      id: {
+        in: productsWithActiveSellers.map(p => p.id)
+      }
+    },
     orderBy,
     skip: (currentPage - 1) * pageSize,
     take: pageSize * 2, // Fetch more to account for filtering
@@ -169,14 +176,23 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     },
   });
 
+  // Merge the seller information from the debug query with the full product data
+  const productsWithSellerInfo = allProducts.map(product => {
+    const debugProduct = productsWithActiveSellers.find(p => p.id === product.id);
+    return {
+      ...product,
+      seller: debugProduct?.seller || product.seller,
+    };
+  });
+
   // Apply location filtering in memory
   const products = userCountryCode 
-    ? allProducts.filter(product => {
+    ? productsWithSellerInfo.filter(product => {
         if (!product.seller) return true;
         const excludedCountries = product.seller.excludedCountries || [];
         return !excludedCountries.includes(userCountryCode);
       }).slice(0, pageSize)
-    : allProducts.slice(0, pageSize);
+    : productsWithSellerInfo.slice(0, pageSize);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[2000px]">

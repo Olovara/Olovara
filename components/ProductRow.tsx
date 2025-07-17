@@ -7,8 +7,116 @@ import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
 interface iAppProps {
-  category: "newest" | "templates" | "uikits" | "ACCESORIES" | "random";
+  category: "newest" | "ACCESORIES" | "random";
 }
+
+// Type for the database query result
+type ProductWithSeller = {
+  id: string;
+  userId: string;
+  name: string;
+  description: any;
+  price: number;
+  currency: string;
+  status: string;
+  shippingCost: number | null;
+  handlingFee: number | null;
+  itemWeight: number | null;
+  itemLength: number | null;
+  itemWidth: number | null;
+  itemHeight: number | null;
+  shippingNotes: string | null;
+  freeShipping: boolean;
+  isDigital: boolean;
+  stock: number;
+  images: string[];
+  productFile: string | null;
+  numberSold: number;
+  onSale: boolean;
+  discount: number | null;
+  primaryCategory: string;
+  secondaryCategory: string | null;
+  tertiaryCategory: string | null;
+  tags: string[];
+  materialTags: string[];
+  options: any;
+  inStockProcessingTime: number | null;
+  outStockLeadTime: number | null;
+  howItsMade: string | null;
+  productDrop: boolean;
+  NSFW: boolean;
+  dropDate: Date | null;
+  dropTime: string | null;
+  discountEndDate: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  seller: {
+    shopName: string;
+    shopNameSlug: string;
+    isWomanOwned: boolean;
+    isMinorityOwned: boolean;
+    isLGBTQOwned: boolean;
+    isVeteranOwned: boolean;
+    isSustainable: boolean;
+    isCharitable: boolean;
+    excludedCountries: string[] | null;
+  } | null;
+};
+
+// Common product select fields used across all categories
+const PRODUCT_SELECT_FIELDS = {
+  id: true,
+  userId: true,
+  name: true,
+  description: true,
+  price: true,
+  currency: true,
+  status: true,
+  shippingCost: true,
+  handlingFee: true,
+  itemWeight: true,
+  itemLength: true,
+  itemWidth: true,
+  itemHeight: true,
+  shippingNotes: true,
+  freeShipping: true,
+  isDigital: true,
+  stock: true,
+  images: true,
+  productFile: true,
+  numberSold: true,
+  onSale: true,
+  discount: true,
+  primaryCategory: true,
+  secondaryCategory: true,
+  tertiaryCategory: true,
+  tags: true,
+  materialTags: true,
+  options: true,
+  inStockProcessingTime: true,
+  outStockLeadTime: true,
+  howItsMade: true,
+  productDrop: true,
+  NSFW: true,
+  dropDate: true,
+  dropTime: true,
+  discountEndDate: true,
+  createdAt: true,
+  updatedAt: true,
+  seller: {
+    select: {
+      shopName: true,
+      shopNameSlug: true,
+      isWomanOwned: true,
+      isMinorityOwned: true,
+      isLGBTQOwned: true,
+      isVeteranOwned: true,
+      isSustainable: true,
+      isCharitable: true,
+      excludedCountries: true,
+    },
+  },
+};
 
 async function getData({ category }: iAppProps) {
   try {
@@ -20,160 +128,65 @@ async function getData({ category }: iAppProps) {
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-    switch (category) {
-      case "random": {
-        // Get total count of filtered products
-        const productWhere = await createProductFilterWhereClause({}, filterConfig);
-        const totalProducts = await db.product.count({ where: productWhere });
-        const randomOffset = Math.floor(Math.random() * Math.max(0, totalProducts - 4));
-        const data = await db.product.findMany({
-          where: productWhere,
-          select: {
-            id: true,
-            userId: true,
-            name: true,
-            description: true,
-            price: true,
-            currency: true,
-            status: true,
-            shippingCost: true,
-            handlingFee: true,
-            itemWeight: true,
-            itemLength: true,
-            itemWidth: true,
-            itemHeight: true,
-            shippingNotes: true,
-            freeShipping: true,
-            isDigital: true,
-            stock: true,
-            images: true,
-            productFile: true,
-            numberSold: true,
-            onSale: true,
-            discount: true,
-            primaryCategory: true,
-            secondaryCategory: true,
-            tertiaryCategory: true,
-            tags: true,
-            materialTags: true,
-            options: true,
-            inStockProcessingTime: true,
-            outStockLeadTime: true,
-            howItsMade: true,
-            productDrop: true,
-            NSFW: true,
-            dropDate: true,
-            dropTime: true,
-            discountEndDate: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          skip: randomOffset,
-          take: 4,
-        });
-        return { data, title: "Featured Products", link: "/products" };
+    // Define category-specific configurations
+    const categoryConfigs = {
+      random: {
+        where: {},
+        skip: async () => {
+          const productWhere = await createProductFilterWhereClause({}, filterConfig);
+          const totalProducts = await db.product.count({ where: productWhere });
+          return Math.floor(Math.random() * Math.max(0, totalProducts - 4));
+        },
+        take: 4,
+        orderBy: undefined,
+        title: "Featured Products",
+        link: "/products"
+      },
+      ACCESORIES: {
+        where: { primaryCategory: "ACCESORIES" },
+        skip: 0,
+        take: 5,
+        orderBy: undefined,
+        title: "Accessories",
+        link: "/products/accessories"
+      },
+      newest: {
+        where: { createdAt: { gte: fiveDaysAgo } },
+        skip: 0,
+        take: 4,
+        orderBy: { createdAt: "desc" as const },
+        title: "Newest Products",
+        link: "/products"
       }
-      case "ACCESORIES": {
-        const productWhere = await createProductFilterWhereClause({ primaryCategory: "ACCESORIES" }, filterConfig);
-        const data = await db.product.findMany({
-          where: productWhere,
-          select: {
-            id: true,
-            userId: true,
-            name: true,
-            description: true,
-            price: true,
-            currency: true,
-            status: true,
-            shippingCost: true,
-            handlingFee: true,
-            itemWeight: true,
-            itemLength: true,
-            itemWidth: true,
-            itemHeight: true,
-            shippingNotes: true,
-            freeShipping: true,
-            isDigital: true,
-            stock: true,
-            images: true,
-            productFile: true,
-            numberSold: true,
-            onSale: true,
-            discount: true,
-            primaryCategory: true,
-            secondaryCategory: true,
-            tertiaryCategory: true,
-            tags: true,
-            materialTags: true,
-            options: true,
-            inStockProcessingTime: true,
-            outStockLeadTime: true,
-            howItsMade: true,
-            productDrop: true,
-            NSFW: true,
-            dropDate: true,
-            dropTime: true,
-            discountEndDate: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          take: 5,
-        });
-        return { data, title: "Accessories", link: "/products/accessories" };
-      }
-      case "newest": {
-        const productWhere = await createProductFilterWhereClause({ createdAt: { gte: fiveDaysAgo } }, filterConfig);
-        const data = await db.product.findMany({
-          where: productWhere,
-          select: {
-            id: true,
-            userId: true,
-            name: true,
-            description: true,
-            price: true,
-            currency: true,
-            status: true,
-            shippingCost: true,
-            handlingFee: true,
-            itemWeight: true,
-            itemLength: true,
-            itemWidth: true,
-            itemHeight: true,
-            shippingNotes: true,
-            freeShipping: true,
-            isDigital: true,
-            stock: true,
-            images: true,
-            productFile: true,
-            numberSold: true,
-            onSale: true,
-            discount: true,
-            primaryCategory: true,
-            secondaryCategory: true,
-            tertiaryCategory: true,
-            tags: true,
-            materialTags: true,
-            options: true,
-            inStockProcessingTime: true,
-            outStockLeadTime: true,
-            howItsMade: true,
-            productDrop: true,
-            NSFW: true,
-            dropDate: true,
-            dropTime: true,
-            discountEndDate: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 4,
-        });
-        return { data, title: "Newest Products", link: "/products" };
-      }
-      default: {
-        return notFound();
-      }
+    } as const;
+
+    const config = categoryConfigs[category];
+    if (!config) {
+      notFound();
+      return { data: [], title: "Not Found", link: "#" }; // This line will never be reached
     }
+
+    // Build the where clause
+    const productWhere = await createProductFilterWhereClause(config.where, filterConfig);
+    
+    // Get skip value (handle async skip for random category)
+    const skip = typeof config.skip === 'function' ? await config.skip() : config.skip;
+
+    // Fetch products with common configuration
+    const data = await db.product.findMany({
+      where: productWhere,
+      select: PRODUCT_SELECT_FIELDS,
+      skip,
+      take: config.take,
+      orderBy: config.orderBy,
+    });
+
+    return { 
+      data, 
+      title: config.title, 
+      link: config.link 
+    };
+
   } catch (error) {
     console.error("Error fetching data:", error);
     return { data: [], title: "Error", link: "#" };
@@ -213,15 +226,36 @@ export async function LoadRows({ category }: iAppProps) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-        {data.data.map((product) => (
+        {(data.data as ProductWithSeller[]).map((product, index) => (
           <ProductCard
             key={product.id}
             product={{
-              ...product,
+              id: product.id,
+              name: product.name,
+              status: product.status,
+              isDigital: product.isDigital,
+              discount: product.discount,
+              price: product.price,
+              currency: product.currency,
+              images: product.images,
+              primaryCategory: product.primaryCategory,
               secondaryCategory: product.secondaryCategory || undefined,
               tertiaryCategory: product.tertiaryCategory || undefined,
+              stock: product.stock,
+              dropDate: product.dropDate,
+              dropTime: product.dropTime,
+              seller: product.seller ? {
+                shopName: product.seller.shopName,
+                shopNameSlug: product.seller.shopNameSlug,
+                isWomanOwned: product.seller.isWomanOwned,
+                isMinorityOwned: product.seller.isMinorityOwned,
+                isLGBTQOwned: product.seller.isLGBTQOwned,
+                isVeteranOwned: product.seller.isVeteranOwned,
+                isSustainable: product.seller.isSustainable,
+                isCharitable: product.seller.isCharitable
+              } : null
             }}
-            index={data.data.indexOf(product)}
+            index={index}
           />
         ))}
       </div>

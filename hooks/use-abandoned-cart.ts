@@ -13,6 +13,10 @@ interface CartData {
   sellerId?: string
   discountCode?: string
   discountAmount?: number
+  currency?: string
+  shippingCost?: number
+  handlingFee?: number
+  saleDiscount?: number
 }
 
 interface CheckoutStep {
@@ -186,6 +190,48 @@ export function useAbandonedCart(cartData: CartData) {
     setIsTracking(false)
   }, [isTracking, cartData, trackCheckoutCompleted, startTime, steps])
 
+  // Track payment intent creation
+  const trackPaymentIntentCreated = useCallback((paymentIntentData: any) => {
+    if (!isTracking || isAbandonedRef.current) return
+
+    completeStep('payment_intent_created', {
+      clientSecret: paymentIntentData.clientSecret ? 'created' : 'failed',
+      customerId: paymentIntentData.customerId,
+      amount: paymentIntentData.amount,
+      currency: paymentIntentData.currency,
+      paymentMethod: 'embedded'
+    })
+  }, [isTracking, completeStep])
+
+  // Track payment form displayed
+  const trackPaymentFormDisplayed = useCallback(() => {
+    if (!isTracking || isAbandonedRef.current) return
+
+    completeStep('payment_form_displayed', {
+      paymentMethod: 'embedded',
+      hasAddresses: true
+    })
+  }, [isTracking, completeStep])
+
+  // Track payment attempt
+  const trackPaymentAttempt = useCallback((paymentMethod?: string) => {
+    if (!isTracking || isAbandonedRef.current) return
+
+    completeStep('payment_attempted', {
+      paymentMethod: paymentMethod || 'card',
+      paymentType: 'embedded'
+    })
+  }, [isTracking, completeStep])
+
+  // Track payment processing
+  const trackPaymentProcessing = useCallback(() => {
+    if (!isTracking || isAbandonedRef.current) return
+
+    completeStep('payment_processing', {
+      paymentType: 'embedded'
+    })
+  }, [isTracking, completeStep])
+
   // Track checkout errors
   const trackError = useCallback((errorType: string, errorMessage: string) => {
     if (!isTracking || isAbandonedRef.current) return
@@ -251,6 +297,10 @@ export function useAbandonedCart(cartData: CartData) {
     abandonCart,
     completeCheckout,
     trackError,
+    trackPaymentIntentCreated,
+    trackPaymentFormDisplayed,
+    trackPaymentAttempt,
+    trackPaymentProcessing,
     isTracking,
     currentStep,
     steps,

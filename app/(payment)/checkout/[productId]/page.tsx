@@ -16,6 +16,7 @@ import { Lock, Shield, Truck, CreditCard, CheckCircle, ArrowLeft } from "lucide-
 import { useLocation } from "@/hooks/useLocation";
 import { SUPPORTED_COUNTRIES, type Country } from "@/data/countries";
 import { ReCaptcha } from "@/components/ui/recaptcha";
+import EmbeddedPaymentForm from "@/components/EmbeddedPaymentForm";
 
 // Placeholder for product fetch (replace with real hook or API call)
 async function fetchProduct(productId: string) {
@@ -61,6 +62,13 @@ export default function CheckoutPage() {
     country: userCountry,
   });
   const [sameAsShipping, setSameAsShipping] = useState(true);
+  
+  // Embedded payment form state
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentCurrency, setPaymentCurrency] = useState<string>("USD");
 
   // Update country when location is detected
   useEffect(() => {
@@ -115,6 +123,10 @@ export default function CheckoutPage() {
       sellerId: product.seller?.id,
       discountCode: appliedDiscountCode,
       discountAmount: appliedDiscountAmount,
+      currency: product.currency,
+      shippingCost: !product.isDigital ? product.shippingCost : 0,
+      handlingFee: !product.isDigital ? product.handlingFee : 0,
+      saleDiscount,
     };
   }, [product, quantity, appliedDiscountCode, appliedDiscountAmount]);
 
@@ -124,6 +136,10 @@ export default function CheckoutPage() {
     abandonCart,
     completeCheckout,
     trackError,
+    trackPaymentIntentCreated,
+    trackPaymentFormDisplayed,
+    trackPaymentAttempt,
+    trackPaymentProcessing,
     isTracking
   } = useAbandonedCart(cartData || {
     productId: '',
@@ -204,6 +220,11 @@ export default function CheckoutPage() {
     if (checked) {
       setBillingAddress(shippingAddress);
     }
+    
+    // Track billing address preference
+    if (isTracking) {
+      completeStep('billing_address_preference', { sameAsShipping: checked });
+    }
   };
 
   // Validate all fields before proceeding
@@ -245,6 +266,21 @@ export default function CheckoutPage() {
   const handleContinue = async () => {
     if (!validate()) return;
     
+    // Track payment initiation
+    if (isTracking) {
+      completeStep('payment_initiated', {
+        paymentMethod: 'embedded',
+        hasAddresses: !product.isDigital
+      });
+    }
+    
+    // In development mode, skip reCAPTCHA and proceed directly
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Development mode: Skipping reCAPTCHA verification');
+      await handleRecaptchaSuccess('dev-token');
+      return;
+    }
+    
     // Step 1: Trigger reCAPTCHA verification
     setShouldTriggerRecaptcha(true);
     setRecaptchaError(null);
@@ -269,7 +305,7 @@ export default function CheckoutPage() {
       
       completeStep('form_validated');
       
-      const response = await fetch("/api/stripe/create-payment-intent", {
+      const response = await fetch("/api/stripe/create-payment-intent-embedded", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -286,15 +322,22 @@ export default function CheckoutPage() {
 
       const data = await response.json();
 
-      if (response.ok && data.url) {
+      if (response.ok && data.clientSecret) {
         // Track successful payment intent creation
-        completeStep('payment_intent_created');
+        trackPaymentIntentCreated(data);
         
-        // Complete checkout tracking
-        completeCheckout();
+        // Set up embedded payment form
+        setClientSecret(data.clientSecret);
+        setCustomerId(data.customerId);
+        setPaymentAmount(data.amount);
+        setPaymentCurrency(data.currency);
+        setShowPaymentForm(true);
         
-        // Redirect to Stripe Checkout
-        window.location.href = data.url;
+        // Track payment form displayed
+        setTimeout(() => {
+          trackPaymentFormDisplayed();
+          document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else if (response.status === 401 && data.requiresAuth) {
         // Track authentication requirement
         trackError('authentication_required', data.details || 'Authentication required');
@@ -331,6 +374,32 @@ export default function CheckoutPage() {
     setRecaptchaError(error);
     setShouldTriggerRecaptcha(false);
     toast.error("Security verification failed. Please try again.");
+  };
+
+  // Payment success handler
+  const handlePaymentSuccess = (paymentIntentId: string) => {
+    // Track successful payment
+    completeCheckout();
+    
+    // Redirect to success page
+    router.push(`/checkout/success?session_id=${paymentIntentId}`);
+  };
+
+  // Payment error handler
+  const handlePaymentError = (error: string) => {
+    // Track payment error
+    trackError('payment_error', error);
+    toast.error(error);
+  };
+
+  // Payment attempt handler (called when user submits payment form)
+  const handlePaymentAttempt = () => {
+    trackPaymentAttempt('card');
+  };
+
+  // Payment processing handler (called when payment is being processed)
+  const handlePaymentProcessing = () => {
+    trackPaymentProcessing();
   };
 
   // Track when user leaves the page
@@ -447,7 +516,7 @@ export default function CheckoutPage() {
               {/* Discount Code */}
               <div className="p-6 border-b border-gray-200">
                 <DiscountCodeInput
-                  sellerId={product.seller.id}
+                  sellerId={product.seller.userId}
                   productId={product.id}
                   orderAmount={subtotal - saleDiscount + shipping}
                   onDiscountApplied={handleDiscountApplied}
@@ -672,43 +741,60 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              {/* Payment Button */}
-              <div className="p-6">
-                <Button 
-                  onClick={handleContinue} 
-                  disabled={loading || shouldTriggerRecaptcha} 
-                  className="w-full h-12 text-lg font-semibold bg-purple-600 hover:bg-purple-700"
-                >
-                  {loading || shouldTriggerRecaptcha ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      {shouldTriggerRecaptcha ? "Verifying security..." : "Processing..."}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <CreditCard className="h-5 w-5 mr-2" />
-                      Continue to payment
-                    </div>
-                  )}
-                </Button>
-                
-                {/* Trust Indicators */}
-                <div className="mt-4 text-center">
-                  <p className="text-xs text-gray-500">
-                    You&apos;ll be redirected to our secure payment processor
-                  </p>
-                  <div className="flex items-center justify-center mt-2 space-x-4">
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Shield className="h-3 w-3 mr-1" />
-                      <span>SSL secured</span>
-                    </div>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Lock className="h-3 w-3 mr-1" />
-                      <span>256-bit encryption</span>
+              {/* Payment Section */}
+              {!showPaymentForm ? (
+                <div className="p-6">
+                  <Button 
+                    onClick={handleContinue} 
+                    disabled={loading || shouldTriggerRecaptcha} 
+                    className="w-full h-12 text-lg font-semibold bg-purple-600 hover:bg-purple-700"
+                  >
+                    {loading || shouldTriggerRecaptcha ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        {shouldTriggerRecaptcha ? "Verifying security..." : "Processing..."}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <CreditCard className="h-5 w-5 mr-2" />
+                        Continue to payment
+                      </div>
+                    )}
+                  </Button>
+                  
+                  {/* Trust Indicators */}
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Secure payment processing powered by Stripe
+                    </p>
+                    <div className="flex items-center justify-center mt-2 space-x-4">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <Shield className="h-3 w-3 mr-1" />
+                        <span>SSL secured</span>
+                      </div>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <Lock className="h-3 w-3 mr-1" />
+                        <span>256-bit encryption</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div id="payment-form" className="p-6">
+                  <EmbeddedPaymentForm
+                    clientSecret={clientSecret!}
+                    customerId={customerId || undefined}
+                    amount={paymentAmount}
+                    currency={paymentCurrency}
+                    shippingAddress={!product.isDigital ? shippingAddress : undefined}
+                    billingAddress={!product.isDigital ? (sameAsShipping ? shippingAddress : billingAddress) : undefined}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onPaymentAttempt={handlePaymentAttempt}
+                    onPaymentProcessing={handlePaymentProcessing}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
