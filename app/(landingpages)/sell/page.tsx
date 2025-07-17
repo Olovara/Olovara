@@ -2,6 +2,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import SellPageClient from "@/components/seller/SellPageClient";
 import { 
   CheckCircle, 
   Star, 
@@ -20,6 +21,12 @@ import {
   CreditCard
 } from "lucide-react";
 
+// Add styles for Apply buttons
+const applyButtonStyles = {
+  cursor: 'pointer',
+  transition: 'all 0.2s ease-in-out',
+};
+
 export const metadata = {
   title: "Become a Founding Seller - Yarnnu",
   description: "Join Yarnnu as one of our first 50 founding sellers. Get lifetime 8% commission (vs 10%), priority placement, early feature access, and showcase opportunities. Built by artisans, for artisans.",
@@ -27,7 +34,8 @@ export const metadata = {
 
 export default function SellPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <SellPageClient>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-20">
@@ -50,9 +58,13 @@ export default function SellPage() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link href="/seller-application" className={buttonVariants({ size: "lg", className: "text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700" })}>
+              <Button 
+                size="lg" 
+                className="text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700 apply-button"
+                style={applyButtonStyles}
+              >
                 Apply Now - It&apos;s Free
-              </Link>
+              </Button>
               <Link href="#benefits" className={buttonVariants({ variant: "outline", size: "lg", className: "text-lg px-8 py-4" })}>
                 Learn More
               </Link>
@@ -317,9 +329,13 @@ export default function SellPage() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/seller-application" className={buttonVariants({ size: "lg", className: "text-lg px-8 py-4 bg-white text-purple-600 hover:bg-gray-100" })}>
+            <Button 
+              size="lg" 
+              className="text-lg px-8 py-4 bg-white text-purple-600 hover:bg-gray-100 apply-button"
+              style={applyButtonStyles}
+            >
               Apply Now - Limited Time
-            </Link>
+            </Button>
             <Link href="/contact" className={buttonVariants({ size: "lg", className: "text-lg px-8 py-4 bg-white/10 backdrop-blur-sm text-white border-white/30 hover:bg-white hover:text-purple-600" })}>
               Have Questions?
             </Link>
@@ -383,11 +399,16 @@ export default function SellPage() {
           <p className="text-lg text-gray-600 mb-8">
             Join Yarnnu today and be part of a marketplace that truly values craftsmanship.
           </p>
-          <Link href="/seller-application" className={buttonVariants({ size: "lg", className: "text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700" })}>
+          <Button 
+            size="lg" 
+            className="text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700 apply-button"
+            style={applyButtonStyles}
+          >
             Apply Now - It&apos;s Free
-          </Link>
+          </Button>
         </div>
       </section>
-    </div>
+      </div>
+    </SellPageClient>
   );
 } 

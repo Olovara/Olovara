@@ -26,7 +26,11 @@ import FormError from "../form-error";
 import FormSuccess from "../form-success";
 import { login } from "@/actions/login";
 
-const LoginForm = () => {
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
   const urlError =
@@ -64,6 +68,7 @@ const LoginForm = () => {
           if (data?.success) {
             form.reset();
             setSuccess(data.success);
+            onSuccess?.();
           }
 
           if (data?.twoFactor) {

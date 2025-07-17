@@ -261,6 +261,13 @@ model Seller {
   shopProfileComplete    Boolean @default(false) // Business info and tax details completed
   shippingProfileCreated Boolean @default(false) // At least one shipping profile created
 
+  // Founding Seller Program
+  isFoundingSeller       Boolean @default(false) // Whether this seller qualifies for founding seller benefits
+  foundingSellerType     String? // "LEGACY" (existing sellers) or "NEW" (first 50)
+  foundingSellerNumber   Int? // Position in the founding seller program (1-50 for new, null for legacy)
+  firstProductCreatedAt  DateTime? // When they created their first product (used to determine founding seller status)
+  foundingSellerBenefits Json? // Store specific benefits granted to this seller
+
   // Tax fields
   encryptedBusinessName               String
   businessNameIV                      String

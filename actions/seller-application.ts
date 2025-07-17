@@ -10,6 +10,7 @@ import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { encryptData } from "@/lib/encryption";
 
 import { generateReferralCode } from "@/lib/utils";
+import { FOUNDING_SELLER_BENEFITS } from "@/lib/founding-seller";
 
 export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
   const session = await auth();
@@ -109,6 +110,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           connectedAccountId: uniqueConnectedAccountId,
           // Assign the unique referral code
           referralCode: referralCode!,
+          // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy
+          // TODO: Remove this after campaign launch and implement proper founding seller logic
+          // When ready to track signups: remove these lines and implement checkFoundingSellerEligibility
+          isFoundingSeller: true,
+          foundingSellerType: "LEGACY",
+          foundingSellerNumber: null, // Legacy sellers don't get numbers
+          foundingSellerBenefits: FOUNDING_SELLER_BENEFITS,
           user: {
             connect: {
               id: userId

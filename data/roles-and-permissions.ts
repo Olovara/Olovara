@@ -116,6 +116,11 @@ export const PERMISSIONS = {
   SUSPEND_SELLERS: { value: 'SUSPEND_SELLERS', group: 'Seller Management', label: 'Suspend Sellers' },
   VIEW_SELLER_APPLICATIONS: { value: 'VIEW_SELLER_APPLICATIONS', group: 'Seller Management', label: 'View Seller Applications' },
   
+  // Founding Seller Management
+  VIEW_FOUNDING_SELLERS: { value: 'VIEW_FOUNDING_SELLERS', group: 'Founding Seller Management', label: 'View Founding Sellers' },
+  MANAGE_FOUNDING_SELLERS: { value: 'MANAGE_FOUNDING_SELLERS', group: 'Founding Seller Management', label: 'Manage Founding Sellers' },
+  ASSIGN_LEGACY_FOUNDING_SELLER: { value: 'ASSIGN_LEGACY_FOUNDING_SELLER', group: 'Founding Seller Management', label: 'Assign Legacy Founding Seller Status' },
+  
   // System Management
   MANAGE_SYSTEM: { value: 'MANAGE_SYSTEM', group: 'System Management', label: 'Manage System' },
   VIEW_LOGS: { value: 'VIEW_LOGS', group: 'System Management', label: 'View Logs' },
@@ -249,6 +254,7 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/admin/users/[userId]": ['MANAGE_PERMISSIONS'],
   "/admin/sellers": ['MANAGE_SELLERS'],
   "/admin/seller-applications": ['VIEW_SELLER_APPLICATIONS'],
+  "/admin/founding-sellers": ['VIEW_FOUNDING_SELLERS'],
   "/admin/orders": ['MANAGE_ORDERS'],
   "/admin/products": ['MANAGE_PRODUCTS'],
   "/admin/blog": ['MANAGE_CONTENT'],

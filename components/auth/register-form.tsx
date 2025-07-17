@@ -27,7 +27,12 @@ import { register } from "@/actions/register";
 import { ReCaptcha } from "../ui/recaptcha";
 import { validateHoneypot } from "@/lib/recaptcha";
 
-const RegisterForm = () => {
+interface RegisterFormProps {
+  onSuccess?: () => void;
+  redirectTo?: string;
+}
+
+const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
   const isClient = useIsClient();
 
   const [error, setError] = useState<string>("");
@@ -72,8 +77,11 @@ const RegisterForm = () => {
     const finalToken = process.env.NODE_ENV === 'development' ? 'dev-token' : token;
 
     startTransition(() => {
-      register({ ...values, recaptchaToken: finalToken }).then((data) => {
-        if (data.success) setSuccess(data.success);
+      register({ ...values, recaptchaToken: finalToken }, redirectTo).then((data) => {
+        if (data.success) {
+          setSuccess(data.success);
+          onSuccess?.();
+        }
         if (data?.error) setError(data.error);
       });
     });
@@ -95,7 +103,7 @@ const RegisterForm = () => {
   return (
     <CardWrapper
       backButtonLabel="Have an account already?"
-      backButtonHref="/auth/login"
+      backButtonHref="/login"
       showSocial
       title="Create an account"
       subtitle="Join our community today"

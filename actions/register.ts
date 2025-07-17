@@ -14,7 +14,7 @@ import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
 import { getUserLocationPreferences } from "@/lib/ipinfo";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 
-export const register = async (values: z.infer<typeof RegisterSchema>) => {
+export const register = async (values: z.infer<typeof RegisterSchema>, redirectTo?: string) => {
   const validatedFields = RegisterSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -133,7 +133,13 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
   });
 
   const verificationToken = await generateVerificationToken(email);
-  await sendVerificationEmail(verificationToken.email, verificationToken.token);
+  
+  // If user wants to become a seller, include redirect parameter
+  const verificationUrl = redirectTo 
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/new-verification?token=${verificationToken.token}&redirect=${encodeURIComponent(redirectTo)}`
+    : `${process.env.NEXT_PUBLIC_APP_URL}/new-verification?token=${verificationToken.token}`;
+  
+  await sendVerificationEmail(verificationToken.email, verificationToken.token, verificationUrl);
 
   return { success: "Successfully registered. Verify your email!" };
 };

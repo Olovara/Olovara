@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { newVerification } from "@/actions/new-verification";
 import CardWrapper from "@/components/auth/card-wrapper";
@@ -15,7 +15,9 @@ const NewVerificationForm = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const token = searchParams.get("token");
+  const redirectTo = searchParams.get("redirect");
 
   const onSubmit = useCallback(() => {
     if (success || error) return;
@@ -33,6 +35,16 @@ const NewVerificationForm = () => {
           setError(data.error);
         } else if (data.success) {
           setSuccess(data.success);
+          
+          // Check if user wants to become a seller or has a redirect URL
+          const wantsToBecomeSeller = localStorage.getItem("wantsToBecomeSeller");
+          if (wantsToBecomeSeller === "true" || redirectTo) {
+            // Redirect to the specified URL or sell page with seller intent
+            const redirectUrl = redirectTo || "/sell?startApplication=true";
+            setTimeout(() => {
+              router.push(redirectUrl);
+            }, 2000); // Give user 2 seconds to see success message
+          }
         }
       })
       .catch(() => {
@@ -41,7 +53,7 @@ const NewVerificationForm = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [token, success, error]);
+  }, [token, success, error, redirectTo, router]);
 
   useEffect(() => {
     onSubmit();

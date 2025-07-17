@@ -44,9 +44,9 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
   }
 };
 
-export const sendVerificationEmail = async (email: string, token: string) => {
+export const sendVerificationEmail = async (email: string, token: string, customUrl?: string) => {
   const startTime = Date.now();
-  const confirmLink = `${domain}/new-verification?token=${token}`;
+  const confirmLink = customUrl || `${domain}/new-verification?token=${token}`;
 
   try {
     console.log("[Email Verification] Starting process:", {

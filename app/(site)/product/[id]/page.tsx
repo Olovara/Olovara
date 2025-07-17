@@ -45,15 +45,47 @@ async function getData(id: string) {
         // Filter out test products unless user has test environment access
         ...(canAccessTest ? {} : { isTestProduct: false }),
       },
-      include: {
-      seller: {
-        select: {
-          shopName: true,
-          shopNameSlug: true,
+      select: {
+        id: true,
+        name: true,
+        images: true,
+        price: true,
+        currency: true,
+        discount: true,
+        onSale: true,
+        saleStartDate: true,
+        saleEndDate: true,
+        saleStartTime: true,
+        saleEndTime: true,
+        description: true,
+        status: true,
+        isDigital: true,
+        stock: true,
+        productFile: true,
+        handlingFee: true,
+        shippingCost: true,
+        itemWeight: true,
+        itemWeightUnit: true,
+        itemLength: true,
+        itemWidth: true,
+        itemHeight: true,
+        itemDimensionUnit: true,
+        shippingNotes: true,
+        freeShipping: true,
+        inStockProcessingTime: true,
+        howItsMade: true,
+        tags: true,
+        NSFW: true,
+        seller: {
+          select: {
+            shopName: true,
+            shopNameSlug: true,
+          },
         },
+        dropDate: true,
+        dropTime: true,
       },
-    },
-  });
+    });
 
     if (!product) {
       console.error("Product not found:", id);

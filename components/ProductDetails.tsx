@@ -24,7 +24,11 @@ interface ProductDetailsProps {
     price: number;
     currency: string;
     discount: number | null;
-    discountEndDate: Date | null;
+    onSale: boolean;
+    saleStartDate: Date | null;
+    saleEndDate: Date | null;
+    saleStartTime: string | null;
+    saleEndTime: string | null;
     description: any;
     status: string;
     isDigital: boolean;
@@ -57,7 +61,17 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   const [convertedPrice, setConvertedPrice] = useState<string>("");
   const [convertedFinalPrice, setConvertedFinalPrice] = useState<string>("");
   const [convertedShippingCost, setConvertedShippingCost] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { formatPrice } = useCurrency();
+
+  // Update current time every minute for countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Convert regular price
@@ -83,7 +97,55 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
     }
   }, [data.price, data.discount, data.shippingCost, data.handlingFee, formatPrice]);
 
-  const isOnSale = data.discount && data.discountEndDate && new Date(data.discountEndDate) > new Date();
+  // Check if sale is currently active
+  const isOnSale = (() => {
+    if (!data.onSale || !data.discount) return false;
+    
+    const now = new Date();
+    
+    // Check sale start date/time
+    if (data.saleStartDate) {
+      const saleStart = new Date(data.saleStartDate);
+      if (data.saleStartTime) {
+        const [hours, minutes] = data.saleStartTime.split(':').map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      if (now < saleStart) return false;
+    }
+    
+    // Check sale end date/time
+    if (data.saleEndDate) {
+      const saleEnd = new Date(data.saleEndDate);
+      if (data.saleEndTime) {
+        const [hours, minutes] = data.saleEndTime.split(':').map(Number);
+        saleEnd.setHours(hours, minutes, 0, 0);
+      }
+      if (now > saleEnd) return false;
+    }
+    
+    return true;
+  })();
+
+  // Calculate time remaining for sale
+  const getSaleTimeRemaining = () => {
+    if (!data.saleEndDate) return null;
+    
+    const saleEnd = new Date(data.saleEndDate);
+    
+    if (data.saleEndTime) {
+      const [hours, minutes] = data.saleEndTime.split(':').map(Number);
+      saleEnd.setHours(hours, minutes, 0, 0);
+    }
+    
+    const timeDiff = saleEnd.getTime() - currentTime.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    if (daysDiff <= 0) return "Ends today";
+    if (daysDiff === 1) return "Ends tomorrow";
+    if (daysDiff <= 7) return `Ends in ${daysDiff} days`;
+    
+    return `Ends ${saleEnd.toLocaleDateString()}`;
+  };
 
   return (
     <section className="mx-auto px-4 lg:mt-10 max-w-7xl lg:px-8">
@@ -116,6 +178,18 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             </div>
           )}
 
+          {/* Sale Badge */}
+          {isOnSale && (
+            <div className="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
+              SALE -{data.discount}% OFF
+              {getSaleTimeRemaining() && (
+                <span className="ml-2 text-xs">
+                  • {getSaleTimeRemaining()}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Sale Price or Regular Price */}
           <p className="text-xl font-semibold text-gray-800">
             {isOnSale ? (
@@ -123,7 +197,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                 <span className="line-through text-gray-500">
                   {convertedPrice}
                 </span>{" "}
-                <span className="text-red-600">{convertedFinalPrice}</span>
+                <span className="text-green-600">{convertedFinalPrice}</span>
               </>
             ) : (
               convertedPrice
