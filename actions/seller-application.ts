@@ -9,7 +9,6 @@ import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { encryptData } from "@/lib/encryption";
 
-import { generateReferralCode } from "@/lib/utils";
 import { FOUNDING_SELLER_BENEFITS } from "@/lib/founding-seller";
 
 export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
@@ -21,6 +20,47 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
   const userId = session.user.id;
 
   try {
+    // Validate referral code if provided
+    if (values.referralCode) {
+      // First check the format
+      const pattern = /^YARNNU-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+      if (!pattern.test(values.referralCode)) {
+        return { error: "Invalid referral code format. Please use the format YARNNU-XXXX-XXXX." };
+      }
+
+      // Check if the referral code exists and belongs to a real user
+      const referrer = await db.user.findUnique({
+        where: { referralCode: values.referralCode },
+        select: { id: true, username: true }
+      });
+
+      if (!referrer) {
+        return { error: "Referral code not found. Please check the code and try again, or leave it blank if you don't have one." };
+      }
+
+      // Check if the user is trying to use their own referral code
+      const currentUser = await db.user.findUnique({
+        where: { id: userId },
+        select: { referralCode: true }
+      });
+
+      if (currentUser?.referralCode === values.referralCode) {
+        return { error: "You cannot use your own referral code." };
+      }
+
+      // Check if the user has already been referred by someone
+      const existingReferral = await db.user.findUnique({
+        where: { id: userId },
+        select: { referredBy: true }
+      });
+
+      if (existingReferral?.referredBy) {
+        return { error: "You have already been referred by someone else." };
+      }
+
+      console.log(`Valid referral code provided: ${values.referralCode} by user ${referrer.username || referrer.id}`);
+    }
+
     // Create seller application and seller document in a transaction
     const result = await db.$transaction(async (tx) => {
       // Create the seller application with all new fields
@@ -48,40 +88,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       // Generate a unique temporary connectedAccountId to avoid constraint issues
       const uniqueConnectedAccountId = `temp_${timestamp}_${randomString}`;
 
-      // Generate a unique referral code with retry logic
-      let referralCode: string = '';
-      let isUnique = false;
-      let attempts = 0;
-      const maxAttempts = 20; // Increased attempts for better reliability
-
-      while (!isUnique && attempts < maxAttempts) {
-        referralCode = generateReferralCode();
-        
-        try {
-          // Check if the referral code already exists
-          const existingSeller = await tx.seller.findUnique({
-            where: { referralCode },
-            select: { id: true }
-          });
-          
-          if (!existingSeller) {
-            isUnique = true;
-          } else {
-            attempts++;
-            console.log(`Referral code ${referralCode} already exists, trying again...`);
-          }
-        } catch (error) {
-          // If there's an error checking, assume it's not unique and try again
-          attempts++;
-          console.log(`Error checking referral code ${referralCode}, trying again...`);
-        }
-      }
-
-      if (!isUnique) {
-        throw new Error(`Unable to generate unique referral code after ${maxAttempts} attempts`);
-      }
-
-      console.log(`Generated unique referral code: ${referralCode}`);
+      // Note: Referral code is now generated during user signup, not during seller application
 
       // Properly encrypt temporary tax information
       const tempBusinessName = "Temporary Business Name";
@@ -108,8 +115,6 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           taxCountry: "US", // Default to US, can be updated later
           // Use unique temporary connectedAccountId to avoid constraint issues
           connectedAccountId: uniqueConnectedAccountId,
-          // Assign the unique referral code
-          referralCode: referralCode!,
           // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy
           // TODO: Remove this after campaign launch and implement proper founding seller logic
           // When ready to track signups: remove these lines and implement checkFoundingSellerEligibility
@@ -132,6 +137,35 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           role: ROLES.SELLER,
         },
       });
+
+      // Handle referral tracking if a referral code was provided
+      if (values.referralCode) {
+        // Find the referrer
+        const referrer = await tx.user.findUnique({
+          where: { referralCode: values.referralCode },
+          select: { id: true }
+        });
+
+        if (referrer) {
+          // Update the applicant's referredBy field
+          await tx.user.update({
+            where: { id: userId },
+            data: { referredBy: values.referralCode }
+          });
+
+          // Increment the referrer's referral count
+          await tx.user.update({
+            where: { id: referrer.id },
+            data: { 
+              referralCount: {
+                increment: 1
+              }
+            }
+          });
+
+          console.log(`Referral tracked: User ${userId} was referred by ${referrer.id} using code ${values.referralCode}`);
+        }
+      }
 
       // Grant initial seller permissions (without product permissions)
       const user = await tx.user.findUnique({

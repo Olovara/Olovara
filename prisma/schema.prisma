@@ -108,6 +108,9 @@ model User {
   passwordHash          String?
   image                 String?
   preferredCurrency     String                 @default("USD") // Store user's preferred currency
+  referralCode          String?                @unique // Unique referral code in format YARNNU-XXXX-XXXX
+  referredBy            String?                // referralCode of referrer
+  referralCount         Int                    @default(0) // how many people they've referred
   accounts              Account[]
   member                Member?
   seller                Seller?
@@ -295,9 +298,6 @@ model Seller {
 
   // Shipping Restrictions
   excludedCountries String[] @default([]) // Array of country codes that seller doesn't ship to
-
-  // Referral Program
-  referralCode String?  @unique // Unique referral code in format YARNNU-XXXX-XXXX
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

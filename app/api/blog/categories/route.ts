@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ROLES } from "@/data/roles-and-permissions";
 import { createBlogCategorySchema, blogCategoryQuerySchema } from "@/schemas/BlogCategorySchema";
 import { z } from "zod";
+import { checkApiPermissions } from "@/lib/api-permissions";
 
 // GET: Fetch categories
 export async function GET(req: Request) {
@@ -61,26 +62,13 @@ export async function GET(req: Request) {
 // POST: Create a new category
 export async function POST(req: Request) {
   try {
-    const session = await auth();
+    // Check permissions using centralized function
+    const permissionCheck = await checkApiPermissions(['MANAGE_CONTENT']);
     
-    // Check if user is authenticated
-    if (!session?.user?.id) {
+    if (!permissionCheck.authorized) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
-    }
-
-    // Fetch user permissions from database
-    const dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { permissions: true }
-    });
-
-    if (!dbUser?.permissions?.includes('MANAGE_CONTENT')) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+        { error: permissionCheck.error },
+        { status: permissionCheck.status }
       );
     }
 
@@ -155,24 +143,13 @@ export async function POST(req: Request) {
 // PUT: Update a category
 export async function PUT(req: Request) {
   try {
-    const session = await auth();
+    // Check permissions using centralized function
+    const permissionCheck = await checkApiPermissions(['MANAGE_CONTENT']);
     
-    if (!session?.user?.id) {
+    if (!permissionCheck.authorized) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { permissions: true }
-    });
-
-    if (!dbUser?.permissions?.includes('MANAGE_CONTENT')) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+        { error: permissionCheck.error },
+        { status: permissionCheck.status }
       );
     }
 
@@ -250,24 +227,13 @@ export async function PUT(req: Request) {
 // DELETE: Delete a category
 export async function DELETE(req: Request) {
   try {
-    const session = await auth();
+    // Check permissions using centralized function
+    const permissionCheck = await checkApiPermissions(['MANAGE_CONTENT']);
     
-    if (!session?.user?.id) {
+    if (!permissionCheck.authorized) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { permissions: true }
-    });
-
-    if (!dbUser?.permissions?.includes('MANAGE_CONTENT')) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+        { error: permissionCheck.error },
+        { status: permissionCheck.status }
       );
     }
 

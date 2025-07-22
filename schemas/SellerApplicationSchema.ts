@@ -13,6 +13,12 @@ const calculateAge = (birthDate: Date): number => {
   return age;
 };
 
+// Helper function to validate referral code format
+const isValidReferralCodeFormat = (code: string): boolean => {
+  const pattern = /^YARNNU-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+  return pattern.test(code);
+};
+
 export const SellerApplicationSchema = z.object({
   // Core crafting information (required)
   craftingProcess: z.string().min(30, {
@@ -30,6 +36,14 @@ export const SellerApplicationSchema = z.object({
   
   // Optional experience
   yearsOfExperience: z.string().optional(),
+  
+  // Optional referral code
+  referralCode: z.string().optional().refine((code) => {
+    if (!code) return true; // Empty is valid (optional field)
+    return isValidReferralCodeFormat(code);
+  }, { 
+    message: "Please enter a valid referral code in the format YARNNU-XXXX-XXXX" 
+  }),
   
   // Age verification (required for legal protection)
   birthdate: z.string().refine((date) => {

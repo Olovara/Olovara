@@ -14,9 +14,20 @@ export const createBlogCategorySchema = z.object({
     .transform(val => val?.trim() || null),
   
   img: z.string()
-    .url("Invalid image URL")
     .optional()
-    .nullable(),
+    .nullable()
+    .transform(val => {
+      // If empty string or null/undefined, return null
+      if (!val || val.trim() === '') return null;
+      // If it's a valid URL, return it
+      try {
+        new URL(val);
+        return val;
+      } catch {
+        // If it's not a valid URL, throw an error
+        throw new Error("Invalid image URL");
+      }
+    }),
   
   parentSlug: z.string()
     .optional()

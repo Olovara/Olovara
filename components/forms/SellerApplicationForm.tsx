@@ -52,6 +52,7 @@ const SellerApplicationForm = () => {
       agreeToHandmadePolicy: false,
       certifyOver18: false,
       agreeToTerms: false,
+      referralCode: "",
     },
   });
 
@@ -207,6 +208,23 @@ const SellerApplicationForm = () => {
                 <p className="text-sm text-gray-600">
                   Don&apos;t worry if you don&apos;t have these yet! Many successful sellers start without an online presence.
                 </p>
+              </div>
+
+              <div className="flex flex-col gap-y-3">
+                <Label className="text-lg font-semibold">Referral Code (Optional)</Label>
+                <Input
+                  placeholder="Enter a referral code if you have one (e.g., YARNNU-ABCD-1234)"
+                  {...form.register("referralCode")}
+                  disabled={isPending}
+                  type="text"
+                  className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                />
+                <p className="text-sm text-gray-600">
+                  If someone referred you to Yarnnu, enter their referral code here. You get a 2% reduction on commission fees for a month!
+                </p>
+                {form.formState.errors.referralCode && (
+                  <p className="text-sm text-red-500">{form.formState.errors.referralCode.message}</p>
+                )}
               </div>
             </motion.div>
 

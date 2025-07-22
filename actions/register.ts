@@ -13,6 +13,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { createRolePermissions, ROLES } from "@/data/roles-and-permissions";
 import { getUserLocationPreferences } from "@/lib/ipinfo";
 import { verifyRecaptcha } from "@/lib/recaptcha";
+import { generateReferralCode } from "@/lib/utils";
 
 export const register = async (values: z.infer<typeof RegisterSchema>, redirectTo?: string) => {
   const validatedFields = RegisterSchema.safeParse(values);
@@ -115,6 +116,41 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
     return { error: "Username already exists." };
   }
 
+  // Generate a unique referral code with retry logic
+  let referralCode: string = '';
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 20;
+
+  while (!isUnique && attempts < maxAttempts) {
+    referralCode = generateReferralCode();
+    
+    try {
+      // Check if the referral code already exists
+      const existingUser = await db.user.findUnique({
+        where: { referralCode },
+        select: { id: true }
+      });
+      
+      if (!existingUser) {
+        isUnique = true;
+      } else {
+        attempts++;
+        console.log(`Referral code ${referralCode} already exists, trying again...`);
+      }
+    } catch (error) {
+      // If there's an error checking, assume it's not unique and try again
+      attempts++;
+      console.log(`Error checking referral code ${referralCode}, trying again...`);
+    }
+  }
+
+  if (!isUnique) {
+    return { error: `Unable to generate unique referral code after ${maxAttempts} attempts` };
+  }
+
+  console.log(`Generated unique referral code for new user: ${referralCode}`);
+
   await db.user.create({
     data: {
       username,
@@ -122,6 +158,7 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
       password: hashedPassword,
       role: ROLES.MEMBER,
       permissions: createRolePermissions(ROLES.MEMBER),
+      referralCode, // Add the generated referral code
       // Store IP and location information for fraud detection
       signupIP: clientIP || null,
       signupLocation: locationData,

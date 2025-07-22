@@ -4,7 +4,7 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, Package, PackageOpen, CreditCard, Star, TrendingUp } from "lucide-react";
+import { HomeIcon, Mail, Settings, Package, PackageOpen, CreditCard, Star, TrendingUp, FileText } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
@@ -91,6 +91,14 @@ export default async function SellerDashboardTopNavbar({ children }: { children:
                   <Button variant="outline" className="w-full">
                     <Mail className="mr-2 h-4 w-4" />
                     Messages
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/seller/dashboard/blog">
+                  <Button variant="outline" className="w-full">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Blog
                   </Button>
                 </Link>
               </DialogClose>

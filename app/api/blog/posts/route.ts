@@ -1,56 +1,25 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
-import { createBlogPostSchema } from "@/schemas/BlogPostSchema";
-import { z } from "zod";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    // Check if user is authenticated
-    if (!session?.user?.id) {
+    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    if (!permissionCheck.authorized) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+        { error: permissionCheck.error },
+        { status: permissionCheck.status }
       );
     }
 
-    // Fetch user permissions from database
-    const dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { permissions: true }
-    });
-
-    if (!dbUser?.permissions?.includes('MANAGE_CONTENT')) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
-    }
-
-    const body = await req.json();
-    
-    // Validate request body using our comprehensive schema
-    const validatedData = createBlogPostSchema.parse(body);
-
-    // Check if category exists
-    const category = await db.blogCategory.findUnique({
-      where: { slug: validatedData.catSlug },
-    });
-
-    if (!category) {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
-      );
-    }
+    const body = await request.json();
+    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime } = body;
 
     // Generate slug from title
-    const slug = validatedData.title
+    const slug = title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
 
     // Check if slug already exists
     const existingPost = await db.blogPost.findUnique({
@@ -59,62 +28,76 @@ export async function POST(req: Request) {
 
     if (existingPost) {
       return NextResponse.json(
-        { error: "A post with this title already exists" },
+        { error: "A blog post with this title already exists" },
         { status: 400 }
       );
     }
 
-    // Calculate read time if not provided
-    const readTime = validatedData.readTime || Math.ceil(validatedData.content.split(/\s+/).length / 200); // Assuming 200 words per minute
-
-    // Create the blog post with all validated fields
-    const post = await db.blogPost.create({
+    const blogPost = await db.blogPost.create({
       data: {
-        title: validatedData.title,
-        description: validatedData.description,
-        content: validatedData.content,
+        title,
+        description,
+        content,
         slug,
-        catSlug: validatedData.catSlug,
-        userEmail: session.user.email!,
-        status: validatedData.status,
-        isPrivate: validatedData.isPrivate,
-        publishedAt: validatedData.status === "PUBLISHED" ? new Date() : null,
+        status,
+        isPrivate,
+        tags: tags || [],
+        keywords: keywords || [],
         readTime,
-        img: validatedData.img,
-        metaTitle: validatedData.metaTitle,
-        metaDescription: validatedData.metaDescription,
-        keywords: validatedData.keywords,
-        canonicalUrl: validatedData.canonicalUrl,
-        ogImage: validatedData.ogImage,
-        ogTitle: validatedData.ogTitle,
-        ogDescription: validatedData.ogDescription,
-        authorName: validatedData.authorName,
-        authorUrl: validatedData.authorUrl,
-        tags: validatedData.tags,
-        featured: validatedData.featured,
-        allowComments: validatedData.allowComments,
+        catSlug,
+        userEmail: permissionCheck.user!.email!,
+        publishedAt: status === "PUBLISHED" ? new Date() : null,
       },
     });
 
-    return NextResponse.json(post);
+    return NextResponse.json(blogPost);
   } catch (error) {
     console.error("Error creating blog post:", error);
-    
-    if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { error: "Failed to create blog post" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    if (!permissionCheck.authorized) {
       return NextResponse.json(
-        { 
-          error: "Invalid request data", 
-          details: error.errors.map(err => ({
-            path: err.path.join('.'),
-            message: err.message
-          }))
-        },
-        { status: 400 }
+        { error: permissionCheck.error },
+        { status: permissionCheck.status }
       );
     }
 
+    // Get user's blog posts
+    const posts = await db.blogPost.findMany({
+      where: {
+        userEmail: permissionCheck.user!.email!,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        slug: true,
+        status: true,
+        publishedAt: true,
+        views: true,
+        readTime: true,
+        tags: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json(posts);
+  } catch (error) {
+    console.error("Error fetching blog posts:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch blog posts" },
       { status: 500 }
     );
   }
