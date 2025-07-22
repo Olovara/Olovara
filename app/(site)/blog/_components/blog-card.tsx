@@ -2,6 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import CommentCount from "@/components/blog/CommentCount";
 
 interface BlogCardProps {
   post: {
@@ -98,6 +99,7 @@ export const BlogCard = ({ post }: BlogCardProps) => {
               {post.readTime && (
                 <span>{post.readTime} min read</span>
               )}
+              <CommentCount postSlug={post.slug} />
             </div>
           </div>
         </div>

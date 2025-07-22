@@ -8,6 +8,7 @@ import { ArrowLeft, Eye, Clock, Tag } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import "react-quill/dist/quill.snow.css";
+import BlogComments from "@/components/blog/BlogComments";
 
 interface BlogPostPageProps {
   params: {
@@ -41,8 +42,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  // Check if post is published (only show published posts to public)
-  if (post.status !== "PUBLISHED") {
+  // Check if post is published and public (only show published, public posts to public)
+  if (post.status !== "PUBLISHED" || post.isPrivate) {
     notFound();
   }
 
@@ -173,16 +174,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
         )}
 
-        {/* Comments Section (if enabled) */}
-        {post.allowComments && (
-          <div className="space-y-4">
-            <Separator />
-            <h3 className="text-xl font-semibold">Comments</h3>
-            <p className="text-muted-foreground">
-              No comments yet!
-            </p>
-          </div>
-        )}
+        {/* Comments Section */}
+        <BlogComments postSlug={post.slug} allowComments={post.allowComments} />
       </article>
     </div>
   );
@@ -198,9 +191,11 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       title: true,
       description: true,
       status: true,
+      isPrivate: true,
       metaTitle: true,
       metaDescription: true,
       keywords: true,
+      tags: true,
       ogImage: true,
       ogTitle: true,
       ogDescription: true,
@@ -209,29 +204,48 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
     },
   });
 
-  if (!post || post.status !== "PUBLISHED") {
+  if (!post || post.status !== "PUBLISHED" || post.isPrivate) {
     return {
       title: "Post Not Found",
     };
   }
 
+  // Combine keywords and tags for better SEO
+  const allKeywords = [
+    ...(post.keywords || []),
+    ...(post.tags || [])
+  ].filter(Boolean);
+
   return {
     title: post.metaTitle || post.title,
     description: post.metaDescription || post.description,
-    keywords: post.keywords,
+    keywords: allKeywords.length > 0 ? allKeywords.join(', ') : undefined,
     openGraph: {
-      title: post.ogTitle || post.title,
-      description: post.ogDescription || post.description,
+      title: post.ogTitle || post.metaTitle || post.title,
+      description: post.ogDescription || post.metaDescription || post.description,
       images: post.ogImage ? [post.ogImage] : [],
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
       authors: post.authorName ? [post.authorName] : [],
+      tags: post.tags || [],
     },
     twitter: {
       card: "summary_large_image",
-      title: post.ogTitle || post.title,
-      description: post.ogDescription || post.description,
+      title: post.ogTitle || post.metaTitle || post.title,
+      description: post.ogDescription || post.metaDescription || post.description,
       images: post.ogImage ? [post.ogImage] : [],
+    },
+    // Additional SEO metadata
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
   };
 } 

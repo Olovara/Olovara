@@ -31,6 +31,8 @@ interface BlogPost {
   views: number;
   readTime: number | null;
   tags: string[];
+  metaTitle: string | null;
+  metaDescription: string | null;
   createdAt: string;
   updatedAt: string;
 }

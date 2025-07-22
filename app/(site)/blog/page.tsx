@@ -45,6 +45,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
   const posts = await db.blogPost.findMany({
     where: {
       status: "PUBLISHED",
+      isPrivate: false, // Only show public posts
       ...(searchParams.category && {
         catSlug: searchParams.category,
       }),
@@ -115,3 +116,35 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
 };
 
 export default BlogPage;
+
+// Generate metadata for the blog page
+export async function generateMetadata({ searchParams }: BlogPageProps) {
+  const category = searchParams.category;
+  
+  const title = category 
+    ? `Blog - ${category.charAt(0).toUpperCase() + category.slice(1)} Category`
+    : "Blog - Handmade Crafts, Selling Tips & Marketplace Updates";
+    
+  const description = category
+    ? `Explore ${category} articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.`
+    : "Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}

@@ -32,6 +32,8 @@ export async function GET(
         keywords: true,
         readTime: true,
         img: true,
+        metaTitle: true,
+        metaDescription: true,
         userEmail: true,
       },
     });
@@ -76,7 +78,7 @@ export async function PUT(
 
     const { slug } = params;
     const body = await request.json();
-    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime } = body;
+    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
 
     // First, get the blog post to check ownership
     const existingPost = await db.blogPost.findUnique({
@@ -135,6 +137,8 @@ export async function PUT(
         tags: tags || [],
         keywords: keywords || [],
         readTime,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
         catSlug,
         publishedAt: status === "PUBLISHED" ? new Date() : null,
       },

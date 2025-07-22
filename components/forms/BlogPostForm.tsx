@@ -48,6 +48,8 @@ interface BlogPost {
   keywords: string[];
   readTime: number | null;
   img?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
 }
 
 interface BlogPostFormProps {
@@ -76,6 +78,8 @@ export default function BlogPostForm({
   const [keywords, setKeywords] = useState<string[]>(initialData?.keywords || []);
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+  const [metaTitle, setMetaTitle] = useState(initialData?.metaTitle || "");
+  const [metaDescription, setMetaDescription] = useState(initialData?.metaDescription || "");
 
   // Calculate word count and read time
   const calculateReadTime = (content: string) => {
@@ -163,6 +167,8 @@ export default function BlogPostForm({
       tags,
       keywords,
       readTime: readTimeMinutes,
+      metaTitle: metaTitle.trim() || null,
+      metaDescription: metaDescription.trim() || null,
     };
 
     await onSubmit(formData, status);
@@ -323,6 +329,39 @@ export default function BlogPostForm({
         <p className="text-xs text-muted-foreground">
           Keywords help with SEO and search engine optimization.
         </p>
+      </div>
+
+      {/* SEO Fields */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">SEO Settings</h3>
+        
+        {/* Meta Title */}
+        <div className="space-y-2">
+          <Label htmlFor="metaTitle">Meta Title (Optional)</Label>
+          <Input
+            id="metaTitle"
+            value={metaTitle}
+            onChange={(e) => setMetaTitle(e.target.value)}
+            placeholder="Custom SEO title (leave empty to use post title)"
+          />
+          <p className="text-xs text-muted-foreground">
+            Custom title for search engines. If left empty, the post title will be used.
+          </p>
+        </div>
+
+        {/* Meta Description */}
+        <div className="space-y-2">
+          <Label htmlFor="metaDescription">Meta Description (Optional)</Label>
+          <Input
+            id="metaDescription"
+            value={metaDescription}
+            onChange={(e) => setMetaDescription(e.target.value)}
+            placeholder="Custom SEO description (leave empty to use post description)"
+          />
+          <p className="text-xs text-muted-foreground">
+            Custom description for search engines. If left empty, the post description will be used.
+          </p>
+        </div>
       </div>
 
       {/* Private Toggle */}

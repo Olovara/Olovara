@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime } = body;
+    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
 
     // Generate slug from title
     const slug = title
@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
         tags: tags || [],
         keywords: keywords || [],
         readTime,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
         catSlug,
         userEmail: permissionCheck.user!.email!,
         publishedAt: status === "PUBLISHED" ? new Date() : null,
@@ -88,6 +90,8 @@ export async function GET(request: NextRequest) {
         views: true,
         readTime: true,
         tags: true,
+        metaTitle: true,
+        metaDescription: true,
         createdAt: true,
         updatedAt: true,
       },
