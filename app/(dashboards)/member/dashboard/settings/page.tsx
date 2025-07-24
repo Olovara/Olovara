@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
-import { getMemberData } from "@/actions/getMemberData";
-import MemberForm from "@/components/forms/MemberForm";
+import { db } from "@/lib/db";
+import { decryptName } from "@/lib/encryption";
+import ProfileForm from "@/components/forms/ProfileForm";
 import {
   Card,
   CardContent,
@@ -18,13 +19,30 @@ export default async function MemberSettings() {
     return <div>Not authenticated</div>;
   }
 
-  const memberData = await getMemberData(session.user.id);
+  // Get user profile data from the unified User model
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      encryptedFirstName: true,
+      firstNameIV: true,
+      userBio: true,
+    },
+  });
 
-  // Default values for new members
-  const defaultData = {
-    firstName: "",
-    lastName: "",
-    userBio: "",
+  // Decrypt first name if it exists
+  let firstName = null;
+  if (user?.encryptedFirstName && user?.firstNameIV) {
+    try {
+      firstName = decryptName(user.encryptedFirstName, user.firstNameIV);
+    } catch (error) {
+      console.error("Error decrypting first name:", error);
+      firstName = null;
+    }
+  }
+
+  const profileData = {
+    firstName: firstName || "",
+    bio: user?.userBio || "",
   };
 
   return (
@@ -37,10 +55,10 @@ export default async function MemberSettings() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <MemberForm initialData={memberData || defaultData} />
+          <ProfileForm initialData={profileData} />
         </CardContent>
       </Card>
     </div>

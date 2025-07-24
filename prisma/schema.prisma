@@ -115,8 +115,8 @@ model User {
   // Profile fields
   encryptedFirstName    String? // Encrypted first name
   firstNameIV           String? // IV for first name encryption
-  encryptedLastName     String
-  lastNameIV            String  // Initialization vector for last name
+  encryptedLastName     String?
+  lastNameIV            String?  // Initialization vector for last name
   userBio               String? // User bio/description
   
   accounts              Account[]
@@ -183,11 +183,6 @@ model RolePermission {
 model Member {
   id                 String @id @default(auto()) @map("_id") @db.ObjectId
   userId             String @unique
-  encryptedFirstName String
-  encryptedLastName  String
-  firstNameIV        String // Initialization vector for first name
-  lastNameIV         String // Initialization vector for last name
-  userBio            String
   user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())

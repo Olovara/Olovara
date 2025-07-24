@@ -66,12 +66,10 @@ export async function PUT(
           select: {
             username: true,
             image: true,
-            member: {
-              select: {
-                encryptedFirstName: true,
-                encryptedLastName: true,
-              },
-            },
+            encryptedFirstName: true,
+            encryptedLastName: true,
+            firstNameIV: true,
+            lastNameIV: true,
           },
         },
       },
