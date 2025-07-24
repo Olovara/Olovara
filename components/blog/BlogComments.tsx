@@ -35,10 +35,8 @@ interface Comment {
   user: {
     username: string | null;
     image: string | null;
-    member: {
-      encryptedFirstName: string;
-      encryptedLastName: string;
-    } | null;
+    encryptedFirstName?: string | null;
+    firstNameIV?: string | null;
   };
   replies: Comment[];
 }
@@ -218,14 +216,12 @@ export default function BlogComments({ postSlug, allowComments }: BlogCommentsPr
   };
 
   const getAuthorName = (comment: Comment) => {
-    // Prioritize username over encrypted member name
+    // Prioritize username over first name
     if (comment.user.username) {
       return comment.user.username;
     }
-    if (comment.user.member) {
-      // In a real app, you'd decrypt these fields
-      return `${comment.user.member.encryptedFirstName} ${comment.user.member.encryptedLastName}`;
-    }
+    // For now, return Anonymous since we need to decrypt the first name
+    // This will be updated once the API is working with the new fields
     return "Anonymous";
   };
 

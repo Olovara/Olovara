@@ -72,6 +72,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           interestInJoining: values.interestInJoining,
           onlinePresence: values.onlinePresence,
           yearsOfExperience: values.yearsOfExperience,
+          referralCode: values.referralCode, // Store the referral code used
           birthdate: values.birthdate,
           agreeToHandmadePolicy: values.agreeToHandmadePolicy,
           certifyOver18: values.certifyOver18,

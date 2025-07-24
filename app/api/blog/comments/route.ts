@@ -48,12 +48,8 @@ export async function GET(request: NextRequest) {
           select: {
             username: true,
             image: true,
-            member: {
-              select: {
-                encryptedFirstName: true,
-                encryptedLastName: true,
-              },
-            },
+            encryptedFirstName: true,
+            firstNameIV: true,
           },
         },
         replies: {
@@ -63,12 +59,8 @@ export async function GET(request: NextRequest) {
               select: {
                 username: true,
                 image: true,
-                member: {
-                  select: {
-                    encryptedFirstName: true,
-                    encryptedLastName: true,
-                  },
-                },
+                encryptedFirstName: true,
+                firstNameIV: true,
               },
             },
           },
@@ -143,12 +135,8 @@ export async function POST(request: NextRequest) {
           select: {
             username: true,
             image: true,
-            member: {
-              select: {
-                encryptedFirstName: true,
-                encryptedLastName: true,
-              },
-            },
+            encryptedFirstName: true,
+            firstNameIV: true,
           },
         },
       },

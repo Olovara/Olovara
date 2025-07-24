@@ -18,20 +18,15 @@ interface BlogCardProps {
       slug: string;
     };
     user: {
-      member?: {
-        encryptedFirstName: string;
-        encryptedLastName: string;
-      } | null;
+      firstName?: string | null;
       image?: string | null;
     };
   };
 }
 
 export const BlogCard = ({ post }: BlogCardProps) => {
-  // Get author name from member data or fallback to "Anonymous"
-  const authorName = post.user.member 
-    ? `${post.user.member.encryptedFirstName} ${post.user.member.encryptedLastName}`
-    : "Anonymous";
+  // Get author name from user profile or fallback to "Anonymous"
+  const authorName = post.user.firstName || "Anonymous";
 
   return (
     <Link href={`/blog/${post.slug}`}>

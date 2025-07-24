@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { BlogCard } from "./_components/blog-card";
 import { CategoryFilter } from "./_components/category-filter";
 import { BlogActions } from "./_components/blog-actions";
+import { decryptName } from "@/lib/encryption";
 
 interface BlogPageProps {
   searchParams: {
@@ -22,10 +23,8 @@ interface BlogPost {
     slug: string;
   };
   user: {
-    member?: {
-      encryptedFirstName: string;
-      encryptedLastName: string;
-    } | null;
+    encryptedFirstName?: string | null;
+    firstNameIV?: string | null;
     image: string | null;
   };
 }
@@ -55,19 +54,26 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
       user: {
         select: {
           image: true,
-          member: {
-            select: {
-              encryptedFirstName: true,
-              encryptedLastName: true,
-            },
-          },
+          encryptedFirstName: true,
+          firstNameIV: true,
         },
       },
     },
     orderBy: {
       publishedAt: 'desc',
     },
-  }) as BlogPost[];
+  });
+
+  // Decrypt author names for each post
+  const postsWithDecryptedNames = posts.map(post => ({
+    ...post,
+    user: {
+      ...post.user,
+      firstName: post.user.encryptedFirstName && post.user.firstNameIV 
+        ? decryptName(post.user.encryptedFirstName, post.user.firstNameIV)
+        : null,
+    },
+  })) as BlogPost[];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -91,7 +97,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
 
         {/* Blog Posts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map((post) => (
+          {postsWithDecryptedNames.map((post) => (
             <BlogCard
               key={post.id}
               post={post}

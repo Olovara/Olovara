@@ -187,6 +187,31 @@ const SellerApplicationForm = () => {
 
             <Separator className="my-6" />
 
+            {/* Motivation Section */}
+            <motion.div 
+              className="space-y-6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <h3 className="text-xl font-semibold text-purple-800">Why Join Yarnnu?</h3>
+              
+              <div className="flex flex-col gap-y-3">
+                <Label className="text-lg font-semibold">What is your interest in joining Yarnnu? *</Label>
+                <Textarea
+                  placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
+                  {...form.register("interestInJoining")}
+                  disabled={isPending}
+                  className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                />
+                {form.formState.errors.interestInJoining && (
+                  <p className="text-sm text-red-500">{form.formState.errors.interestInJoining.message}</p>
+                )}
+              </div>
+            </motion.div>
+
+            <Separator className="my-6" />
+
             {/* Online Presence Section */}
             <motion.div 
               className="space-y-6"
@@ -224,31 +249,6 @@ const SellerApplicationForm = () => {
                 </p>
                 {form.formState.errors.referralCode && (
                   <p className="text-sm text-red-500">{form.formState.errors.referralCode.message}</p>
-                )}
-              </div>
-            </motion.div>
-
-            <Separator className="my-6" />
-
-            {/* Motivation Section */}
-            <motion.div 
-              className="space-y-6"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <h3 className="text-xl font-semibold text-purple-800">Why Join Yarnnu?</h3>
-              
-              <div className="flex flex-col gap-y-3">
-                <Label className="text-lg font-semibold">What is your interest in joining Yarnnu? *</Label>
-                <Textarea
-                  placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
-                  {...form.register("interestInJoining")}
-                  disabled={isPending}
-                  className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                />
-                {form.formState.errors.interestInJoining && (
-                  <p className="text-sm text-red-500">{form.formState.errors.interestInJoining.message}</p>
                 )}
               </div>
             </motion.div>

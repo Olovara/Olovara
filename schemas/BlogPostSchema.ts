@@ -73,10 +73,6 @@ export const createBlogPostSchema = z.object({
     .nullable(),
   
   // Schema.org structured data
-  authorName: z.string()
-    .optional()
-    .nullable(),
-  
   authorUrl: z.string()
     .url("Invalid author URL")
     .optional()

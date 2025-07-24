@@ -204,10 +204,12 @@ export function decryptSellerTaxInfo(data: {
 
 // Encrypt a name using AES-256-CBC
 export const encryptName = (name: string): { encrypted: string; iv: string } => {
-  const iv = generateIV();
+  // Generate IV specifically for CBC mode (16 bytes)
+  const iv = crypto.randomBytes(16).toString('hex');
   const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const ivBuffer = Buffer.from(iv, 'hex');
   
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, Buffer.from(iv, 'hex'));
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, ivBuffer);
   let encrypted = cipher.update(name, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   
@@ -217,8 +219,9 @@ export const encryptName = (name: string): { encrypted: string; iv: string } => 
 // Decrypt a name using AES-256-CBC
 export const decryptName = (encrypted: string, iv: string): string => {
   const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const ivBuffer = Buffer.from(iv, 'hex');
   
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(iv, 'hex'));
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, ivBuffer);
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   

@@ -111,6 +111,14 @@ model User {
   referralCode          String?                @unique // Unique referral code in format YARNNU-XXXX-XXXX
   referredBy            String?                // referralCode of referrer
   referralCount         Int                    @default(0) // how many people they've referred
+  
+  // Profile fields
+  encryptedFirstName    String? // Encrypted first name
+  firstNameIV           String? // IV for first name encryption
+  encryptedLastName     String
+  lastNameIV            String  // Initialization vector for last name
+  userBio               String? // User bio/description
+  
   accounts              Account[]
   member                Member?
   seller                Seller?
@@ -312,6 +320,7 @@ model SellerApplication {
   // Optional fields
   onlinePresence      String?
   yearsOfExperience   String?
+  referralCode        String? // Referral code used during application
   // Required legal fields
   birthdate           String
   agreeToHandmadePolicy Boolean
@@ -691,7 +700,6 @@ model BlogPost {
   ogDescription   String? // Open Graph description
 
   // Schema.org structured data
-  authorName   String? // Author's full name for structured data
   authorUrl    String? // Author's profile URL
   dateModified DateTime? // Last modification date for structured data
 

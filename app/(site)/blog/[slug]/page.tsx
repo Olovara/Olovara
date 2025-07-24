@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import "react-quill/dist/quill.snow.css";
 import BlogComments from "@/components/blog/BlogComments";
+import { decryptName } from "@/lib/encryption";
 
 interface BlogPostPageProps {
   params: {
@@ -27,12 +28,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       user: {
         select: {
           image: true,
-          member: {
-            select: {
-              encryptedFirstName: true,
-              encryptedLastName: true,
-            },
-          },
+          encryptedFirstName: true,
+          firstNameIV: true,
         },
       },
     },
@@ -55,11 +52,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   // Get author name
   const getAuthorName = () => {
-    if (post.user?.member) {
-      // In a real app, you'd decrypt these fields
-      return "Author"; // Placeholder for decrypted name
+    if (post.user?.encryptedFirstName && post.user?.firstNameIV) {
+      const firstName = decryptName(
+        post.user.encryptedFirstName,
+        post.user.firstNameIV
+      );
+      return firstName;
     }
-    return post.authorName || "Anonymous";
+    return "Anonymous";
   };
 
   return (
@@ -94,7 +94,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           {post.publishedAt && (
             <div className="flex items-center gap-2">
               <span>
-                {formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true })}
+                {formatDistanceToNow(new Date(post.publishedAt), {
+                  addSuffix: true,
+                })}
               </span>
             </div>
           )}
@@ -145,7 +147,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <Separator />
             <div className="flex items-center gap-2">
               <Tag className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Tags:</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Tags:
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag) => (
@@ -162,7 +166,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="space-y-4">
             <Separator />
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Keywords:</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Keywords:
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
               {post.keywords.map((keyword) => (
@@ -200,7 +206,12 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       ogTitle: true,
       ogDescription: true,
       publishedAt: true,
-      authorName: true,
+      user: {
+        select: {
+          encryptedFirstName: true,
+          firstNameIV: true,
+        },
+      },
     },
   });
 
@@ -210,29 +221,42 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
     };
   }
 
+  // Helper function to get author name
+  const getAuthorName = () => {
+    if (post.user?.encryptedFirstName && post.user?.firstNameIV) {
+      const firstName = decryptName(
+        post.user.encryptedFirstName,
+        post.user.firstNameIV
+      );
+      return firstName;
+    }
+    return "Anonymous";
+  };
+
   // Combine keywords and tags for better SEO
-  const allKeywords = [
-    ...(post.keywords || []),
-    ...(post.tags || [])
-  ].filter(Boolean);
+  const allKeywords = [...(post.keywords || []), ...(post.tags || [])].filter(
+    Boolean
+  );
 
   return {
     title: post.metaTitle || post.title,
     description: post.metaDescription || post.description,
-    keywords: allKeywords.length > 0 ? allKeywords.join(', ') : undefined,
+    keywords: allKeywords.length > 0 ? allKeywords.join(", ") : undefined,
     openGraph: {
       title: post.ogTitle || post.metaTitle || post.title,
-      description: post.ogDescription || post.metaDescription || post.description,
+      description:
+        post.ogDescription || post.metaDescription || post.description,
       images: post.ogImage ? [post.ogImage] : [],
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
-      authors: post.authorName ? [post.authorName] : [],
+      authors: getAuthorName() !== "Anonymous" ? [getAuthorName()] : [],
       tags: post.tags || [],
     },
     twitter: {
       card: "summary_large_image",
       title: post.ogTitle || post.metaTitle || post.title,
-      description: post.ogDescription || post.metaDescription || post.description,
+      description:
+        post.ogDescription || post.metaDescription || post.description,
       images: post.ogImage ? [post.ogImage] : [],
     },
     // Additional SEO metadata
@@ -242,10 +266,10 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       googleBot: {
         index: true,
         follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
       },
     },
   };
-} 
+}
