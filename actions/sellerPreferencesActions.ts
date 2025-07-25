@@ -13,7 +13,11 @@ async function checkAndMarkProfileComplete(userId: string) {
         shopName: true,
         shopDescription: true,
         encryptedBusinessName: true,
+        businessNameIV: true,
+        businessNameSalt: true,
         encryptedTaxId: true,
+        taxIdIV: true,
+        taxIdSalt: true,
         preferredCurrency: true,
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
@@ -28,7 +32,31 @@ async function checkAndMarkProfileComplete(userId: string) {
     const aboutComplete = seller.shopName && seller.shopDescription && seller.shopName.trim() !== "" && seller.shopDescription.trim() !== "";
     
     // Check if Info form is completed (business name and tax ID are required)
-    const infoComplete = seller.encryptedBusinessName && seller.encryptedTaxId;
+    // We need to decrypt and check if they're not temporary values
+    let infoComplete = false;
+    try {
+      if (seller.encryptedBusinessName && seller.encryptedTaxId) {
+        const { decryptData } = await import("@/lib/encryption");
+        
+        // Decrypt the business name and tax ID
+        const businessName = decryptData(
+          seller.encryptedBusinessName, 
+          seller.businessNameIV, 
+          seller.businessNameSalt
+        );
+        const taxId = decryptData(
+          seller.encryptedTaxId, 
+          seller.taxIdIV, 
+          seller.taxIdSalt
+        );
+        
+        // Check if they're not temporary values
+        infoComplete = businessName !== "Temporary Business Name" && taxId !== "Temporary Tax ID";
+      }
+    } catch (error) {
+      console.error("Error decrypting business info:", error);
+      infoComplete = false;
+    }
     
     // Check if Preferences form is completed (all unit preferences are set)
     const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;

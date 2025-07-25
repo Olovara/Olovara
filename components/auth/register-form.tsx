@@ -79,17 +79,23 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
     startTransition(() => {
       register({ ...values, recaptchaToken: finalToken }, redirectTo).then((data) => {
         if (data.success) {
-          setSuccess(data.success);
-          onSuccess?.();
+          if (onSuccess) {
+            // If onSuccess is provided (modal context), let the modal handle it
+            onSuccess?.();
+          } else {
+            // If no onSuccess (standalone context), show the success message
+            setSuccess(data.success);
+          }
         }
         if (data?.error) setError(data.error);
+        
+        // Reset form and state after the request completes
+        form.reset();
+        setSuccess("");
+        setError("");
+        setRecaptchaToken("");
       });
     });
-
-    form.reset();
-    setSuccess("");
-    setError("");
-    setRecaptchaToken("");
   };
 
   const handleRecaptchaError = (error: string) => {

@@ -61,9 +61,16 @@ const SellerApplicationForm = () => {
       console.log("SellerApplicationForm - Starting form submission...");
       
       // Convert selected date to string format for the form
+      const birthdateString = selectedDate ? selectedDate.toISOString().split('T')[0] : "";
+      console.log('Form submission - Date conversion:', {
+        selectedDate: selectedDate?.toISOString(),
+        birthdateString,
+        originalValues: values
+      });
+      
       const formData = {
         ...values,
-        birthdate: selectedDate ? selectedDate.toISOString().split('T')[0] : "",
+        birthdate: birthdateString,
       };
       
       const result = await sellerApplication(formData);
@@ -173,10 +180,19 @@ const SellerApplicationForm = () => {
                   <Label className="text-lg font-semibold">Date of Birth *</Label>
                   <DatePicker
                     date={selectedDate}
-                    onDateChange={setSelectedDate}
+                    onDateChange={(date) => {
+                      setSelectedDate(date);
+                      // Also update the form field
+                      form.setValue("birthdate", date ? date.toISOString().split('T')[0] : "");
+                    }}
                     placeholder="Select your date of birth"
                     disabled={isPending}
                     className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                  {/* Hidden input for form validation */}
+                  <input
+                    type="hidden"
+                    {...form.register("birthdate")}
                   />
                   {form.formState.errors.birthdate && (
                     <p className="text-sm text-red-500">{form.formState.errors.birthdate.message}</p>

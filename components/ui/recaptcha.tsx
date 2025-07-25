@@ -46,6 +46,17 @@ export const ReCaptcha = ({ onVerify, onError, action, trigger = false }: ReCapt
     }
   }, [siteKey, action, onVerify, onError, trigger]);
 
+  // In development mode, automatically trigger success after a short delay
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && trigger) {
+      const timer = setTimeout(() => {
+        onVerify('dev-token');
+      }, 500); // Small delay to simulate reCAPTCHA execution
+      
+      return () => clearTimeout(timer);
+    }
+  }, [trigger, onVerify]);
+
   useEffect(() => {
     if (trigger && isReady.current) {
       executeReCaptcha();
@@ -57,7 +68,7 @@ export const ReCaptcha = ({ onVerify, onError, action, trigger = false }: ReCapt
     return (
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
         <p className="text-sm text-yellow-800">
-          🔧 <strong>Development Mode:</strong> reCAPTCHA is disabled for local development.
+          🔧 <strong>Development Mode:</strong> reCAPTCHA simulation active.
         </p>
       </div>
     );

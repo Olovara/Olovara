@@ -37,12 +37,14 @@ const CardWrapper = ({
           <Social />
         </CardFooter>
       )}
-      <CardFooter>
-        <BackButton
-          label={backButtonLabel}
-          href={backButtonHref}
-        />
-      </CardFooter>
+      {backButtonLabel && backButtonHref && (
+        <CardFooter>
+          <BackButton
+            label={backButtonLabel}
+            href={backButtonHref}
+          />
+        </CardFooter>
+      )}
     </Card>
   );
 };

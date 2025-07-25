@@ -10,6 +10,15 @@ const calculateAge = (birthDate: Date): number => {
     age--;
   }
   
+  // Debug logging
+  console.log('Age calculation:', {
+    birthDate: birthDate.toISOString(),
+    today: today.toISOString(),
+    calculatedAge: age,
+    monthDiff,
+    dayDiff: today.getDate() - birthDate.getDate()
+  });
+  
   return age;
 };
 
@@ -47,8 +56,23 @@ export const SellerApplicationSchema = z.object({
   
   // Age verification (required for legal protection)
   birthdate: z.string().refine((date) => {
-    const age = calculateAge(new Date(date));
-    return age >= 18;
+    try {
+      const birthDate = new Date(date);
+      
+      // Check if the date is valid
+      if (isNaN(birthDate.getTime())) {
+        console.error('Invalid date format:', date);
+        return false;
+      }
+      
+      const age = calculateAge(birthDate);
+      console.log('Birthdate validation:', { inputDate: date, parsedDate: birthDate.toISOString(), calculatedAge: age });
+      
+      return age >= 18;
+    } catch (error) {
+      console.error('Error calculating age:', error);
+      return false;
+    }
   }, { message: "You must be at least 18 years old to sell." }),
   
   // Policy agreements (required)

@@ -34,16 +34,20 @@ const NewVerificationForm = () => {
         if (data.error) {
           setError(data.error);
         } else if (data.success) {
-          setSuccess(data.success);
-          
           // Check if user wants to become a seller or has a redirect URL
-          const wantsToBecomeSeller = localStorage.getItem("wantsToBecomeSeller");
-          if (wantsToBecomeSeller === "true" || redirectTo) {
-            // Redirect to the specified URL or sell page with seller intent
-            const redirectUrl = redirectTo || "/sell?startApplication=true";
+          const wantsToBecomeSeller = typeof window !== 'undefined' ? localStorage.getItem("wantsToBecomeSeller") : null;
+          const isSellerFlow = wantsToBecomeSeller === "true" || redirectTo?.includes('/sell');
+          
+          if (isSellerFlow) {
+            // Custom success message for seller signup flow
+            setSuccess("Email verified successfully! Redirecting you to sign in and start your seller application...");
+            // Redirect to login page with seller application callback
             setTimeout(() => {
-              router.push(redirectUrl);
+              router.push("/login?callbackUrl=/seller-application");
             }, 2000); // Give user 2 seconds to see success message
+          } else {
+            // Standard success message for regular signup
+            setSuccess(data.success);
           }
         }
       })
@@ -59,12 +63,15 @@ const NewVerificationForm = () => {
     onSubmit();
   }, [onSubmit]);
 
+  // Check if this is part of the seller signup flow
+  const isSellerSignupFlow = redirectTo?.includes('/sell') || (typeof window !== 'undefined' && localStorage.getItem("wantsToBecomeSeller") === "true");
+
   return (
     <CardWrapper
       title="Confirming your verification"
       subtitle="Please wait while we verify your email"
-      backButtonLabel="Back to login"
-      backButtonHref="/login"
+      backButtonLabel={isSellerSignupFlow ? "" : "Back to login"}
+      backButtonHref={isSellerSignupFlow ? "" : "/login"}
     >
       <div className="flex items-center w-full justify-center">
         {isLoading && <Spinner />}

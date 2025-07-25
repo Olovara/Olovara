@@ -37,6 +37,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     searchParams.get("error") === "OAuthAccountNotLinked"
       ? "Email already in use with a different provider!"
       : "";
+  
+  // Check if this is part of the seller signup flow
+  const isSellerSignupFlow = callbackUrl === "/seller-application";
 
   const [showTwoFactor, setShowTwoFactor] = useState(false);
 
@@ -67,7 +70,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
           if (data?.success) {
             form.reset();
-            setSuccess(data.success);
+            if (isSellerSignupFlow) {
+              setSuccess("Signing you in and redirecting to seller application...");
+            } else {
+              setSuccess(data.success);
+            }
             onSuccess?.();
           }
 
@@ -92,8 +99,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       backButtonLabel="Don't have an account?"
       backButtonHref="/register"
       showSocial
-      title="Welcome back"
-      subtitle="Sign in to your account"
+      title={isSellerSignupFlow ? "Sign in to Continue" : "Welcome back"}
+      subtitle={isSellerSignupFlow ? "Complete your seller application" : "Sign in to your account"}
     >
       <Form {...form}>
         <form

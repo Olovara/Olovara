@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"; // Shadcn Button
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Popover
 import { Calendar } from "@/components/ui/calendar"; // Calendar
 import { cn } from "@/lib/utils"; // For className utilities
+import { useSession } from "next-auth/react";
 
 interface SellerData {
   totalOrders: number;
@@ -21,6 +22,7 @@ interface SellerData {
 }
 
 const SellerDashboardInfo = () => {
+  const { data: session } = useSession();
   const [sellerData, setSellerData] = useState<SellerData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +56,25 @@ const SellerDashboardInfo = () => {
   useEffect(() => {
     const fetchSellerData = async () => {
       try {
+        // Check if we have a session
+        if (!session?.user?.id) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
+
         const query = new URLSearchParams();
         if (startDate) query.append("startDate", startDate.toISOString());
         if (endDate) query.append("endDate", endDate.toISOString());
+        
+        // Add the sellerId parameter using session
+        query.append("sellerId", session.user.id);
 
-        const response = await fetch(`/api/seller/dashboard?${query.toString()}`);
-        if (!response.ok) {
+        const dashboardResponse = await fetch(`/api/seller/dashboard?${query.toString()}`);
+        if (!dashboardResponse.ok) {
           throw new Error("Failed to fetch data");
         }
-        const data: SellerData = await response.json();
+        const data: SellerData = await dashboardResponse.json();
         setSellerData(data);
       } catch (err: any) {
         setError(err.message);
@@ -72,7 +84,7 @@ const SellerDashboardInfo = () => {
     };
 
     fetchSellerData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, session?.user?.id]);
 
   if (loading) {
     return <div>Loading...</div>;

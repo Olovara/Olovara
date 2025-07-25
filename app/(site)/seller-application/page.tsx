@@ -6,7 +6,7 @@ export default async function SellerApplication() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect("/register?callbackUrl=/seller-application");
+    redirect("/login?callbackUrl=/seller-application");
   }
 
   return (
