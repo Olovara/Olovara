@@ -2,9 +2,38 @@ import { ProductRow } from "@/components/ProductRow";
 import { ShopByValues } from "@/components/ShopByValues";
 import { Button, buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
-export const metadata = {
-  title: "Yarnnu",
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+  description: "Discover unique handmade products from talented artisans around the world. Shop crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and find one-of-a-kind treasures.",
+  keywords: [
+    "handmade marketplace",
+    "artisan products",
+    "crochet patterns", 
+    "handmade jewelry",
+    "unique gifts",
+    "handmade home decor",
+    "artisan marketplace",
+    "handmade crafts",
+    "support small business",
+    "handmade accessories"
+  ],
+  openGraph: {
+    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    description: "Discover unique handmade products from talented artisans around the world. Shop crochet patterns, handmade jewelry, home decor, accessories, and more.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    description: "Discover unique handmade products from talented artisans around the world.",
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function Home() {
@@ -28,6 +57,9 @@ export default function Home() {
       <ProductRow category="newest" />
       <ProductRow category="random" />
       <ShopByValues />
+      
+      {/* Add structured data for SEO */}
+      <WebsiteStructuredData pageType="home" />
     </section>
   );
 }

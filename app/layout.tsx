@@ -12,33 +12,62 @@ import Script from "next/script";
 import { headers } from "next/headers";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Yarnnu - Handmade Marketplace",
-  description: "Discover unique handmade products from talented artisans around the world.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  title: {
+    default: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    template: "%s | Yarnnu"
+  },
+  description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more. Support independent creators and find one-of-a-kind treasures.",
+  keywords: [
+    "handmade marketplace",
+    "artisan products", 
+    "crochet patterns",
+    "handmade jewelry",
+    "unique gifts",
+    "handmade home decor",
+    "artisan marketplace",
+    "handmade crafts",
+    "support small business",
+    "handmade accessories"
+  ],
+  authors: [{ name: "Yarnnu Team" }],
+  creator: "Yarnnu",
+  publisher: "Yarnnu",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Yarnnu - Handmade Marketplace",
-    description: "Discover unique handmade products from talented artisans around the world.",
+    type: "website",
+    locale: "en_US",
     url: process.env.NEXT_PUBLIC_APP_URL,
     siteName: "Yarnnu",
+    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Yarnnu - Handmade Marketplace",
+        alt: "Yarnnu - Handmade Marketplace featuring unique artisan products",
       },
     ],
-    locale: "en_US",
-    type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Yarnnu - Handmade Marketplace",
-    description: "Discover unique handmade products from talented artisans around the world.",
+    site: "@yarnnu",
+    creator: "@yarnnu",
+    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: ["/og-image.jpg"],
   },
   robots: {
@@ -54,7 +83,10 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
   },
+  category: "e-commerce",
+  classification: "Handmade Marketplace",
 };
 
 
@@ -98,6 +130,7 @@ export default async function RootLayout({
                       {children}
                     </main>
                     <PostHogPageview />
+                    <WebsiteStructuredData pageType="home" />
                   </SocketProvider>
                 </OnboardingSurveyProvider>
               </LocationProvider>

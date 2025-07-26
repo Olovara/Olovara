@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+
+# Disallow private/admin areas
+Disallow: /admin/
+Disallow: /seller/dashboard/
+Disallow: /member/dashboard/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /checkout/
+Disallow: /payment/
+Disallow: /unauthorized/
+
+# Allow important pages
+Allow: /products
+Allow: /categories
+Allow: /blog
+Allow: /shops
+Allow: /about
+Allow: /contact
+Allow: /terms-of-service
+Allow: /privacy-policy
+
+# Sitemap location
+Sitemap: https://yarnnu.com/sitemap.xml
+
+# Crawl delay (optional - be respectful to servers)
+Crawl-delay: 1 

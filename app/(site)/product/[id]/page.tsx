@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import { unstable_noStore as noStore } from "next/cache";
 import dynamic from "next/dynamic";
 import { ObjectId } from "mongodb";
-import Link from "next/link";
-import ProductActions from "@/components/ProductPageActions";
 import ProductDetails from "@/components/ProductDetails";
 import { auth } from "@/auth";
 import { canUserAccessTestEnvironment } from "@/lib/test-environment";
@@ -104,13 +102,67 @@ export async function generateMetadata({ params }: ProductPageProps) {
 
   if (!product) {
     return {
-      title: "Product Not Found",
+      title: "Product Not Found | Yarnnu",
+      description: "The requested product could not be found.",
     };
   }
 
+  // Extract description from JSON content
+  const description = typeof product.description === 'string' 
+    ? product.description 
+    : JSON.stringify(product.description);
+
+  // Create a clean description for SEO
+  const cleanDescription = description
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .substring(0, 160); // Limit to 160 characters
+
+  // Generate keywords from product tags and name
+  const keywords = [
+    product.name,
+    ...(product.tags || []),
+    'handmade',
+    'artisan',
+    product.seller?.shopName,
+  ].filter(Boolean).join(', ');
+
+  // Calculate price for structured data
+  const currentPrice = product.onSale && product.discount 
+    ? product.price - (product.price * product.discount / 100)
+    : product.price;
+
   return {
-    title: product.name,
-    description: product.description,
+    title: `${product.name} by ${product.seller?.shopName || 'Artisan'} | Yarnnu`,
+    description: cleanDescription,
+    keywords,
+    openGraph: {
+      title: `${product.name} by ${product.seller?.shopName || 'Artisan'}`,
+      description: cleanDescription,
+      images: product.images && product.images.length > 0 ? [
+        {
+          url: product.images[0],
+          width: 800,
+          height: 600,
+          alt: product.name,
+        }
+      ] : [],
+      type: 'product',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.name} by ${product.seller?.shopName || 'Artisan'}`,
+      description: cleanDescription,
+      images: product.images && product.images.length > 0 ? [product.images[0]] : [],
+    },
+    alternates: {
+      canonical: `/product/${product.id}`,
+    },
+    other: {
+      'product:price:amount': (currentPrice / 100).toString(),
+      'product:price:currency': product.currency,
+      'product:availability': product.stock > 0 ? 'in stock' : 'out of stock',
+    },
   };
 }
 

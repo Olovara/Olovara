@@ -13,10 +13,35 @@ import { Filter } from "lucide-react";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig, debugProductQuery } from "@/lib/product-filtering";
 import { LocationFilterInfo } from "@/components/LocationFilterNotice";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 export const metadata: Metadata = {
-  title: "Products | Yarnnu",
-  description: "Browse our collection of handcrafted products",
+  title: "Handmade Products | Yarnnu",
+  description: "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and discover one-of-a-kind treasures.",
+  keywords: [
+    "handmade products",
+    "artisan crafts", 
+    "crochet patterns",
+    "handmade jewelry",
+    "unique gifts",
+    "handmade home decor",
+    "artisan marketplace",
+    "handmade accessories",
+    "support small business"
+  ],
+  openGraph: {
+    title: "Handmade Products | Yarnnu",
+    description: "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Handmade Products | Yarnnu",
+    description: "Browse our collection of unique handcrafted products from talented artisans.",
+  },
+  alternates: {
+    canonical: "/products",
+  },
 };
 
 interface ProductsPageProps {
@@ -268,6 +293,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           )}
         </div>
       </div>
+      
+      {/* Add structured data for SEO */}
+      <WebsiteStructuredData pageType="products" />
     </div>
   );
 }

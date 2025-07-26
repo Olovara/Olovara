@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCurrency } from "@/hooks/useCurrency";
 import ProductActions from "@/components/ProductPageActions";
+import { ProductStructuredData } from "@/components/ProductStructuredData";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -300,6 +301,9 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           </a>
         </div>
       )}
+      
+      {/* Add structured data for SEO */}
+      <ProductStructuredData product={data} />
     </section>
   );
 } 
