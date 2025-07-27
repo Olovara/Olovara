@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeCheckout, stripeSecret } from "@/lib/stripe";
-import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
+import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { calculateShippingCost } from "@/lib/shipping-calculator";
 import { decryptOrderData } from "@/lib/encryption";
 import { validateDiscountCode, calculateDiscount, calculateProductSaleDiscount } from "@/lib/discount-calculator";
@@ -59,6 +59,9 @@ export async function POST(req: Request) {
             connectedAccountId: true,
             userId: true,
             excludedCountries: true,
+            isFoundingSeller: true,
+            hasCommissionDiscount: true,
+            commissionDiscountExpiresAt: true,
             addresses: {
               where: { isDefault: true },
               select: { encryptedCountry: true, countryIV: true, countrySalt: true }
@@ -297,8 +300,15 @@ export async function POST(req: Request) {
     // Calculate final amount after discount
     const finalOrderAmountInCents = Math.max(0, totalOrderAmountInCents - discountAmount);
     
+    // Calculate dynamic commission rate based on seller status and discount eligibility
+    const commissionRate = calculateCommissionRate(
+      product.seller?.isFoundingSeller || false,
+      product.seller?.hasCommissionDiscount || false,
+      product.seller?.commissionDiscountExpiresAt || null
+    );
+    
     // Calculate platform fee only on the product price (not including shipping/handling or discounts)
-    const platformFeeInCents = Math.round(totalProductPriceInCents * (PLATFORM_FEE_PERCENT / 100));
+    const platformFeeInCents = Math.round(totalProductPriceInCents * (commissionRate / 100));
 
     // Handle description in new JSON format
     let productDescription = "No description available";

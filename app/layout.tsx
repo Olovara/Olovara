@@ -9,7 +9,6 @@ import { LocationProvider } from "@/components/providers/LocationProvider";
 import { PermissionProvider } from "@/components/providers/PermissionProvider";
 import { auth } from "@/auth";
 import Script from "next/script";
-import { headers } from "next/headers";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";

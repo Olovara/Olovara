@@ -8,6 +8,7 @@ import { Resend } from "resend";
 import ProductEmail from "@/components/emails/ProductEmail";
 import SellerOrderEmail from "@/components/emails/SellerOrderEmail";
 import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
+import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeCheckout, stripeSecret } from "@/lib/stripe";
-import { PLATFORM_FEE_PERCENT } from "@/lib/feeConfig";
+import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import type { Stripe } from "stripe";
 
 export async function POST(req: Request) {
@@ -49,6 +49,9 @@ export async function POST(req: Request) {
                 connectedAccountId: true,
                 userId: true,
                 shopName: true,
+                isFoundingSeller: true,
+                hasCommissionDiscount: true,
+                commissionDiscountExpiresAt: true,
               },
             },
           },
@@ -148,8 +151,15 @@ export async function POST(req: Request) {
       }
     }
 
+    // Calculate dynamic commission rate based on seller status and discount eligibility
+    const commissionRate = calculateCommissionRate(
+      submission.form.seller?.isFoundingSeller || false,
+      submission.form.seller?.hasCommissionDiscount || false,
+      submission.form.seller?.commissionDiscountExpiresAt || null
+    );
+    
     // Calculate platform fee
-    const platformFeeInCents = Math.round(finalPaymentAmount * PLATFORM_FEE_PERCENT);
+    const platformFeeInCents = Math.round(finalPaymentAmount * (commissionRate / 100));
     const sellerAmountInCents = finalPaymentAmount - platformFeeInCents;
 
     // Create Stripe checkout session

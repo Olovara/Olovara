@@ -141,13 +141,24 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // Handle referral tracking if a referral code was provided
       if (values.referralCode) {
-        // Find the referrer
+        // Find the referrer and their seller info
         const referrer = await tx.user.findUnique({
           where: { referralCode: values.referralCode },
-          select: { id: true }
+          select: { 
+            id: true,
+            seller: {
+              select: {
+                id: true,
+                hasCommissionDiscount: true,
+                commissionDiscountExpiresAt: true,
+                commissionDiscountMonths: true,
+                isFoundingSeller: true
+              }
+            }
+          }
         });
 
-        if (referrer) {
+        if (referrer && referrer.seller) {
           // Update the applicant's referredBy field
           await tx.user.update({
             where: { id: userId },
@@ -164,8 +175,58 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
             }
           });
 
-          console.log(`Referral tracked: User ${userId} was referred by ${referrer.id} using code ${values.referralCode}`);
+          // Calculate commission discount for referrer
+          const newReferralCount = (referrer.seller.commissionDiscountMonths || 0) + 1;
+          const milestone = Math.floor(newReferralCount / 3);
+          
+          if (milestone > 0) {
+            // Calculate new expiration date
+            const now = new Date();
+            let newExpirationDate: Date;
+            
+            if (referrer.seller.hasCommissionDiscount && referrer.seller.commissionDiscountExpiresAt) {
+              // Extend existing discount by 1 month
+              newExpirationDate = new Date(referrer.seller.commissionDiscountExpiresAt);
+              newExpirationDate.setMonth(newExpirationDate.getMonth() + 1);
+            } else {
+              // Start new discount for 1 month
+              newExpirationDate = new Date(now);
+              newExpirationDate.setMonth(newExpirationDate.getMonth() + 1);
+            }
+
+            // Update seller's commission discount
+            await tx.seller.update({
+              where: { id: referrer.seller.id },
+              data: {
+                hasCommissionDiscount: true,
+                commissionDiscountExpiresAt: newExpirationDate,
+                commissionDiscountMonths: newReferralCount
+              }
+            });
+
+            console.log(`Commission discount updated for seller ${referrer.id}: ${milestone} month(s) discount until ${newExpirationDate.toISOString()}`);
+          }
         }
+      }
+
+      // Handle commission discount for the applicant if they used a referral code
+      if (values.referralCode) {
+        // The applicant gets a 1-month commission discount for using a referral code
+        const now = new Date();
+        const applicantDiscountExpiration = new Date(now);
+        applicantDiscountExpiration.setMonth(applicantDiscountExpiration.getMonth() + 1);
+
+        // Update the newly created seller record with commission discount
+        await tx.seller.update({
+          where: { userId: userId },
+          data: {
+            hasCommissionDiscount: true,
+            commissionDiscountExpiresAt: applicantDiscountExpiration,
+            commissionDiscountMonths: 1 // They get 1 month for using a referral code
+          }
+        });
+
+        console.log(`Commission discount granted to applicant ${userId} for using referral code: 1 month discount until ${applicantDiscountExpiration.toISOString()}`);
       }
 
       // Grant initial seller permissions (without product permissions)

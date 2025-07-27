@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { stripeWebhook } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import type { Stripe } from "stripe";
+import { calculateCommissionRate } from "@/lib/feeConfig";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -45,7 +46,16 @@ export async function POST(req: Request) {
           include: {
             form: {
               include: {
-                seller: true
+                seller: {
+                  select: {
+                    id: true,
+                    userId: true,
+                    shopName: true,
+                    isFoundingSeller: true,
+                    hasCommissionDiscount: true,
+                    commissionDiscountExpiresAt: true,
+                  }
+                }
               }
             }
           }
@@ -68,9 +78,16 @@ export async function POST(req: Request) {
           throw new Error(`Charge status is ${charge.status}`);
         }
 
+        // Calculate dynamic commission rate based on seller status and discount eligibility
+        const commissionRate = calculateCommissionRate(
+          submission.form.seller?.isFoundingSeller || false,
+          submission.form.seller?.hasCommissionDiscount || false,
+          submission.form.seller?.commissionDiscountExpiresAt || null
+        );
+        
         // Calculate platform fee and seller amount
         const amount = session.amount_total || 0;
-        const platformFee = Math.round(amount * 0.05); // 5% platform fee
+        const platformFee = Math.round(amount * (commissionRate / 100));
         const sellerAmount = amount - platformFee;
 
         // Create payment record

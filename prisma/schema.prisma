@@ -274,6 +274,11 @@ model Seller {
   firstProductCreatedAt  DateTime? // When they created their first product (used to determine founding seller status)
   foundingSellerBenefits Json? // Store specific benefits granted to this seller
 
+  // Commission Discount System
+  hasCommissionDiscount Boolean @default(false) // Whether seller currently has an active commission discount
+  commissionDiscountExpiresAt DateTime? // When the commission discount expires
+  commissionDiscountMonths Int @default(0) // Total months of discount earned (for tracking)
+
   // Tax fields
   encryptedBusinessName               String
   businessNameIV                      String
