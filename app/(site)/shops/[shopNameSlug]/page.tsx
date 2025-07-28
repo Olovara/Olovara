@@ -13,6 +13,8 @@ import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 import { auth } from "@/auth";
 import { canUserAccessTestEnvironment } from "@/lib/test-environment";
+import { Metadata } from "next";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -57,6 +59,14 @@ async function getShopData(shopNameSlug: string, userCountryCode?: string, canAc
       instagramUrl: true,
       pinterestUrl: true,
       tiktokUrl: true,
+      // SEO fields
+      metaTitle: true,
+      metaDescription: true,
+      keywords: true,
+      tags: true,
+      ogTitle: true,
+      ogDescription: true,
+      ogImage: true,
       // Address for location
       addresses: {
         where: { isDefault: true },
@@ -135,6 +145,70 @@ async function getShopData(shopNameSlug: string, userCountryCode?: string, canAc
   return seller;
 }
 
+export async function generateMetadata({ params }: ShopPageProps): Promise<Metadata> {
+  const seller = await getShopData(params.shopNameSlug, undefined, false);
+
+  if (!seller) {
+    return {
+      title: "Shop Not Found | Yarnnu",
+      description: "The requested shop could not be found.",
+    };
+  }
+
+  // Generate keywords from shop tags and values
+  const generatedKeywords = [
+    seller.shopName,
+    'handmade',
+    'artisan',
+    'handcrafted',
+    ...(seller.tags || []),
+    seller.isWomanOwned ? 'woman-owned' : null,
+    seller.isMinorityOwned ? 'minority-owned' : null,
+    seller.isLGBTQOwned ? 'lgbtq-owned' : null,
+    seller.isVeteranOwned ? 'veteran-owned' : null,
+    seller.isSustainable ? 'sustainable' : null,
+    seller.isCharitable ? 'charitable' : null,
+  ].filter(Boolean).join(', ');
+
+  // Use custom SEO fields if available, fallback to generated ones
+  const seoTitle = seller.metaTitle || `${seller.shopName} | Handmade Shop | Yarnnu`;
+  const seoDescription = seller.metaDescription || seller.shopDescription || `Discover unique handmade products from ${seller.shopName}. Shop our curated collection of artisan goods.`;
+  const seoKeywords = seller.keywords && seller.keywords.length > 0 
+    ? [...seller.keywords, ...(seller.tags || [])].join(', ')
+    : generatedKeywords;
+  const ogTitle = seller.ogTitle || seller.metaTitle || `${seller.shopName} | Handmade Shop | Yarnnu`;
+  const ogDescription = seller.ogDescription || seller.metaDescription || seller.shopDescription || `Discover unique handmade products from ${seller.shopName}.`;
+  const ogImage = seller.ogImage || seller.shopBannerImage || seller.shopLogoImage;
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      images: ogImage ? [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `${seller.shopName} shop`,
+        }
+      ] : [],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDescription,
+      images: ogImage ? [ogImage] : [],
+    },
+    alternates: {
+      canonical: `https://yarnnu.com/shops/${seller.shopNameSlug}`,
+    },
+  };
+}
+
 export default async function ShopPage({ params }: ShopPageProps) {
   // Get user's country code for location-based filtering
   const userCountryCode = await getUserCountryCode();
@@ -167,7 +241,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
   } : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <WebsiteStructuredData pageType="shops" />
+      <div className="min-h-screen bg-gray-50">
       {/* HEADER SECTION */}
       <div className="bg-white border-b">
         {/* Shop Banner */}
@@ -470,5 +546,6 @@ export default async function ShopPage({ params }: ShopPageProps) {
         </section>
       </div>
     </div>
+    </>
   );
 }

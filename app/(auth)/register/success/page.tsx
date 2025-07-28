@@ -23,7 +23,7 @@ export default function RegisterSuccessPage() {
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button asChild>
-            <Link href="/auth/signin">Sign In</Link>
+            <Link href="/login">Sign In</Link>
           </Button>
         </CardFooter>
       </Card>

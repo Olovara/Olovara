@@ -8,7 +8,7 @@ export const ErrorCard = () => {
     <CardWrapper
       title="Oops! Something went wrong!"
       subtitle="Please try again"
-      backButtonHref="/auth/login"
+      backButtonHref="/login"
       backButtonLabel="Back to login"
     >
       <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive">

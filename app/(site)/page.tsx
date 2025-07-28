@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     description: "Discover unique handmade products from talented artisans around the world.",
   },
   alternates: {
-    canonical: "/",
+    canonical: "https://yarnnu.com/",
   },
 };
 

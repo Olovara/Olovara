@@ -11,6 +11,9 @@ Disallow: /checkout/
 Disallow: /payment/
 Disallow: /unauthorized/
 
+# Disallow test content
+Disallow: /shops/yarnnu-test-shop
+
 # Allow important pages
 Allow: /products
 Allow: /categories

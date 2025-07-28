@@ -15,34 +15,75 @@ import { createProductFilterWhereClause, getProductFilterConfig, debugProductQue
 import { LocationFilterInfo } from "@/components/LocationFilterNotice";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
-export const metadata: Metadata = {
-  title: "Handmade Products | Yarnnu",
-  description: "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and discover one-of-a-kind treasures.",
-  keywords: [
-    "handmade products",
-    "artisan crafts", 
-    "crochet patterns",
-    "handmade jewelry",
-    "unique gifts",
-    "handmade home decor",
-    "artisan marketplace",
-    "handmade accessories",
-    "support small business"
-  ],
-  openGraph: {
-    title: "Handmade Products | Yarnnu",
-    description: "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Handmade Products | Yarnnu",
-    description: "Browse our collection of unique handcrafted products from talented artisans.",
-  },
-  alternates: {
-    canonical: "/products",
-  },
-};
+export async function generateMetadata({ searchParams }: ProductsPageProps): Promise<Metadata> {
+  const categories = searchParams.category?.split(",") || [];
+  const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
+  const tertiaryCategories = searchParams.tertiaryCategory?.split(",") || [];
+  const priceRange = searchParams.priceRange?.split(",").map(Number) || [0, 1000];
+  const sortBy = searchParams.sortBy || "newest";
+  const page = searchParams.page || "1";
+  const values = searchParams.values?.split(",") || [];
+  const q = searchParams.q || "";
+  
+  // Build canonical URL
+  const canonicalParams = new URLSearchParams();
+  if (categories.length > 0) canonicalParams.set("category", categories.join(","));
+  if (secondaryCategories.length > 0) canonicalParams.set("secondaryCategory", secondaryCategories.join(","));
+  if (tertiaryCategories.length > 0) canonicalParams.set("tertiaryCategory", tertiaryCategories.join(","));
+  if (priceRange[0] !== 0 || priceRange[1] !== 1000) canonicalParams.set("priceRange", priceRange.join(","));
+  if (sortBy !== "newest") canonicalParams.set("sortBy", sortBy);
+  if (page !== "1") canonicalParams.set("page", page);
+  if (values.length > 0) canonicalParams.set("values", values.join(","));
+  if (q) canonicalParams.set("q", q);
+  
+  const canonicalUrl = canonicalParams.toString() 
+    ? `/products?${canonicalParams.toString()}`
+    : "/products";
+
+  // Generate dynamic title and description based on filters
+  let title = "Handmade Products | Yarnnu - Unique Artisan Goods";
+  let description = "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and discover one-of-a-kind treasures.";
+  
+  if (q) {
+    title = `Search Results for "${q}" | Handmade Products | Yarnnu`;
+    description = `Search results for "${q}" - Find unique handmade products from talented artisans on Yarnnu.`;
+  } else if (categories.length > 0) {
+    const categoryLabels = categories.map(cat => cat.charAt(0).toUpperCase() + cat.slice(1)).join(", ");
+    title = `${categoryLabels} Products | Handmade Goods | Yarnnu`;
+    description = `Discover unique ${categoryLabels.toLowerCase()} handmade products from talented artisans. Find one-of-a-kind items crafted with care and attention to detail.`;
+  }
+
+  return {
+    title,
+    description,
+    keywords: [
+      "handmade products",
+      "artisan crafts", 
+      "crochet patterns",
+      "handmade jewelry",
+      "unique gifts",
+      "handmade home decor",
+      "artisan marketplace",
+      "handmade accessories",
+      "support small business",
+      ...categories.map(cat => `${cat} products`),
+      ...values.map(v => `${v.replace(/([A-Z])/g, ' $1').toLowerCase()} products`)
+    ],
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: canonicalUrl,
+    },
+  };
+}
 
 interface ProductsPageProps {
   searchParams: {
@@ -276,7 +317,26 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
           {products.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">No products found matching your filters.</p>
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl font-semibold mb-4">Discover Unique Handmade Products</h2>
+                <p className="text-gray-600 mb-6">
+                  We&apos;re constantly adding new products from talented artisans around the world. Try adjusting your filters or check back soon to find amazing handmade items.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-medium mb-2">Artisan Quality</h3>
+                    <p>Every product is handcrafted with care and attention to detail</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-medium mb-2">Unique Designs</h3>
+                    <p>Find one-of-a-kind pieces that reflect the creator&apos;s vision</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-medium mb-2">Support Creators</h3>
+                    <p>Your purchase directly supports independent artisans and their craft</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

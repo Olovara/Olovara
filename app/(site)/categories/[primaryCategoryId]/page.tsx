@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import ProductCard from "@/components/ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 interface PrimaryCategoryPageProps {
   params: {
@@ -40,6 +41,9 @@ export async function generateMetadata({
   return {
     title: `${primaryCategory.name} | Yarnnu`,
     description: `Browse our collection of ${primaryCategory.name.toLowerCase()} products.`,
+    alternates: {
+      canonical: `https://yarnnu.com/categories/${params.primaryCategoryId.toLowerCase()}`,
+    },
   };
 }
 
@@ -235,11 +239,29 @@ export default async function PrimaryCategoryPage({
 
           {transformedProducts.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">No products found in this category.</p>
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl font-semibold mb-4">Discover Amazing {primaryCategory.name}</h2>
+                <p className="text-gray-600 mb-6">
+                  We&apos;re constantly adding new {primaryCategory.name.toLowerCase()} products from talented artisans. Check back soon to find unique handmade items in this category.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-medium mb-2">Handmade Quality</h3>
+                    <p>Every item is carefully crafted by skilled artisans</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-medium mb-2">Unique Designs</h3>
+                    <p>Find one-of-a-kind pieces you won&apos;t see anywhere else</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+      
+      {/* Add structured data for SEO */}
+      <WebsiteStructuredData pageType="categories" categoryName={primaryCategory.name} />
     </div>
   );
 } 

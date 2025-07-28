@@ -6,6 +6,7 @@ import { Filters } from "@/components/filters";
 import ProductCard from "@/components/ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 interface TertiaryCategoryPageProps {
   params: {
@@ -38,6 +39,9 @@ export async function generateMetadata({
   return {
     title: `${tertiaryCategory.name} ${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
     description: `Shop our collection of ${tertiaryCategory.name.toLowerCase()} ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
+    alternates: {
+      canonical: `https://yarnnu.com/categories/${params.primaryCategoryId.toLowerCase()}/${params.secondaryCategoryId.toLowerCase()}/${params.tertiaryCategoryId.toLowerCase()}`,
+    },
     openGraph: {
       title: `${tertiaryCategory.name} ${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
       description: `Shop our collection of ${tertiaryCategory.name.toLowerCase()} ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
@@ -166,12 +170,30 @@ export default async function TertiaryCategoryPage({
             
             {products.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-500">No products found in this category.</p>
+                <div className="max-w-2xl mx-auto">
+                  <h2 className="text-2xl font-semibold mb-4">Discover Amazing {tertiaryCategory.name} {secondaryCategory.name} {primaryCategory.name}</h2>
+                  <p className="text-gray-600 mb-6">
+                    We&apos;re constantly adding new {tertiaryCategory.name.toLowerCase()} {secondaryCategory.name.toLowerCase()} {primaryCategory.name.toLowerCase()} products from talented artisans. Check back soon to find unique handmade items in this category.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium mb-2">Handmade Quality</h3>
+                      <p>Every item is carefully crafted by skilled artisans</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium mb-2">Unique Designs</h3>
+                      <p>Find one-of-a-kind pieces you won&apos;t see anywhere else</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+      
+      {/* Add structured data for SEO */}
+      <WebsiteStructuredData pageType="categories" categoryName={`${tertiaryCategory.name} ${secondaryCategory.name} ${primaryCategory.name}`} />
     </div>
   );
 } 

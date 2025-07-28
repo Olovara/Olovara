@@ -84,12 +84,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     
     const secondaryPages = CategoriesMap.SECONDARY
       .filter(secCat => secCat.primaryCategoryId === primaryCat.id)
-      .map(secCat => ({
-        url: `${primaryUrl}/${secCat.id.toLowerCase()}`,
-        lastModified: currentDate,
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      }))
+      .map(secCat => {
+        const secondaryUrl = `${primaryUrl}/${secCat.id.toLowerCase()}`
+        
+        const tertiaryPages = CategoriesMap.TERTIARY
+          .filter(tertCat => tertCat.secondaryCategoryId === secCat.id)
+          .map(tertCat => ({
+            url: `${secondaryUrl}/${tertCat.id.toLowerCase()}`,
+            lastModified: currentDate,
+            changeFrequency: 'weekly' as const,
+            priority: 0.6,
+          }))
+
+        return [
+          {
+            url: secondaryUrl,
+            lastModified: currentDate,
+            changeFrequency: 'weekly' as const,
+            priority: 0.7,
+          },
+          ...tertiaryPages
+        ]
+      }).flat()
 
     return [
       {

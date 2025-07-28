@@ -1,132 +1,99 @@
 import Script from 'next/script'
 
 interface WebsiteStructuredDataProps {
-  pageType?: 'home' | 'products' | 'blog' | 'about' | 'contact'
+  pageType: 'home' | 'products' | 'shops' | 'blog' | 'suggestions' | 'categories';
+  categoryName?: string;
 }
 
-export function WebsiteStructuredData({ pageType = 'home' }: WebsiteStructuredDataProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yarnnu.com'
-
-  // Organization structured data
-  const organizationData = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "Yarnnu",
-    "url": baseUrl,
-    "logo": `${baseUrl}/logo.png`,
-    "description": "A handmade marketplace connecting talented artisans with customers worldwide. Discover unique handcrafted products including crochet patterns, handmade jewelry, home decor, and accessories.",
-    "foundingDate": "2024",
-    "sameAs": [
-      "https://twitter.com/yarnnu",
-      "https://facebook.com/yarnnu",
-      "https://instagram.com/yarnnu"
-    ],
-    "contactPoint": {
-      "@type": "ContactPoint",
-      "contactType": "customer service",
-      "url": `${baseUrl}/contact`
-    },
-    "address": {
-      "@type": "PostalAddress",
-      "addressCountry": "US"
-    }
-  }
-
-  // Website structured data
-  const websiteData = {
+export function WebsiteStructuredData({ pageType, categoryName }: WebsiteStructuredDataProps) {
+  const baseUrl = "https://yarnnu.com";
+  
+  const baseStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Yarnnu",
+    "description": "Your marketplace for high-quality handcrafted goods",
     "url": baseUrl,
-    "description": "Handmade marketplace for unique artisan products",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": {
-        "@type": "EntryPoint",
-        "urlTemplate": `${baseUrl}/products?search={search_term_string}`
-      },
+      "target": `${baseUrl}/products?q={search_term_string}`,
       "query-input": "required name=search_term_string"
     }
-  }
+  };
 
-  // Breadcrumb structured data for specific pages
-  const getBreadcrumbData = () => {
-    const breadcrumbs = [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": baseUrl
-      }
-    ]
-
+  const pageSpecificData = (() => {
     switch (pageType) {
+      case 'home':
+        return {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Yarnnu",
+          "description": "Your marketplace for high-quality handcrafted goods",
+          "url": baseUrl,
+          "logo": `${baseUrl}/logo.png`,
+          "sameAs": [
+            baseUrl
+          ]
+        };
       case 'products':
-        breadcrumbs.push({
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Products",
-          "item": `${baseUrl}/products`
-        })
-        break
+        return {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "Handmade Products",
+          "description": "Browse our collection of unique handcrafted products from talented artisans",
+          "url": `${baseUrl}/products`
+        };
+      case 'shops':
+        return {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "Handmade Shops",
+          "description": "Browse our curated collection of handcrafted shops from talented artisans worldwide",
+          "url": `${baseUrl}/shops`
+        };
       case 'blog':
-        breadcrumbs.push({
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Blog",
-          "item": `${baseUrl}/blog`
-        })
-        break
-      case 'about':
-        breadcrumbs.push({
-          "@type": "ListItem",
-          "position": 2,
-          "name": "About",
-          "item": `${baseUrl}/about`
-        })
-        break
-      case 'contact':
-        breadcrumbs.push({
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Contact",
-          "item": `${baseUrl}/contact`
-        })
-        break
+        return {
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          "name": "Yarnnu Blog",
+          "description": "Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates",
+          "url": `${baseUrl}/blog`
+        };
+      case 'suggestions':
+        return {
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "Feature Suggestions & Feedback",
+          "description": "Share your ideas and feedback to help improve Yarnnu",
+          "url": `${baseUrl}/suggestions`
+        };
+      case 'categories':
+        return {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": `${categoryName || 'Category'} Products`,
+          "description": `Browse our collection of ${categoryName?.toLowerCase() || 'handmade'} products`,
+          "url": `${baseUrl}/categories/${categoryName?.toLowerCase() || ''}`
+        };
+      default:
+        return baseStructuredData;
     }
-
-    return {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": breadcrumbs
-    }
-  }
+  })();
 
   return (
     <>
-      <Script
-        id="organization-structured-data"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationData)
+          __html: JSON.stringify(baseStructuredData)
         }}
       />
-      <Script
-        id="website-structured-data"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(websiteData)
+          __html: JSON.stringify(pageSpecificData)
         }}
       />
-      {pageType !== 'home' && (
-        <Script
-          id="breadcrumb-structured-data"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(getBreadcrumbData())
-          }}
-        />
-      )}
     </>
-  )
+  );
 } 

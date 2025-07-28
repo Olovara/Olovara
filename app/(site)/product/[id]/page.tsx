@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import ProductDetails from "@/components/ProductDetails";
 import { auth } from "@/auth";
 import { canUserAccessTestEnvironment } from "@/lib/test-environment";
+import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -74,6 +75,13 @@ async function getData(id: string) {
         howItsMade: true,
         tags: true,
         NSFW: true,
+        // SEO fields
+        metaTitle: true,
+        metaDescription: true,
+        keywords: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImage: true,
         seller: {
           select: {
             shopName: true,
@@ -118,8 +126,8 @@ export async function generateMetadata({ params }: ProductPageProps) {
     .replace(/\s+/g, ' ') // Normalize whitespace
     .substring(0, 160); // Limit to 160 characters
 
-  // Generate keywords from product tags and name
-  const keywords = [
+  // Generate keywords from product tags and name (fallback)
+  const generatedKeywords = [
     product.name,
     ...(product.tags || []),
     'handmade',
@@ -127,36 +135,53 @@ export async function generateMetadata({ params }: ProductPageProps) {
     product.seller?.shopName,
   ].filter(Boolean).join(', ');
 
+  // Use custom SEO fields if available, fallback to generated ones
+  const seoTitle = product.metaTitle || `${product.name} by ${product.seller?.shopName || 'Artisan'} | Yarnnu`;
+  const seoDescription = product.metaDescription || cleanDescription;
+  const seoKeywords = product.keywords && product.keywords.length > 0 
+    ? [...product.keywords, ...(product.tags || [])].join(', ')
+    : generatedKeywords;
+  const ogTitle = product.ogTitle || product.metaTitle || `${product.name} by ${product.seller?.shopName || 'Artisan'}`;
+  const ogDescription = product.ogDescription || product.metaDescription || cleanDescription;
+  const ogImage = product.ogImage || (product.images && product.images.length > 0 ? product.images[0] : undefined);
+
   // Calculate price for structured data
   const currentPrice = product.onSale && product.discount 
     ? product.price - (product.price * product.discount / 100)
     : product.price;
 
   return {
-    title: `${product.name} by ${product.seller?.shopName || 'Artisan'} | Yarnnu`,
-    description: cleanDescription,
-    keywords,
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
     openGraph: {
-      title: `${product.name} by ${product.seller?.shopName || 'Artisan'}`,
-      description: cleanDescription,
-      images: product.images && product.images.length > 0 ? [
+      title: ogTitle,
+      description: ogDescription,
+      images: ogImage ? [
+        {
+          url: ogImage,
+          width: 800,
+          height: 600,
+          alt: product.name,
+        }
+      ] : (product.images && product.images.length > 0 ? [
         {
           url: product.images[0],
           width: 800,
           height: 600,
           alt: product.name,
         }
-      ] : [],
+      ] : []),
       type: 'product',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.name} by ${product.seller?.shopName || 'Artisan'}`,
-      description: cleanDescription,
-      images: product.images && product.images.length > 0 ? [product.images[0]] : [],
+      title: ogTitle,
+      description: ogDescription,
+      images: ogImage ? [ogImage] : (product.images && product.images.length > 0 ? [product.images[0]] : []),
     },
     alternates: {
-      canonical: `/product/${product.id}`,
+      canonical: `https://yarnnu.com/product/${product.id}`,
     },
     other: {
       'product:price:amount': (currentPrice / 100).toString(),
@@ -189,5 +214,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
     );
   }
 
-  return <ProductDetails data={product} />;
+  return (
+    <>
+      <WebsiteStructuredData pageType="products" />
+      <ProductDetails data={product} />
+    </>
+  );
 }

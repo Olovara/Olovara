@@ -170,7 +170,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                         asChild
                         className="px-0 text-muted-foreground"
                       >
-                        <Link href="/reset">Forgot your password?</Link>
+                        <Link href="/reset-password">Forgot your password?</Link>
                       </Button>
                     </FormItem>
                   )}
