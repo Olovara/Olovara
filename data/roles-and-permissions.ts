@@ -135,6 +135,11 @@ export const PERMISSIONS = {
   EXPORT_ANALYTICS: { value: 'EXPORT_ANALYTICS', group: 'Analytics', label: 'Export Analytics' },
   VIEW_ONBOARDING_SURVEYS: { value: 'VIEW_ONBOARDING_SURVEYS', group: 'Analytics', label: 'View Onboarding Surveys' },
   
+  // Fraud Detection
+  VIEW_FRAUD_DETECTION: { value: 'VIEW_FRAUD_DETECTION', group: 'Fraud Detection', label: 'View Fraud Detection Events' },
+  MANAGE_FRAUD_DETECTION: { value: 'MANAGE_FRAUD_DETECTION', group: 'Fraud Detection', label: 'Manage Fraud Detection Events' },
+  CREATE_FRAUD_EVENTS: { value: 'CREATE_FRAUD_EVENTS', group: 'Fraud Detection', label: 'Create Fraud Detection Events' },
+  
   // Communication
   MANAGE_MESSAGES: { value: 'MANAGE_MESSAGES', group: 'Communication', label: 'Manage Messages' },
   SEND_BROADCASTS: { value: 'SEND_BROADCASTS', group: 'Communication', label: 'Send Broadcasts' },
@@ -261,6 +266,7 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/admin/settings": ['MANAGE_ADMIN_SETTINGS'],
   "/admin/analytics": ['VIEW_ANALYTICS'],
   "/admin/onboarding-surveys": ['VIEW_ONBOARDING_SURVEYS'],
+  "/admin/fraud-detection": ['VIEW_FRAUD_DETECTION'],
   "/seller": ['ACCESS_SELLER_DASHBOARD'],
   "/seller/orders": ['VIEW_ORDERS'],
   "/seller/products": ['MANAGE_PRODUCTS'],

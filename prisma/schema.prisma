@@ -142,6 +142,7 @@ model User {
   blogComments          BlogComment[]
   customOrderSubmissions CustomOrderSubmission[]
   abandonedCarts        AbandonedCart[]
+  fraudDetectionEvents  FraudDetectionEvent[]
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -819,6 +820,9 @@ model DeviceFingerprint {
   language  String?
   firstSeen DateTime @default(now())
   lastSeen  DateTime @updatedAt
+
+  @@index([deviceId])
+  @@index([userId])
 }
 
 model UserActivityLog {
@@ -1080,3 +1084,87 @@ model DiscountCodeUsage {
   @@index([discountCodeId])
   @@index([userId])
 }
+
+// Unified Analytics System
+model PlatformAnalytics {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  date              DateTime @default(now())
+  type              String // "DAILY", "WEEKLY", "MONTHLY"
+  
+  // Context fields (null for platform-wide, populated for specific contexts)
+  sellerId          String? // null = platform-wide, populated = seller-specific
+  productId         String? // null = platform/seller-wide, populated = product-specific
+  category          String? // Category-specific analytics
+  country           String? // Country-specific analytics
+  
+  // Core metrics (always populated)
+  totalOrders       Int      @default(0)
+  totalRevenue      Int      @default(0) // In cents
+  totalViews        Int      @default(0)
+  uniqueVisitors    Int      @default(0)
+  conversionRate    Float    @default(0) // Orders / Views
+  averageOrderValue Int      @default(0) // In cents
+  
+  // Context-specific metrics (stored as JSON for flexibility)
+  metrics           Json? // Flexible structure for different contexts
+  
+  // Examples of metrics structure:
+  // Platform-wide: { totalSellers, totalBuyers, cartAbandonmentRate, fraudAttempts }
+  // Seller-specific: { uniqueCustomers, repeatCustomers, averageRating, chargebacks }
+  // Product-specific: { addToCart, timeOnPage, searchRanking, shares }
+  // Category-specific: { categoryPerformance, topProducts, marketShare }
+  // Geographic: { localConversionRate, shippingDestinations, regionalTrends }
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([type])
+  @@index([sellerId])
+  @@index([productId])
+  @@index([category])
+  @@index([country])
+  @@index([sellerId, date])
+  @@index([productId, date])
+}
+
+model FraudDetectionEvent {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id])
+  eventType         String // "SUSPICIOUS_LOGIN", "UNUSUAL_ORDER", "CHARGEBACK", "DISPUTE", "VPN_DETECTED", "MULTIPLE_ACCOUNTS"
+  severity          String // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  riskScore         Float    @default(0) // 0.0-1.0
+  
+  // Event details
+  description       String
+  evidence          Json? // Detailed evidence and data
+  ipAddress         String?
+  userAgent         String?
+  location          Json?
+  
+  // Order context (if applicable)
+  orderId           String?
+  productId         String?
+  sellerId          String?
+  
+  // Resolution
+  status            String   @default("OPEN") // "OPEN", "INVESTIGATING", "RESOLVED", "FALSE_POSITIVE"
+  resolvedBy        String? // Admin ID who resolved it
+  resolutionNotes   String?
+  resolvedAt        DateTime?
+  
+  // Automated actions
+  actionsTaken      String[] @default([]) // Array of actions like ["FLAG_ACCOUNT", "HOLD_ORDER", "REQUIRE_VERIFICATION"]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+}
+
+
