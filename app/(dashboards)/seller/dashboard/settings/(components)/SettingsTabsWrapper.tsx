@@ -11,6 +11,8 @@ import CountryExclusionsForm from "@/components/forms/CountryExclusionsForm";
 import SellerAboutForm from "@/components/forms/SellerAboutForm";
 import SellerInfoForm from "@/components/forms/SellerInfoForm";
 import SellerPreferencesForm from "@/components/forms/SellerPreferencesForm";
+import ShopSEOForm from "@/components/forms/ShopSEOForm";
+import { updateShopSEO } from "@/actions/updateShopSEO";
 
 interface SettingsTabsWrapperProps {
   seller: any;
@@ -50,6 +52,7 @@ export default function SettingsTabsWrapper({ seller, decryptedAddressData }: Se
             <TabsTrigger value="shipping" className="flex-shrink-0">Shipping</TabsTrigger>
             <TabsTrigger value="policies" className="flex-shrink-0">Policies</TabsTrigger>
             <TabsTrigger value="exclusions" className="flex-shrink-0">Exclusions</TabsTrigger>
+            <TabsTrigger value="seo" className="flex-shrink-0">SEO</TabsTrigger>
             <TabsTrigger value="qr" className="flex-shrink-0">QR Code</TabsTrigger>
           </div>
         </TabsList>
@@ -113,6 +116,30 @@ export default function SettingsTabsWrapper({ seller, decryptedAddressData }: Se
         <Card className="w-full max-w-none">
           <CardContent className="p-4 sm:p-6">
             <CountryExclusionsForm />
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="seo" className="space-y-4">
+        <Card className="w-full max-w-none">
+          <CardContent className="p-4 sm:p-6">
+            <ShopSEOForm 
+              initialData={{
+                metaTitle: seller?.metaTitle || "",
+                metaDescription: seller?.metaDescription || "",
+                keywords: seller?.keywords || [],
+                tags: seller?.tags || [],
+                ogTitle: seller?.ogTitle || "",
+                ogDescription: seller?.ogDescription || "",
+                ogImage: seller?.ogImage || "",
+              }}
+              onSubmit={async (data) => {
+                const result = await updateShopSEO(data);
+                if (!result.success) {
+                  console.error("Failed to update SEO:", result.error);
+                }
+              }}
+            />
           </CardContent>
         </Card>
       </TabsContent>

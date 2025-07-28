@@ -29,6 +29,7 @@ import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
 import { ProductFileSection } from "../product/productFile";
+import { ProductSEOSection } from "../product/productSEO";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { getSellerPreferences } from "@/actions/getSellerPreferences";
@@ -70,6 +71,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
   );
   const [images, setImages] = useState<string[]>(
     initialData?.images || []
+  );
+  // SEO state
+  const [metaTitle, setMetaTitle] = useState<string>(
+    initialData?.metaTitle || ""
+  );
+  const [metaDescription, setMetaDescription] = useState<string>(
+    initialData?.metaDescription || ""
+  );
+  const [keywords, setKeywords] = useState<string[]>(
+    initialData?.keywords || []
+  );
+  const [ogTitle, setOgTitle] = useState<string>(
+    initialData?.ogTitle || ""
+  );
+  const [ogDescription, setOgDescription] = useState<string>(
+    initialData?.ogDescription || ""
+  );
+  const [ogImage, setOgImage] = useState<string>(
+    initialData?.ogImage || ""
   );
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -445,6 +465,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
         {/* Product Drop Section */}
         <ProductDropSection form={form} />
+
+        {/* Product SEO Section */}
+        <ProductSEOSection
+          metaTitle={metaTitle}
+          setMetaTitle={setMetaTitle}
+          metaDescription={metaDescription}
+          setMetaDescription={setMetaDescription}
+          keywords={keywords}
+          setKeywords={setKeywords}
+          ogTitle={ogTitle}
+          setOgTitle={setOgTitle}
+          ogDescription={ogDescription}
+          setOgDescription={setOgDescription}
+          ogImage={ogImage}
+          setOgImage={setOgImage}
+        />
 
         {canAccessTest && (
           <div className="space-y-2">

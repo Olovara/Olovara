@@ -22,6 +22,14 @@ export default async function SellerSettings() {
     where: { userId: session.user.id },
     select: { 
       shopNameSlug: true,
+      // SEO fields
+      metaTitle: true,
+      metaDescription: true,
+      keywords: true,
+      tags: true,
+      ogTitle: true,
+      ogDescription: true,
+      ogImage: true,
       addresses: {
         where: {
           isDefault: true

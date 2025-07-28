@@ -308,6 +308,15 @@ model Seller {
   // Shipping Restrictions
   excludedCountries String[] @default([]) // Array of country codes that seller doesn't ship to
 
+  // SEO fields
+  metaTitle       String? // Custom SEO title for shop page
+  metaDescription String? // Custom meta description for shop page
+  keywords        String[] @default([]) // SEO keywords for shop
+  tags            String[] @default([]) // Shop tags for categorization
+  ogTitle         String? // Open Graph title for social sharing
+  ogDescription   String? // Open Graph description for social sharing
+  ogImage         String? // Open Graph image for social sharing
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -412,6 +421,14 @@ model Product {
 
   // Test environment
   isTestProduct Boolean @default(false) // Whether this is a test product (only visible to test users)
+
+  // SEO fields
+  metaTitle       String? // Custom SEO title for product page
+  metaDescription String? // Custom meta description for product page
+  keywords        String[] @default([]) // SEO keywords for product
+  ogTitle         String? // Open Graph title for social sharing
+  ogDescription   String? // Open Graph description for social sharing
+  ogImage         String? // Open Graph image for social sharing
 
   @@unique([userId, sku], name: "unique_sku_per_seller")
 }

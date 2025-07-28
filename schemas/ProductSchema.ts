@@ -143,6 +143,13 @@ export const ProductSchema = z
     taxExempt: z.boolean().default(false),
     shippingProfileId: z.string().nullable(),
     isTestProduct: z.boolean().default(false),
+    // SEO fields
+    metaTitle: z.string().max(60, "Meta title must be 60 characters or less").optional(),
+    metaDescription: z.string().max(160, "Meta description must be 160 characters or less").optional(),
+    keywords: z.array(z.string()).default([]),
+    ogTitle: z.string().max(60, "Social media title must be 60 characters or less").optional(),
+    ogDescription: z.string().max(160, "Social media description must be 160 characters or less").optional(),
+    ogImage: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   })
   .transform((data) => {
     // Convert all monetary values to smallest unit

@@ -98,6 +98,13 @@ export async function POST(req: NextRequest) {
       discountEndDate,
       currency = "USD",
       isTestProduct = false,
+      // SEO fields
+      metaTitle,
+      metaDescription,
+      keywords = [],
+      ogTitle,
+      ogDescription,
+      ogImage,
     } = data;
 
     // Basic validation for required fields
@@ -175,6 +182,13 @@ export async function POST(req: NextRequest) {
       dropTime: dropTime || null,
       discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
       isTestProduct,
+      // SEO fields
+      metaTitle: metaTitle || null,
+      metaDescription: metaDescription || null,
+      keywords: keywords || [],
+      ogTitle: ogTitle || null,
+      ogDescription: ogDescription || null,
+      ogImage: ogImage || null,
     };
     console.log("[PRE-CREATE] Data prepared for db.product.create:", cleanData);
 
