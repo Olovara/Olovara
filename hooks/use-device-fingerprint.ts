@@ -13,173 +13,226 @@ interface DeviceFingerprintData {
   userAgent: string;
 }
 
+interface DeviceAnalysis {
+  isExistingDevice: boolean;
+  firstSeen: string;
+  lastSeen: string;
+  associatedAccounts: number;
+  riskScore: number;
+  isProxy: boolean;
+  location: any;
+}
+
 interface UseDeviceFingerprintReturn {
   deviceFingerprint: DeviceFingerprintData | null;
+  deviceAnalysis: DeviceAnalysis | null;
   isLoading: boolean;
   error: string | null;
+  generateFingerprint: () => Promise<DeviceFingerprintData>;
+  checkDeviceHistory: () => Promise<DeviceAnalysis>;
   trackActivity: (action: string, details?: any) => Promise<void>;
 }
 
 export function useDeviceFingerprint(): UseDeviceFingerprintReturn {
   const { data: session } = useSession();
   const [deviceFingerprint, setDeviceFingerprint] = useState<DeviceFingerprintData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [deviceAnalysis, setDeviceAnalysis] = useState<DeviceAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate device fingerprint using browser APIs
+  // Generate device fingerprint
   const generateFingerprint = useCallback(async (): Promise<DeviceFingerprintData> => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('Device fingerprint', 2, 2);
+    try {
+      // Collect entropy data from browser
+      const entropyData = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        languages: navigator.languages?.join(','),
+        platform: navigator.platform,
+        cookieEnabled: navigator.cookieEnabled,
+        doNotTrack: navigator.doNotTrack,
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemory: (navigator as any).deviceMemory || 0,
+        maxTouchPoints: navigator.maxTouchPoints,
+        screen: {
+          width: screen.width,
+          height: screen.height,
+          availWidth: screen.availWidth,
+          availHeight: screen.availHeight,
+          colorDepth: screen.colorDepth,
+          pixelDepth: screen.pixelDepth,
+        },
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezoneOffset: new Date().getTimezoneOffset(),
+        canvas: await generateCanvasFingerprint(),
+        webgl: await generateWebGLFingerprint(),
+        fonts: await generateFontFingerprint(),
+        audio: await generateAudioFingerprint(),
+      };
+
+      // Create a simple hash (in production, use a more sophisticated hashing algorithm)
+      const dataString = JSON.stringify(entropyData);
+      const deviceId = await simpleHash(dataString);
+
+      const fingerprint: DeviceFingerprintData = {
+        deviceId,
+        browser: getBrowserInfo(),
+        os: getOSInfo(),
+        screenRes: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+        userAgent: navigator.userAgent,
+      };
+
+      setDeviceFingerprint(fingerprint);
+      return fingerprint;
+    } catch (err) {
+      console.error('Error generating device fingerprint:', err);
+      throw err;
     }
-
-    const fingerprint = {
-      deviceId: '', // Will be generated from entropy data
-      browser: navigator.userAgent.includes('Chrome') ? 'Chrome' :
-               navigator.userAgent.includes('Firefox') ? 'Firefox' :
-               navigator.userAgent.includes('Safari') ? 'Safari' :
-               navigator.userAgent.includes('Edge') ? 'Edge' : 'Unknown',
-      os: navigator.platform,
-      screenRes: `${screen.width}x${screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      userAgent: navigator.userAgent
-    };
-
-    // Generate device ID from entropy data
-    const entropyData = [
-      navigator.userAgent,
-      navigator.language,
-      screen.width + 'x' + screen.height,
-      new Date().getTimezoneOffset(),
-      navigator.hardwareConcurrency,
-      (navigator as any).deviceMemory || 0,
-      navigator.platform,
-      navigator.cookieEnabled,
-      navigator.doNotTrack,
-      navigator.onLine,
-      screen.colorDepth,
-      screen.pixelDepth,
-      navigator.maxTouchPoints,
-      'ontouchstart' in window,
-      'ontouchmove' in window,
-      'ontouchend' in window
-    ].join('|');
-
-    // Simple hash function (in production, use a proper crypto library)
-    let hash = 0;
-    for (let i = 0; i < entropyData.length; i++) {
-      const char = entropyData.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    fingerprint.deviceId = Math.abs(hash).toString(36);
-
-    return fingerprint;
   }, []);
 
-  // Initialize device fingerprint
-  useEffect(() => {
-    const initFingerprint = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Check device history in database
+  const checkDeviceHistory = useCallback(async (): Promise<DeviceAnalysis> => {
+    if (!deviceFingerprint) {
+      throw new Error('Device fingerprint not generated');
+    }
 
-        const fingerprint = await generateFingerprint();
-        setDeviceFingerprint(fingerprint);
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        // If user is logged in, send fingerprint to server
-        if (session?.user?.id) {
-          await fetch('/api/device-fingerprint', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fingerprint)
-          });
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to generate device fingerprint');
-      } finally {
-        setIsLoading(false);
+      const response = await fetch(`/api/device-fingerprint?deviceId=${deviceFingerprint.deviceId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check device history');
       }
-    };
 
-    initFingerprint();
-  }, [session?.user?.id, generateFingerprint]);
+      const analysis = await response.json();
+      setDeviceAnalysis(analysis);
+      return analysis;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [deviceFingerprint]);
 
-  // Track user activity with device fingerprint
+  // Track user activity
   const trackActivity = useCallback(async (action: string, details?: any) => {
-    if (!session?.user?.id || !deviceFingerprint) {
+    if (!deviceFingerprint) {
+      console.warn('Device fingerprint not available for activity tracking');
       return;
     }
 
     try {
       await fetch('/api/user-activity', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           action,
           deviceFingerprint: deviceFingerprint.deviceId,
-          details
-        })
+          details,
+        }),
       });
     } catch (err) {
-      console.error('Failed to track activity:', err);
+      console.error('Error tracking activity:', err);
     }
-  }, [session?.user?.id, deviceFingerprint]);
+  }, [deviceFingerprint]);
+
+  // Initialize device fingerprinting on mount
+  useEffect(() => {
+    const initFingerprint = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Generate fingerprint
+        const fingerprint = await generateFingerprint();
+        
+        // Send to backend for storage and analysis
+        await fetch('/api/device-fingerprint', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deviceId: fingerprint.deviceId,
+            browser: fingerprint.browser,
+            os: fingerprint.os,
+            screenRes: fingerprint.screenRes,
+            timezone: fingerprint.timezone,
+            language: fingerprint.language,
+            userAgent: fingerprint.userAgent,
+            userId: session?.user?.id, // Link to user if logged in
+          }),
+        });
+
+        // Check device history
+        await checkDeviceHistory();
+
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(errorMessage);
+        console.error('Error initializing device fingerprint:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initFingerprint();
+  }, [generateFingerprint, checkDeviceHistory, session?.user?.id]);
 
   return {
     deviceFingerprint,
+    deviceAnalysis,
     isLoading,
     error,
-    trackActivity
+    generateFingerprint,
+    checkDeviceHistory,
+    trackActivity,
   };
 }
 
-// Hook for tracking specific user actions
+// Enhanced activity tracking hook
 export function useActivityTracking() {
   const { trackActivity } = useDeviceFingerprint();
 
   const trackLogin = useCallback(async (success: boolean, details?: any) => {
-    await trackActivity(success ? 'LOGIN' : 'FAILED_LOGIN', {
-      ...details,
-      timestamp: new Date().toISOString()
-    });
+    await trackActivity(success ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED', details);
   }, [trackActivity]);
 
   const trackSignup = useCallback(async (details?: any) => {
-    await trackActivity('SIGNUP', {
-      ...details,
-      timestamp: new Date().toISOString()
-    });
+    await trackActivity('SIGNUP', details);
   }, [trackActivity]);
 
-  const trackCheckout = useCallback(async (orderId: string, details?: any) => {
-    await trackActivity('CHECKOUT', {
-      orderId,
-      ...details,
-      timestamp: new Date().toISOString()
-    });
+  const trackCheckout = useCallback(async (details?: any) => {
+    await trackActivity('CHECKOUT', details);
   }, [trackActivity]);
 
   const trackProductView = useCallback(async (productId: string, details?: any) => {
-    await trackActivity('PRODUCT_VIEW', {
-      productId,
-      ...details,
-      timestamp: new Date().toISOString()
-    });
+    await trackActivity('PRODUCT_VIEW', { productId, ...details });
   }, [trackActivity]);
 
-  const trackSearch = useCallback(async (query: string, resultsCount: number, details?: any) => {
-    await trackActivity('SEARCH', {
-      query,
-      resultsCount,
-      ...details,
-      timestamp: new Date().toISOString()
-    });
+  const trackSearch = useCallback(async (query: string, details?: any) => {
+    await trackActivity('SEARCH', { query, ...details });
+  }, [trackActivity]);
+
+  const trackPasswordChange = useCallback(async (details?: any) => {
+    await trackActivity('PASSWORD_CHANGE', details);
+  }, [trackActivity]);
+
+  const trackPaymentMethod = useCallback(async (details?: any) => {
+    await trackActivity('PAYMENT_METHOD_ADDED', details);
   }, [trackActivity]);
 
   return {
@@ -188,6 +241,125 @@ export function useActivityTracking() {
     trackCheckout,
     trackProductView,
     trackSearch,
-    trackActivity
+    trackPasswordChange,
+    trackPaymentMethod,
   };
+}
+
+// Utility functions for fingerprinting
+async function simpleHash(str: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function generateCanvasFingerprint(): Promise<string> {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    // Draw some text and shapes
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Device fingerprinting test', 2, 2);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillRect(100, 5, 80, 20);
+
+    return canvas.toDataURL();
+  } catch {
+    return '';
+  }
+}
+
+async function generateWebGLFingerprint(): Promise<string> {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext;
+    if (!gl) return '';
+
+    return gl.getParameter(gl.VENDOR) + '~' + gl.getParameter(gl.RENDERER);
+  } catch {
+    return '';
+  }
+}
+
+async function generateFontFingerprint(): Promise<string> {
+  try {
+    const testString = 'mmmmmmmmmmlli';
+    const testSize = '72px';
+    const h = document.getElementsByTagName('body')[0];
+    const s = document.createElement('span');
+    s.style.fontSize = testSize;
+    s.innerHTML = testString;
+    h.appendChild(s);
+    const defaultWidth = s.offsetWidth;
+    const defaultHeight = s.offsetHeight;
+
+    const fonts = ['Arial', 'Verdana', 'Helvetica', 'Times New Roman', 'Courier New'];
+    const results: string[] = [];
+
+    for (const font of fonts) {
+      s.style.fontFamily = font;
+      const width = s.offsetWidth;
+      const height = s.offsetHeight;
+      results.push(`${font}:${width}x${height}`);
+    }
+
+    h.removeChild(s);
+    return results.join(',');
+  } catch {
+    return '';
+  }
+}
+
+async function generateAudioFingerprint(): Promise<string> {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const analyser = audioContext.createAnalyser();
+    const gainNode = audioContext.createGain();
+    const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    gainNode.gain.value = 0; // No sound
+    oscillator.type = 'triangle';
+    oscillator.connect(analyser);
+    analyser.connect(scriptProcessor);
+    scriptProcessor.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.start(0);
+
+    return audioContext.sampleRate.toString();
+  } catch {
+    return '';
+  }
+}
+
+function getBrowserInfo(): string {
+  const userAgent = navigator.userAgent;
+  let browser = 'Unknown';
+
+  if (userAgent.includes('Chrome')) browser = 'Chrome';
+  else if (userAgent.includes('Firefox')) browser = 'Firefox';
+  else if (userAgent.includes('Safari')) browser = 'Safari';
+  else if (userAgent.includes('Edge')) browser = 'Edge';
+  else if (userAgent.includes('Opera')) browser = 'Opera';
+
+  return browser;
+}
+
+function getOSInfo(): string {
+  const userAgent = navigator.userAgent;
+  let os = 'Unknown';
+
+  if (userAgent.includes('Windows')) os = 'Windows';
+  else if (userAgent.includes('Mac')) os = 'macOS';
+  else if (userAgent.includes('Linux')) os = 'Linux';
+  else if (userAgent.includes('Android')) os = 'Android';
+  else if (userAgent.includes('iOS')) os = 'iOS';
+
+  return os;
 } 

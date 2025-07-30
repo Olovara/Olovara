@@ -834,35 +834,573 @@ export class PlatformAnalyticsService {
   }
 }
 
-/**
- * Search analytics service
- */
-export class SearchAnalyticsService {
-  /**
-   * Track search query
-   */
-  static async trackSearch(query: string, resultsCount: number, userId?: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+// Enhanced Analytics Services for User Behavior Tracking
+export class UserBehaviorService {
+  static async trackBehaviorEvent(data: {
+    userId?: string;
+    sessionId: string;
+    eventType: string;
+    pageUrl: string;
+    referrerUrl?: string;
+    elementId?: string;
+    elementType?: string;
+    elementText?: string;
+    interactionData?: any;
+    timeOnPage?: number;
+    scrollDepth?: number;
+    mouseMovements?: number;
+    clicks?: number;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+    isFirstVisit?: boolean;
+    visitNumber?: number;
+    sessionDuration?: number;
+  }) {
+    try {
+      const event = await db.userBehaviorEvent.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          eventType: data.eventType,
+          pageUrl: data.pageUrl,
+          referrerUrl: data.referrerUrl,
+          elementId: data.elementId,
+          elementType: data.elementType,
+          elementText: data.elementText,
+          interactionData: data.interactionData,
+          timeOnPage: data.timeOnPage,
+          scrollDepth: data.scrollDepth,
+          mouseMovements: data.mouseMovements,
+          clicks: data.clicks,
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+          isFirstVisit: data.isFirstVisit,
+          visitNumber: data.visitNumber,
+          sessionDuration: data.sessionDuration,
+        }
+      });
 
-    // This would typically be implemented with a more sophisticated
-    // search analytics system, but for now we'll use a simple approach
-    console.log('Search tracked:', { query, resultsCount, userId, date: today });
+      // Update session metrics
+      await this.updateSessionMetrics(data.sessionId, data.eventType);
+
+      return event;
+    } catch (error) {
+      console.error('Error tracking behavior event:', error);
+      throw error;
+    }
   }
 
-  /**
-   * Get popular searches
-   */
-  static async getPopularSearches(days: number = 7) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  private static async updateSessionMetrics(sessionId: string, eventType: string) {
+    try {
+      const session = await db.userSession.findUnique({
+        where: { sessionId }
+      });
 
-    // This would query your search analytics data
-    // For now, return mock data
-    return [
-      { query: 'handmade jewelry', searches: 150, clicks: 120, conversions: 15 },
-      { query: 'crochet blanket', searches: 120, clicks: 95, conversions: 12 },
-      { query: 'wooden toys', searches: 100, clicks: 80, conversions: 10 }
-    ];
+      if (session) {
+        const updates: any = {};
+        
+        switch (eventType) {
+          case 'PAGE_VIEW':
+            updates.pageViews = { increment: 1 };
+            break;
+          case 'SEARCH':
+            updates.searches = { increment: 1 };
+            break;
+          case 'PRODUCT_VIEW':
+            updates.productViews = { increment: 1 };
+            break;
+          case 'ADD_TO_CART':
+            updates.cartAdditions = { increment: 1 };
+            break;
+          case 'PURCHASE':
+            updates.purchases = { increment: 1 };
+            updates.converted = true;
+            break;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await db.userSession.update({
+            where: { sessionId },
+            data: updates
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error updating session metrics:', error);
+    }
+  }
+
+  static async getBehaviorAnalytics(filters: {
+    userId?: string;
+    sessionId?: string;
+    eventType?: string;
+    startDate?: Date;
+    endDate?: Date;
+    deviceId?: string;
+  } = {}) {
+    try {
+      const where: any = {};
+
+      if (filters.userId) where.userId = filters.userId;
+      if (filters.sessionId) where.sessionId = filters.sessionId;
+      if (filters.eventType) where.eventType = filters.eventType;
+      if (filters.deviceId) where.deviceId = filters.deviceId;
+      if (filters.startDate || filters.endDate) {
+        where.timestamp = {};
+        if (filters.startDate) where.timestamp.gte = filters.startDate;
+        if (filters.endDate) where.timestamp.lte = filters.endDate;
+      }
+
+      const events = await db.userBehaviorEvent.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true
+            }
+          }
+        },
+        orderBy: { timestamp: 'desc' }
+      });
+
+      return events;
+    } catch (error) {
+      console.error('Error getting behavior analytics:', error);
+      throw error;
+    }
+  }
+}
+
+export class SearchAnalyticsService {
+  static async trackSearch(data: {
+    userId?: string;
+    sessionId: string;
+    query: string;
+    searchType: string;
+    filters?: any;
+    sortBy?: string;
+    resultsCount: number;
+    resultsShown: number;
+    searchTime?: number;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      const searchAnalytics = await db.searchAnalytics.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          query: data.query,
+          queryLength: data.query.length,
+          searchType: data.searchType,
+          filters: data.filters,
+          sortBy: data.sortBy,
+          resultsCount: data.resultsCount,
+          resultsShown: data.resultsShown,
+          searchTime: data.searchTime,
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+
+      return searchAnalytics;
+    } catch (error) {
+      console.error('Error tracking search:', error);
+      throw error;
+    }
+  }
+
+  static async trackSearchClick(data: {
+    searchId: string;
+    clickedResult: number;
+    clickedProductId?: string;
+    clickedSellerId?: string;
+    timeToClick?: number;
+  }) {
+    try {
+      const updated = await db.searchAnalytics.update({
+        where: { id: data.searchId },
+        data: {
+          clickedResult: data.clickedResult,
+          clickedProductId: data.clickedProductId,
+          clickedSellerId: data.clickedSellerId,
+          timeToClick: data.timeToClick,
+        }
+      });
+
+      return updated;
+    } catch (error) {
+      console.error('Error tracking search click:', error);
+      throw error;
+    }
+  }
+
+  static async getPopularSearches(days: number = 7) {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const searches = await db.searchAnalytics.groupBy({
+        by: ['query'],
+        where: {
+          timestamp: { gte: startDate }
+        },
+        _count: {
+          query: true
+        },
+        _avg: {
+          timeToClick: true,
+          resultsCount: true
+        },
+        orderBy: {
+          _count: {
+            query: 'desc'
+          }
+        },
+        take: 20
+      });
+
+      return searches.map(search => ({
+        query: search.query,
+        count: search._count.query,
+        avgTimeToClick: search._avg.timeToClick,
+        avgResultsCount: search._avg.resultsCount
+      }));
+    } catch (error) {
+      console.error('Error getting popular searches:', error);
+      throw error;
+    }
+  }
+
+  static async getSearchAnalytics(filters: {
+    userId?: string;
+    sessionId?: string;
+    searchType?: string;
+    startDate?: Date;
+    endDate?: Date;
+    query?: string;
+  } = {}) {
+    try {
+      const where: any = {};
+
+      if (filters.userId) where.userId = filters.userId;
+      if (filters.sessionId) where.sessionId = filters.sessionId;
+      if (filters.searchType) where.searchType = filters.searchType;
+      if (filters.query) where.query = { contains: filters.query, mode: 'insensitive' };
+      if (filters.startDate || filters.endDate) {
+        where.timestamp = {};
+        if (filters.startDate) where.timestamp.gte = filters.startDate;
+        if (filters.endDate) where.timestamp.lte = filters.endDate;
+      }
+
+      const searches = await db.searchAnalytics.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true
+            }
+          }
+        },
+        orderBy: { timestamp: 'desc' }
+      });
+
+      return searches;
+    } catch (error) {
+      console.error('Error getting search analytics:', error);
+      throw error;
+    }
+  }
+}
+
+export class ProductInteractionService {
+  static async trackProductInteraction(data: {
+    userId?: string;
+    productId: string;
+    sessionId: string;
+    interactionType: string;
+    interactionData?: any;
+    timeOnProduct?: number;
+    imagesViewed?: number;
+    descriptionRead?: boolean;
+    reviewsViewed?: number;
+    sellerInfoViewed?: boolean;
+    sourceType?: string;
+    sourceId?: string;
+    referrerUrl?: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      const interaction = await db.productInteraction.create({
+        data: {
+          userId: data.userId,
+          productId: data.productId,
+          sessionId: data.sessionId,
+          interactionType: data.interactionType,
+          interactionData: data.interactionData,
+          timeOnProduct: data.timeOnProduct,
+          imagesViewed: data.imagesViewed,
+          descriptionRead: data.descriptionRead,
+          reviewsViewed: data.reviewsViewed,
+          sellerInfoViewed: data.sellerInfoViewed,
+          sourceType: data.sourceType,
+          sourceId: data.sourceId,
+          referrerUrl: data.referrerUrl,
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+
+      return interaction;
+    } catch (error) {
+      console.error('Error tracking product interaction:', error);
+      throw error;
+    }
+  }
+
+  static async getProductAnalytics(productId: string, startDate?: Date, endDate?: Date) {
+    try {
+      const where: any = { productId };
+      
+      if (startDate || endDate) {
+        where.timestamp = {};
+        if (startDate) where.timestamp.gte = startDate;
+        if (endDate) where.timestamp.lte = endDate;
+      }
+
+      const interactions = await db.productInteraction.findMany({
+        where,
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              seller: {
+                select: {
+                  id: true,
+                  shopName: true
+                }
+              }
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true
+            }
+          }
+        },
+        orderBy: { timestamp: 'desc' }
+      });
+
+      // Aggregate metrics
+      const metrics = {
+        totalViews: interactions.filter(i => i.interactionType === 'VIEW').length,
+        totalClicks: interactions.filter(i => i.interactionType === 'CLICK').length,
+        totalAddToCart: interactions.filter(i => i.interactionType === 'ADD_TO_CART').length,
+        totalFavorites: interactions.filter(i => i.interactionType === 'FAVORITE').length,
+        totalShares: interactions.filter(i => i.interactionType === 'SHARE').length,
+        avgTimeOnProduct: interactions
+          .filter(i => i.timeOnProduct)
+          .reduce((sum, i) => sum + (i.timeOnProduct || 0), 0) / 
+          interactions.filter(i => i.timeOnProduct).length || 0,
+        avgImagesViewed: interactions
+          .filter(i => i.imagesViewed)
+          .reduce((sum, i) => sum + (i.imagesViewed || 0), 0) / 
+          interactions.filter(i => i.imagesViewed).length || 0,
+        descriptionReadRate: interactions.filter(i => i.descriptionRead).length / interactions.length || 0,
+        sellerInfoViewedRate: interactions.filter(i => i.sellerInfoViewed).length / interactions.length || 0,
+        sourceBreakdown: interactions.reduce((acc, i) => {
+          const source = i.sourceType || 'unknown';
+          acc[source] = (acc[source] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      };
+
+      return {
+        interactions,
+        metrics
+      };
+    } catch (error) {
+      console.error('Error getting product analytics:', error);
+      throw error;
+    }
+  }
+
+  static async getTopProducts(days: number = 7, limit: number = 10) {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const topProducts = await db.productInteraction.groupBy({
+        by: ['productId'],
+        where: {
+          timestamp: { gte: startDate },
+          interactionType: 'VIEW'
+        },
+        _count: {
+          productId: true
+        },
+        orderBy: {
+          _count: {
+            productId: 'desc'
+          }
+        },
+        take: limit
+      });
+
+      // Get product details
+      const productIds = topProducts.map(p => p.productId);
+      const products = await db.product.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          images: true,
+          seller: {
+            select: {
+              id: true,
+              shopName: true
+            }
+          }
+        }
+      });
+
+      return topProducts.map(product => ({
+        productId: product.productId,
+        views: product._count.productId,
+        product: products.find(p => p.id === product.productId)
+      }));
+    } catch (error) {
+      console.error('Error getting top products:', error);
+      throw error;
+    }
+  }
+}
+
+export class UserSessionService {
+  static async createSession(data: {
+    userId?: string;
+    sessionId: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+    browser?: string;
+    os?: string;
+    deviceType?: string;
+    isFirstVisit?: boolean;
+    visitNumber?: number;
+    returningUser?: boolean;
+  }) {
+    try {
+      const session = await db.userSession.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+          browser: data.browser,
+          os: data.os,
+          deviceType: data.deviceType,
+          isFirstVisit: data.isFirstVisit,
+          visitNumber: data.visitNumber,
+          returningUser: data.returningUser,
+        }
+      });
+
+      return session;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw error;
+    }
+  }
+
+  static async endSession(sessionId: string, conversionValue?: number) {
+    try {
+      const session = await db.userSession.findUnique({
+        where: { sessionId }
+      });
+
+      if (session) {
+        const endTime = new Date();
+        const duration = Math.floor((endTime.getTime() - session.startTime.getTime()) / 1000);
+
+        await db.userSession.update({
+          where: { sessionId },
+          data: {
+            endTime,
+            duration,
+            isActive: false,
+            conversionValue: conversionValue || session.conversionValue
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error ending session:', error);
+      throw error;
+    }
+  }
+
+  static async getSessionAnalytics(filters: {
+    userId?: string;
+    deviceId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    isActive?: boolean;
+  } = {}) {
+    try {
+      const where: any = {};
+
+      if (filters.userId) where.userId = filters.userId;
+      if (filters.deviceId) where.deviceId = filters.deviceId;
+      if (filters.isActive !== undefined) where.isActive = filters.isActive;
+      if (filters.startDate || filters.endDate) {
+        where.startTime = {};
+        if (filters.startDate) where.startTime.gte = filters.startDate;
+        if (filters.endDate) where.startTime.lte = filters.endDate;
+      }
+
+      const sessions = await db.userSession.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true
+            }
+          }
+        },
+        orderBy: { startTime: 'desc' }
+      });
+
+      return sessions;
+    } catch (error) {
+      console.error('Error getting session analytics:', error);
+      throw error;
+    }
   }
 } 

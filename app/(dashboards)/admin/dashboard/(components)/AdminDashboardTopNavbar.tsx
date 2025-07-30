@@ -9,7 +9,7 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send, MessageSquare, FileText, Shield } from "lucide-react";
+import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send, MessageSquare, FileText, Shield, TrendingUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
@@ -116,6 +116,14 @@ export default async function AdminDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <Shield className="mr-2 h-4 w-4" />
                     Fraud Detection
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/analytics">
+                  <Button variant="outline" className="w-full">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Analytics
                   </Button>
                 </Link>
               </DialogClose>

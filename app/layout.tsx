@@ -10,6 +10,7 @@ import { PermissionProvider } from "@/components/providers/PermissionProvider";
 import { auth } from "@/auth";
 import Script from "next/script";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
+import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
@@ -124,13 +125,15 @@ export default async function RootLayout({
             <PermissionProvider>
               <LocationProvider>
                 <OnboardingSurveyProvider>
-                  <SocketProvider>
-                    <main className="relative flex min-h-screen flex-col">
-                      {children}
-                    </main>
-                    <PostHogPageview />
-                    <WebsiteStructuredData pageType="home" />
-                  </SocketProvider>
+                  <AnalyticsProvider>
+                    <SocketProvider>
+                      <main className="relative flex min-h-screen flex-col">
+                        {children}
+                      </main>
+                      <PostHogPageview />
+                      <WebsiteStructuredData pageType="home" />
+                    </SocketProvider>
+                  </AnalyticsProvider>
                 </OnboardingSurveyProvider>
               </LocationProvider>
             </PermissionProvider>

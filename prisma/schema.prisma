@@ -143,6 +143,10 @@ model User {
   customOrderSubmissions CustomOrderSubmission[]
   abandonedCarts        AbandonedCart[]
   fraudDetectionEvents  FraudDetectionEvent[]
+  userBehaviorEvents    UserBehaviorEvent[]
+  searchAnalytics       SearchAnalytics[]
+  productInteractions   ProductInteraction[]
+  userSessions          UserSession[]
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -408,6 +412,7 @@ model Product {
   discountEndDate       DateTime?
   discountEndTime       String? // Time component for discount end
   reviews               Review[]
+  productInteractions   ProductInteraction[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   seller                Seller?          @relation(fields: [userId], references: [userId])
@@ -846,14 +851,26 @@ model UserActivityLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
   user      User     @relation(fields: [userId], references: [id])
-  action    String // "LOGIN", "SIGNUP", "CHECKOUT", "FAILED_LOGIN", etc.
+  action    String // "LOGIN", "SIGNUP", "CHECKOUT", "FAILED_LOGIN", "PASSWORD_RESET", "PROFILE_UPDATE", "SETTINGS_CHANGE"
   ip        String
   location  Json?
   userAgent String?
   deviceId  String?
   success   Boolean?
   details   Json? // Optional: { orderId, productId, errorCode, ... }
+  
+  // Enhanced tracking
+  sessionId String?  // Session identifier
+  pageUrl   String?  // Page where action occurred
+  referrer  String?  // Previous page
+  
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([deviceId])
+  @@index([sessionId])
 }
 
 // Abandoned Cart Analytics Model
@@ -1182,6 +1199,177 @@ model FraudDetectionEvent {
   @@index([severity])
   @@index([status])
   @@index([createdAt])
+}
+
+// User Behavior Tracking Models
+model UserBehaviorEvent {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?  // Optional for guest users
+  user              User?    @relation(fields: [userId], references: [id])
+  sessionId         String   // Unique session identifier
+  eventType         String   // "PAGE_VIEW", "CLICK", "SCROLL", "HOVER", "FORM_INTERACTION", "NAVIGATION"
+  pageUrl           String   // Current page URL
+  referrerUrl       String?  // Previous page URL
+  elementId         String?  // DOM element ID if applicable
+  elementType       String?  // "button", "link", "form", "image", etc.
+  elementText       String?  // Text content of the element
+  interactionData   Json?    // Additional interaction details
+  
+  // Timing and performance
+  timestamp         DateTime @default(now())
+  timeOnPage        Int?     // Time spent on page in seconds
+  scrollDepth       Float?   // Percentage of page scrolled (0-100)
+  mouseMovements    Int?     // Number of mouse movements
+  clicks            Int?     // Number of clicks on page
+  
+  // Device and location
+  deviceId          String?  // Device fingerprint ID
+  ipAddress         String?
+  userAgent         String?
+  location          Json?    // Geographic location data
+  
+  // Session context
+  isFirstVisit      Boolean  @default(false)
+  visitNumber       Int?     // Which visit this is for the user
+  sessionDuration   Int?     // Total session duration in seconds
+  
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([deviceId])
+}
+
+model SearchAnalytics {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?  // Optional for guest users
+  user              User?    @relation(fields: [userId], references: [id])
+  sessionId         String   // Session identifier
+  
+  // Search details
+  query             String   // Search query
+  queryLength       Int      // Length of search query
+  searchType        String   // "PRODUCT", "CATEGORY", "SELLER", "GENERAL"
+  filters           Json?    // Applied filters (category, price, location, etc.)
+  sortBy            String?  // Sort method used
+  
+  // Results
+  resultsCount      Int      // Number of results returned
+  resultsShown      Int      // Number of results displayed
+  clickedResult     Int?     // Position of clicked result (1-based)
+  clickedProductId  String?  // ID of clicked product
+  clickedSellerId   String?  // ID of clicked seller
+  
+  // User behavior
+  timeToClick       Int?     // Time from search to first click in milliseconds
+  searchRefinement  Boolean  @default(false) // Whether user refined the search
+  originalQuery     String?  // Original query if refined
+  
+  // Performance
+  searchTime        Int?     // Time taken for search in milliseconds
+  timestamp         DateTime @default(now())
+  
+  // Device and location
+  deviceId          String?  // Device fingerprint ID
+  ipAddress         String?
+  userAgent         String?
+  location          Json?    // Geographic location data
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([query])
+  @@index([searchType])
+  @@index([timestamp])
+  @@index([deviceId])
+}
+
+model ProductInteraction {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?  // Optional for guest users
+  user              User?    @relation(fields: [userId], references: [id])
+  productId         String   @db.ObjectId
+  product           Product  @relation(fields: [productId], references: [id])
+  sessionId         String   // Session identifier
+  
+  // Interaction details
+  interactionType   String   // "VIEW", "CLICK", "ADD_TO_CART", "REMOVE_FROM_CART", "FAVORITE", "SHARE", "REVIEW_VIEW"
+  interactionData   Json?    // Additional interaction details
+  
+  // View-specific data
+  timeOnProduct     Int?     // Time spent viewing product in seconds
+  imagesViewed      Int?     // Number of images viewed
+  descriptionRead   Boolean  @default(false) // Whether description was read
+  reviewsViewed     Int?     // Number of reviews viewed
+  sellerInfoViewed  Boolean  @default(false) // Whether seller info was viewed
+  
+  // Source tracking
+  sourceType        String?  // "SEARCH", "CATEGORY", "RECOMMENDATION", "DIRECT", "SOCIAL", "EMAIL"
+  sourceId          String?  // ID of source (search query, category, etc.)
+  referrerUrl       String?  // Previous page URL
+  
+  // Device and location
+  deviceId          String?  // Device fingerprint ID
+  ipAddress         String?
+  userAgent         String?
+  location          Json?    // Geographic location data
+  
+  timestamp         DateTime @default(now())
+
+  @@index([userId])
+  @@index([productId])
+  @@index([sessionId])
+  @@index([interactionType])
+  @@index([timestamp])
+  @@index([deviceId])
+}
+
+model UserSession {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?  // Optional for guest users
+  user              User?    @relation(fields: [userId], references: [id])
+  sessionId         String   @unique // Unique session identifier
+  
+  // Session details
+  startTime         DateTime @default(now())
+  endTime           DateTime? // When session ended
+  duration          Int?     // Session duration in seconds
+  isActive          Boolean  @default(true)
+  
+  // Device and location
+  deviceId          String?  // Device fingerprint ID
+  ipAddress         String?
+  userAgent         String?
+  location          Json?    // Geographic location data
+  browser           String?
+  os                String?
+  deviceType        String?  // "desktop", "mobile", "tablet"
+  
+  // Session metrics
+  pageViews         Int      @default(0)
+  uniquePages       Int      @default(0)
+  searches          Int      @default(0)
+  productViews      Int      @default(0)
+  cartAdditions     Int      @default(0)
+  purchases         Int      @default(0)
+  
+  // User context
+  isFirstVisit      Boolean  @default(false)
+  visitNumber       Int?     // Which visit this is for the user
+  returningUser     Boolean  @default(false)
+  
+  // Conversion tracking
+  converted         Boolean  @default(false) // Whether session led to purchase
+  conversionValue   Int?     // Value of conversion in cents
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([startTime])
+  @@index([deviceId])
+  @@index([isActive])
 }
 
 
