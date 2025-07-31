@@ -115,143 +115,150 @@ export async function POST(req: NextRequest) {
       // Continue without IP analysis if it fails
     }
 
-    // Use transaction with retry logic to handle concurrent updates
-    const result = await retryTransaction(async () => {
-      return await db.$transaction(async (tx) => {
-        // Check if this specific user-device combination already exists
-        const existingDevice = await tx.deviceFingerprint.findFirst({
-          where: { 
-            deviceId,
-            userId: userId || undefined // Include userId in the search
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                createdAt: true,
-                fraudScore: true,
-                accountReputation: true,
-              }
-            }
-          }
-        });
+         // Use transaction with retry logic to handle concurrent updates
+     const result = await retryTransaction(async () => {
+       return await db.$transaction(async (tx) => {
+         // Check if this specific user-device combination already exists
+         const existingDevice = await tx.deviceFingerprint.findFirst({
+           where: { 
+             deviceId,
+             userId: userId || undefined // Include userId in the search
+           },
+           include: {
+             user: {
+               select: {
+                 id: true,
+                 email: true,
+                 username: true,
+                 createdAt: true,
+                 fraudScore: true,
+                 accountReputation: true,
+               }
+             }
+           }
+         });
 
-        if (existingDevice) {
-          // Update existing user-device record with enhanced data
-          return await tx.deviceFingerprint.update({
-            where: { id: existingDevice.id },
-            data: {
-              lastSeen: new Date(),
-              ip: clientIP,
-              userAgent: userAgent || req.headers.get('user-agent'),
-              browser: browser || existingDevice.browser,
-              os: os || existingDevice.os,
-              screenRes: screenRes || existingDevice.screenRes,
-              timezone: timezone || existingDevice.timezone,
-              language: language || existingDevice.language,
-              // Enhanced location and proxy detection
-              location: locationData,
-              isProxy: isProxy,
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  username: true,
-                  createdAt: true,
-                  fraudScore: true,
-                  accountReputation: true,
-                }
-              }
-            }
-          });
-        } else {
-          // Check if this device is used by other users (for fraud detection)
-          const otherUsersOnDevice = await tx.deviceFingerprint.findMany({
-            where: { 
-              deviceId,
-              userId: { not: undefined } // Only check for logged-in users
-            },
-            include: {
-              user: true
-            }
-          });
+         if (existingDevice) {
+           // Update existing user-device record with enhanced data
+           return await tx.deviceFingerprint.update({
+             where: { id: existingDevice.id },
+             data: {
+               lastSeen: new Date(),
+               ip: clientIP,
+               userAgent: userAgent || req.headers.get('user-agent'),
+               browser: browser || existingDevice.browser,
+               os: os || existingDevice.os,
+               screenRes: screenRes || existingDevice.screenRes,
+               timezone: timezone || existingDevice.timezone,
+               language: language || existingDevice.language,
+               // Enhanced location and proxy detection
+               location: locationData,
+               isProxy: isProxy,
+             },
+             include: {
+               user: {
+                 select: {
+                   id: true,
+                   email: true,
+                   username: true,
+                   createdAt: true,
+                   fraudScore: true,
+                   accountReputation: true,
+                 }
+               }
+             }
+           });
+         } else {
+           // Check if this device is used by other users (for fraud detection)
+           const otherUsersOnDevice = await tx.deviceFingerprint.findMany({
+             where: { 
+               deviceId,
+               userId: { not: undefined } // Only check for logged-in users
+             },
+             include: {
+               user: true
+             }
+           });
 
-          // Create new user-device record with enhanced data
-          const newDevice = await tx.deviceFingerprint.create({
-            data: {
-              userId: userId || null,
-              deviceId,
-              ip: clientIP,
-              userAgent: userAgent || req.headers.get('user-agent'),
-              browser: browser || 'Unknown',
-              os: os || 'Unknown',
-              screenRes: screenRes || 'Unknown',
-              timezone: timezone || 'Unknown',
-              language: language || 'Unknown',
-              // Enhanced location and proxy detection
-              location: locationData,
-              isProxy: isProxy,
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  username: true,
-                  createdAt: true,
-                  fraudScore: true,
-                  accountReputation: true,
-                }
-              }
-            }
-          });
+           // Create new user-device record with enhanced data
+           const newDevice = await tx.deviceFingerprint.create({
+             data: {
+               userId: userId || null,
+               deviceId,
+               ip: clientIP,
+               userAgent: userAgent || req.headers.get('user-agent'),
+               browser: browser || 'Unknown',
+               os: os || 'Unknown',
+               screenRes: screenRes || 'Unknown',
+               timezone: timezone || 'Unknown',
+               language: language || 'Unknown',
+               // Enhanced location and proxy detection
+               location: locationData,
+               isProxy: isProxy,
+             },
+             include: {
+               user: {
+                 select: {
+                   id: true,
+                   email: true,
+                   username: true,
+                   createdAt: true,
+                   fraudScore: true,
+                   accountReputation: true,
+                 }
+               }
+             }
+           });
 
-          // If this device is used by other users, create fraud event (but check for existing events first)
-          if (otherUsersOnDevice.length > 0 && userId) {
-            // Check if we already have a recent DEVICE_SHARING event for this user-device combination
-            const existingFraudEvent = await db.fraudDetectionEvent.findFirst({
-              where: {
-                userId,
-                eventType: 'DEVICE_SHARING',
-                createdAt: {
-                  gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-                }
-              }
-            });
+           // If this device is used by other users, create fraud event (but check for existing events first)
+           if (otherUsersOnDevice.length > 0 && userId) {
+             // Check if we already have a recent DEVICE_SHARING event for this user-device combination
+             const existingFraudEvent = await tx.fraudDetectionEvent.findFirst({
+               where: {
+                 userId,
+                 eventType: 'DEVICE_SHARING',
+                 createdAt: {
+                   gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+                 }
+               }
+             });
 
-            // Only create fraud event if one doesn't already exist
-            if (!existingFraudEvent) {
-              await FraudDetectionService.createFraudEvent({
-                userId,
-                eventType: 'DEVICE_SHARING',
-                severity: 'MEDIUM',
-                description: `Device ${deviceId} used by multiple accounts`,
-                evidence: {
-                  existingUsers: otherUsersOnDevice.map(d => ({
-                    userId: d.userId,
-                    email: d.user?.email || null,
-                    username: d.user?.username || null,
-                  })),
-                  newUserId: userId,
-                  deviceId,
-                  ipAddress: clientIP,
-                  totalUsersOnDevice: otherUsersOnDevice.length + 1,
-                  ipAnalysis,
-                },
-                ipAddress: clientIP,
-                userAgent: userAgent || req.headers.get('user-agent'),
-              });
-            }
-          }
+             // Only create fraud event if one doesn't already exist
+             if (!existingFraudEvent) {
+               // Create fraud event directly in the transaction to avoid race conditions
+               await tx.fraudDetectionEvent.create({
+                 data: {
+                   userId,
+                   eventType: 'DEVICE_SHARING',
+                   severity: 'MEDIUM',
+                   riskScore: 0.5,
+                   description: `Device ${deviceId} used by multiple accounts`,
+                   evidence: {
+                     existingUsers: otherUsersOnDevice.map(d => ({
+                       userId: d.userId,
+                       email: d.user?.email || null,
+                       username: d.user?.username || null,
+                     })),
+                     newUserId: userId,
+                     deviceId,
+                     ipAddress: clientIP,
+                     totalUsersOnDevice: otherUsersOnDevice.length + 1,
+                     ipAnalysis,
+                   },
+                   ipAddress: clientIP,
+                   userAgent: userAgent || req.headers.get('user-agent'),
+                   location: locationData,
+                   status: 'OPEN',
+                   actionsTaken: [],
+                 }
+               });
+             }
+           }
 
-          return newDevice;
-        }
-      });
-    });
+           return newDevice;
+         }
+       });
+     });
 
     return NextResponse.json({
       success: true,
