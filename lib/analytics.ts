@@ -1673,3 +1673,253 @@ export class MouseMovementAnalyzer {
     return directionChanges > movements.length * 0.7;
   }
 } 
+
+// Enhanced Analytics Service for Comprehensive Fraud Detection
+export class EnhancedAnalyticsService {
+  /**
+   * Analyze user session for comprehensive fraud detection
+   */
+  static async analyzeUserSession(sessionData: {
+    userId?: string;
+    sessionId: string;
+    deviceId: string;
+    ipAddress: string;
+    userAgent?: string;
+    events: Array<{
+      eventType: string;
+      timestamp: Date;
+      pageUrl: string;
+      interactionData?: any;
+    }>;
+  }): Promise<{
+    riskScore: number;
+    riskFactors: string[];
+    recommendations: string[];
+    analysis: {
+      ipRisk: number;
+      deviceRisk: number;
+      behaviorRisk: number;
+      locationRisk: number;
+      overallRisk: number;
+    };
+  }> {
+    const { userId, sessionId, deviceId, ipAddress, userAgent, events } = sessionData;
+    
+    let riskScore = 0;
+    const riskFactors: string[] = [];
+    const recommendations: string[] = [];
+
+    // 1. IP Analysis
+    let ipRisk = 0;
+    try {
+      const { checkIPSuspicious } = await import('@/lib/ipinfo');
+      const suspiciousCheck = await checkIPSuspicious(ipAddress);
+      
+      if (suspiciousCheck.isSuspicious) {
+        ipRisk = 0.4;
+        riskFactors.push(`Suspicious IP: ${suspiciousCheck.reasons.join(', ')}`);
+        recommendations.push('Verify user identity with additional authentication');
+      }
+    } catch (error) {
+      console.warn('Error analyzing IP:', error);
+    }
+
+    // 2. Device Analysis
+    let deviceRisk = 0;
+    try {
+      const deviceUsers = await db.deviceFingerprint.findMany({
+        where: { deviceId },
+        include: { user: true }
+      });
+
+      if (deviceUsers.length > 1) {
+        deviceRisk = 0.3;
+        riskFactors.push(`Device shared by ${deviceUsers.length} accounts`);
+        recommendations.push('Monitor for account sharing patterns');
+      }
+
+      // Check for proxy usage
+      const proxyDevices = deviceUsers.filter(d => d.isProxy);
+      if (proxyDevices.length > 0) {
+        deviceRisk = Math.max(deviceRisk, 0.2);
+        riskFactors.push('Device used with proxy/VPN');
+      }
+    } catch (error) {
+      console.warn('Error analyzing device:', error);
+    }
+
+    // 3. Behavior Analysis
+    let behaviorRisk = 0;
+    const mouseMovements = events.filter(e => e.eventType === 'MOUSE_MOVEMENT');
+    
+    if (mouseMovements.length > 0) {
+      const movements = mouseMovements.map(e => ({
+        x: e.interactionData?.x || 0,
+        y: e.interactionData?.y || 0,
+        timestamp: e.timestamp.getTime(),
+      }));
+
+      const behaviorAnalysis = MouseMovementAnalyzer.analyzeMovementPattern(movements);
+      behaviorRisk = behaviorAnalysis.botProbability;
+
+      if (behaviorRisk > 0.7) {
+        riskFactors.push(`Suspicious behavior pattern: ${behaviorAnalysis.pattern}`);
+        recommendations.push('Implement additional verification for suspicious behavior');
+      }
+    }
+
+    // 4. Location Analysis
+    let locationRisk = 0;
+    try {
+      const { getIPInfo } = await import('@/lib/ipinfo');
+      const ipInfo = await getIPInfo(ipAddress);
+      
+      // Check for location inconsistencies
+      if (userId) {
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { signupLocation: true, lastLoginIP: true }
+        });
+
+                 if (user?.signupLocation && typeof user.signupLocation === 'object') {
+           const signupLocation = user.signupLocation as any;
+           const signupCountry = signupLocation.country;
+           const currentCountry = ipInfo.country_code;
+           
+           if (signupCountry && currentCountry && signupCountry !== currentCountry) {
+             locationRisk = 0.3;
+             riskFactors.push(`Location change: ${signupCountry} → ${currentCountry}`);
+             recommendations.push('Verify user location change');
+           }
+         }
+      }
+    } catch (error) {
+      console.warn('Error analyzing location:', error);
+    }
+
+    // 5. Session Pattern Analysis
+    const sessionDuration = events.length > 0 
+      ? events[events.length - 1].timestamp.getTime() - events[0].timestamp.getTime()
+      : 0;
+
+    const pageViews = events.filter(e => e.eventType === 'PAGE_VIEW').length;
+    const clicks = events.filter(e => e.eventType === 'CLICK').length;
+
+    // Suspicious patterns
+    if (sessionDuration < 5000 && pageViews > 10) { // Very fast browsing
+      riskFactors.push('Unusually fast page navigation');
+      behaviorRisk = Math.max(behaviorRisk, 0.2);
+    }
+
+    if (clicks > 50 && sessionDuration < 30000) { // Too many clicks too quickly
+      riskFactors.push('Excessive clicking in short time');
+      behaviorRisk = Math.max(behaviorRisk, 0.3);
+    }
+
+    // Calculate overall risk score
+    const overallRisk = Math.min(
+      (ipRisk * 0.25) + (deviceRisk * 0.25) + (behaviorRisk * 0.35) + (locationRisk * 0.15),
+      1.0
+    );
+
+    riskScore = overallRisk;
+
+    // Generate recommendations based on risk level
+    if (overallRisk > 0.8) {
+      recommendations.push('High risk session - consider blocking or requiring verification');
+    } else if (overallRisk > 0.6) {
+      recommendations.push('Moderate risk - implement additional monitoring');
+    } else if (overallRisk > 0.4) {
+      recommendations.push('Low risk - continue monitoring');
+    }
+
+    return {
+      riskScore,
+      riskFactors,
+      recommendations,
+      analysis: {
+        ipRisk,
+        deviceRisk,
+        behaviorRisk,
+        locationRisk,
+        overallRisk,
+      }
+    };
+  }
+
+  /**
+   * Get comprehensive user risk profile
+   */
+  static async getUserRiskProfile(userId: string): Promise<{
+    overallRisk: number;
+    riskFactors: string[];
+    recentActivity: any[];
+    deviceHistory: any[];
+    locationHistory: any[];
+    recommendations: string[];
+  }> {
+    const riskFactors: string[] = [];
+    const recommendations: string[] = [];
+
+    // Get user's recent activity
+    const recentEvents = await db.userBehaviorEvent.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+      take: 100,
+    });
+
+    // Get user's device history
+    const deviceHistory = await db.deviceFingerprint.findMany({
+      where: { userId },
+      orderBy: { lastSeen: 'desc' },
+    });
+
+    // Analyze patterns
+    let overallRisk = 0;
+
+    // Check for multiple devices
+    if (deviceHistory.length > 3) {
+      overallRisk += 0.2;
+      riskFactors.push(`User has ${deviceHistory.length} devices`);
+    }
+
+    // Check for proxy usage
+    const proxyDevices = deviceHistory.filter(d => d.isProxy);
+    if (proxyDevices.length > 0) {
+      overallRisk += 0.3;
+      riskFactors.push(`${proxyDevices.length} devices used with proxy/VPN`);
+    }
+
+    // Check for suspicious behavior events
+    const suspiciousEvents = recentEvents.filter(e => e.suspiciousBehavior);
+    if (suspiciousEvents.length > 0) {
+      overallRisk += 0.25;
+      riskFactors.push(`${suspiciousEvents.length} suspicious behavior events`);
+    }
+
+    // Check for high bot probability
+    const highBotEvents = recentEvents.filter(e => (e.botProbability || 0) > 0.7);
+    if (highBotEvents.length > 0) {
+      overallRisk += 0.3;
+      riskFactors.push(`${highBotEvents.length} events with high bot probability`);
+    }
+
+    // Generate recommendations
+    if (overallRisk > 0.8) {
+      recommendations.push('High risk user - consider account suspension');
+    } else if (overallRisk > 0.6) {
+      recommendations.push('Moderate risk - implement additional verification');
+    } else if (overallRisk > 0.4) {
+      recommendations.push('Low risk - continue monitoring');
+    }
+
+    return {
+      overallRisk: Math.min(overallRisk, 1.0),
+      riskFactors,
+      recentActivity: recentEvents,
+      deviceHistory,
+      locationHistory: deviceHistory.map(d => d.location).filter(Boolean),
+      recommendations,
+    };
+  }
+} 

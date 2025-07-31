@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { MouseMovementAnalyzer, FraudDetectionService } from "@/lib/analytics";
+import { getIPInfo, checkIPSuspicious } from "@/lib/ipinfo";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,6 +37,69 @@ export async function POST(req: NextRequest) {
                     req.headers.get('x-real-ip') || 
                     req.ip || 'unknown';
 
+    // Enhanced IP analysis for fraud detection
+    let ipAnalysis = null;
+    let locationData = null;
+    let isProxy = false;
+    let suspiciousReasons: string[] = [];
+
+    try {
+      // Get detailed IP information
+      const ipInfo = await getIPInfo(clientIP);
+      const suspiciousCheck = await checkIPSuspicious(clientIP);
+      
+      ipAnalysis = {
+        ip: ipInfo.ip,
+        country: ipInfo.country,
+        countryCode: ipInfo.country_code,
+        city: ipInfo.city,
+        region: ipInfo.region,
+        timezone: ipInfo.timezone,
+        org: ipInfo.org,
+        asn: ipInfo.asn,
+        asName: ipInfo.as_name,
+        hostname: ipInfo.hostname,
+        anycast: ipInfo.anycast,
+        continent: ipInfo.continent,
+      };
+
+      locationData = {
+        country: ipInfo.country,
+        countryCode: ipInfo.country_code,
+        city: ipInfo.city,
+        region: ipInfo.region,
+        timezone: ipInfo.timezone,
+        continent: ipInfo.continent,
+      };
+
+      isProxy = suspiciousCheck.isSuspicious;
+      suspiciousReasons = suspiciousCheck.reasons;
+
+      // Create fraud event for suspicious IP
+      if (isProxy && userId) {
+        await FraudDetectionService.createFraudEvent({
+          userId,
+          eventType: 'SUSPICIOUS_IP_BEHAVIOR',
+          severity: 'MEDIUM',
+          description: `Suspicious IP during user behavior: ${suspiciousReasons.join(', ')}`,
+          evidence: {
+            ip: clientIP,
+            ipAnalysis,
+            suspiciousReasons,
+            deviceId,
+            sessionId,
+            eventType,
+            pageUrl,
+          },
+          ipAddress: clientIP,
+          userAgent: req.headers.get('user-agent') || undefined,
+        });
+      }
+    } catch (error) {
+      console.warn('Error analyzing IP for behavior tracking:', error);
+      // Continue without IP analysis if it fails
+    }
+
     let suspiciousBehavior = false;
     let botProbability = 0;
     let riskScore = 0;
@@ -65,14 +129,16 @@ export async function POST(req: NextRequest) {
             movementAnalysis: analysis.analysis,
             sessionId,
             deviceId,
+            ipAnalysis,
+            locationData,
           },
           ipAddress: clientIP,
-          userAgent: req.headers.get('user-agent'),
+          userAgent: req.headers.get('user-agent') || undefined,
         });
       }
     }
 
-    // Create user behavior event
+    // Create user behavior event with enhanced data
     const behaviorEvent = await db.userBehaviorEvent.create({
       data: {
         userId: userId || null,
@@ -99,15 +165,16 @@ export async function POST(req: NextRequest) {
         clickPattern: eventType === 'CLICK' ? interactionData?.pattern : null,
         scrollPattern: eventType === 'SCROLL' ? interactionData?.pattern : null,
         
-        // Device and location
+        // Device and location with enhanced data
         deviceId: deviceId || null,
         ipAddress: clientIP,
         userAgent: req.headers.get('user-agent'),
+        location: locationData, // Enhanced location data from IP geolocation
         
         // Fraud detection flags
-        suspiciousBehavior,
+        suspiciousBehavior: suspiciousBehavior || isProxy, // Include IP-based suspicion
         botProbability,
-        riskScore,
+        riskScore: Math.max(riskScore, isProxy ? 0.3 : 0), // Boost risk score for proxy IPs
       }
     });
 
@@ -119,7 +186,12 @@ export async function POST(req: NextRequest) {
         botProbability,
         suspiciousBehavior,
         riskScore
-      } : null
+      } : null,
+      ipAnalysis: {
+        isProxy,
+        suspiciousReasons,
+        location: locationData,
+      }
     });
 
   } catch (error) {

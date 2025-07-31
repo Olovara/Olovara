@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { FraudDetectionService } from "@/lib/analytics";
 import { db } from "@/lib/db";
+import { getIPInfo, checkIPSuspicious, getUserAnalytics } from "@/lib/ipinfo";
 
 // Retry function for handling transaction conflicts
 async function retryTransaction<T>(
@@ -54,6 +55,66 @@ export async function POST(req: NextRequest) {
                     req.headers.get('x-real-ip') || 
                     req.ip || 'unknown';
 
+    // Enhanced IP analysis for fraud detection
+    let ipAnalysis = null;
+    let locationData = null;
+    let isProxy = false;
+    let suspiciousReasons: string[] = [];
+
+    try {
+      // Get detailed IP information
+      const ipInfo = await getIPInfo(clientIP);
+      const suspiciousCheck = await checkIPSuspicious(clientIP);
+      
+      ipAnalysis = {
+        ip: ipInfo.ip,
+        country: ipInfo.country,
+        countryCode: ipInfo.country_code,
+        city: ipInfo.city,
+        region: ipInfo.region,
+        timezone: ipInfo.timezone,
+        org: ipInfo.org,
+        asn: ipInfo.asn,
+        asName: ipInfo.as_name,
+        hostname: ipInfo.hostname,
+        anycast: ipInfo.anycast,
+        continent: ipInfo.continent,
+      };
+
+      locationData = {
+        country: ipInfo.country,
+        countryCode: ipInfo.country_code,
+        city: ipInfo.city,
+        region: ipInfo.region,
+        timezone: ipInfo.timezone,
+        continent: ipInfo.continent,
+      };
+
+      isProxy = suspiciousCheck.isSuspicious;
+      suspiciousReasons = suspiciousCheck.reasons;
+
+      // Create fraud event for suspicious IP
+      if (isProxy && userId) {
+        await FraudDetectionService.createFraudEvent({
+          userId,
+          eventType: 'SUSPICIOUS_IP',
+          severity: 'MEDIUM',
+          description: `Suspicious IP detected: ${suspiciousReasons.join(', ')}`,
+          evidence: {
+            ip: clientIP,
+            ipAnalysis,
+            suspiciousReasons,
+            deviceId,
+          },
+          ipAddress: clientIP,
+          userAgent: userAgent || req.headers.get('user-agent'),
+        });
+      }
+    } catch (error) {
+      console.warn('Error analyzing IP:', error);
+      // Continue without IP analysis if it fails
+    }
+
     // Use transaction with retry logic to handle concurrent updates
     const result = await retryTransaction(async () => {
       return await db.$transaction(async (tx) => {
@@ -78,7 +139,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (existingDevice) {
-          // Update existing user-device record
+          // Update existing user-device record with enhanced data
           return await tx.deviceFingerprint.update({
             where: { id: existingDevice.id },
             data: {
@@ -90,6 +151,9 @@ export async function POST(req: NextRequest) {
               screenRes: screenRes || existingDevice.screenRes,
               timezone: timezone || existingDevice.timezone,
               language: language || existingDevice.language,
+              // Enhanced location and proxy detection
+              location: locationData,
+              isProxy: isProxy,
             },
             include: {
               user: {
@@ -116,7 +180,7 @@ export async function POST(req: NextRequest) {
             }
           });
 
-          // Create new user-device record
+          // Create new user-device record with enhanced data
           const newDevice = await tx.deviceFingerprint.create({
             data: {
               userId: userId || null,
@@ -128,6 +192,9 @@ export async function POST(req: NextRequest) {
               screenRes: screenRes || 'Unknown',
               timezone: timezone || 'Unknown',
               language: language || 'Unknown',
+              // Enhanced location and proxy detection
+              location: locationData,
+              isProxy: isProxy,
             },
             include: {
               user: {
@@ -160,6 +227,7 @@ export async function POST(req: NextRequest) {
                 deviceId,
                 ipAddress: clientIP,
                 totalUsersOnDevice: otherUsersOnDevice.length + 1,
+                ipAnalysis,
               },
               ipAddress: clientIP,
               userAgent: userAgent || req.headers.get('user-agent'),
@@ -175,7 +243,12 @@ export async function POST(req: NextRequest) {
       success: true,
       device: result,
       isExisting: result.userId !== null,
-      message: result.userId ? "Device fingerprint updated" : "New device fingerprint created"
+      message: result.userId ? "Device fingerprint updated" : "New device fingerprint created",
+      ipAnalysis: {
+        isProxy,
+        suspiciousReasons,
+        location: locationData,
+      }
     });
 
   } catch (error) {
