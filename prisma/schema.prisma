@@ -147,6 +147,7 @@ model User {
   searchAnalytics       SearchAnalytics[]
   productInteractions   ProductInteraction[]
   userSessions          UserSession[]
+  reportsSubmitted      Report[]        @relation("ReportReporter")
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -1370,6 +1371,59 @@ model UserSession {
   @@index([startTime])
   @@index([deviceId])
   @@index([isActive])
+}
+
+// Report System Models
+model Report {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  reporterId        String?  // Optional for anonymous reports
+  reporter          User?    @relation("ReportReporter", fields: [reporterId], references: [id])
+  
+  // Report target
+  reportType        String   // "SELLER" or "PRODUCT"
+  targetId          String   // ID of the seller or product being reported
+  targetName        String   // Name of the seller shop or product for easy reference
+  
+  // Report details
+  reason            String   // Primary reason for report
+  subReason         String?  // Secondary reason if applicable
+  description       String   // Detailed description of the issue
+  evidence          String?  // Additional evidence or context
+  
+  // Report categories
+  category          String   // "INAPPROPRIATE_CONTENT", "COPYRIGHT_INFRINGEMENT", "MISLEADING_INFORMATION", "POOR_QUALITY", "FAKE_PRODUCTS", "HARASSMENT", "SPAM", "OTHER"
+  severity          String   @default("MEDIUM") // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  
+  // Status tracking
+  status            String   @default("PENDING") // "PENDING", "UNDER_REVIEW", "RESOLVED", "DISMISSED", "ESCALATED"
+  adminNotes        String?  // Internal notes from admin review
+  resolutionNotes   String?  // Notes about how the report was resolved
+  resolvedBy        String?  // Admin ID who resolved the report
+  resolvedAt        DateTime?
+  
+  // Contact information (for anonymous reports)
+  reporterEmail     String?  // Email for follow-up (optional)
+  reporterName      String?  // Name for follow-up (optional)
+  
+  // Metadata
+  ipAddress         String?  // IP address of reporter
+  userAgent         String?  // User agent of reporter
+  location          Json?    // Geographic location data
+  
+  // Related reports (for tracking patterns)
+  relatedReportIds  String[] @default([]) // IDs of related reports
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([reportType])
+  @@index([targetId])
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@index([reportType, targetId]) // For finding all reports for a specific seller/product
 }
 
 

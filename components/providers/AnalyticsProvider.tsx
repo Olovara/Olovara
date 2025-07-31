@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDeviceFingerprint } from '@/hooks/use-device-fingerprint';
 import { useAnalyticsTracking } from '@/hooks/use-analytics-tracking';
@@ -11,6 +11,7 @@ interface AnalyticsProviderProps {
 
 export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   const { data: session } = useSession();
+  const analyticsInitializedRef = useRef<boolean>(false);
   
   // Initialize device fingerprinting
   const { 
@@ -39,7 +40,14 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   // Initialize device fingerprinting on mount
   useEffect(() => {
     const initAnalytics = async () => {
+      // Prevent multiple initialization attempts
+      if (analyticsInitializedRef.current) {
+        return;
+      }
+
       try {
+        analyticsInitializedRef.current = true;
+        
         // Generate device fingerprint if not already done
         if (!deviceFingerprint) {
           await generateFingerprint();
@@ -65,10 +73,14 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
         }
       } catch (error) {
         console.error('Analytics initialization error:', error);
+        // Reset flag on error so we can retry
+        analyticsInitializedRef.current = false;
       }
     };
 
-    initAnalytics();
+    if (!analyticsInitializedRef.current) {
+      initAnalytics();
+    }
   }, [
     session?.user?.id, 
     deviceFingerprint, 

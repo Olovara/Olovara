@@ -1314,6 +1314,17 @@ export class UserSessionService {
     returningUser?: boolean;
   }) {
     try {
+      // First check if session already exists
+      const existingSession = await db.userSession.findUnique({
+        where: { sessionId: data.sessionId }
+      });
+
+      if (existingSession) {
+        // Session already exists, return it
+        return existingSession;
+      }
+
+      // Create new session
       const session = await db.userSession.create({
         data: {
           userId: data.userId,

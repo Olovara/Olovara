@@ -680,7 +680,10 @@ export async function getDashboardStats() {
       activeUsers,
       suspendedUsers,
       totalRevenue,
-      recentOrders
+      recentOrders,
+      totalReports,
+      pendingReports,
+      criticalReports
     ] = await Promise.all([
       // Total users
       db.user.count(),
@@ -725,6 +728,19 @@ export async function getDashboardStats() {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
           }
         }
+      }),
+      
+      // Total reports
+      db.report.count(),
+      
+      // Pending reports
+      db.report.count({
+        where: { status: 'PENDING' }
+      }),
+      
+      // Critical reports
+      db.report.count({
+        where: { severity: 'CRITICAL' }
       })
     ]);
 
@@ -778,6 +794,11 @@ export async function getDashboardStats() {
       },
       revenue: {
         total: totalRevenue._sum.totalAmount || 0
+      },
+      reports: {
+        total: totalReports,
+        pending: pendingReports,
+        critical: criticalReports
       }
     };
   } catch (error) {

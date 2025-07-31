@@ -226,6 +226,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           {/* Quantity Selector & Buy Now Button */}
           <ProductActions 
             productId={data.id} 
+            productName={data.name}
             maxStock={data.stock} 
             dropDate={data.dropDate}
             dropTime={data.dropTime}

@@ -6,6 +6,7 @@ import CustomOrderButton from "@/components/shared/CustomOrderButton";
 import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";
 import ExcludedCountries from "@/components/shop/ExcludedCountries";
+import ReportButton from "@/components/ReportButton";
 import { ExternalLink, MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon, PinterestIcon, TikTokIcon } from "@/components/ui/social-icon";
 import { decryptData } from "@/lib/encryption";
@@ -346,6 +347,13 @@ export default async function ShopPage({ params }: ShopPageProps) {
                 sellerId={seller.id}
                 sellerName={seller.shopName}
                 acceptsCustom={seller.acceptsCustom}
+              />
+              <ReportButton
+                reportType="SELLER"
+                targetId={seller.id}
+                targetName={seller.shopName}
+                variant="outline"
+                size="sm"
               />
             </div>
           </div>

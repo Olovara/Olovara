@@ -5,8 +5,65 @@ import { UserBehaviorService } from "@/lib/analytics";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    const body = await req.json();
     
+    // Handle empty or malformed request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      console.error('Error parsing request body:', jsonError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+    
+    const { events, ...singleEvent } = body || {}; // Destructure with default empty object
+    
+    // Handle batched events
+    if (events && Array.isArray(events)) {
+      const results = [];
+      
+      for (const event of events) {
+        try {
+          const result = await UserBehaviorService.trackBehaviorEvent({
+            userId: session?.user?.id,
+            sessionId: event.sessionId,
+            eventType: event.eventType,
+            pageUrl: event.pageUrl,
+            referrerUrl: event.referrerUrl,
+            elementId: event.elementId,
+            elementType: event.elementType,
+            elementText: event.elementText,
+            interactionData: event.interactionData,
+            timeOnPage: event.timeOnPage,
+            scrollDepth: event.scrollDepth,
+            mouseMovements: event.mouseMovements,
+            clicks: event.clicks,
+            deviceId: event.deviceId,
+            ipAddress: event.ipAddress,
+            userAgent: event.userAgent,
+            location: event.location,
+            isFirstVisit: event.isFirstVisit,
+            visitNumber: event.visitNumber,
+            sessionDuration: event.sessionDuration,
+          });
+          results.push({ success: true, eventId: result.id });
+        } catch (error) {
+          console.error('Error tracking batched event:', error);
+          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      }
+      
+      return NextResponse.json({ 
+        message: "Batched events processed", 
+        results,
+        successCount: results.filter(r => r.success).length,
+        failureCount: results.filter(r => !r.success).length
+      });
+    }
+    
+    // Handle single event (backward compatibility)
     const {
       sessionId,
       eventType,
@@ -26,9 +83,8 @@ export async function POST(req: NextRequest) {
       location,
       isFirstVisit,
       visitNumber,
-      sessionDuration,
-      timestamp
-    } = body;
+      sessionDuration
+    } = singleEvent; // Use singleEvent for backward compatibility
 
     // Validate required fields
     if (!sessionId || !eventType || !pageUrl) {
@@ -38,13 +94,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get client IP if not provided
-    const clientIP = ipAddress || req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                    req.headers.get('x-real-ip') || 
-                    req.ip || 'unknown';
-
-    // Track the behavior event
-    const event = await UserBehaviorService.trackBehaviorEvent({
+    const result = await UserBehaviorService.trackBehaviorEvent({
       userId: session?.user?.id,
       sessionId,
       eventType,
@@ -59,23 +109,22 @@ export async function POST(req: NextRequest) {
       mouseMovements,
       clicks,
       deviceId,
-      ipAddress: clientIP,
-      userAgent: userAgent || req.headers.get('user-agent'),
+      ipAddress,
+      userAgent,
       location,
       isFirstVisit,
       visitNumber,
       sessionDuration,
     });
 
-    return NextResponse.json({
-      success: true,
-      event
+    return NextResponse.json({ 
+      message: "Event tracked successfully", 
+      eventId: result.id 
     });
-
   } catch (error) {
     console.error('Error tracking behavior event:', error);
     return NextResponse.json(
-      { error: "Failed to track behavior event" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

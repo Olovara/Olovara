@@ -13,17 +13,49 @@ interface AnalyticsTrackingOptions {
 
 export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
   const { data: session } = useSession();
-  const { deviceFingerprint } = useDeviceFingerprint();
+  const { deviceFingerprint, generateFingerprint, checkDeviceHistory, deviceAnalysis } = useDeviceFingerprint();
   const sessionIdRef = useRef<string>(options.sessionId || uuidv4());
   const pageStartTimeRef = useRef<number>(Date.now());
   const scrollDepthRef = useRef<number>(0);
   const mouseMovementsRef = useRef<number>(0);
   const clicksRef = useRef<number>(0);
+  const sessionInitializedRef = useRef<boolean>(false);
+
+  // Add debouncing and throttling refs
+  const pageViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pageLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPageViewRef = useRef<string>('');
+  const lastPageLeaveRef = useRef<string>('');
+  const eventQueueRef = useRef<any[]>([]);
+  const flushTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionStartTimeRef = useRef<number>(Date.now());
+  
+  // Debounce time for page events (milliseconds)
+  const PAGE_EVENT_DEBOUNCE = 1000; // 1 second
+  const EVENT_FLUSH_INTERVAL = 5000; // 5 seconds
+
+  // Helper function to get client IP (simplified)
+  const getClientIP = async (): Promise<string> => {
+    try {
+      const response = await fetch('/api/ip');
+      const data = await response.json();
+      return data.ip || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  };
 
   // Initialize session tracking
   useEffect(() => {
     const initSession = async () => {
+      // Prevent multiple initialization attempts
+      if (sessionInitializedRef.current) {
+        return;
+      }
+
       try {
+        sessionInitializedRef.current = true;
+        
         await fetch('/api/analytics/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -42,34 +74,89 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
         localStorage.setItem('visitCount', (parseInt(localStorage.getItem('visitCount') || '0') + 1).toString());
       } catch (error) {
         console.error('Error initializing session:', error);
+        // Reset flag on error so we can retry
+        sessionInitializedRef.current = false;
       }
     };
 
-    if (deviceFingerprint) {
+    if (deviceFingerprint && !sessionInitializedRef.current) {
       initSession();
     }
   }, [session?.user?.id, deviceFingerprint]);
 
-  // Track page view
-  const trackPageView = useCallback(async (pageUrl: string, referrerUrl?: string) => {
-    try {
-      await fetch('/api/analytics/behavior', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionIdRef.current,
-          eventType: 'PAGE_VIEW',
-          pageUrl,
-          referrerUrl,
-          userId: session?.user?.id,
-          deviceId: deviceFingerprint?.deviceId,
-          timestamp: new Date().toISOString(),
-        })
-      });
-    } catch (error) {
-      console.error('Error tracking page view:', error);
+  // Flush event queue to server
+  const flushEventQueue = useCallback(async () => {
+    if (eventQueueRef.current.length === 0) {
+      return;
     }
-  }, [session?.user?.id, deviceFingerprint]);
+
+    try {
+      const eventsToSend = [...eventQueueRef.current];
+      eventQueueRef.current = []; // Clear queue
+
+      // Send events in batches
+      const batchSize = 10;
+      for (let i = 0; i < eventsToSend.length; i += batchSize) {
+        const batch = eventsToSend.slice(i, i + batchSize);
+        
+        await fetch('/api/analytics/behavior', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ events: batch }),
+        });
+      }
+    } catch (error) {
+      console.error('Error flushing event queue:', error);
+      // Re-add events to queue on error
+      eventQueueRef.current.unshift(...eventQueueRef.current);
+    } finally {
+      flushTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Debounced page view tracking
+  const trackPageView = useCallback(async (pageUrl: string, referrerUrl?: string) => {
+    // Skip if same page was recently tracked
+    if (lastPageViewRef.current === pageUrl) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (pageViewTimeoutRef.current) {
+      clearTimeout(pageViewTimeoutRef.current);
+    }
+
+    // Set new timeout
+    pageViewTimeoutRef.current = setTimeout(async () => {
+      try {
+        lastPageViewRef.current = pageUrl;
+        
+        const eventData = {
+          sessionId: sessionIdRef.current,
+          eventType: 'PAGE_VIEW' as const,
+          pageUrl,
+          referrerUrl: referrerUrl || '',
+          timestamp: new Date().toISOString(),
+          deviceId: deviceFingerprint?.deviceId,
+          ipAddress: await getClientIP(),
+          userAgent: navigator.userAgent,
+          isFirstVisit: !localStorage.getItem('hasVisited'),
+          visitNumber: parseInt(localStorage.getItem('visitCount') || '0'),
+          sessionDuration: Date.now() - sessionStartTimeRef.current,
+        };
+
+        // Add to queue instead of immediate send
+        eventQueueRef.current.push(eventData);
+        
+        // Schedule flush if not already scheduled
+        if (!flushTimeoutRef.current) {
+          flushTimeoutRef.current = setTimeout(flushEventQueue, EVENT_FLUSH_INTERVAL);
+        }
+      } catch (error) {
+        console.error('Error tracking page view:', error);
+      }
+    }, PAGE_EVENT_DEBOUNCE);
+  }, [deviceFingerprint?.deviceId, flushEventQueue]);
 
   // Track user interaction
   const trackInteraction = useCallback(async (data: {
@@ -214,23 +301,91 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
     }
   }, [trackInteraction]);
 
-  // Track clicks
+  // Throttled click tracking
   const trackClick = useCallback((event: MouseEvent) => {
     clicksRef.current++;
     
-    const target = event.target as HTMLElement;
-    const elementId = target.id || target.className || target.tagName;
-    const elementType = target.tagName.toLowerCase();
-    const elementText = target.textContent?.trim().substring(0, 100);
-    
-    trackInteraction({
-      eventType: 'CLICK',
-      elementId,
-      elementType,
-      elementText,
-      interactionData: { totalClicks: clicksRef.current }
-    });
-  }, [trackInteraction]);
+    // Only track significant clicks (not every single one)
+    if (clicksRef.current % 5 === 0) { // Track every 5th click
+      const target = event.target as HTMLElement;
+      const elementId = target.id || target.className || target.tagName;
+      const elementType = target.tagName.toLowerCase();
+      const elementText = target.textContent?.trim().substring(0, 100);
+      
+      const eventData = {
+        sessionId: sessionIdRef.current,
+        eventType: 'CLICK' as const,
+        pageUrl: window.location.href,
+        referrerUrl: document.referrer,
+        elementId,
+        elementType,
+        elementText,
+        timestamp: new Date().toISOString(),
+        deviceId: deviceFingerprint?.deviceId,
+        ipAddress: 'unknown', // Will be filled by server
+        userAgent: navigator.userAgent,
+        isFirstVisit: !localStorage.getItem('hasVisited'),
+        visitNumber: parseInt(localStorage.getItem('visitCount') || '0'),
+        sessionDuration: Date.now() - sessionStartTimeRef.current,
+      };
+
+      eventQueueRef.current.push(eventData);
+      
+      if (!flushTimeoutRef.current) {
+        flushTimeoutRef.current = setTimeout(flushEventQueue, EVENT_FLUSH_INTERVAL);
+      }
+    }
+  }, [deviceFingerprint?.deviceId, flushEventQueue]);
+
+  // Debounced page leave tracking
+  const trackPageLeave = useCallback(async (pageUrl: string, timeOnPage?: number) => {
+    // Skip if same page was recently tracked
+    if (lastPageLeaveRef.current === pageUrl) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (pageLeaveTimeoutRef.current) {
+      clearTimeout(pageLeaveTimeoutRef.current);
+    }
+
+    // Set new timeout
+    pageLeaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        lastPageLeaveRef.current = pageUrl;
+        
+        const eventData = {
+          sessionId: sessionIdRef.current,
+          eventType: 'PAGE_LEAVE' as const,
+          pageUrl,
+          referrerUrl: '',
+          interactionData: {
+            timeOnPage: timeOnPage || Date.now() - sessionStartTimeRef.current,
+            scrollDepth: scrollDepthRef.current,
+            mouseMovements: mouseMovementsRef.current,
+            clicks: clicksRef.current,
+          },
+          timestamp: new Date().toISOString(),
+          deviceId: deviceFingerprint?.deviceId,
+          ipAddress: await getClientIP(),
+          userAgent: navigator.userAgent,
+          isFirstVisit: !localStorage.getItem('hasVisited'),
+          visitNumber: parseInt(localStorage.getItem('visitCount') || '0'),
+          sessionDuration: Date.now() - sessionStartTimeRef.current,
+        };
+
+        // Add to queue instead of immediate send
+        eventQueueRef.current.push(eventData);
+        
+        // Schedule flush if not already scheduled
+        if (!flushTimeoutRef.current) {
+          flushTimeoutRef.current = setTimeout(flushEventQueue, EVENT_FLUSH_INTERVAL);
+        }
+      } catch (error) {
+        console.error('Error tracking page leave:', error);
+      }
+    }, PAGE_EVENT_DEBOUNCE);
+  }, [deviceFingerprint?.deviceId]);
 
   // Set up event listeners
   useEffect(() => {
@@ -251,10 +406,7 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
       if (document.hidden) {
         // Page hidden - track time on page
         const timeOnPage = Date.now() - pageStartTimeRef.current;
-        trackInteraction({
-          eventType: 'PAGE_HIDDEN',
-          interactionData: { timeOnPage }
-        });
+        trackPageLeave(window.location.href, timeOnPage);
       } else {
         // Page visible - reset timer
         pageStartTimeRef.current = Date.now();
@@ -279,17 +431,9 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
       
       // Track final page view metrics using captured values
       const timeOnPage = Date.now() - currentPageStartTime;
-      trackInteraction({
-        eventType: 'PAGE_LEAVE',
-        interactionData: {
-          timeOnPage,
-          scrollDepth: currentScrollDepth,
-          mouseMovements: currentMouseMovements,
-          clicks: currentClicks
-        }
-      });
+      trackPageLeave(window.location.href, timeOnPage);
     };
-  }, [trackPageView, trackScrollDepth, trackMouseMovement, trackClick, trackInteraction]);
+  }, [trackPageView, trackScrollDepth, trackMouseMovement, trackClick, trackInteraction, trackPageLeave]);
 
   return {
     sessionId: sessionIdRef.current,

@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import QuantitySelector from "@/components/QuantitySelector";
 import CheckoutButton from "@/components/CheckoutButton";
+import ReportButton from "@/components/ReportButton";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
 
 interface ProductActionsProps {
   productId: string;
+  productName: string;
   maxStock: number;
   dropDate?: Date | null;
   dropTime?: string | null;
@@ -22,6 +24,7 @@ interface ProductActionsProps {
 
 export default function ProductActions({
   productId,
+  productName,
   maxStock,
   dropDate,
   dropTime,
@@ -96,6 +99,20 @@ export default function ProductActions({
             : "Unavailable"}
         </Button>
       )}
+
+      {/* Report Button */}
+      <div className="pt-2 border-t">
+        <ReportButton
+          reportType="PRODUCT"
+          targetId={productId}
+          targetName={productName}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-center text-gray-500 hover:text-red-600"
+        >
+          Report Product
+        </ReportButton>
+      </div>
     </div>
   );
 }

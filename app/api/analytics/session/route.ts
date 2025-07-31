@@ -5,7 +5,18 @@ import { UserSessionService } from "@/lib/analytics";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    const body = await req.json();
+    
+    // Handle empty or malformed request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      console.error('Error parsing request body:', jsonError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
     
     const {
       sessionId,
@@ -19,7 +30,7 @@ export async function POST(req: NextRequest) {
       isFirstVisit,
       visitNumber,
       returningUser
-    } = body;
+    } = body || {};
 
     // Validate required fields
     if (!sessionId) {
@@ -67,12 +78,23 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await auth();
-    const body = await req.json();
+    
+    // Handle empty or malformed request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      console.error('Error parsing request body:', jsonError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
     
     const {
       sessionId,
       conversionValue
-    } = body;
+    } = body || {};
 
     // Validate required fields
     if (!sessionId) {

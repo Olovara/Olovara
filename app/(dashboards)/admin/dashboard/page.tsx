@@ -21,7 +21,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Flag
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -155,7 +156,7 @@ export default async function AdminDashboardHome() {
         </div>
 
         {/* Additional Stats Row */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Active Users */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -194,6 +195,21 @@ export default async function AdminDashboardHome() {
               <div className="text-2xl font-bold">{stats.sellers.recentApplications.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Last 7 days
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Reports */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Reports</CardTitle>
+              <Flag className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.reports.total.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                <span className="text-orange-600">{stats.reports.pending}</span> pending,{" "}
+                <span className="text-red-600">{stats.reports.critical}</span> critical
               </p>
             </CardContent>
           </Card>
