@@ -3,6 +3,28 @@ import { auth } from "@/auth";
 import { FraudDetectionService } from "@/lib/analytics";
 import { db } from "@/lib/db";
 
+// Retry function for handling transaction conflicts
+async function retryTransaction<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 100
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      // Only retry on transaction conflicts (P2034)
+      if (error.code === 'P2034' && attempt < maxRetries) {
+        console.warn(`Transaction conflict, retrying... (attempt ${attempt}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -32,86 +54,109 @@ export async function POST(req: NextRequest) {
                     req.headers.get('x-real-ip') || 
                     req.ip || 'unknown';
 
-    // Check if device already exists
-    const existingDevice = await db.deviceFingerprint.findFirst({
-      where: { deviceId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            createdAt: true,
-            fraudScore: true,
-            accountReputation: true,
+    // Use transaction with retry logic to handle concurrent updates
+    const result = await retryTransaction(async () => {
+      return await db.$transaction(async (tx) => {
+        // Check if device already exists
+        const existingDevice = await tx.deviceFingerprint.findFirst({
+          where: { deviceId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                createdAt: true,
+                fraudScore: true,
+                accountReputation: true,
+              }
+            }
           }
+        });
+
+        if (existingDevice) {
+          // Update existing device record
+          return await tx.deviceFingerprint.update({
+            where: { id: existingDevice.id },
+            data: {
+              lastSeen: new Date(),
+              ip: clientIP,
+              userAgent: userAgent || req.headers.get('user-agent'),
+              browser: browser || existingDevice.browser,
+              os: os || existingDevice.os,
+              screenRes: screenRes || existingDevice.screenRes,
+              timezone: timezone || existingDevice.timezone,
+              language: language || existingDevice.language,
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  createdAt: true,
+                  fraudScore: true,
+                  accountReputation: true,
+                }
+              }
+            }
+          });
+        } else {
+          // Create new device record
+          return await tx.deviceFingerprint.create({
+            data: {
+              userId: userId || null,
+              deviceId,
+              ip: clientIP,
+              userAgent: userAgent || req.headers.get('user-agent'),
+              browser: browser || 'Unknown',
+              os: os || 'Unknown',
+              screenRes: screenRes || 'Unknown',
+              timezone: timezone || 'Unknown',
+              language: language || 'Unknown',
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  createdAt: true,
+                  fraudScore: true,
+                  accountReputation: true,
+                }
+              }
+            }
+          });
         }
-      }
+      });
     });
 
-    if (existingDevice) {
-      // Update existing device record
-      const updatedDevice = await db.deviceFingerprint.update({
-        where: { id: existingDevice.id },
-        data: {
-          lastSeen: new Date(),
-          ip: clientIP,
-          userAgent: userAgent || req.headers.get('user-agent'),
-          browser: browser || existingDevice.browser,
-          os: os || existingDevice.os,
-          screenRes: screenRes || existingDevice.screenRes,
-          timezone: timezone || existingDevice.timezone,
-          language: language || existingDevice.language,
-        }
-      });
-
-      // If user is logged in and different from existing user, this could be suspicious
-      if (userId && existingDevice.userId !== userId) {
-        await FraudDetectionService.createFraudEvent({
-          userId,
-          eventType: 'DEVICE_SHARING',
-          severity: 'MEDIUM',
-          description: `Device ${deviceId} previously used by different user`,
-          evidence: {
-            existingUserId: existingDevice.userId,
-            newUserId: userId,
-            deviceId,
-            ipAddress: clientIP,
-          },
-          ipAddress: clientIP,
-          userAgent: userAgent || req.headers.get('user-agent'),
-        });
-      }
-
-      return NextResponse.json({
-        success: true,
-        device: updatedDevice,
-        isExisting: true,
-        message: "Device fingerprint updated"
-      });
-    } else {
-      // Create new device record
-      const newDevice = await db.deviceFingerprint.create({
-        data: {
-          userId: userId || null,
+    // Check for device sharing fraud after successful transaction
+    if (userId && result.userId && result.userId !== userId) {
+      // This device was previously used by a different user
+      await FraudDetectionService.createFraudEvent({
+        userId,
+        eventType: 'DEVICE_SHARING',
+        severity: 'MEDIUM',
+        description: `Device ${deviceId} previously used by different user`,
+        evidence: {
+          existingUserId: result.userId,
+          newUserId: userId,
           deviceId,
-          ip: clientIP,
-          userAgent: userAgent || req.headers.get('user-agent'),
-          browser: browser || 'Unknown',
-          os: os || 'Unknown',
-          screenRes: screenRes || 'Unknown',
-          timezone: timezone || 'Unknown',
-          language: language || 'Unknown',
-        }
-      });
-
-      return NextResponse.json({
-        success: true,
-        device: newDevice,
-        isExisting: false,
-        message: "New device fingerprint created"
+          ipAddress: clientIP,
+        },
+        ipAddress: clientIP,
+        userAgent: userAgent || req.headers.get('user-agent'),
       });
     }
+
+    return NextResponse.json({
+      success: true,
+      device: result,
+      isExisting: result.userId !== null,
+      message: result.userId ? "Device fingerprint updated" : "New device fingerprint created"
+    });
 
   } catch (error) {
     console.error('Error processing device fingerprint:', error);
