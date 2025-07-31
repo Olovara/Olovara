@@ -57,9 +57,12 @@ export async function POST(req: NextRequest) {
     // Use transaction with retry logic to handle concurrent updates
     const result = await retryTransaction(async () => {
       return await db.$transaction(async (tx) => {
-        // Check if device already exists
+        // Check if this specific user-device combination already exists
         const existingDevice = await tx.deviceFingerprint.findFirst({
-          where: { deviceId },
+          where: { 
+            deviceId,
+            userId: userId || undefined // Include userId in the search
+          },
           include: {
             user: {
               select: {
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (existingDevice) {
-          // Update existing device record
+          // Update existing user-device record
           return await tx.deviceFingerprint.update({
             where: { id: existingDevice.id },
             data: {
@@ -102,8 +105,19 @@ export async function POST(req: NextRequest) {
             }
           });
         } else {
-          // Create new device record
-          return await tx.deviceFingerprint.create({
+          // Check if this device is used by other users (for fraud detection)
+          const otherUsersOnDevice = await tx.deviceFingerprint.findMany({
+            where: { 
+              deviceId,
+              userId: { not: undefined } // Only check for logged-in users
+            },
+            include: {
+              user: true
+            }
+          });
+
+          // Create new user-device record
+          const newDevice = await tx.deviceFingerprint.create({
             data: {
               userId: userId || null,
               deviceId,
@@ -128,28 +142,34 @@ export async function POST(req: NextRequest) {
               }
             }
           });
+
+          // If this device is used by other users, create fraud event
+          if (otherUsersOnDevice.length > 0 && userId) {
+            await FraudDetectionService.createFraudEvent({
+              userId,
+              eventType: 'DEVICE_SHARING',
+              severity: 'MEDIUM',
+              description: `Device ${deviceId} used by multiple accounts`,
+              evidence: {
+                existingUsers: otherUsersOnDevice.map(d => ({
+                  userId: d.userId,
+                  email: d.user?.email || null,
+                  username: d.user?.username || null,
+                })),
+                newUserId: userId,
+                deviceId,
+                ipAddress: clientIP,
+                totalUsersOnDevice: otherUsersOnDevice.length + 1,
+              },
+              ipAddress: clientIP,
+              userAgent: userAgent || req.headers.get('user-agent'),
+            });
+          }
+
+          return newDevice;
         }
       });
     });
-
-    // Check for device sharing fraud after successful transaction
-    if (userId && result.userId && result.userId !== userId) {
-      // This device was previously used by a different user
-      await FraudDetectionService.createFraudEvent({
-        userId,
-        eventType: 'DEVICE_SHARING',
-        severity: 'MEDIUM',
-        description: `Device ${deviceId} previously used by different user`,
-        evidence: {
-          existingUserId: result.userId,
-          newUserId: userId,
-          deviceId,
-          ipAddress: clientIP,
-        },
-        ipAddress: clientIP,
-        userAgent: userAgent || req.headers.get('user-agent'),
-      });
-    }
 
     return NextResponse.json({
       success: true,

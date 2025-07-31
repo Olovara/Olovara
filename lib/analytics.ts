@@ -1415,3 +1415,261 @@ export class UserSessionService {
     }
   }
 } 
+
+// Mouse Movement Analysis for Fraud Detection
+export class MouseMovementAnalyzer {
+  private static readonly NATURAL_VELOCITY_RANGE = { min: 0.1, max: 2.0 }; // pixels/ms
+  private static readonly NATURAL_ACCELERATION_RANGE = { min: -0.5, max: 0.5 }; // pixels/ms²
+  private static readonly MIN_PAUSE_TIME = 50; // ms
+  private static readonly MAX_CONSECUTIVE_LINEAR = 10; // consecutive linear movements
+
+  /**
+   * Analyzes mouse movement patterns to detect bot behavior
+   */
+  static analyzeMovementPattern(movements: Array<{
+    x: number;
+    y: number;
+    timestamp: number;
+    count?: number;
+  }>): {
+    pattern: string;
+    botProbability: number;
+    riskFactors: string[];
+    analysis: {
+      averageVelocity: number;
+      averageAcceleration: number;
+      linearMovements: number;
+      naturalPauses: number;
+      directionChanges: number;
+    };
+  } {
+    if (movements.length < 3) {
+      return {
+        pattern: 'INSUFFICIENT_DATA',
+        botProbability: 0.5,
+        riskFactors: ['Too few movements to analyze'],
+        analysis: {
+          averageVelocity: 0,
+          averageAcceleration: 0,
+          linearMovements: 0,
+          naturalPauses: 0,
+          directionChanges: 0,
+        }
+      };
+    }
+
+    const velocities: number[] = [];
+    const accelerations: number[] = [];
+    const directions: string[] = [];
+    const pauseTimes: number[] = [];
+    let linearMovements = 0;
+    let consecutiveLinear = 0;
+    let directionChanges = 0;
+    const riskFactors: string[] = [];
+
+    // Calculate velocities, accelerations, and directions
+    for (let i = 1; i < movements.length; i++) {
+      const prev = movements[i - 1];
+      const curr = movements[i];
+      
+      // Calculate distance and time
+      const distance = Math.sqrt(
+        Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2)
+      );
+      const time = curr.timestamp - prev.timestamp;
+      
+      if (time > 0) {
+        const velocity = distance / time;
+        velocities.push(velocity);
+        
+        // Calculate acceleration
+        if (i > 1) {
+          const prevVelocity = velocities[velocities.length - 2];
+          const acceleration = (velocity - prevVelocity) / time;
+          accelerations.push(acceleration);
+        }
+        
+        // Calculate direction
+        const angle = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+        const direction = this.getDirectionFromAngle(angle);
+        directions.push(direction);
+        
+        // Check for linear movement (straight lines)
+        if (i > 1) {
+          const prevDirection = directions[directions.length - 2];
+          if (direction === prevDirection) {
+            consecutiveLinear++;
+            if (consecutiveLinear > this.MAX_CONSECUTIVE_LINEAR) {
+              linearMovements++;
+              riskFactors.push('Excessive linear movements');
+            }
+          } else {
+            consecutiveLinear = 0;
+            directionChanges++;
+          }
+        }
+        
+        // Check pause times
+        if (time > this.MIN_PAUSE_TIME) {
+          pauseTimes.push(time);
+        }
+      }
+    }
+
+    // Calculate averages
+    const avgVelocity = velocities.length > 0 
+      ? velocities.reduce((a, b) => a + b, 0) / velocities.length 
+      : 0;
+    const avgAcceleration = accelerations.length > 0 
+      ? accelerations.reduce((a, b) => a + b, 0) / accelerations.length 
+      : 0;
+    const naturalPauses = pauseTimes.length;
+
+    // Analyze patterns and calculate bot probability
+    let botProbability = 0;
+    let pattern = 'NATURAL';
+
+    // Check velocity patterns
+    if (avgVelocity < this.NATURAL_VELOCITY_RANGE.min) {
+      botProbability += 0.2;
+      riskFactors.push('Abnormally slow mouse movement');
+    } else if (avgVelocity > this.NATURAL_VELOCITY_RANGE.max) {
+      botProbability += 0.3;
+      riskFactors.push('Abnormally fast mouse movement');
+    }
+
+    // Check acceleration patterns
+    if (Math.abs(avgAcceleration) > this.NATURAL_ACCELERATION_RANGE.max) {
+      botProbability += 0.25;
+      riskFactors.push('Unnatural acceleration patterns');
+    }
+
+    // Check for grid-like patterns
+    if (this.detectGridPattern(movements)) {
+      botProbability += 0.4;
+      pattern = 'GRID';
+      riskFactors.push('Grid-like movement pattern');
+    }
+
+    // Check for perfectly linear movements
+    if (linearMovements > movements.length * 0.3) {
+      botProbability += 0.35;
+      pattern = 'LINEAR';
+      riskFactors.push('Excessive linear movements');
+    }
+
+    // Check for uniform timing
+    if (this.detectUniformTiming(movements)) {
+      botProbability += 0.3;
+      riskFactors.push('Uniform timing intervals');
+    }
+
+    // Check for lack of natural pauses
+    if (naturalPauses < movements.length * 0.1) {
+      botProbability += 0.2;
+      riskFactors.push('Lack of natural pauses');
+    }
+
+    // Check for random movement (too random can also be suspicious)
+    if (this.detectRandomPattern(movements)) {
+      botProbability += 0.15;
+      pattern = 'RANDOM';
+      riskFactors.push('Overly random movement pattern');
+    }
+
+    // Cap probability at 1.0
+    botProbability = Math.min(botProbability, 1.0);
+
+    return {
+      pattern,
+      botProbability,
+      riskFactors,
+      analysis: {
+        averageVelocity: avgVelocity,
+        averageAcceleration: avgAcceleration,
+        linearMovements,
+        naturalPauses,
+        directionChanges,
+      }
+    };
+  }
+
+  private static getDirectionFromAngle(angle: number): string {
+    const degrees = (angle * 180) / Math.PI;
+    const normalized = (degrees + 360) % 360;
+    
+    if (normalized >= 337.5 || normalized < 22.5) return 'E';
+    if (normalized >= 22.5 && normalized < 67.5) return 'NE';
+    if (normalized >= 67.5 && normalized < 112.5) return 'N';
+    if (normalized >= 112.5 && normalized < 157.5) return 'NW';
+    if (normalized >= 157.5 && normalized < 202.5) return 'W';
+    if (normalized >= 202.5 && normalized < 247.5) return 'SW';
+    if (normalized >= 247.5 && normalized < 292.5) return 'S';
+    if (normalized >= 292.5 && normalized < 337.5) return 'SE';
+    
+    return 'E';
+  }
+
+  private static detectGridPattern(movements: Array<{x: number; y: number}>): boolean {
+    if (movements.length < 5) return false;
+    
+    let horizontalLines = 0;
+    let verticalLines = 0;
+    
+    for (let i = 1; i < movements.length; i++) {
+      const prev = movements[i - 1];
+      const curr = movements[i];
+      
+      // Check for horizontal movement (y stays roughly the same)
+      if (Math.abs(curr.y - prev.y) < 5 && Math.abs(curr.x - prev.x) > 10) {
+        horizontalLines++;
+      }
+      
+      // Check for vertical movement (x stays roughly the same)
+      if (Math.abs(curr.x - prev.x) < 5 && Math.abs(curr.y - prev.y) > 10) {
+        verticalLines++;
+      }
+    }
+    
+    // If we have both horizontal and vertical lines, it might be a grid
+    return horizontalLines > 2 && verticalLines > 2;
+  }
+
+  private static detectUniformTiming(movements: Array<{timestamp: number}>): boolean {
+    if (movements.length < 4) return false;
+    
+    const intervals: number[] = [];
+    for (let i = 1; i < movements.length; i++) {
+      intervals.push(movements[i].timestamp - movements[i - 1].timestamp);
+    }
+    
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const variance = intervals.reduce((sum, interval) => 
+      sum + Math.pow(interval - avgInterval, 2), 0) / intervals.length;
+    
+    // Low variance indicates uniform timing
+    return variance < 1000; // Less than 1 second variance
+  }
+
+  private static detectRandomPattern(movements: Array<{x: number; y: number}>): boolean {
+    if (movements.length < 10) return false;
+    
+    let directionChanges = 0;
+    for (let i = 2; i < movements.length; i++) {
+      const prev = movements[i - 1];
+      const curr = movements[i];
+      const prevPrev = movements[i - 2];
+      
+      const angle1 = Math.atan2(prev.y - prevPrev.y, prev.x - prevPrev.x);
+      const angle2 = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+      
+      const angleDiff = Math.abs(angle2 - angle1);
+      if (angleDiff > Math.PI / 4) { // 45 degrees
+        directionChanges++;
+      }
+    }
+    
+    // Too many direction changes can indicate random movement
+    return directionChanges > movements.length * 0.7;
+  }
+} 

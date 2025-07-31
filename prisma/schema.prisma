@@ -1208,7 +1208,7 @@ model UserBehaviorEvent {
   userId            String?  // Optional for guest users
   user              User?    @relation(fields: [userId], references: [id])
   sessionId         String   // Unique session identifier
-  eventType         String   // "PAGE_VIEW", "CLICK", "SCROLL", "HOVER", "FORM_INTERACTION", "NAVIGATION"
+  eventType         String   // "PAGE_VIEW", "CLICK", "SCROLL", "HOVER", "FORM_INTERACTION", "NAVIGATION", "MOUSE_MOVEMENT"
   pageUrl           String   // Current page URL
   referrerUrl       String?  // Previous page URL
   elementId         String?  // DOM element ID if applicable
@@ -1223,6 +1223,20 @@ model UserBehaviorEvent {
   mouseMovements    Int?     // Number of mouse movements
   clicks            Int?     // Number of clicks on page
   
+  // Enhanced mouse movement tracking for fraud detection
+  mouseX            Int?     // X coordinate of mouse
+  mouseY            Int?     // Y coordinate of mouse
+  mouseVelocity     Float?   // Speed of mouse movement (pixels/ms)
+  mouseAcceleration Float?   // Change in velocity
+  mouseDirection    String?  // Direction of movement (N, S, E, W, NE, NW, SE, SW)
+  mouseDistance     Float?   // Distance from previous position
+  mousePauseTime    Int?     // Time paused at position (ms)
+  
+  // Human behavior patterns
+  movementPattern   String?  // "NATURAL", "LINEAR", "GRID", "RANDOM", "BOT_LIKE"
+  clickPattern      String?  // "NATURAL", "PRECISE", "RAPID", "UNIFORM"
+  scrollPattern     String?  // "NATURAL", "SMOOTH", "JERKY", "LINEAR"
+  
   // Device and location
   deviceId          String?  // Device fingerprint ID
   ipAddress         String?
@@ -1234,6 +1248,11 @@ model UserBehaviorEvent {
   visitNumber       Int?     // Which visit this is for the user
   sessionDuration   Int?     // Total session duration in seconds
   
+  // Fraud detection flags
+  suspiciousBehavior Boolean @default(false)
+  botProbability    Float?   // 0-1 score indicating likelihood of bot
+  riskScore         Float?   // Overall risk score for this event
+  
   createdAt         DateTime @default(now())
 
   @@index([userId])
@@ -1241,6 +1260,8 @@ model UserBehaviorEvent {
   @@index([eventType])
   @@index([timestamp])
   @@index([deviceId])
+  @@index([suspiciousBehavior])
+  @@index([botProbability])
 }
 
 model SearchAnalytics {
