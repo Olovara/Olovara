@@ -385,7 +385,7 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
         console.error('Error tracking page leave:', error);
       }
     }, PAGE_EVENT_DEBOUNCE);
-  }, [deviceFingerprint?.deviceId]);
+  }, [deviceFingerprint?.deviceId, flushEventQueue]);
 
   // Set up event listeners
   useEffect(() => {

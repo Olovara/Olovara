@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
         reportType,
         targetId,
         targetName,
+        reason: category, // Map category to reason field
         category,
         subReason: subReason || null,
         description: description.trim(),
