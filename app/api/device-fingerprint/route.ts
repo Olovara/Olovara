@@ -210,28 +210,42 @@ export async function POST(req: NextRequest) {
             }
           });
 
-          // If this device is used by other users, create fraud event
+          // If this device is used by other users, create fraud event (but check for existing events first)
           if (otherUsersOnDevice.length > 0 && userId) {
-            await FraudDetectionService.createFraudEvent({
-              userId,
-              eventType: 'DEVICE_SHARING',
-              severity: 'MEDIUM',
-              description: `Device ${deviceId} used by multiple accounts`,
-              evidence: {
-                existingUsers: otherUsersOnDevice.map(d => ({
-                  userId: d.userId,
-                  email: d.user?.email || null,
-                  username: d.user?.username || null,
-                })),
-                newUserId: userId,
-                deviceId,
-                ipAddress: clientIP,
-                totalUsersOnDevice: otherUsersOnDevice.length + 1,
-                ipAnalysis,
-              },
-              ipAddress: clientIP,
-              userAgent: userAgent || req.headers.get('user-agent'),
+            // Check if we already have a recent DEVICE_SHARING event for this user-device combination
+            const existingFraudEvent = await db.fraudDetectionEvent.findFirst({
+              where: {
+                userId,
+                eventType: 'DEVICE_SHARING',
+                createdAt: {
+                  gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+                }
+              }
             });
+
+            // Only create fraud event if one doesn't already exist
+            if (!existingFraudEvent) {
+              await FraudDetectionService.createFraudEvent({
+                userId,
+                eventType: 'DEVICE_SHARING',
+                severity: 'MEDIUM',
+                description: `Device ${deviceId} used by multiple accounts`,
+                evidence: {
+                  existingUsers: otherUsersOnDevice.map(d => ({
+                    userId: d.userId,
+                    email: d.user?.email || null,
+                    username: d.user?.username || null,
+                  })),
+                  newUserId: userId,
+                  deviceId,
+                  ipAddress: clientIP,
+                  totalUsersOnDevice: otherUsersOnDevice.length + 1,
+                  ipAnalysis,
+                },
+                ipAddress: clientIP,
+                userAgent: userAgent || req.headers.get('user-agent'),
+              });
+            }
           }
 
           return newDevice;
