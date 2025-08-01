@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface DeviceFingerprintData {
@@ -39,39 +39,35 @@ export function useDeviceFingerprint(): UseDeviceFingerprintReturn {
   const [deviceAnalysis, setDeviceAnalysis] = useState<DeviceAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isInitializedRef = useRef<boolean>(false);
+  const isProcessingRef = useRef<boolean>(false); // Prevent multiple simultaneous calls
+  const lastCallTimeRef = useRef<number>(0); // Track last API call time
 
   // Generate device fingerprint
   const generateFingerprint = useCallback(async (): Promise<DeviceFingerprintData> => {
     try {
-      // Collect entropy data from browser
-      const entropyData = {
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        languages: navigator.languages?.join(','),
-        platform: navigator.platform,
-        cookieEnabled: navigator.cookieEnabled,
-        doNotTrack: navigator.doNotTrack,
-        hardwareConcurrency: navigator.hardwareConcurrency,
-        deviceMemory: (navigator as any).deviceMemory || 0,
-        maxTouchPoints: navigator.maxTouchPoints,
-        screen: {
-          width: screen.width,
-          height: screen.height,
-          availWidth: screen.availWidth,
-          availHeight: screen.availHeight,
-          colorDepth: screen.colorDepth,
-          pixelDepth: screen.pixelDepth,
-        },
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timezoneOffset: new Date().getTimezoneOffset(),
-        canvas: await generateCanvasFingerprint(),
-        webgl: await generateWebGLFingerprint(),
-        fonts: await generateFontFingerprint(),
-        audio: await generateAudioFingerprint(),
-      };
+      // Collect device data
+      const canvasFingerprint = await generateCanvasFingerprint();
+      const webglFingerprint = await generateWebGLFingerprint();
+      const fontFingerprint = await generateFontFingerprint();
+      const audioFingerprint = await generateAudioFingerprint();
 
-      // Create a simple hash (in production, use a more sophisticated hashing algorithm)
-      const dataString = JSON.stringify(entropyData);
+      const dataString = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width,
+        screen.height,
+        screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        !!window.sessionStorage,
+        !!window.localStorage,
+        !!window.indexedDB,
+        canvasFingerprint,
+        webglFingerprint,
+        fontFingerprint,
+        audioFingerprint,
+      ].join('|');
+
       const deviceId = await simpleHash(dataString);
 
       const fingerprint: DeviceFingerprintData = {
@@ -127,37 +123,57 @@ export function useDeviceFingerprint(): UseDeviceFingerprintReturn {
 
   // Track user activity
   const trackActivity = useCallback(async (action: string, details?: any) => {
-    if (!deviceFingerprint) {
-      console.warn('Device fingerprint not available for activity tracking');
-      return;
-    }
+    if (!deviceFingerprint) return;
 
     try {
-      await fetch('/api/user-activity', {
+      await fetch('/api/analytics/behavior', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action,
-          deviceFingerprint: deviceFingerprint.deviceId,
-          details,
+          sessionId: session?.user?.id,
+          eventType: action,
+          pageUrl: window.location.href,
+          referrerUrl: document.referrer,
+          userId: session?.user?.id,
+          deviceId: deviceFingerprint.deviceId,
+          timestamp: new Date().toISOString(),
+          interactionData: details,
         }),
       });
-    } catch (err) {
-      console.error('Error tracking activity:', err);
+    } catch (error) {
+      console.error('Error tracking activity:', error);
     }
-  }, [deviceFingerprint]);
+  }, [deviceFingerprint, session?.user?.id]);
 
-  // Initialize device fingerprinting on mount
+  // Initialize device fingerprinting on mount (only once)
   useEffect(() => {
+    console.log('[DEBUG] useDeviceFingerprint useEffect triggered, isInitialized:', isInitializedRef.current);
+    
+    if (isInitializedRef.current || isProcessingRef.current) {
+      console.log('[DEBUG] Device fingerprint already initialized or processing, skipping');
+      return; // Prevent multiple initializations
+    }
+
+    // Debounce to prevent rapid successive calls
+    const now = Date.now();
+    if (now - lastCallTimeRef.current < 1000) { // 1 second debounce
+      console.log('[DEBUG] Debouncing device fingerprint initialization');
+      return;
+    }
+
     const initFingerprint = async () => {
+      console.log('[DEBUG] Starting device fingerprint initialization');
       try {
+        isProcessingRef.current = true;
+        lastCallTimeRef.current = now;
         setIsLoading(true);
         setError(null);
 
         // Generate fingerprint
         const fingerprint = await generateFingerprint();
+        console.log('[DEBUG] Device fingerprint generated:', fingerprint.deviceId);
         
         // Send to backend for storage and analysis
         await fetch('/api/device-fingerprint', {
@@ -177,8 +193,8 @@ export function useDeviceFingerprint(): UseDeviceFingerprintReturn {
           }),
         });
 
-        // Check device history
-        await checkDeviceHistory();
+        isInitializedRef.current = true;
+        console.log('[DEBUG] Device fingerprint initialization completed');
 
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -186,11 +202,38 @@ export function useDeviceFingerprint(): UseDeviceFingerprintReturn {
         console.error('Error initializing device fingerprint:', err);
       } finally {
         setIsLoading(false);
+        isProcessingRef.current = false;
       }
     };
 
     initFingerprint();
-  }, [generateFingerprint, checkDeviceHistory, session?.user?.id]);
+  }, [session?.user?.id, generateFingerprint]); // Added generateFingerprint to dependencies
+
+  // Check device history after fingerprint is generated (debounced)
+  useEffect(() => {
+    if (deviceFingerprint && !deviceAnalysis && !isLoading && !isProcessingRef.current) {
+      const now = Date.now();
+      if (now - lastCallTimeRef.current < 2000) { // 2 second debounce for history check
+        return;
+      }
+
+      const checkHistory = async () => {
+        try {
+          isProcessingRef.current = true;
+          lastCallTimeRef.current = now;
+          console.log('[DEBUG] Checking device history for:', deviceFingerprint.deviceId);
+          const analysis = await checkDeviceHistory();
+          console.log('[DEBUG] Device history checked:', analysis);
+        } catch (err) {
+          console.error('Error checking device history:', err);
+        } finally {
+          isProcessingRef.current = false;
+        }
+      };
+      
+      checkHistory();
+    }
+  }, [deviceFingerprint, deviceAnalysis, isLoading, checkDeviceHistory]);
 
   return {
     deviceFingerprint,

@@ -9,9 +9,16 @@ export async function POST(req: NextRequest) {
     // Handle empty or malformed request body
     let body;
     try {
-      body = await req.json();
-    } catch (jsonError) {
-      console.error('Error parsing request body:', jsonError);
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json(
+          { error: "Request body is empty" },
+          { status: 400 }
+        );
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }

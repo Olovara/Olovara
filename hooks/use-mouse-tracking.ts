@@ -32,81 +32,103 @@ export const useMouseTracking = (options: MouseTrackingOptions) => {
     userId,
     pageUrl,
     enabled = true,
-    batchSize = 50,
-    batchInterval = 5000, // 5 seconds
+    batchSize = 500, // Increased from 200 to 500
+    batchInterval = 60000, // Increased from 30000 to 60000 (60 seconds)
   } = options;
 
   const movementsRef = useRef<MouseMovement[]>([]);
   const lastPositionRef = useRef<{ x: number; y: number; timestamp: number } | null>(null);
   const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTrackingRef = useRef(enabled);
+  const lastSendTimeRef = useRef<number>(0);
+  const throttleInterval = 200; // Increased from 100ms to 200ms
 
-  // Calculate movement metrics
-  const calculateMetrics = useCallback((movements: MouseMovement[]): MouseTrackingData => {
+  // Calculate metrics from movements
+  const calculateMetrics = useCallback((movements: MouseMovement[]) => {
     if (movements.length < 2) {
-      return { movements };
+      return {
+        movements: movements.slice(-5),
+        velocity: 0,
+        acceleration: 0,
+        direction: 'STRAIGHT',
+        distance: 0,
+        pauseTime: 0,
+      };
     }
 
-    const lastMovement = movements[movements.length - 1];
-    const prevMovement = movements[movements.length - 2];
+    let totalDistance = 0;
+    let totalVelocity = 0;
+    let totalAcceleration = 0;
+    let totalPauseTime = 0;
+    let directionChanges = 0;
 
-    // Calculate distance
-    const distance = Math.sqrt(
-      Math.pow(lastMovement.x - prevMovement.x, 2) + 
-      Math.pow(lastMovement.y - prevMovement.y, 2)
-    );
-
-    // Calculate time difference
-    const timeDiff = lastMovement.timestamp - prevMovement.timestamp;
-
-    // Calculate velocity (pixels per millisecond)
-    const velocity = timeDiff > 0 ? distance / timeDiff : 0;
-
-    // Calculate direction
-    const angle = Math.atan2(
-      lastMovement.y - prevMovement.y,
-      lastMovement.x - prevMovement.x
-    );
-    const degrees = (angle * 180) / Math.PI;
-    const normalized = (degrees + 360) % 360;
-    
-    let direction = 'E';
-    if (normalized >= 22.5 && normalized < 67.5) direction = 'NE';
-    else if (normalized >= 67.5 && normalized < 112.5) direction = 'N';
-    else if (normalized >= 112.5 && normalized < 157.5) direction = 'NW';
-    else if (normalized >= 157.5 && normalized < 202.5) direction = 'W';
-    else if (normalized >= 202.5 && normalized < 247.5) direction = 'SW';
-    else if (normalized >= 247.5 && normalized < 292.5) direction = 'S';
-    else if (normalized >= 292.5 && normalized < 337.5) direction = 'SE';
-
-    // Calculate acceleration if we have 3+ movements
-    let acceleration = 0;
-    if (movements.length >= 3) {
-      const prevPrevMovement = movements[movements.length - 3];
-      const prevDistance = Math.sqrt(
-        Math.pow(prevMovement.x - prevPrevMovement.x, 2) + 
-        Math.pow(prevMovement.y - prevPrevMovement.y, 2)
+    for (let i = 1; i < movements.length; i++) {
+      const prev = movements[i - 1];
+      const curr = movements[i];
+      
+      const distance = Math.sqrt(
+        Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2)
       );
-      const prevTimeDiff = prevMovement.timestamp - prevPrevMovement.timestamp;
-      const prevVelocity = prevTimeDiff > 0 ? prevDistance / prevTimeDiff : 0;
-      acceleration = timeDiff > 0 ? (velocity - prevVelocity) / timeDiff : 0;
+      totalDistance += distance;
+      
+      const timeDiff = curr.timestamp - prev.timestamp;
+      if (timeDiff > 0) {
+        const velocity = distance / timeDiff;
+        totalVelocity += velocity;
+        
+        // Calculate acceleration if we have 3 points
+        if (i > 1) {
+          const prevVelocity = Math.sqrt(
+            Math.pow(prev.x - movements[i - 2].x, 2) + 
+            Math.pow(prev.y - movements[i - 2].y, 2)
+          ) / (prev.timestamp - movements[i - 2].timestamp);
+          
+          if (timeDiff > 0) {
+            const acceleration = (velocity - prevVelocity) / timeDiff;
+            totalAcceleration += acceleration;
+          }
+        }
+        
+        // Calculate pause time (gaps > 100ms)
+        if (timeDiff > 100) {
+          totalPauseTime += timeDiff - 100;
+        }
+      }
+      
+      // Calculate direction changes
+      if (i > 1) {
+        const prevDirection = Math.atan2(prev.y - movements[i - 2].y, prev.x - movements[i - 2].x);
+        const currDirection = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+        const directionDiff = Math.abs(currDirection - prevDirection);
+        if (directionDiff > Math.PI / 4) { // 45 degrees
+          directionChanges++;
+        }
+      }
     }
 
-    // Calculate pause time (time since last movement)
-    const pauseTime = Date.now() - lastMovement.timestamp;
+    const avgVelocity = totalVelocity / (movements.length - 1);
+    const avgAcceleration = totalAcceleration / Math.max(1, movements.length - 2);
+    const directionChangesCount = directionChanges / Math.max(1, movements.length - 2);
 
     return {
-      movements,
-      velocity,
-      acceleration,
-      direction,
-      distance,
-      pauseTime,
+      movements: movements.slice(-5), // Only keep last 5 movements
+      velocity: avgVelocity,
+      acceleration: avgAcceleration,
+      direction: directionChangesCount > 0 ? 'CHANGING' : 'STRAIGHT',
+      distance: totalDistance,
+      pauseTime: totalPauseTime,
     };
   }, []);
 
   // Send mouse movement data to API
   const sendMouseData = useCallback(async (data: MouseTrackingData) => {
+    // Prevent sending too frequently
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < 10000) { // Increased from 5000 to 10000 (10 seconds)
+      return;
+    }
+    lastSendTimeRef.current = now;
+
     try {
       const response = await fetch('/api/user-behavior', {
         method: 'POST',
@@ -121,7 +143,7 @@ export const useMouseTracking = (options: MouseTrackingOptions) => {
           userId,
           interactionData: {
             count: data.movements.length,
-            movements: data.movements,
+            movements: data.movements.slice(-5), // Reduced from 10 to 5
             velocity: data.velocity,
             acceleration: data.acceleration,
             direction: data.direction,
@@ -139,11 +161,29 @@ export const useMouseTracking = (options: MouseTrackingOptions) => {
     }
   }, [sessionId, pageUrl, deviceId, userId]);
 
-  // Handle mouse movement
+  // Handle mouse movement with throttling and distance filtering
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!isTrackingRef.current) return;
 
     const currentTime = Date.now();
+    
+    // Throttle mouse events
+    if (currentTime - lastSendTimeRef.current < throttleInterval) {
+      return;
+    }
+
+    // Check if movement is significant enough to track (minimum 10 pixels)
+    if (lastPositionRef.current) {
+      const distance = Math.sqrt(
+        Math.pow(event.clientX - lastPositionRef.current.x, 2) + 
+        Math.pow(event.clientY - lastPositionRef.current.y, 2)
+      );
+      
+      if (distance < 10) { // Increased from 5 to 10 pixels
+        return;
+      }
+    }
+
     const movement: MouseMovement = {
       x: event.clientX,
       y: event.clientY,
@@ -151,6 +191,11 @@ export const useMouseTracking = (options: MouseTrackingOptions) => {
     };
 
     movementsRef.current.push(movement);
+
+    // Limit the number of movements stored in memory
+    if (movementsRef.current.length > 200) { // Reduced from 500 to 200
+      movementsRef.current = movementsRef.current.slice(-100); // Reduced from 200 to 100
+    }
 
     // Send data when batch size is reached
     if (movementsRef.current.length >= batchSize) {
@@ -176,7 +221,7 @@ export const useMouseTracking = (options: MouseTrackingOptions) => {
     }
 
     lastPositionRef.current = movement;
-  }, [batchSize, batchInterval, calculateMetrics, sendMouseData]);
+  }, [batchSize, batchInterval, calculateMetrics, sendMouseData, throttleInterval]);
 
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {

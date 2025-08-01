@@ -4,33 +4,31 @@ import { FraudDetectionService } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { getIPInfo, checkIPSuspicious, getUserAnalytics } from "@/lib/ipinfo";
 
-// Retry function for handling transaction conflicts
-async function retryTransaction<T>(
-  operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delay: number = 100
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      // Only retry on transaction conflicts (P2034)
-      if (error.code === 'P2034' && attempt < maxRetries) {
-        console.warn(`Transaction conflict, retrying... (attempt ${attempt}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay * attempt));
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw new Error('Max retries exceeded');
-}
+
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    const body = await req.json();
     
+    // Handle empty or malformed request body
+    let body;
+    try {
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json(
+          { error: "Request body is empty" },
+          { status: 400 }
+        );
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
     const {
       deviceId,
       browser,
@@ -39,7 +37,7 @@ export async function POST(req: NextRequest) {
       timezone,
       language,
       userAgent,
-      userId
+      userId,
     } = body;
 
     // Validate required fields
@@ -51,9 +49,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Get client IP
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                    req.headers.get('x-real-ip') || 
-                    req.ip || 'unknown';
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0] ||
+      req.headers.get("x-real-ip") ||
+      req.ip ||
+      "unknown";
 
     // Enhanced IP analysis for fraud detection
     let ipAnalysis = null;
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       // Get detailed IP information
       const ipInfo = await getIPInfo(clientIP);
       const suspiciousCheck = await checkIPSuspicious(clientIP);
-      
+
       ipAnalysis = {
         ip: ipInfo.ip,
         country: ipInfo.country,
@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
       if (isProxy && userId) {
         await FraudDetectionService.createFraudEvent({
           userId,
-          eventType: 'SUSPICIOUS_IP',
-          severity: 'MEDIUM',
-          description: `Suspicious IP detected: ${suspiciousReasons.join(', ')}`,
+          eventType: "SUSPICIOUS_IP",
+          severity: "MEDIUM",
+          description: `Suspicious IP detected: ${suspiciousReasons.join(", ")}`,
           evidence: {
             ip: clientIP,
             ipAnalysis,
@@ -107,173 +107,216 @@ export async function POST(req: NextRequest) {
             deviceId,
           },
           ipAddress: clientIP,
-          userAgent: userAgent || req.headers.get('user-agent'),
+          userAgent: userAgent || req.headers.get("user-agent"),
         });
       }
     } catch (error) {
-      console.warn('Error analyzing IP:', error);
+      console.warn("Error analyzing IP:", error);
       // Continue without IP analysis if it fails
     }
 
-         // Use transaction with retry logic to handle concurrent updates
-     const result = await retryTransaction(async () => {
-       return await db.$transaction(async (tx) => {
-         // Check if this specific user-device combination already exists
-         const existingDevice = await tx.deviceFingerprint.findFirst({
-           where: { 
-             deviceId,
-             userId: userId || undefined // Include userId in the search
-           },
-           include: {
-             user: {
-               select: {
-                 id: true,
-                 email: true,
-                 username: true,
-                 createdAt: true,
-                 fraudScore: true,
-                 accountReputation: true,
-               }
-             }
-           }
-         });
+    // Use a simple approach without transactions to avoid P2028 errors
+    let deviceRecord;
+    
+    try {
+      // Try to create first (will fail if exists due to unique constraint)
+      console.log(`[DEBUG] Attempting to create new device fingerprint:`, { deviceId, userId: userId || null });
+      
+      // Prepare the create data
+      const createData: any = {
+        userId: userId || null,
+        deviceId,
+        ip: clientIP,
+        userAgent: userAgent || req.headers.get("user-agent"),
+        browser: browser || "Unknown",
+        os: os || "Unknown",
+        screenRes: screenRes || "Unknown",
+        timezone: timezone || "Unknown",
+        language: language || "Unknown",
+        location: locationData,
+        isProxy: isProxy,
+      };
 
-         if (existingDevice) {
-           // Update existing user-device record with enhanced data
-           return await tx.deviceFingerprint.update({
-             where: { id: existingDevice.id },
-             data: {
-               lastSeen: new Date(),
-               ip: clientIP,
-               userAgent: userAgent || req.headers.get('user-agent'),
-               browser: browser || existingDevice.browser,
-               os: os || existingDevice.os,
-               screenRes: screenRes || existingDevice.screenRes,
-               timezone: timezone || existingDevice.timezone,
-               language: language || existingDevice.language,
-               // Enhanced location and proxy detection
-               location: locationData,
-               isProxy: isProxy,
-             },
-             include: {
-               user: {
-                 select: {
-                   id: true,
-                   email: true,
-                   username: true,
-                   createdAt: true,
-                   fraudScore: true,
-                   accountReputation: true,
-                 }
-               }
-             }
-           });
-         } else {
-           // Check if this device is used by other users (for fraud detection)
-           const otherUsersOnDevice = await tx.deviceFingerprint.findMany({
-             where: { 
-               deviceId,
-               userId: { not: undefined } // Only check for logged-in users
-             },
-             include: {
-               user: true
-             }
-           });
+      // Only include user relation if userId is provided
+      const includeData = userId ? {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            createdAt: true,
+            fraudScore: true,
+            accountReputation: true,
+          },
+        },
+      } : {};
 
-           // Create new user-device record with enhanced data
-           const newDevice = await tx.deviceFingerprint.create({
-             data: {
-               userId: userId || null,
-               deviceId,
-               ip: clientIP,
-               userAgent: userAgent || req.headers.get('user-agent'),
-               browser: browser || 'Unknown',
-               os: os || 'Unknown',
-               screenRes: screenRes || 'Unknown',
-               timezone: timezone || 'Unknown',
-               language: language || 'Unknown',
-               // Enhanced location and proxy detection
-               location: locationData,
-               isProxy: isProxy,
-             },
-             include: {
-               user: {
-                 select: {
-                   id: true,
-                   email: true,
-                   username: true,
-                   createdAt: true,
-                   fraudScore: true,
-                   accountReputation: true,
-                 }
-               }
-             }
-           });
+      deviceRecord = await db.deviceFingerprint.create({
+        data: createData,
+        include: includeData,
+      });
 
-           // If this device is used by other users, create fraud event (but check for existing events first)
-           if (otherUsersOnDevice.length > 0 && userId) {
-             // Check if we already have a recent DEVICE_SHARING event for this user-device combination
-             const existingFraudEvent = await tx.fraudDetectionEvent.findFirst({
-               where: {
-                 userId,
-                 eventType: 'DEVICE_SHARING',
-                 createdAt: {
-                   gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-                 }
-               }
-             });
+      console.log(`[DEBUG] Device fingerprint created successfully:`, {
+        deviceId,
+        userId: userId || null,
+        action: 'created',
+        id: deviceRecord.id
+      });
+    } catch (createError: any) {
+      // If creation fails due to unique constraint, try to update
+      if (createError.code === 'P2002') {
+        console.log(`[DEBUG] Device fingerprint already exists, attempting update:`, { deviceId, userId: userId || null });
+        
+        // Find the existing record
+        const existingDevice = await db.deviceFingerprint.findFirst({
+          where: {
+            deviceId,
+            userId: userId || null,
+          },
+          include: userId ? {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                createdAt: true,
+                fraudScore: true,
+                accountReputation: true,
+              },
+            },
+          } : {},
+        });
 
-             // Only create fraud event if one doesn't already exist
-             if (!existingFraudEvent) {
-               // Create fraud event directly in the transaction to avoid race conditions
-               await tx.fraudDetectionEvent.create({
-                 data: {
-                   userId,
-                   eventType: 'DEVICE_SHARING',
-                   severity: 'MEDIUM',
-                   riskScore: 0.5,
-                   description: `Device ${deviceId} used by multiple accounts`,
-                   evidence: {
-                     existingUsers: otherUsersOnDevice.map(d => ({
-                       userId: d.userId,
-                       email: d.user?.email || null,
-                       username: d.user?.username || null,
-                     })),
-                     newUserId: userId,
-                     deviceId,
-                     ipAddress: clientIP,
-                     totalUsersOnDevice: otherUsersOnDevice.length + 1,
-                     ipAnalysis,
-                   },
-                   ipAddress: clientIP,
-                   userAgent: userAgent || req.headers.get('user-agent'),
-                   location: locationData,
-                   status: 'OPEN',
-                   actionsTaken: [],
-                 }
-               });
-             }
-           }
+        if (existingDevice) {
+          console.log(`[DEBUG] Updating existing device fingerprint:`, existingDevice.id);
+          deviceRecord = await db.deviceFingerprint.update({
+            where: { id: existingDevice.id },
+            data: {
+              lastSeen: new Date(),
+              ip: clientIP,
+              userAgent: userAgent || req.headers.get("user-agent"),
+              browser: browser || existingDevice.browser,
+              os: os || existingDevice.os,
+              screenRes: screenRes || existingDevice.screenRes,
+              timezone: timezone || existingDevice.timezone,
+              language: language || existingDevice.language,
+              location: locationData,
+              isProxy: isProxy,
+            },
+            include: userId ? {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  createdAt: true,
+                  fraudScore: true,
+                  accountReputation: true,
+                },
+              },
+            } : {},
+          });
 
-           return newDevice;
-         }
-       });
-     });
+          console.log(`[DEBUG] Device fingerprint updated successfully:`, {
+            deviceId,
+            userId: userId || null,
+            action: 'updated',
+            id: deviceRecord.id
+          });
+        } else {
+          throw createError; // Re-throw if we can't find the existing device
+        }
+      } else {
+        // If it's not a constraint violation, re-throw the error
+        throw createError;
+      }
+    }
+
+    // Check for device sharing fraud (only for logged-in users) - OUTSIDE TRANSACTION
+    if (userId) {
+      try {
+        const otherUsersOnDevice = await db.deviceFingerprint.findMany({
+          where: {
+            deviceId,
+            AND: [
+              { userId: { not: userId } }, // Exclude current user
+              { userId: { not: null } }, // Exclude guest users (null)
+            ],
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+              },
+            },
+          },
+        });
+
+        if (otherUsersOnDevice.length > 0) {
+          // Check if we already have a recent DEVICE_SHARING event for this user-device combination
+          const existingFraudEvent = await db.fraudDetectionEvent.findFirst({
+            where: {
+              userId,
+              eventType: "DEVICE_SHARING",
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+              },
+            },
+          });
+
+          // Only create fraud event if one doesn't already exist
+          if (!existingFraudEvent) {
+            await db.fraudDetectionEvent.create({
+              data: {
+                userId,
+                eventType: "DEVICE_SHARING",
+                severity: "MEDIUM",
+                riskScore: 0.5,
+                description: `Device ${deviceId} used by multiple accounts`,
+                evidence: {
+                  existingUsers: otherUsersOnDevice.map((d) => ({
+                    userId: d.userId,
+                    email: d.user?.email || null,
+                    username: d.user?.username || null,
+                  })),
+                  newUserId: userId,
+                  deviceId,
+                  ipAddress: clientIP,
+                  totalUsersOnDevice: otherUsersOnDevice.length + 1,
+                  ipAnalysis,
+                },
+                ipAddress: clientIP,
+                userAgent: userAgent || req.headers.get("user-agent"),
+                location: locationData,
+                status: "OPEN",
+                actionsTaken: [],
+              },
+            });
+          }
+        }
+      } catch (fraudError) {
+        console.warn("Error checking for device sharing fraud:", fraudError);
+        // Continue even if fraud detection fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      device: result,
-      isExisting: result.userId !== null,
-      message: result.userId ? "Device fingerprint updated" : "New device fingerprint created",
+      device: deviceRecord,
+      isExisting: deviceRecord.userId !== null,
+      message: deviceRecord.userId
+        ? "Device fingerprint updated"
+        : "New device fingerprint created",
       ipAnalysis: {
         isProxy,
         suspiciousReasons,
         location: locationData,
-      }
+      },
     });
-
   } catch (error) {
-    console.error('Error processing device fingerprint:', error);
+    console.error("Error processing device fingerprint:", error);
     return NextResponse.json(
       { error: "Failed to process device fingerprint" },
       { status: 500 }
@@ -285,7 +328,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     const { searchParams } = new URL(req.url);
-    const deviceId = searchParams.get('deviceId');
+    const deviceId = searchParams.get("deviceId");
 
     if (!deviceId) {
       return NextResponse.json(
@@ -309,10 +352,10 @@ export async function GET(req: NextRequest) {
             numChargebacks: true,
             numRefunds: true,
             numDisputes: true,
-          }
-        }
+          },
+        },
       },
-      orderBy: { lastSeen: 'desc' }
+      orderBy: { lastSeen: "desc" },
     });
 
     // Get device analysis for IP and location info
@@ -320,20 +363,20 @@ export async function GET(req: NextRequest) {
     try {
       deviceAnalysis = await FraudDetectionService.getDeviceAnalysis(deviceId);
     } catch (error) {
-      console.warn('Could not get device analysis:', error);
+      console.warn("Could not get device analysis:", error);
     }
 
     // Calculate risk factors
     const riskFactors = {
       multipleAccounts: deviceUsers.length > 1,
-      suspiciousUsers: deviceUsers.filter(u => 
-        u.user && (u.user.fraudScore || 0) > 0.7
+      suspiciousUsers: deviceUsers.filter(
+        (u) => u.user && (u.user.fraudScore || 0) > 0.7
       ).length,
-      chargebackUsers: deviceUsers.filter(u => 
-        u.user && (u.user.numChargebacks || 0) > 0
+      chargebackUsers: deviceUsers.filter(
+        (u) => u.user && (u.user.numChargebacks || 0) > 0
       ).length,
-      recentActivity: deviceUsers.some(u => 
-        new Date(u.lastSeen).getTime() > Date.now() - 24 * 60 * 60 * 1000
+      recentActivity: deviceUsers.some(
+        (u) => new Date(u.lastSeen).getTime() > Date.now() - 24 * 60 * 60 * 1000
       ),
     };
 
@@ -346,14 +389,17 @@ export async function GET(req: NextRequest) {
 
     const analysis = {
       isExistingDevice: deviceUsers.length > 0,
-      firstSeen: deviceUsers.length > 0 ? deviceUsers[deviceUsers.length - 1].firstSeen : null,
+      firstSeen:
+        deviceUsers.length > 0
+          ? deviceUsers[deviceUsers.length - 1].firstSeen
+          : null,
       lastSeen: deviceUsers.length > 0 ? deviceUsers[0].lastSeen : null,
       associatedAccounts: deviceUsers.length,
       riskScore: Math.min(riskScore, 1.0),
       isProxy: deviceUsers.length > 0 ? deviceUsers[0].isProxy || false : false,
       location: deviceUsers.length > 0 ? deviceUsers[0].location || null : null,
       riskFactors,
-      deviceUsers: deviceUsers.map(du => ({
+      deviceUsers: deviceUsers.map((du) => ({
         userId: du.userId,
         email: du.user?.email,
         username: du.user?.username,
@@ -370,14 +416,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      analysis
+      analysis,
     });
-
   } catch (error) {
-    console.error('Error getting device analysis:', error);
+    console.error("Error getting device analysis:", error);
     return NextResponse.json(
       { error: "Failed to get device analysis" },
       { status: 500 }
     );
   }
-} 
+}
