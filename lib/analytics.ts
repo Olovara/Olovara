@@ -1922,4 +1922,469 @@ export class EnhancedAnalyticsService {
       recommendations,
     };
   }
+
+  /**
+   * Track purchase intent and success
+   */
+  static async trackPurchaseIntent(data: {
+    userId?: string;
+    sessionId: string;
+    productId: string;
+    sellerId: string;
+    amount: number;
+    currency: string;
+    step: 'VIEWED' | 'ADDED_TO_CART' | 'CHECKOUT_STARTED' | 'PAYMENT_ATTEMPTED' | 'SUCCESS' | 'FAILED';
+    failureReason?: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      await db.userBehaviorEvent.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          eventType: 'PURCHASE_INTENT',
+          pageUrl: window?.location?.href || 'unknown',
+          referrerUrl: document?.referrer || '',
+          interactionData: {
+            productId: data.productId,
+            sellerId: data.sellerId,
+            amount: data.amount,
+            currency: data.currency,
+            step: data.step,
+            failureReason: data.failureReason,
+          },
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+
+      // Create fraud event for failed payments
+      if (data.step === 'FAILED' && data.failureReason) {
+        await FraudDetectionService.createFraudEvent({
+          userId: data.userId,
+          eventType: 'PAYMENT_FAILURE',
+          severity: 'MEDIUM',
+          description: `Payment failed: ${data.failureReason}`,
+          evidence: {
+            productId: data.productId,
+            sellerId: data.sellerId,
+            amount: data.amount,
+            failureReason: data.failureReason,
+            deviceId: data.deviceId,
+            ipAddress: data.ipAddress,
+          },
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          productId: data.productId,
+          sellerId: data.sellerId,
+        });
+      }
+    } catch (error) {
+      console.error('Error tracking purchase intent:', error);
+    }
+  }
+
+  /**
+   * Track messaging events
+   */
+  static async trackMessagingEvent(data: {
+    userId: string;
+    sessionId: string;
+    sellerId: string;
+    action: 'CONTACT_STARTED' | 'MESSAGE_SENT' | 'MESSAGE_READ' | 'REPLY_SENT';
+    messageType?: 'GENERAL' | 'CUSTOM_ORDER' | 'SUPPORT';
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      await db.userBehaviorEvent.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          eventType: 'MESSAGING',
+          pageUrl: window?.location?.href || 'unknown',
+          referrerUrl: document?.referrer || '',
+          interactionData: {
+            sellerId: data.sellerId,
+            action: data.action,
+            messageType: data.messageType,
+          },
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+    } catch (error) {
+      console.error('Error tracking messaging event:', error);
+    }
+  }
+
+  /**
+   * Track custom order events
+   */
+  static async trackCustomOrderEvent(data: {
+    userId: string;
+    sessionId: string;
+    sellerId: string;
+    action: 'STARTED' | 'FORM_COMPLETED' | 'PAYMENT_ATTEMPTED' | 'SUCCESS' | 'FAILED';
+    formId?: string;
+    amount?: number;
+    failureReason?: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      await db.userBehaviorEvent.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          eventType: 'CUSTOM_ORDER',
+          pageUrl: window?.location?.href || 'unknown',
+          referrerUrl: document?.referrer || '',
+          interactionData: {
+            sellerId: data.sellerId,
+            action: data.action,
+            formId: data.formId,
+            amount: data.amount,
+            failureReason: data.failureReason,
+          },
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+
+      // Create fraud event for failed custom orders
+      if (data.action === 'FAILED' && data.failureReason) {
+        await FraudDetectionService.createFraudEvent({
+          userId: data.userId,
+          eventType: 'CUSTOM_ORDER_FAILURE',
+          severity: 'MEDIUM',
+          description: `Custom order failed: ${data.failureReason}`,
+          evidence: {
+            sellerId: data.sellerId,
+            formId: data.formId,
+            amount: data.amount,
+            failureReason: data.failureReason,
+            deviceId: data.deviceId,
+            ipAddress: data.ipAddress,
+          },
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          sellerId: data.sellerId,
+        });
+      }
+    } catch (error) {
+      console.error('Error tracking custom order event:', error);
+    }
+  }
+
+  /**
+   * Track registration patterns for fraud detection
+   */
+  static async trackRegistrationPattern(data: {
+    email: string;
+    ipAddress: string;
+    deviceId?: string;
+    userAgent?: string;
+    location?: any;
+    action: 'REGISTRATION_ATTEMPT' | 'REGISTRATION_SUCCESS' | 'REGISTRATION_FAILED';
+    failureReason?: string;
+    isReturningIP?: boolean;
+    isReturningDevice?: boolean;
+  }) {
+    try {
+      // Check for suspicious patterns
+      const suspiciousPatterns = [];
+
+      // Check for multiple registrations from same IP
+      const ipRegistrations = await db.userActivityLog.count({
+        where: {
+          ip: data.ipAddress,
+          action: 'SIGNUP',
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+          }
+        }
+      });
+
+      if (ipRegistrations > 3) {
+        suspiciousPatterns.push(`Multiple registrations from IP: ${ipRegistrations} in 24h`);
+      }
+
+      // Check for multiple registrations from same device
+      if (data.deviceId) {
+        const deviceRegistrations = await db.userActivityLog.count({
+          where: {
+            deviceId: data.deviceId,
+            action: 'SIGNUP',
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+            }
+          }
+        });
+
+        if (deviceRegistrations > 2) {
+          suspiciousPatterns.push(`Multiple registrations from device: ${deviceRegistrations} in 24h`);
+        }
+      }
+
+      // Check for unusual registration times (2AM-6AM)
+      const hour = new Date().getHours();
+      if (hour >= 2 && hour <= 6) {
+        suspiciousPatterns.push('Unusual registration time (2AM-6AM)');
+      }
+
+      // Create fraud event if suspicious patterns detected
+      if (suspiciousPatterns.length > 0) {
+        await FraudDetectionService.createFraudEvent({
+          eventType: 'SUSPICIOUS_REGISTRATION',
+          severity: 'HIGH',
+          description: `Suspicious registration patterns detected: ${suspiciousPatterns.join(', ')}`,
+          evidence: {
+            email: data.email,
+            ipAddress: data.ipAddress,
+            deviceId: data.deviceId,
+            suspiciousPatterns,
+            isReturningIP: data.isReturningIP,
+            isReturningDevice: data.isReturningDevice,
+          },
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+        });
+      }
+
+      // Log the registration activity
+      await db.userActivityLog.create({
+        data: {
+          userId: 'temp', // Will be updated after user creation
+          action: 'SIGNUP',
+          ip: data.ipAddress,
+          userAgent: data.userAgent || '',
+          deviceId: data.deviceId,
+          location: data.location,
+          success: data.action === 'REGISTRATION_SUCCESS',
+          details: {
+            email: data.email,
+            action: data.action,
+            failureReason: data.failureReason,
+            suspiciousPatterns,
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error tracking registration pattern:', error);
+    }
+  }
+
+  /**
+   * Calculate seller conversion metrics
+   */
+  static async getSellerConversionMetrics(sellerId: string, startDate: Date, endDate: Date) {
+    try {
+      // Get product views
+      const productViews = await db.productInteraction.count({
+        where: {
+          product: {
+            userId: sellerId
+          },
+          interactionType: 'VIEW',
+          timestamp: {
+            gte: startDate,
+            lte: endDate
+          }
+        }
+      });
+
+      // Get purchases
+      const purchases = await db.order.count({
+        where: {
+          sellerId,
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          }
+        }
+      });
+
+      // Get unique customers
+      const uniqueCustomers = await db.order.groupBy({
+        by: ['userId'],
+        where: {
+          sellerId,
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          }
+        }
+      });
+
+      // Get repeat customers
+      const customerOrderCounts = await db.order.groupBy({
+        by: ['userId'],
+        where: {
+          sellerId,
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        _count: {
+          id: true
+        }
+      });
+
+      const repeatCustomers = customerOrderCounts.filter(c => c._count.id > 1).length;
+
+      // Calculate metrics
+      const conversionRate = productViews > 0 ? (purchases / productViews) * 100 : 0;
+      const customerRetentionRate = uniqueCustomers.length > 0 ? (repeatCustomers / uniqueCustomers.length) * 100 : 0;
+
+      return {
+        productViews,
+        purchases,
+        uniqueCustomers: uniqueCustomers.length,
+        repeatCustomers,
+        conversionRate,
+        customerRetentionRate,
+        averageOrdersPerCustomer: uniqueCustomers.length > 0 ? purchases / uniqueCustomers.length : 0
+      };
+    } catch (error) {
+      console.error('Error calculating seller conversion metrics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Track click-through rates
+   */
+  static async trackClickThroughRate(data: {
+    userId?: string;
+    sessionId: string;
+    elementId: string;
+    elementType: string;
+    pageUrl: string;
+    referrerUrl?: string;
+    productId?: string;
+    sellerId?: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      await db.userBehaviorEvent.create({
+        data: {
+          userId: data.userId,
+          sessionId: data.sessionId,
+          eventType: 'CLICK_THROUGH',
+          pageUrl: data.pageUrl,
+          referrerUrl: data.referrerUrl,
+          elementId: data.elementId,
+          elementType: data.elementType,
+          interactionData: {
+            productId: data.productId,
+            sellerId: data.sellerId,
+          },
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+    } catch (error) {
+      console.error('Error tracking click-through rate:', error);
+    }
+  }
+
+  /**
+   * Enhanced location-based fraud detection
+   */
+  static async detectLocationAnomalies(userId: string, currentIP: string) {
+    try {
+      // Get user's recent login locations
+      const recentLogins = await db.userActivityLog.findMany({
+        where: {
+          userId,
+          action: 'LOGIN',
+          success: true,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
+
+      if (recentLogins.length < 2) return null;
+
+      // Get current location info
+      const { getIPInfo } = await import('@/lib/ipinfo');
+      const currentLocation = await getIPInfo(currentIP);
+
+      const anomalies = [];
+
+      // Check for rapid location changes
+      for (let i = 0; i < recentLogins.length - 1; i++) {
+        const login1 = recentLogins[i];
+        const login2 = recentLogins[i + 1];
+        
+        if (login1.location && login2.location) {
+          const loc1 = login1.location as any;
+          const loc2 = login2.location as any;
+          
+          // If locations are different countries and within 1 hour
+          if (loc1.country !== loc2.country && 
+              Math.abs(login1.createdAt.getTime() - login2.createdAt.getTime()) < 60 * 60 * 1000) {
+            anomalies.push(`Rapid location change: ${loc1.country} → ${loc2.country} in <1 hour`);
+          }
+        }
+      }
+
+      // Check if current location is different from recent pattern
+      const recentCountries = recentLogins
+        .map(login => (login.location as any)?.country)
+        .filter(Boolean);
+      
+      if (recentCountries.length > 0 && !recentCountries.includes(currentLocation.country_code)) {
+        anomalies.push(`New country access: ${currentLocation.country_code} (recent: ${recentCountries.join(', ')})`);
+      }
+
+      if (anomalies.length > 0) {
+        await FraudDetectionService.createFraudEvent({
+          userId,
+          eventType: 'LOCATION_ANOMALY',
+          severity: 'HIGH',
+          description: `Location anomalies detected: ${anomalies.join(', ')}`,
+          evidence: {
+            currentIP,
+            currentLocation,
+            recentLogins: recentLogins.map(l => ({
+              ip: l.ip,
+              location: l.location,
+              timestamp: l.createdAt
+            })),
+            anomalies
+          },
+          ipAddress: currentIP,
+        });
+      }
+
+      return anomalies;
+    } catch (error) {
+      console.error('Error detecting location anomalies:', error);
+      return null;
+    }
+  }
 } 

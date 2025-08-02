@@ -1,130 +1,199 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { UserBehaviorService } from "@/lib/analytics";
+import {
+  UserBehaviorService,
+  ProductInteractionService,
+  EnhancedAnalyticsService,
+} from "@/lib/analytics";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    
+
     // Handle empty or malformed request body
     let body;
     try {
-      body = await req.json();
-    } catch (jsonError) {
-      console.error('Error parsing request body:', jsonError);
+      const text = await req.text();
+      if (!text || text.trim() === "") {
+        return NextResponse.json(
+          { error: "Request body is empty" },
+          { status: 400 }
+        );
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
-    
-    const { events, ...singleEvent } = body || {}; // Destructure with default empty object
-    
-    // Handle batched events
-    if (events && Array.isArray(events)) {
-      const results = [];
-      
-      for (const event of events) {
-        try {
-          const result = await UserBehaviorService.trackBehaviorEvent({
-            userId: session?.user?.id,
-            sessionId: event.sessionId,
-            eventType: event.eventType,
-            pageUrl: event.pageUrl,
-            referrerUrl: event.referrerUrl,
-            elementId: event.elementId,
-            elementType: event.elementType,
-            elementText: event.elementText,
-            interactionData: event.interactionData,
-            timeOnPage: event.timeOnPage,
-            scrollDepth: event.scrollDepth,
-            mouseMovements: event.mouseMovements,
-            clicks: event.clicks,
-            deviceId: event.deviceId,
-            ipAddress: event.ipAddress,
-            userAgent: event.userAgent,
-            location: event.location,
-            isFirstVisit: event.isFirstVisit,
-            visitNumber: event.visitNumber,
-            sessionDuration: event.sessionDuration,
-          });
-          results.push({ success: true, eventId: result.id });
-        } catch (error) {
-          console.error('Error tracking batched event:', error);
-          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
-        }
-      }
-      
-      return NextResponse.json({ 
-        message: "Batched events processed", 
-        results,
-        successCount: results.filter(r => r.success).length,
-        failureCount: results.filter(r => !r.success).length
-      });
-    }
-    
-    // Handle single event (backward compatibility)
-    const {
-      sessionId,
-      eventType,
-      pageUrl,
-      referrerUrl,
-      elementId,
-      elementType,
-      elementText,
-      interactionData,
-      timeOnPage,
-      scrollDepth,
-      mouseMovements,
-      clicks,
-      deviceId,
-      ipAddress,
-      userAgent,
-      location,
-      isFirstVisit,
-      visitNumber,
-      sessionDuration
-    } = singleEvent; // Use singleEvent for backward compatibility
 
-    // Validate required fields
-    if (!sessionId || !eventType || !pageUrl) {
+    const { events, sessionId, deviceId } = body || {};
+
+    // Handle single event
+    if (!Array.isArray(events)) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Events must be an array" },
         { status: 400 }
       );
     }
 
-    const result = await UserBehaviorService.trackBehaviorEvent({
-      userId: session?.user?.id,
-      sessionId,
-      eventType,
-      pageUrl,
-      referrerUrl,
-      elementId,
-      elementType,
-      elementText,
-      interactionData,
-      timeOnPage,
-      scrollDepth,
-      mouseMovements,
-      clicks,
-      deviceId,
-      ipAddress,
-      userAgent,
-      location,
-      isFirstVisit,
-      visitNumber,
-      sessionDuration,
-    });
+    // Get client IP
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0] ||
+      req.headers.get("x-real-ip") ||
+      req.ip ||
+      "unknown";
+    const userAgent = req.headers.get("user-agent") || undefined;
 
-    return NextResponse.json({ 
-      message: "Event tracked successfully", 
-      eventId: result.id 
+    // Process each event based on its type
+    const processedEvents = [];
+
+    for (const event of events) {
+      const {
+        eventType,
+        pageUrl,
+        referrerUrl,
+        elementId,
+        elementType,
+        elementText,
+        interactionData,
+        timestamp,
+        userId = session?.user?.id,
+      } = event;
+
+      // Route events to appropriate services
+      switch (eventType) {
+        case "PRODUCT_INTERACTION":
+          if (interactionData?.productId) {
+            await ProductInteractionService.trackProductInteraction({
+              userId,
+              productId: interactionData.productId,
+              sessionId: sessionId || "unknown",
+              interactionType: interactionData.interactionType,
+              interactionData: interactionData.interactionData,
+              timeOnProduct: interactionData.timeOnProduct,
+              imagesViewed: interactionData.imagesViewed,
+              descriptionRead: interactionData.descriptionRead,
+              reviewsViewed: interactionData.reviewsViewed,
+              sellerInfoViewed: interactionData.sellerInfoViewed,
+              sourceType: interactionData.sourceType,
+              sourceId: interactionData.sourceId,
+              referrerUrl,
+              deviceId,
+              ipAddress: clientIP,
+              userAgent,
+            });
+          }
+          break;
+
+        case "PURCHASE_INTENT":
+          if (interactionData?.productId && interactionData?.sellerId) {
+            await EnhancedAnalyticsService.trackPurchaseIntent({
+              userId,
+              sessionId: sessionId || "unknown",
+              productId: interactionData.productId,
+              sellerId: interactionData.sellerId,
+              amount: interactionData.amount,
+              currency: interactionData.currency,
+              step: interactionData.step,
+              failureReason: interactionData.failureReason,
+              deviceId,
+              ipAddress: clientIP,
+              userAgent,
+            });
+          }
+          break;
+
+        case "CUSTOM_ORDER":
+          if (interactionData?.sellerId) {
+            await EnhancedAnalyticsService.trackCustomOrderEvent({
+              userId: userId || "unknown",
+              sessionId: sessionId || "unknown",
+              sellerId: interactionData.sellerId,
+              action: interactionData.action,
+              formId: interactionData.formId,
+              amount: interactionData.amount,
+              failureReason: interactionData.failureReason,
+              deviceId,
+              ipAddress: clientIP,
+              userAgent,
+            });
+          }
+          break;
+
+        case "BEHAVIOR_SUMMARY":
+          // Store aggregated behavior data instead of individual events
+          await UserBehaviorService.trackBehaviorEvent({
+            userId,
+            sessionId: sessionId || "unknown",
+            eventType: "BEHAVIOR_SUMMARY",
+            pageUrl,
+            referrerUrl,
+            interactionData: {
+              mouseMovements: interactionData.mouseMovements,
+              avgVelocity: interactionData.avgVelocity,
+              movementPattern: interactionData.movementPattern,
+              riskScore: interactionData.riskScore,
+              scrollDepth: interactionData.scrollDepth,
+              scrollSessions: interactionData.scrollSessions,
+              timeOnPage: interactionData.timeOnPage,
+              clicks: interactionData.clicks,
+              uniqueElements: interactionData.uniqueElements,
+            },
+            deviceId,
+            ipAddress: clientIP,
+            userAgent,
+          });
+          break;
+
+        case "REGISTRATION_PATTERN":
+          if (interactionData?.email) {
+            await EnhancedAnalyticsService.trackRegistrationPattern({
+              email: interactionData.email,
+              ipAddress: clientIP,
+              deviceId,
+              userAgent,
+              action: interactionData.action,
+              failureReason: interactionData.failureReason,
+              isReturningIP: interactionData.isReturningIP,
+              isReturningDevice: interactionData.isReturningDevice,
+            });
+          }
+          break;
+
+        default:
+          // Handle general user behavior events
+          await UserBehaviorService.trackBehaviorEvent({
+            userId,
+            sessionId: sessionId || "unknown",
+            eventType,
+            pageUrl,
+            referrerUrl,
+            elementId,
+            elementType,
+            elementText,
+            interactionData,
+            deviceId,
+            ipAddress: clientIP,
+            userAgent,
+          });
+          break;
+      }
+
+      processedEvents.push(event);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Processed ${processedEvents.length} events`,
+      processedCount: processedEvents.length,
     });
   } catch (error) {
-    console.error('Error tracking behavior event:', error);
+    console.error("Error processing behavior events:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to process behavior events" },
       { status: 500 }
     );
   }
@@ -133,21 +202,18 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
-    const sessionId = searchParams.get('sessionId');
-    const eventType = searchParams.get('eventType');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const deviceId = searchParams.get('deviceId');
+    const userId = searchParams.get("userId");
+    const sessionId = searchParams.get("sessionId");
+    const eventType = searchParams.get("eventType");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const deviceId = searchParams.get("deviceId");
 
     // Parse dates
     const start = startDate ? new Date(startDate) : undefined;
@@ -165,14 +231,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      events
+      events,
     });
-
   } catch (error) {
-    console.error('Error getting behavior analytics:', error);
+    console.error("Error getting behavior analytics:", error);
     return NextResponse.json(
       { error: "Failed to get behavior analytics" },
       { status: 500 }
     );
   }
-} 
+}
