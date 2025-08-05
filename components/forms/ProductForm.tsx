@@ -6,7 +6,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
-import { ProductSchema } from "@/schemas/ProductSchema";
+import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
 import { 
   SUPPORTED_CURRENCIES, 
   SUPPORTED_WEIGHT_UNITS, 
@@ -39,6 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
+  isDraft?: boolean;
 };
 
 type ProductFormProps = {
@@ -147,7 +148,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const { canAccessTest, loading: testAccessLoading } = useTestEnvironment();
 
   const form = useForm<z.infer<typeof ProductSchema>>({
-    resolver: zodResolver(ProductSchema),
+    resolver: zodResolver(initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema),
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
@@ -290,9 +291,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setIsLoading(true);
       console.log("[DEBUG] Submitting form with data:", data);
 
+      // Determine if this should be saved as a draft
+      const isDraft = initialData?.status === "DRAFT" || data.status === "DRAFT";
+      
       // The schema already handles the conversion to cents
       const formData = {
         ...data,
+        status: isDraft ? "DRAFT" : data.status,
         // Remove these conversions since they're handled by the schema
         // price: Math.round(data.price * 100),
         // shippingCost: Math.round(data.shippingCost * 100),
@@ -312,6 +317,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
       const responseData = await response.json();
 
       if (!response.ok) {
+        // Handle onboarding incomplete error
+        if (responseData.onboardingIncomplete) {
+          toast.error("Please complete your seller onboarding before activating products");
+          return;
+        }
         throw new Error(responseData.error || "Failed to save product");
       }
 
@@ -337,15 +347,61 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
+      // Show appropriate success message
+      if (responseData.isDraft) {
+        toast.success("Product draft saved successfully! Complete all required fields to make it active.");
+      } else {
+        toast.success(initialData ? "Product updated" : "Product created");
+      }
+      
       // Only navigate if the update was successful
       router.replace("/seller/dashboard/products");
       router.refresh();
-      
-      toast.success(initialData ? "Product updated" : "Product created");
       setTempImages([]); // Clear temp images after successful submission
     } catch (error) {
       console.error('Form submission error:', error);
       toast.error("Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!initialData?.id) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch("/api/products/update-status", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: initialData.id,
+          newStatus,
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        if (responseData.onboardingIncomplete) {
+          toast.error("Please complete your seller onboarding before activating products");
+          return;
+        }
+        if (responseData.missingFields) {
+          toast.error(`Please complete these required fields: ${responseData.missingFields.join(", ")}`);
+          return;
+        }
+        throw new Error(responseData.error || "Failed to update product status");
+      }
+
+      toast.success(responseData.message);
+      router.refresh();
+    } catch (error) {
+      console.error('Status update error:', error);
+      toast.error("Failed to update product status");
     } finally {
       setIsLoading(false);
     }
@@ -414,99 +470,257 @@ export function ProductForm({ initialData }: ProductFormProps) {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Product Information Section */}
-        <ProductInfoSection
-          form={form}
-          description={description}
-          setDescription={setDescription}
-          tags={tags}
-          setTags={setTags}
-          materialTags={materialTags}
-          setMaterialTags={setMaterialTags}
-        />
+    <div className="min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {initialData ? "Edit Product" : "Create New Product"}
+          </h1>
+          <p className="text-gray-600">
+            {initialData 
+              ? "Update your product information and settings" 
+              : "Fill out the information below to create your product listing"
+            }
+          </p>
+        </div>
 
-        {/* Product Photos Section */}
-        <ProductPhotosSection
-          images={images}
-          setImages={setImages}
-          setTempImages={setTempImages}
-          tempImages={tempImages}
-          form={form}
-          setTempUploadsCreated={setTempUploadsCreated}
-        />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            
+            {/* Grid Layout for Sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* Basic Information Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Basic Information
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Essential product details that customers will see first</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductInfoSection
+                    form={form}
+                    description={description}
+                    setDescription={setDescription}
+                    tags={tags}
+                    setTags={setTags}
+                    materialTags={materialTags}
+                    setMaterialTags={setMaterialTags}
+                  />
+                </div>
+              </div>
 
-        {/* Product Options Section */}
-        <ProductOptionsSection
-          dropdownOptions={dropdownOptions}
-          setDropdownOptions={setDropdownOptions}
-        />
+              {/* Media Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Media & Visuals
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Images and files that showcase your product</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductPhotosSection
+                    images={images}
+                    setImages={setImages}
+                    setTempImages={setTempImages}
+                    tempImages={tempImages}
+                    form={form}
+                    setTempUploadsCreated={setTempUploadsCreated}
+                  />
+                  
+                  <ProductFileSection 
+                    form={form} 
+                    tempFiles={tempFiles} 
+                    setTempFiles={setTempFiles}
+                    setTempUploadsCreated={setTempUploadsCreated}
+                  />
+                </div>
+              </div>
 
-        {/* Product Inventory Section */}
-        <ProductInventorySection form={form} />
+              {/* Inventory & Options Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Inventory & Options
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Stock levels, variants, and product options</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductInventorySection form={form} />
+                  
+                  <ProductOptionsSection
+                    dropdownOptions={dropdownOptions}
+                    setDropdownOptions={setDropdownOptions}
+                  />
+                </div>
+              </div>
 
-        {/* Product How It's Made Section */}
-        <ProductHowItsMadeSection form={form} />
+              {/* Shipping & Dimensions Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    Shipping & Dimensions
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Shipping costs, dimensions, and handling information</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductShippingSection form={form} freeShipping={freeShipping} />
+                </div>
+              </div>
 
-        {/* Product Shipping Section */}
-        <ProductShippingSection form={form} freeShipping={freeShipping} />
+              {/* Story & Details Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                    Story & Details
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Tell customers about your product and how it&apos;s made</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductHowItsMadeSection form={form} />
+                </div>
+              </div>
 
-        {/* Product File Section */}
-        <ProductFileSection 
-          form={form} 
-          tempFiles={tempFiles} 
-          setTempFiles={setTempFiles}
-          setTempUploadsCreated={setTempUploadsCreated}
-        />
+              {/* Promotions & Scheduling Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-pink-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    Promotions & Scheduling
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Discounts, sales, and product drops</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductDiscountSection form={form} />
+                  <ProductDropSection form={form} />
+                </div>
+              </div>
 
-        {/* Product Discount Section */}
-        <ProductDiscountSection form={form} />
-
-        {/* Product Drop Section */}
-        <ProductDropSection form={form} />
-
-        {/* Product SEO Section */}
-        <ProductSEOSection
-          metaTitle={metaTitle}
-          setMetaTitle={setMetaTitle}
-          metaDescription={metaDescription}
-          setMetaDescription={setMetaDescription}
-          keywords={keywords}
-          setKeywords={setKeywords}
-          ogTitle={ogTitle}
-          setOgTitle={setOgTitle}
-          ogDescription={ogDescription}
-          setOgDescription={setOgDescription}
-          ogImage={ogImage}
-          setOgImage={setOgImage}
-        />
-
-        {canAccessTest && (
-          <div className="space-y-2">
-            <Label htmlFor="isTestProduct">Test Product</Label>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isTestProduct"
-                checked={form.watch("isTestProduct") || false}
-                onCheckedChange={(checked) => form.setValue("isTestProduct", checked as boolean)}
-              />
-              <Label htmlFor="isTestProduct" className="text-sm font-normal">
-                Mark as test product (only visible to test users)
-              </Label>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Test products are only visible to users with test environment access.
-            </p>
-          </div>
-        )}
 
-        {/* Submit Button */}
-        <Submitbutton 
-          title={initialData ? "Update Product" : "Create Product"} 
-          isPending={isLoading} 
-        />
-      </form>
-    </Form>
+            {/* Full Width Sections */}
+            <div className="space-y-8">
+              
+              {/* SEO & Marketing Section - Full Width */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+                    SEO & Marketing
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">Optimize your product for search and social media</p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductSEOSection
+                    metaTitle={metaTitle}
+                    setMetaTitle={setMetaTitle}
+                    metaDescription={metaDescription}
+                    setMetaDescription={setMetaDescription}
+                    keywords={keywords}
+                    setKeywords={setKeywords}
+                    ogTitle={ogTitle}
+                    setOgTitle={setOgTitle}
+                    ogDescription={ogDescription}
+                    setOgDescription={setOgDescription}
+                    ogImage={ogImage}
+                    setOgImage={setOgImage}
+                  />
+                </div>
+              </div>
+
+              {/* Test Product Section - Full Width */}
+              {canAccessTest && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                      Testing Options
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">Configure test environment settings</p>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="isTestProduct"
+                        checked={form.watch("isTestProduct") || false}
+                        onCheckedChange={(checked) => form.setValue("isTestProduct", checked as boolean)}
+                      />
+                      <div>
+                        <Label htmlFor="isTestProduct" className="text-sm font-medium">
+                          Mark as test product
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Only visible to users with test environment access
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Action Buttons */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="w-full sm:w-auto px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors h-12 flex items-center justify-center"
+                >
+                  Cancel
+                </button>
+                
+                {initialData?.status === "DRAFT" && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate("ACTIVE")}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors flex items-center justify-center gap-2 h-12"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Activating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Activate Product
+                      </>
+                    )}
+                  </button>
+                )}
+                
+                {initialData?.status === "ACTIVE" && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate("HIDDEN")}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 font-medium transition-colors h-12 flex items-center justify-center"
+                  >
+                    {isLoading ? "Hiding..." : "Hide Product"}
+                  </button>
+                )}
+                
+                <Submitbutton 
+                  title={initialData ? "Update Product" : "Create Product"} 
+                  isPending={isLoading} 
+                />
+              </div>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }

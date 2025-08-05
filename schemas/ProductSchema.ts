@@ -32,125 +32,167 @@ const createMonetarySchema = (fieldName: string) => {
 
 // Create a type for the product data
 type ProductData = {
-  currency: string;
+  currency: string
   price: number;
   shippingCost: number;
   handlingFee: number;
-};
+}
 
-export const ProductSchema = z
-  .object({
-    name: z.string().min(1, {
-      message: "Please enter your product's name, required.",
+// Base product schema with common fields
+const baseProductSchema = z.object({
+  name: z.string().min(1, {
+    message: "Please enter your product's name, required.",
+  }),
+  sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
+  description: descriptionJsonSchema,
+  options: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Option name is required"),
+        value: z.string().min(1, "Option value is required"),
+      })
+    )
+    .nullable()
+    .optional(),
+  price: createMonetarySchema("price"),
+  currency: z.enum(SUPPORTED_CURRENCIES.map(c => c.code) as [string, ...string[]], {
+    required_error: "Please select a currency",
+  }).default("USD"),
+  status: z.string(),
+  images: z.array(z.string().url()).min(1, {
+    message: "Please add at least one image.",
+  }),
+  isDigital: z.boolean().default(false),
+  shippingCost: z.preprocess(
+    (val) => {
+      if (typeof val === "string") return parseFloat(val);
+      if (typeof val === "number") return val;
+      return 0;
+    },
+    z.number()
+      .min(0, "shippingCost must be at least $0")
+      .refine((val) => Number.isFinite(val), {
+        message: "shippingCost must be a valid number",
+      })
+  ).default(0),
+  handlingFee: z.preprocess(
+    (val) => {
+      if (typeof val === "string") return parseFloat(val);
+      if (typeof val === "number") return val;
+      return 0;
+    },
+    z.number()
+      .min(0, "handlingFee must be at least $0")
+      .refine((val) => Number.isFinite(val), {
+        message: "handlingFee must be a valid number",
+      })
+  ).default(0),
+  stock: z
+    .number()
+    .int()
+    .min(1, "Stock is required and must be at least 1 for physical products.")
+    .optional()
+    .nullable()
+    .transform((stock) => (stock === null ? undefined : stock)),
+  productFile: z.string().nullable().optional(),
+  numberSold: z.number().int().optional().default(0),
+  primaryCategory: z.string(),
+  secondaryCategory: z.string(),
+  tertiaryCategory: z.string().optional(),
+  tags: z.array(z.string()).optional().default([]),
+  materialTags: z.array(z.string()).optional().default([]),
+  onSale: z.boolean().default(false),
+  discount: z.number().int().optional(),
+  freeShipping: z.boolean().default(false),
+  itemWeight: z.number().optional(),
+  itemWeightUnit: z.enum(SUPPORTED_WEIGHT_UNITS.map(u => u.code) as [string, ...string[]]).default("lbs"),
+  itemLength: z.number().optional(),
+  itemWidth: z.number().optional(),
+  itemHeight: z.number().optional(),
+  itemDimensionUnit: z.enum(SUPPORTED_DIMENSION_UNITS.map(u => u.code) as [string, ...string[]]).default("in"),
+  shippingNotes: z.string().optional(),
+  inStockProcessingTime: z.number().optional(),
+  outStockLeadTime: z.number().optional(),
+  howItsMade: z.string().optional(),
+  productDrop: z.boolean().default(false),
+  dropDate: z
+    .date()
+    .nullable()
+    .optional()
+    .transform((date) => (date ? date.toISOString() : null)),
+  dropTime: z.string().optional(),
+  discountEndDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (typeof value === "string") {
+        return new Date(value); // Convert string to Date
+      }
+      return value;
     }),
-    sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
-    description: descriptionJsonSchema,
-    options: z
-      .array(
-        z.object({
-          name: z.string().min(1, "Option name is required"),
-          value: z.string().min(1, "Option value is required"),
-        })
-      )
-      .nullable()
-      .optional(),
-    price: createMonetarySchema("price"),
-    currency: z.enum(SUPPORTED_CURRENCIES.map(c => c.code) as [string, ...string[]], {
-      required_error: "Please select a currency",
-    }).default("USD"),
-    status: z.string(),
-    images: z.array(z.string().url()).min(1, {
-      message: "Please add at least one image.",
-    }),
-    isDigital: z.boolean().default(false),
-    shippingCost: z.preprocess(
+  discountEndTime: z.string().optional(),
+  NSFW: z.boolean().default(false),
+  taxCategory: z.enum([
+    "PHYSICAL_GOODS",
+    "DIGITAL_GOODS",
+    "SERVICES",
+    "SHIPPING",
+    "HANDLING"
+  ]).default("PHYSICAL_GOODS"),
+  taxCode: z.string().optional(),
+  taxExempt: z.boolean().default(false),
+  shippingProfileId: z.string().nullable(),
+  isTestProduct: z.boolean().default(false),
+  // SEO fields
+  metaTitle: z.string().max(60, "Meta title must be 60 characters or less").optional(),
+  metaDescription: z.string().max(160, "Meta description must be 160 characters or less").optional(),
+  keywords: z.array(z.string()).default([]),
+  ogTitle: z.string().max(60, "Social media title must be 60 characters or less").optional(),
+  ogDescription: z.string().max(160, "Social media description must be 160 characters or less").optional(),
+  ogImage: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+});
+
+// Draft schema - allows incomplete products
+export const ProductDraftSchema = baseProductSchema
+  .extend({
+    // For drafts, make most fields optional except basic ones
+    name: z.string().min(1, "Product name is required even for drafts"),
+    price: z.preprocess(
       (val) => {
         if (typeof val === "string") return parseFloat(val);
         if (typeof val === "number") return val;
         return 0;
       },
       z.number()
-        .min(0, "shippingCost must be at least $0")
+        .min(0, "Price must be at least $0 for drafts")
         .refine((val) => Number.isFinite(val), {
-          message: "shippingCost must be a valid number",
+          message: "Price must be a valid number",
         })
-    ).default(0),
-    handlingFee: z.preprocess(
-      (val) => {
-        if (typeof val === "string") return parseFloat(val);
-        if (typeof val === "number") return val;
-        return 0;
-      },
-      z.number()
-        .min(0, "handlingFee must be at least $0")
-        .refine((val) => Number.isFinite(val), {
-          message: "handlingFee must be a valid number",
-        })
-    ).default(0),
-    stock: z
-      .number()
-      .int()
-      .min(1, "Stock is required and must be at least 1 for physical products.")
-      .optional()
-      .nullable()
-      .transform((stock) => (stock === null ? undefined : stock)),
-    productFile: z.string().nullable().optional(),
-    numberSold: z.number().int().optional().default(0),
-    primaryCategory: z.string(),
-    secondaryCategory: z.string(),
-    tertiaryCategory: z.string().optional(),
-    tags: z.array(z.string()).optional().default([]),
-    materialTags: z.array(z.string()).optional().default([]),
-    onSale: z.boolean().default(false),
-    discount: z.number().int().optional(),
-    freeShipping: z.boolean().default(false),
-    itemWeight: z.number().optional(),
-    itemWeightUnit: z.enum(SUPPORTED_WEIGHT_UNITS.map(u => u.code) as [string, ...string[]]).default("lbs"),
-    itemLength: z.number().optional(),
-    itemWidth: z.number().optional(),
-    itemHeight: z.number().optional(),
-    itemDimensionUnit: z.enum(SUPPORTED_DIMENSION_UNITS.map(u => u.code) as [string, ...string[]]).default("in"),
-    shippingNotes: z.string().optional(),
-    inStockProcessingTime: z.number().optional(),
-    outStockLeadTime: z.number().optional(),
-    howItsMade: z.string().optional(),
-    productDrop: z.boolean().default(false),
-    dropDate: z
-      .date()
-      .nullable()
-      .optional()
-      .transform((date) => (date ? date.toISOString() : null)),
-    dropTime: z.string().optional(),
-    discountEndDate: z
-      .union([z.date(), z.string()])
-      .optional()
-      .transform((value) => {
-        if (typeof value === "string") {
-          return new Date(value); // Convert string to Date
-        }
-        return value;
-      }),
-    discountEndTime: z.string().optional(),
-    NSFW: z.boolean().default(false),
-    taxCategory: z.enum([
-      "PHYSICAL_GOODS",
-      "DIGITAL_GOODS",
-      "SERVICES",
-      "SHIPPING",
-      "HANDLING"
-    ]).default("PHYSICAL_GOODS"),
-    taxCode: z.string().optional(),
-    taxExempt: z.boolean().default(false),
-    shippingProfileId: z.string().nullable(),
-    isTestProduct: z.boolean().default(false),
-    // SEO fields
-    metaTitle: z.string().max(60, "Meta title must be 60 characters or less").optional(),
-    metaDescription: z.string().max(160, "Meta description must be 160 characters or less").optional(),
-    keywords: z.array(z.string()).default([]),
-    ogTitle: z.string().max(60, "Social media title must be 60 characters or less").optional(),
-    ogDescription: z.string().max(160, "Social media description must be 160 characters or less").optional(),
-    ogImage: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+    ),
+    primaryCategory: z.string().min(1, "Primary category is required even for drafts"),
+    // Make other fields optional for drafts
+    description: z.object({
+      html: z.string(),
+      text: z.string(),
+    }).nullable().optional(),
+    images: z.array(z.string().url()).optional(),
+    stock: z.number().int().min(0).optional().nullable(),
   })
+  .transform((data) => {
+    // Convert all monetary values to smallest unit
+    const decimals = getCurrencyDecimals(data.currency);
+    const multiplier = Math.pow(10, decimals);
+
+    return {
+      ...data,
+      price: Math.round(data.price * multiplier),
+      shippingCost: Math.round((data.shippingCost || 0) * multiplier),
+      handlingFee: Math.round((data.handlingFee || 0) * multiplier),
+    };
+  });
+
+// Full product schema - requires all fields for active products
+export const ProductSchema = baseProductSchema
   .transform((data) => {
     // Convert all monetary values to smallest unit
     const decimals = getCurrencyDecimals(data.currency);
@@ -302,5 +344,38 @@ export const ProductSchema = z
           path: ["price"],
         });
       }
+    }
+
+    // Additional validations for active products
+    if (!data.description || !data.description.html || data.description.html.trim() === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Product description is required for active products.",
+        path: ["description"],
+      });
+    }
+
+    if (!data.images || data.images.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "At least one product image is required for active products.",
+        path: ["images"],
+      });
+    }
+
+    if (!data.isDigital && (!data.stock || data.stock < 1)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Stock quantity is required and must be at least 1 for physical products.",
+        path: ["stock"],
+      });
+    }
+
+    if (data.isDigital && !data.productFile) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Product file is required for digital products.",
+        path: ["productFile"],
+      });
     }
   });

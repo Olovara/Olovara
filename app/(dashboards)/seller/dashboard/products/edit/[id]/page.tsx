@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ProductForm } from "@/components/forms/ProductForm";
+import { ProductDraftStatus } from "@/components/product/ProductDraftStatus";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
 
@@ -102,7 +103,14 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="flex items-center justify-center vertical-center">
+    <div className="w-full">
+      <ProductDraftStatus 
+        product={product} 
+        onActivate={() => {
+          // This will be handled by the ProductForm component
+          window.location.reload();
+        }}
+      />
       <ProductForm initialData={product} />
     </div>
   );

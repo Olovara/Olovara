@@ -21,13 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CategoriesMap } from "@/data/categories";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { createPortal } from "react-dom";
 
 // Update the SUPPORTED_CURRENCIES to match the schema
 const SUPPORTED_CURRENCIES = [
@@ -62,6 +63,11 @@ export const ProductInfoSection = ({
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = useFormContext();
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+
   const currentStatus = watch("status");
   const selectedCurrency = watch("currency") || "USD";
   const { data: session } = useSession();
@@ -170,35 +176,58 @@ export const ProductInfoSection = ({
                 {...register("sku")}
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  const productName = watch("name");
-                  if (!productName) {
-                    toast.error("Please enter a product name first");
-                    return;
-                  }
-                  
-                  try {
-                    // Import the function dynamically to avoid SSR issues
-                    const { generateUniqueSKU } = await import("@/lib/sku-generator");
-                    if (!currentUser?.id) {
-                      toast.error("User not authenticated");
-                      return;
-                    }
-                    const generatedSKU = await generateUniqueSKU(productName, currentUser.id);
-                    setValue("sku", generatedSKU);
-                    toast.success("SKU generated successfully!");
-                  } catch (error) {
-                    console.error("Error generating SKU:", error);
-                    toast.error("Failed to generate SKU");
+              <div 
+                className="relative inline-block"
+                onMouseEnter={() => {
+                  if (!watch("name") && buttonRef.current) {
+                    const rect = buttonRef.current.getBoundingClientRect();
+                    setTooltipPosition({
+                      x: rect.left + rect.width / 2,
+                      y: rect.top
+                    });
+                    setShowTooltip(true);
                   }
                 }}
-                disabled={!watch("name")}
+                onMouseLeave={() => {
+                  setShowTooltip(false);
+                }}
+                onClick={() => {
+                  if (!watch("name")) {
+                    toast.error("Please enter a product name first");
+                  }
+                }}
               >
-                Generate
-              </Button>
+                <Button
+                  ref={buttonRef}
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    const productName = watch("name");
+                    if (!productName) {
+                      toast.error("Please enter a product name first");
+                      return;
+                    }
+                    
+                    try {
+                      // Import the function dynamically to avoid SSR issues
+                      const { generateUniqueSKU } = await import("@/lib/sku-generator");
+                      if (!currentUser?.id) {
+                        toast.error("User not authenticated");
+                        return;
+                      }
+                      const generatedSKU = await generateUniqueSKU(productName, currentUser.id);
+                      setValue("sku", generatedSKU);
+                      toast.success("SKU generated successfully!");
+                    } catch (error) {
+                      console.error("Error generating SKU:", error);
+                      toast.error("Failed to generate SKU");
+                    }
+                  }}
+                  disabled={!watch("name")}
+                >
+                  Generate
+                </Button>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
               SKU helps you track inventory. Leave blank to auto-generate, or enter your own.
@@ -584,6 +613,27 @@ export const ProductInfoSection = ({
           )}
         />
       </div>
+
+      {/* Portal Tooltip */}
+      {showTooltip && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltipPosition.x,
+            top: tooltipPosition.y - 40, // Move it higher above the button
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }}
+          className="bg-purple-600 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap"
+        >
+          Please enter a product name first
+          <div 
+            className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-purple-600"
+          ></div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

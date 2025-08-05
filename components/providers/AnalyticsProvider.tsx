@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDeviceFingerprint } from '@/hooks/use-device-fingerprint';
 import { useAnalyticsTracking } from '@/hooks/use-analytics-tracking';
@@ -12,6 +12,7 @@ interface AnalyticsProviderProps {
 export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   const { data: session } = useSession();
   const analyticsInitializedRef = useRef<boolean>(false);
+  const [isAnalyticsReady, setIsAnalyticsReady] = useState(false);
   
   // Initialize device fingerprinting
   const { 
@@ -35,8 +36,19 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     referrerUrl: typeof document !== 'undefined' ? document.referrer : undefined
   });
 
+  // Lazy load analytics after page is ready
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAnalyticsReady(true);
+    }, 1000); // Wait 1 second after page load
+
+    return () => clearTimeout(timer);
+  }, []);
+
   // Initialize device fingerprinting on mount
   useEffect(() => {
+    if (!isAnalyticsReady) return;
+
     const initAnalytics = async () => {
       // Prevent multiple initialization attempts
       if (analyticsInitializedRef.current) {
@@ -74,6 +86,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
       initAnalytics();
     }
   }, [
+    isAnalyticsReady,
     session?.user?.id, 
     deviceFingerprint, 
     deviceAnalysis,

@@ -111,6 +111,11 @@ export default async function ProductsPage({
                     Active
                   </Link>
               </TabsTrigger>
+                <TabsTrigger value="DRAFT" asChild>
+                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "DRAFT" } }}>
+                    Drafts
+                  </Link>
+              </TabsTrigger>
                 <TabsTrigger value="HIDDEN" asChild>
                   <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "HIDDEN" } }}>
                     Hidden

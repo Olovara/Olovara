@@ -311,6 +311,12 @@ async function generateFontFingerprint(): Promise<string> {
 
 // Generate audio fingerprint
 async function generateAudioFingerprint(): Promise<string> {
+  // Temporarily disabled due to chunk loading issues with AudioContext
+  // TODO: Re-enable with AudioWorkletNode instead of ScriptProcessorNode
+  return 'audio-disabled';
+  
+  // Original code (commented out):
+  /*
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -333,6 +339,7 @@ async function generateAudioFingerprint(): Promise<string> {
   } catch (error) {
     return 'audio-error';
   }
+  */
 }
 
 // Get browser info

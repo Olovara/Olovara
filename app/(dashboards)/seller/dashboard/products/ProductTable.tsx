@@ -143,10 +143,17 @@ export function ProductTable({ products }: ProductTableProps) {
                       ? "default"
                       : product.status === "HIDDEN"
                       ? "secondary"
+                      : product.status === "DRAFT"
+                      ? "outline"
                       : "destructive"
                   }
+                  className={
+                    product.status === "DRAFT" 
+                      ? "border-orange-300 text-orange-700 bg-orange-50" 
+                      : ""
+                  }
                 >
-                  {product.status || "UNKNOWN"}
+                  {product.status === "DRAFT" ? "Draft" : product.status || "UNKNOWN"}
                 </Badge>
               </TableCell>
               <TableCell>${(product.price / 100).toFixed(2)}</TableCell>

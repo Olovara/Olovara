@@ -4,6 +4,7 @@ const next = require("next");
 const { Server } = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
+const path = require("path");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -203,6 +204,13 @@ app.prepare().then(() => {
   // Handle all other requests with Next.js
   httpServer.on('request', async (req, res) => {
     try {
+      // Ensure proper handling of static files in development
+      if (dev && req.url && req.url.startsWith('/_next/static/')) {
+        // Let Next.js handle static files directly
+        await handler(req, res);
+        return;
+      }
+      
       await handler(req, res);
     } catch (error) {
       console.error('Error handling request:', error);

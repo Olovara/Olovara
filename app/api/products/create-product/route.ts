@@ -1,14 +1,10 @@
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { hasPermission } from "@/lib/permissions";
-import { NextRequest, NextResponse } from "next/server";
-import { Permission } from "@/data/roles-and-permissions";
+import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
 import { generateUniqueSKU } from "@/lib/sku-generator";
 
-// Remove the Edge Runtime configuration
-// export const runtime = "edge";
-export const dynamic = "force-dynamic";
-export const maxDuration = 60; // 60 seconds timeout
+// 60 seconds timeout
 
 // For body size limit, we need to use a different approach in App Router
 // This will be handled in the POST function
@@ -18,46 +14,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "You must be logged in" },
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unauthorized",
+        }),
         { status: 401 }
       );
     }
 
-    // Fetch seller record to confirm user is a seller
-    const seller = await db.seller.findUnique({
-      where: { userId },
-      select: { id: true, userId: true },
-    });
-    if (!seller) {
-      return NextResponse.json(
-        { error: "Seller account not found" },
-        { status: 403 }
-      );
-    }
-
-    const canCreateProducts = await hasPermission(userId, "CREATE_PRODUCTS" as Permission);
-    if (!canCreateProducts) {
-      return NextResponse.json(
-        { error: "You don't have permission to create products" },
-        { status: 403 }
-      );
-    }
-
-    // Add the body size check here
-    const contentLength = req.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
-      // 10MB
-      return new Response(
-        JSON.stringify({ success: false, error: "Request body too large" }),
-        { status: 413 }
-      );
-    }
-
-    // Get the form data from the request body
     const data = await req.json();
     console.log("[API INPUT] Received product data:", data);
 
@@ -107,6 +73,54 @@ export async function POST(req: NextRequest) {
       ogImage,
     } = data;
 
+    // Check if seller exists and get onboarding status
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: {
+        id: true,
+        userId: true,
+        isFullyActivated: true,
+        applicationAccepted: true,
+        stripeConnected: true,
+        shopProfileComplete: true,
+        shippingProfileCreated: true,
+      },
+    });
+
+    if (!seller) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Seller profile not found",
+        }),
+        { status: 404 }
+      );
+    }
+
+    // Determine if this is a draft or active product
+    const isDraft = status === "DRAFT";
+    
+    // If trying to create an active product, check onboarding completion
+    if (!isDraft && status === "ACTIVE") {
+      if (!seller.isFullyActivated) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "You must complete your seller onboarding before creating active products. Please complete all onboarding steps first.",
+            onboardingIncomplete: true,
+            onboardingStatus: {
+              applicationAccepted: seller.applicationAccepted,
+              stripeConnected: seller.stripeConnected,
+              shopProfileComplete: seller.shopProfileComplete,
+              shippingProfileCreated: seller.shippingProfileCreated,
+              isFullyActivated: seller.isFullyActivated,
+            }
+          }),
+          { status: 403 }
+        );
+      }
+    }
+
     // Basic validation for required fields
     if (!name || !price || !primaryCategory) {
       console.warn("Missing required fields:", {
@@ -144,71 +158,107 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Step 2: Prepare clean data for product creation ---
-    const cleanData = {
-      userId: seller.userId, // Use seller's userId for Product
-      name,
+    const productData = {
+      userId: session.user.id,
+      name: name.trim(),
       sku: finalSku,
-      price: Number(price),
+      description: description || { html: "", text: "" },
+      price: Math.round(price * 100), // Convert to cents
       currency,
-      description: description || "",
-      status,
-      shippingCost: Number(shippingCost),
-      handlingFee: Number(handlingFee),
-      itemWeight: parseFloat(itemWeight) || 0,
-      itemLength: parseFloat(itemLength) || 0,
-      itemWidth: parseFloat(itemWidth) || 0,
-      itemHeight: parseFloat(itemHeight) || 0,
-      shippingNotes: shippingNotes || "",
+      status: isDraft ? "DRAFT" : status,
+      shippingCost: Math.round(shippingCost * 100),
+      handlingFee: Math.round(handlingFee * 100),
+      itemWeight,
+      itemWeightUnit: "lbs",
+      itemLength,
+      itemWidth,
+      itemHeight,
+      itemDimensionUnit: "in",
+      shippingNotes,
       freeShipping,
-      isDigital,
-      stock: Number(stock),
+      isDigital: isDigital || false,
+      stock: stock || 1,
       images,
-      productFile: productFile || null,
+      productFile,
       numberSold,
       onSale,
-      discount: discount ? Number(discount) : null,
+      discount,
       primaryCategory,
       secondaryCategory,
       tertiaryCategory,
       tags,
       materialTags,
       options,
-      inStockProcessingTime: parseInt(inStockProcessingTime) || 0,
-      outStockLeadTime: parseInt(outStockLeadTime) || 0,
-      howItsMade: howItsMade || "",
+      inStockProcessingTime,
+      outStockLeadTime,
+      howItsMade,
       productDrop,
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
-      dropTime: dropTime || null,
+      dropTime,
       discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
+      discountEndTime: data.discountEndTime,
+      metaTitle,
+      metaDescription,
+      keywords,
+      ogTitle,
+      ogDescription,
+      ogImage,
       isTestProduct,
-      // SEO fields
-      metaTitle: metaTitle || null,
-      metaDescription: metaDescription || null,
-      keywords: keywords || [],
-      ogTitle: ogTitle || null,
-      ogDescription: ogDescription || null,
-      ogImage: ogImage || null,
     };
-    console.log("[PRE-CREATE] Data prepared for db.product.create:", cleanData);
 
-    // --- Step 2: Create the product in the database ---
-    const result = await db.$transaction(async (tx) => {
-      const product = await tx.product.create({
-        data: cleanData,
-      });
+    // --- Step 3: Validate data based on whether it's a draft or active product ---
+    let validationResult;
+    if (isDraft) {
+      validationResult = ProductDraftSchema.safeParse(productData);
+    } else {
+      validationResult = ProductSchema.safeParse(productData);
+    }
 
-      console.log("[DEBUG] Product created successfully:", product.id);
-      return product;
+    if (!validationResult.success) {
+      console.error("Validation failed:", validationResult.error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        }),
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validationResult.data;
+
+    // --- Step 4: Create the product ---
+    const product = await db.product.create({
+      data: {
+        ...validatedData,
+        userId: session.user.id, // Add userId back since it's not in the schema
+        description: validatedData.description || { html: "", text: "" }, // Ensure description is never undefined
+        stock: validatedData.stock ?? undefined, // Convert null to undefined for Prisma
+      },
     });
 
-    return new Response(JSON.stringify({ success: true, product: result }), {
-      status: 200,
-    });
+    console.log("[PRODUCT CREATED] Product ID:", product.id);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        productId: product.id,
+        message: isDraft 
+          ? "Product draft saved successfully! Complete the required fields to make it active." 
+          : "Product created successfully!",
+        isDraft,
+      }),
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating product:", error);
     return new Response(
-      JSON.stringify({ success: false, error: "Internal Server Error" }),
+      JSON.stringify({
+        success: false,
+        error: "Failed to create product",
+      }),
       { status: 500 }
     );
   }

@@ -14,6 +14,7 @@ enum AccountStatus {
 }
 
 enum ProductStatus {
+  DRAFT
   ACTIVE
   DISABLED
   HIDDEN
