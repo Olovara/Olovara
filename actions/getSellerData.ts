@@ -24,18 +24,6 @@ interface SellerData extends Partial<Seller> {
   isSustainable?: boolean;
   isCharitable?: boolean;
   valuesPreferNotToSay?: boolean;
-  businessName?: string;
-  taxId?: string;
-  taxCountry?: TaxCountry;
-  additionalTaxRegistrations?: string;
-  businessAddress?: {
-    street?: string;
-    street2?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-  };
   addresses?: {
     encryptedStreet: string;
     streetIV: string;
@@ -85,16 +73,6 @@ export const getSellerData = async () => {
         isSustainable: true,
         isCharitable: true,
         valuesPreferNotToSay: true,
-        encryptedBusinessName: true,
-        businessNameIV: true,
-        businessNameSalt: true,
-        encryptedTaxId: true,
-        taxIdIV: true,
-        taxIdSalt: true,
-        taxCountry: true,
-        encryptedAdditionalTaxRegistrations: true,
-        additionalTaxRegistrationsIV: true,
-        additionalTaxRegistrationsSalt: true,
         addresses: {
           where: {
             isBusinessAddress: true
@@ -132,34 +110,10 @@ export const getSellerData = async () => {
     // Decrypt all encrypted fields
     const decryptedData: SellerData = {
       ...seller,
-      businessName: seller.encryptedBusinessName ? 
-        await decryptData(seller.encryptedBusinessName, seller.businessNameIV!, seller.businessNameSalt!) : undefined,
-      taxId: seller.encryptedTaxId ? 
-        await decryptData(seller.encryptedTaxId, seller.taxIdIV!, seller.taxIdSalt!) : undefined,
-      additionalTaxRegistrations: seller.encryptedAdditionalTaxRegistrations ? 
-        await decryptData(seller.encryptedAdditionalTaxRegistrations, seller.additionalTaxRegistrationsIV!, seller.additionalTaxRegistrationsSalt!) : undefined,
     };
-
-    // Decrypt address if it exists
-    if (seller.addresses && seller.addresses.length > 0) {
-      const address = seller.addresses[0];
-      decryptedData.businessAddress = {
-        street: await decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
-        street2: address.encryptedStreet2 ? 
-          await decryptData(address.encryptedStreet2, address.street2IV!, address.street2Salt!) : undefined,
-        city: await decryptData(address.encryptedCity, address.cityIV, address.citySalt),
-        state: address.encryptedState ? 
-          await decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : undefined,
-        postalCode: await decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
-        country: await decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
-      };
-    }
 
     // Remove encrypted fields from the response
     const { 
-      encryptedBusinessName, businessNameIV, businessNameSalt,
-      encryptedTaxId, taxIdIV, taxIdSalt,
-      encryptedAdditionalTaxRegistrations, additionalTaxRegistrationsIV, additionalTaxRegistrationsSalt,
       addresses,
       ...cleanData 
     } = decryptedData;

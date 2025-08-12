@@ -12,24 +12,13 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get the seller's business address and tax country
+    // Get the seller's shop country
     const seller = await db.seller.findUnique({
       where: {
         userId: session.user.id,
       },
       select: {
-        taxCountry: true,
-        addresses: {
-          where: {
-            isBusinessAddress: true,
-          },
-          select: {
-            encryptedCountry: true,
-            countryIV: true,
-            countrySalt: true,
-          },
-          take: 1,
-        },
+        shopCountry: true,
       },
     });
 
@@ -37,18 +26,7 @@ export async function GET() {
       return new NextResponse("Seller not found", { status: 404 });
     }
 
-    // Try to get country from business address first, then fall back to tax country
-    let country = seller.taxCountry;
-    
-    if (seller.addresses?.[0]?.encryptedCountry) {
-      try {
-        const address = seller.addresses[0];
-        country = decryptData(address.encryptedCountry, address.countryIV, address.countrySalt);
-      } catch (error) {
-        console.error("Error decrypting country:", error);
-        // Fall back to tax country
-      }
-    }
+    const country = seller.shopCountry;
 
     if (!country) {
       return new NextResponse("No country information found", { status: 404 });

@@ -91,12 +91,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // Note: Referral code is now generated during user signup, not during seller application
 
-      // Properly encrypt temporary tax information
-      const tempBusinessName = "Temporary Business Name";
-      const tempTaxId = "Temporary Tax ID";
-      
-      const encryptedBusinessName = encryptData(tempBusinessName);
-      const encryptedTaxId = encryptData(tempTaxId);
+      // No longer need to encrypt temporary tax information since we removed tax fields
 
       await tx.seller.create({
         data: {
@@ -106,14 +101,8 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           shopProfileComplete: false, // Will be set to true when profile is completed
           shippingProfileCreated: false, // Will be set to true when shipping profile is created
           isFullyActivated: false, // Will be set to true when all steps are completed
-          // Required encrypted fields with properly encrypted temporary values
-          encryptedBusinessName: encryptedBusinessName.encrypted,
-          businessNameIV: encryptedBusinessName.iv,
-          businessNameSalt: encryptedBusinessName.salt,
-          encryptedTaxId: encryptedTaxId.encrypted,
-          taxIdIV: encryptedTaxId.iv,
-          taxIdSalt: encryptedTaxId.salt,
-          taxCountry: "US", // Default to US, can be updated later
+          // Default shop country
+          shopCountry: "US", // Default to US, can be updated later
           // Use unique temporary connectedAccountId to avoid constraint issues
           connectedAccountId: uniqueConnectedAccountId,
           // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy

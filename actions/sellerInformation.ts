@@ -2,8 +2,6 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { encryptSellerTaxInfo } from "@/lib/encryption";
-import { currentUser } from "@/lib/auth";
 
 export async function updateSellerInformation(data: {
   shopName: string;
@@ -19,15 +17,6 @@ export async function updateSellerInformation(data: {
   isSustainable: boolean;
   isCharitable: boolean;
   valuesPreferNotToSay: boolean;
-  // Plain text tax information (will be encrypted internally)
-  businessName: string;
-  taxId: string;
-  businessAddress: string;
-  businessCity: string;
-  businessState?: string;
-  businessPostalCode: string;
-  taxCountry: string;
-  additionalTaxRegistrations?: string;
 }) {
   try {
     const session = await auth();
@@ -66,12 +55,7 @@ export async function updateSellerInformation(data: {
       return { success: false, error: "Shop name generates a URL that is already taken" };
     }
 
-    // Encrypt the tax information using the helper function
-    const encryptedTaxInfo = encryptSellerTaxInfo({
-      businessName: data.businessName,
-      taxId: data.taxId,
-      additionalTaxRegistrations: data.additionalTaxRegistrations,
-    });
+    // No longer need to encrypt tax information since we removed tax fields
 
     // Update seller information
     await db.seller.update({
@@ -91,21 +75,7 @@ export async function updateSellerInformation(data: {
         preferredWeightUnit: data.preferredWeightUnit,
         preferredDimensionUnit: data.preferredDimensionUnit,
         preferredDistanceUnit: data.preferredDistanceUnit,
-        // Use the encrypted tax information
-        encryptedBusinessName: encryptedTaxInfo.encryptedBusinessName,
-        businessNameIV: encryptedTaxInfo.businessNameIV,
-        businessNameSalt: encryptedTaxInfo.businessNameSalt,
-        encryptedTaxId: encryptedTaxInfo.encryptedTaxId,
-        taxIdIV: encryptedTaxInfo.taxIdIV,
-        taxIdSalt: encryptedTaxInfo.taxIdSalt,
-        encryptedAdditionalTaxRegistrations: encryptedTaxInfo.encryptedAdditionalTaxRegistrations,
-        additionalTaxRegistrationsIV: encryptedTaxInfo.additionalTaxRegistrationsIV,
-        additionalTaxRegistrationsSalt: encryptedTaxInfo.additionalTaxRegistrationsSalt,
-        taxCountry: data.taxCountry,
-        taxIdVerified: false, // Reset verification when tax info is updated
-        taxIdVerificationDate: null,
-        taxIdVerificationMethod: null,
-        taxIdVerificationNotes: null,
+        // Tax fields removed - Stripe handles tax information
       }
     });
 

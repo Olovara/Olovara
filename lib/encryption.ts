@@ -367,6 +367,84 @@ export function encryptAddress(address: {
 }
 
 // Helper function to decrypt address fields
+export function encryptLocationInfo(data: {
+  state?: string;
+  city?: string;
+}): {
+  encryptedState?: string;
+  stateIV?: string;
+  stateSalt?: string;
+  encryptedCity?: string;
+  cityIV?: string;
+  citySalt?: string;
+} {
+  const result: {
+    encryptedState?: string;
+    stateIV?: string;
+    stateSalt?: string;
+    encryptedCity?: string;
+    cityIV?: string;
+    citySalt?: string;
+  } = {};
+
+  // Encrypt state if provided
+  if (data.state && data.state.trim() !== '') {
+    const stateEncryption = encryptData(data.state);
+    result.encryptedState = stateEncryption.encrypted;
+    result.stateIV = stateEncryption.iv;
+    result.stateSalt = stateEncryption.salt;
+  }
+
+  // Encrypt city if provided
+  if (data.city && data.city.trim() !== '') {
+    const cityEncryption = encryptData(data.city);
+    result.encryptedCity = cityEncryption.encrypted;
+    result.cityIV = cityEncryption.iv;
+    result.citySalt = cityEncryption.salt;
+  }
+
+  return result;
+}
+
+export function decryptLocationInfo(data: {
+  encryptedState?: string;
+  stateIV?: string;
+  stateSalt?: string;
+  encryptedCity?: string;
+  cityIV?: string;
+  citySalt?: string;
+}): {
+  state?: string;
+  city?: string;
+} {
+  const result: {
+    state?: string;
+    city?: string;
+  } = {};
+
+  // Decrypt state if available
+  if (data.encryptedState && data.stateIV && data.stateSalt) {
+    try {
+      result.state = decryptData(data.encryptedState, data.stateIV, data.stateSalt);
+    } catch (error) {
+      console.error('Error decrypting state:', error);
+      result.state = '';
+    }
+  }
+
+  // Decrypt city if available
+  if (data.encryptedCity && data.cityIV && data.citySalt) {
+    try {
+      result.city = decryptData(data.encryptedCity, data.cityIV, data.citySalt);
+    } catch (error) {
+      console.error('Error decrypting city:', error);
+      result.city = '';
+    }
+  }
+
+  return result;
+}
+
 export function decryptAddress(address: {
   encryptedStreet: string;
   streetIV: string;

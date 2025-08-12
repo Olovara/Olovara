@@ -286,21 +286,17 @@ model Seller {
   commissionDiscountExpiresAt DateTime? // When the commission discount expires
   commissionDiscountMonths Int @default(0) // Total months of discount earned (for tracking)
 
-  // Tax fields
-  encryptedBusinessName               String
-  businessNameIV                      String
-  businessNameSalt                    String
-  encryptedTaxId                      String
-  taxIdIV                             String
-  taxIdSalt                           String
-  encryptedAdditionalTaxRegistrations String?
-  additionalTaxRegistrationsIV        String?
-  additionalTaxRegistrationsSalt      String?
-  taxCountry                          String
-  taxIdVerified                       Boolean   @default(false)
-  taxIdVerificationDate               DateTime?
-  taxIdVerificationMethod             String? // e.g., "MANUAL", "API", "DOCUMENT"
-  taxIdVerificationNotes              String? // Any notes about the verification process
+  // Location fields
+  shopCountry                          String
+  shopState                            String?
+  shopCity                             String?
+  // Encrypted location fields
+  encryptedShopState                   String?
+  shopStateIV                          String?
+  shopStateSalt                        String?
+  encryptedShopCity                    String?
+  shopCityIV                           String?
+  shopCitySalt                         String?
 
   // Shop Policies
   processingTime     String? // e.g., "1-3 business days", "3-5 business days"
@@ -436,6 +432,16 @@ model Product {
   ogTitle         String? // Open Graph title for social sharing
   ogDescription   String? // Open Graph description for social sharing
   ogImage         String? // Open Graph image for social sharing
+
+  // GPSR (General Product Safety Regulation) compliance fields
+  safetyWarnings    String? // Product safety warnings and precautions
+  materialsComposition String? // Materials and composition details
+  safeUseInstructions String? // Instructions for safe use
+  ageRestriction    String? // Age restrictions if applicable
+  chokingHazard     Boolean @default(false) // Whether product poses choking hazard
+  smallPartsWarning Boolean @default(false) // Whether product contains small parts
+  chemicalWarnings  String? // Chemical-related warnings
+  careInstructions  String? // Care and maintenance instructions
 
   @@unique([userId, sku], name: "unique_sku_per_seller")
 }

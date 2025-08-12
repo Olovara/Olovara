@@ -166,6 +166,14 @@ const Footer = () => {
                         Blog
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/help-center"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Help Center
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 

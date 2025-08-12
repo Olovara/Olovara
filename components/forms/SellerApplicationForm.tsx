@@ -91,10 +91,10 @@ const SellerApplicationForm = () => {
         // Force a complete page reload to refresh the session with new role and permissions
         console.log("SellerApplicationForm - Forcing page reload in 2 seconds...");
         
-        // Redirect to seller dashboard with a fresh session
+        // Redirect to onboarding flow with a fresh session
         setTimeout(() => {
-          console.log("SellerApplicationForm - Redirecting to seller dashboard...");
-          window.location.href = "/seller/dashboard";
+          console.log("SellerApplicationForm - Redirecting to onboarding flow...");
+          window.location.href = "/onboarding/help-preferences";
         }, 2000);
       }
       

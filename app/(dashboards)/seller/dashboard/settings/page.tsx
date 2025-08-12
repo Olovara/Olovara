@@ -1,9 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { decryptData } from "@/lib/encryption";
 import PermissionGate from "@/components/auth/permission-gate";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
 import SettingsTabsWrapper from "./(components)/SettingsTabsWrapper";
 
 export const metadata = {
@@ -30,34 +28,6 @@ export default async function SellerSettings() {
       ogTitle: true,
       ogDescription: true,
       ogImage: true,
-      addresses: {
-        where: {
-          isDefault: true
-        },
-        select: {
-          id: true,
-          encryptedStreet: true,
-          streetIV: true,
-          streetSalt: true,
-          encryptedStreet2: true,
-          street2IV: true,
-          street2Salt: true,
-          encryptedCity: true,
-          cityIV: true,
-          citySalt: true,
-          encryptedState: true,
-          stateIV: true,
-          stateSalt: true,
-          encryptedPostal: true,
-          postalIV: true,
-          postalSalt: true,
-          encryptedCountry: true,
-          countryIV: true,
-          countrySalt: true,
-          isDefault: true,
-          isBusinessAddress: true
-        }
-      },
       shippingProfiles: {
         select: {
           id: true,
@@ -85,21 +55,7 @@ export default async function SellerSettings() {
     }
   });
 
-  // Decrypt address data if it exists
-  let decryptedAddressData = undefined;
-  if (seller?.addresses[0]) {
-    const address = seller.addresses[0];
-    decryptedAddressData = {
-      street1: decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
-      street2: address.encryptedStreet2 ? decryptData(address.encryptedStreet2, address.street2IV!, address.street2Salt!) : undefined,
-      city: decryptData(address.encryptedCity, address.cityIV, address.citySalt),
-      state: address.encryptedState ? decryptData(address.encryptedState, address.stateIV!, address.stateSalt!) : undefined,
-      postalCode: decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
-      country: decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
-      isDefault: address.isDefault,
-      isBusinessAddress: address.isBusinessAddress,
-    };
-  }
+
 
   return (
     <PermissionGate requiredPermission="MANAGE_SELLER_SETTINGS">
@@ -110,7 +66,7 @@ export default async function SellerSettings() {
             Manage your account settings and preferences.
           </p>
         </div>
-        <SettingsTabsWrapper seller={seller} decryptedAddressData={decryptedAddressData} />
+        <SettingsTabsWrapper seller={seller} />
         </div>
     </PermissionGate>
   );

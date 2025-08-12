@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AddressForm from "@/components/forms/AddressForm";
 import ShopQRCode from "@/components/ShopQRCode";
 import ShippingProfilesTable from "./ShippingProfilesTable";
 import ShopPoliciesForm from "@/components/forms/ShopPoliciesForm";
@@ -16,17 +15,16 @@ import { updateShopSEO } from "@/actions/updateShopSEO";
 
 interface SettingsTabsWrapperProps {
   seller: any;
-  decryptedAddressData: any;
 }
 
-export default function SettingsTabsWrapper({ seller, decryptedAddressData }: SettingsTabsWrapperProps) {
+export default function SettingsTabsWrapper({ seller }: SettingsTabsWrapperProps) {
   const [activeTab, setActiveTab] = useState("about");
 
   useEffect(() => {
     // Check if there's a hash in the URL and set the active tab accordingly
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
-      if (hash && ['about', 'info', 'preferences', 'address', 'shipping', 'policies', 'exclusions', 'qr'].includes(hash)) {
+      if (hash && ['about', 'info', 'preferences', 'shipping', 'policies', 'exclusions', 'qr'].includes(hash)) {
         setActiveTab(hash);
       }
     }
@@ -48,7 +46,6 @@ export default function SettingsTabsWrapper({ seller, decryptedAddressData }: Se
             <TabsTrigger value="about" className="flex-shrink-0">About</TabsTrigger>
             <TabsTrigger value="info" className="flex-shrink-0">Info</TabsTrigger>
             <TabsTrigger value="preferences" className="flex-shrink-0">Preferences</TabsTrigger>
-            <TabsTrigger value="address" className="flex-shrink-0">Address</TabsTrigger>
             <TabsTrigger value="shipping" className="flex-shrink-0">Shipping</TabsTrigger>
             <TabsTrigger value="policies" className="flex-shrink-0">Policies</TabsTrigger>
             <TabsTrigger value="exclusions" className="flex-shrink-0">Exclusions</TabsTrigger>
@@ -82,16 +79,7 @@ export default function SettingsTabsWrapper({ seller, decryptedAddressData }: Se
         </Card>
       </TabsContent>
       
-      <TabsContent value="address" className="space-y-4">
-        <Card className="w-full max-w-none">
-          <CardHeader className="p-4 sm:p-6 pb-0">
-            <CardTitle>Business Address</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <AddressForm type="seller" initialData={decryptedAddressData} />
-          </CardContent>
-        </Card>
-      </TabsContent>
+
       
       <TabsContent value="shipping" className="space-y-4">
         <Card className="w-full max-w-none">

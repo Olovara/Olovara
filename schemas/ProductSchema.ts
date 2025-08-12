@@ -150,6 +150,16 @@ const baseProductSchema = z.object({
   ogTitle: z.string().max(60, "Social media title must be 60 characters or less").optional(),
   ogDescription: z.string().max(160, "Social media description must be 160 characters or less").optional(),
   ogImage: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  
+  // GPSR (General Product Safety Regulation) compliance fields
+  safetyWarnings: z.string().max(1000, "Safety warnings must be 1000 characters or less").optional(),
+  materialsComposition: z.string().max(1000, "Materials composition must be 1000 characters or less").optional(),
+  safeUseInstructions: z.string().max(1000, "Safe use instructions must be 1000 characters or less").optional(),
+  ageRestriction: z.string().max(200, "Age restriction must be 200 characters or less").optional(),
+  chokingHazard: z.boolean().default(false),
+  smallPartsWarning: z.boolean().default(false),
+  chemicalWarnings: z.string().max(500, "Chemical warnings must be 500 characters or less").optional(),
+  careInstructions: z.string().max(1000, "Care instructions must be 1000 characters or less").optional(),
 });
 
 // Draft schema - allows incomplete products
@@ -177,6 +187,15 @@ export const ProductDraftSchema = baseProductSchema
     }).nullable().optional(),
     images: z.array(z.string().url()).optional(),
     stock: z.number().int().min(0).optional().nullable(),
+    // GPSR fields are optional for drafts
+    safetyWarnings: z.string().max(1000).optional(),
+    materialsComposition: z.string().max(1000).optional(),
+    safeUseInstructions: z.string().max(1000).optional(),
+    ageRestriction: z.string().max(200).optional(),
+    chokingHazard: z.boolean().default(false),
+    smallPartsWarning: z.boolean().default(false),
+    chemicalWarnings: z.string().max(500).optional(),
+    careInstructions: z.string().max(1000).optional(),
   })
   .transform((data) => {
     // Convert all monetary values to smallest unit

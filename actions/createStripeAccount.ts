@@ -15,12 +15,12 @@ async function getCountryCodeForStripe(userId: string): Promise<string> {
     // Tier 1: Get country from seller preferences (if they've already set it)
     const seller = await db.seller.findUnique({
       where: { userId },
-      select: { taxCountry: true }
+      select: { shopCountry: true }
     });
 
-    if (seller?.taxCountry && seller.taxCountry !== "US") {
-      console.log(`Using seller's tax country preference: ${seller.taxCountry}`);
-      return seller.taxCountry;
+    if (seller?.shopCountry && seller.shopCountry !== "US") {
+      console.log(`Using seller's shop country preference: ${seller.shopCountry}`);
+      return seller.shopCountry;
     }
 
     // Tier 2: Use location detector to get current country

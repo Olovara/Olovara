@@ -2,8 +2,6 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { encryptData } from "@/lib/encryption";
-import { currentUser } from "@/lib/auth";
 
 // Helper function to check if all three forms are completed
 async function checkAndMarkProfileComplete(userId: string) {
@@ -13,12 +11,7 @@ async function checkAndMarkProfileComplete(userId: string) {
       select: {
         shopName: true,
         shopDescription: true,
-        encryptedBusinessName: true,
-        businessNameIV: true,
-        businessNameSalt: true,
-        encryptedTaxId: true,
-        taxIdIV: true,
-        taxIdSalt: true,
+        shopCountry: true,
         preferredCurrency: true,
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
@@ -32,32 +25,8 @@ async function checkAndMarkProfileComplete(userId: string) {
     // Check if About form is completed (shop name and description are required)
     const aboutComplete = seller.shopName && seller.shopDescription && seller.shopName.trim() !== "" && seller.shopDescription.trim() !== "";
     
-    // Check if Info form is completed (business name and tax ID are required)
-    // We need to decrypt and check if they're not temporary values
-    let infoComplete = false;
-    try {
-      if (seller.encryptedBusinessName && seller.encryptedTaxId) {
-        const { decryptData } = await import("@/lib/encryption");
-        
-        // Decrypt the business name and tax ID
-        const businessName = decryptData(
-          seller.encryptedBusinessName, 
-          seller.businessNameIV, 
-          seller.businessNameSalt
-        );
-        const taxId = decryptData(
-          seller.encryptedTaxId, 
-          seller.taxIdIV, 
-          seller.taxIdSalt
-        );
-        
-        // Check if they're not temporary values
-        infoComplete = businessName !== "Temporary Business Name" && taxId !== "Temporary Tax ID";
-      }
-    } catch (error) {
-      console.error("Error decrypting business info:", error);
-      infoComplete = false;
-    }
+    // Check if Info form is completed (shop country is required)
+    const infoComplete = seller.shopCountry && seller.shopCountry.trim() !== "";
     
     // Check if Preferences form is completed (all unit preferences are set)
     const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;

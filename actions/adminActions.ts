@@ -2,15 +2,9 @@ import { db } from "@/lib/db"; // Use the global Prisma instance
 import { User, AccountStatus } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
 import { currentUser, currentUserWithPermissions } from "@/lib/auth";
-import { 
-  PERMISSIONS, 
-  getPermissionValue, 
-  createRolePermissions, 
+import {
   ROLES, 
   ADMIN_ROLES,
-  ADMIN_TASK_TYPES,
-  ADMIN_TASK_STATUS,
-  ADMIN_TASK_PRIORITY,
   ADMIN_NOTIFICATION_TYPES,
   INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
@@ -541,6 +535,7 @@ export async function getUserPermissions(userId: string) {
             totalSales: true,
             totalProducts: true,
             acceptsCustom: true,
+            shopCountry: true,
             isWomanOwned: true,
             isMinorityOwned: true,
             isLGBTQOwned: true,
@@ -548,9 +543,6 @@ export async function getUserPermissions(userId: string) {
             isSustainable: true,
             isCharitable: true,
             valuesPreferNotToSay: true,
-            taxCountry: true,
-            taxIdVerified: true,
-            taxIdVerificationDate: true,
             createdAt: true,
             updatedAt: true,
           }

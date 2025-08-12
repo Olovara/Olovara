@@ -19,6 +19,15 @@ interface ProductDocument extends Document {
   createdBy: Schema.Types.ObjectId;
   category: keyof typeof categories; // Limit category to 'crochet' or 'knitted'
   subcategory: string;
+  // GPSR compliance fields
+  safetyWarnings?: string;
+  materialsComposition?: string;
+  safeUseInstructions?: string;
+  ageRestriction?: string;
+  chokingHazard?: boolean;
+  smallPartsWarning?: boolean;
+  chemicalWarnings?: string;
+  careInstructions?: string;
 }
 
 const productSchema = new mongoose.Schema<ProductDocument>(
@@ -84,6 +93,39 @@ const productSchema = new mongoose.Schema<ProductDocument>(
         message: (props: any) =>
           `${props.value} is not a valid subcategory for the selected category`,
       },
+    },
+    // GPSR compliance fields
+    safetyWarnings: {
+      type: String,
+      maxlength: 1000,
+    },
+    materialsComposition: {
+      type: String,
+      maxlength: 1000,
+    },
+    safeUseInstructions: {
+      type: String,
+      maxlength: 1000,
+    },
+    ageRestriction: {
+      type: String,
+      maxlength: 200,
+    },
+    chokingHazard: {
+      type: Boolean,
+      default: false,
+    },
+    smallPartsWarning: {
+      type: Boolean,
+      default: false,
+    },
+    chemicalWarnings: {
+      type: String,
+      maxlength: 500,
+    },
+    careInstructions: {
+      type: String,
+      maxlength: 1000,
     },
   },
   { timestamps: true }

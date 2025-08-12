@@ -249,10 +249,7 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Tax Verification:</span>
-                      {getTaxVerificationBadge(user.seller.taxIdVerified)}
-                    </div>
+                    {/* Tax verification removed - Stripe handles tax information */}
                   </div>
                 </div>
               </div>
@@ -287,9 +284,9 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
                       )}
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium">Tax Country:</span>
+                      <span className="text-sm font-medium">Shop Country:</span>
                       <span className="text-sm text-muted-foreground">
-                        {user.seller.taxCountry}
+                        {user.seller.shopCountry}
                       </span>
                     </div>
                   </div>

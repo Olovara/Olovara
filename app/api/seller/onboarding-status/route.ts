@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
         applicationAccepted: true,
         stripeConnected: true,
         connectedAccountId: true,
-        encryptedBusinessName: true,
-        encryptedTaxId: true,
-        taxIdVerified: true,
+        shopCountry: true,
         shippingProfileCreated: true,
         shippingProfiles: {
           select: { id: true },
@@ -45,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Determine completion status
     const applicationApproved = application?.applicationApproved || false;
-    const profileCompleted = !!(seller.encryptedBusinessName && seller.encryptedTaxId && seller.taxIdVerified);
+    const profileCompleted = !!(seller.shopCountry && seller.shopCountry.trim() !== "");
     
     // Check Stripe connection status - if we have a connectedAccountId but stripeConnected is false,
     // check if the account is actually fully onboarded
