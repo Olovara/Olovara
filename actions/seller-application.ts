@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
-import { encryptData } from "@/lib/encryption";
+import { encryptData, encryptBirthdate } from "@/lib/encryption";
 
 import { FOUNDING_SELLER_BENEFITS } from "@/lib/founding-seller";
 
@@ -63,6 +63,9 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
     // Create seller application and seller document in a transaction
     const result = await db.$transaction(async (tx) => {
+      // Encrypt birthdate data
+      const birthdateEncryption = encryptBirthdate(values.birthdate);
+      
       // Create the seller application with all new fields
       const application = await tx.sellerApplication.create({
         data: {
@@ -73,7 +76,9 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           onlinePresence: values.onlinePresence,
           yearsOfExperience: values.yearsOfExperience,
           referralCode: values.referralCode, // Store the referral code used
-          birthdate: values.birthdate,
+          encryptedBirthdate: birthdateEncryption.encryptedBirthdate,
+          birthdateIV: birthdateEncryption.birthdateIV,
+          birthdateSalt: birthdateEncryption.birthdateSalt,
           agreeToHandmadePolicy: values.agreeToHandmadePolicy,
           certifyOver18: values.certifyOver18,
           agreeToTerms: values.agreeToTerms,

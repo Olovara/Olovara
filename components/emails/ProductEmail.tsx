@@ -16,6 +16,7 @@ import {
     orderDetails?: {
       productName: string;
       orderId: string;
+      batchNumber?: string;
       shippingAddress?: {
         street: string;
         city: string;
@@ -49,6 +50,11 @@ import {
                 <Text className="text-gray-600">
                   Order ID: {orderDetails?.orderId}
                 </Text>
+                {orderDetails?.batchNumber && (
+                  <Text className="text-gray-600">
+                    Batch Number: {orderDetails.batchNumber}
+                  </Text>
+                )}
               </Section>
 
               {isDigital ? (

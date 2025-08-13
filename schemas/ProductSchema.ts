@@ -98,7 +98,7 @@ const baseProductSchema = z.object({
   numberSold: z.number().int().optional().default(0),
   primaryCategory: z.string(),
   secondaryCategory: z.string(),
-  tertiaryCategory: z.string().optional(),
+  tertiaryCategory: z.string().nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
   materialTags: z.array(z.string()).optional().default([]),
   onSale: z.boolean().default(false),
@@ -141,7 +141,7 @@ const baseProductSchema = z.object({
   ]).default("PHYSICAL_GOODS"),
   taxCode: z.string().optional(),
   taxExempt: z.boolean().default(false),
-  shippingProfileId: z.string().nullable(),
+  shippingProfileId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
   // SEO fields
   metaTitle: z.string().max(60, "Meta title must be 60 characters or less").optional(),

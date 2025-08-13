@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { assignFoundingSellerStatus, checkFoundingSellerEligibility } from "@/lib/founding-seller";
+import { generateBatchNumber } from "@/lib/batchNumber";
 
 /**
  * Create a new product and check for founding seller eligibility
@@ -28,6 +29,15 @@ export async function createProduct(productData: any) {
         userId
       }
     });
+
+    // Generate batch number for physical products (not digital)
+    if (!productData.isDigital) {
+      const batchNumber = await generateBatchNumber(product.id);
+      await db.product.update({
+        where: { id: product.id },
+        data: { batchNumber }
+      });
+    }
 
     // If this is their first product, check for founding seller eligibility
     if (existingProductCount === 0) {

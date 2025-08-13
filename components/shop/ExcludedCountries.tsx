@@ -3,17 +3,27 @@
 import { Badge } from "@/components/ui/badge";
 import { getExcludedCountryNames } from "@/lib/country-exclusions";
 import { Globe, AlertTriangle, MapPin, Building2 } from "lucide-react";
+import { formatBusinessAddress } from "@/lib/gpsr-compliance";
 
 interface ExcludedCountriesProps {
   excludedCountries?: string[] | null;
   sellerAddress?: string; // Seller's address for EU compliance
   isEUCompliant?: boolean; // Whether seller has provided EU compliance info
+  businessAddress?: {
+    street?: string;
+    street2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
 }
 
 const ExcludedCountries = ({ 
   excludedCountries, 
   sellerAddress, 
-  isEUCompliant = false 
+  isEUCompliant = false,
+  businessAddress
 }: ExcludedCountriesProps) => {
   if (!excludedCountries || excludedCountries.length === 0) {
     return (
@@ -26,7 +36,7 @@ const ExcludedCountries = ({
           This seller ships worldwide
         </p>
         {/* EU Compliance Information */}
-        {isEUCompliant && sellerAddress && (
+        {isEUCompliant && (businessAddress || sellerAddress) && (
           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <div className="flex items-start gap-2">
               <Building2 className="h-4 w-4 text-blue-600 mt-0.5" />
@@ -37,7 +47,12 @@ const ExcludedCountries = ({
                 </p>
                 <div className="flex items-start gap-1 mt-1">
                   <MapPin className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-700">{sellerAddress}</p>
+                  <p className="text-xs text-blue-700">
+                    {businessAddress ? 
+                      formatBusinessAddress(businessAddress) :
+                      sellerAddress
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -70,7 +85,7 @@ const ExcludedCountries = ({
       </p>
       
       {/* EU Compliance Information */}
-      {isEUCompliant && sellerAddress && (
+      {isEUCompliant && (businessAddress || sellerAddress) && (
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <div className="flex items-start gap-2">
             <Building2 className="h-4 w-4 text-blue-600 mt-0.5" />
@@ -81,7 +96,12 @@ const ExcludedCountries = ({
               </p>
               <div className="flex items-start gap-1 mt-1">
                 <MapPin className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-blue-700">{sellerAddress}</p>
+                <p className="text-xs text-blue-700">
+                  {businessAddress ? 
+                    formatBusinessAddress(businessAddress) :
+                    sellerAddress
+                  }
+                </p>
               </div>
             </div>
           </div>

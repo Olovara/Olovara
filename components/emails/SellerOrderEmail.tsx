@@ -14,6 +14,7 @@ interface SellerOrderEmailProps {
   orderDetails: {
     productName: string;
     orderId: string;
+    batchNumber?: string;
     quantity: number;
     totalAmount: number;
     shippingAddress?: {
@@ -49,6 +50,11 @@ export default function SellerOrderEmail({ orderDetails }: SellerOrderEmailProps
               <Text className="text-gray-600">
                 Order ID: {orderDetails.orderId}
               </Text>
+              {orderDetails.batchNumber && (
+                <Text className="text-gray-600">
+                  Batch Number: {orderDetails.batchNumber}
+                </Text>
+              )}
               <Text className="text-gray-600">
                 Quantity: {orderDetails.quantity}
               </Text>

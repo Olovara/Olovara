@@ -268,6 +268,7 @@ model Seller {
   reviews                Review[]
   customOrderForms       CustomOrderForm[]
   discountCodes          DiscountCode[]
+  responsiblePerson      ResponsiblePerson?
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Onboarding progress fields
@@ -323,6 +324,53 @@ model Seller {
   updatedAt DateTime @updatedAt
 }
 
+model ResponsiblePerson {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId          String  @unique
+  
+  // Encrypted personal information fields with individual IVs and salts
+  encryptedName         String
+  nameIV               String
+  nameSalt             String
+  encryptedEmail        String
+  emailIV              String
+  emailSalt            String
+  encryptedPhone        String
+  phoneIV              String
+  phoneSalt            String
+  encryptedCompanyName  String
+  companyNameIV        String
+  companyNameSalt      String
+  encryptedVatNumber    String?
+  vatNumberIV          String?
+  vatNumberSalt        String?
+  
+  // Encrypted address fields with individual IVs and salts
+  encryptedStreet       String
+  streetIV             String
+  streetSalt           String
+  encryptedStreet2      String?
+  street2IV            String?
+  street2Salt          String?
+  encryptedCity         String
+  cityIV               String
+  citySalt             String
+  encryptedState        String?
+  stateIV              String?
+  stateSalt            String?
+  encryptedPostalCode   String
+  postalCodeIV         String
+  postalCodeSalt       String
+  encryptedCountry      String
+  countryIV            String
+  countrySalt          String
+  
+  seller            Seller  @relation(fields: [sellerId], references: [userId], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model SellerApplication {
   id                  String  @id @default(auto()) @map("_id") @db.ObjectId
   userId              String  @unique
@@ -333,8 +381,10 @@ model SellerApplication {
   onlinePresence      String?
   yearsOfExperience   String?
   referralCode        String? // Referral code used during application
-  // Required legal fields
-  birthdate           String
+  // Required legal fields (encrypted)
+  encryptedBirthdate  String
+  birthdateIV         String
+  birthdateSalt       String
   agreeToHandmadePolicy Boolean
   certifyOver18       Boolean
   agreeToTerms        Boolean
@@ -442,6 +492,9 @@ model Product {
   smallPartsWarning Boolean @default(false) // Whether product contains small parts
   chemicalWarnings  String? // Chemical-related warnings
   careInstructions  String? // Care and maintenance instructions
+  
+  // Batch tracking for compliance and traceability
+  batchNumber       String? // Format: [ProductID]-[YYYYMMDD]-B[Increment]
 
   @@unique([userId, sku], name: "unique_sku_per_seller")
 }
@@ -547,6 +600,9 @@ model Order {
   // Digital download tracking
   digitalDownloadAttempted Boolean @default(false)
   digitalDownloadedAt      DateTime?
+  
+  // Product traceability
+  batchNumber              String? // Product batch number for traceability
 }
 
 model HandmadeGuidelines {

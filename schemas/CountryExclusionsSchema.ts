@@ -1,13 +1,13 @@
 import * as z from "zod";
-import { getOnboardingCountries } from "@/data/countries";
+import { getShippableCountries } from "@/data/un-countries";
 
-// Get supported country codes
-const SUPPORTED_COUNTRY_CODES = getOnboardingCountries().map(country => country.code);
+// Get shippable country codes (all UN countries except sanctioned ones)
+const SHIPPABLE_COUNTRY_CODES = getShippableCountries().map(country => country.code);
 
 export const CountryExclusionsSchema = z.object({
   excludedCountries: z.array(
-    z.enum(SUPPORTED_COUNTRY_CODES as [string, ...string[]], {
-      required_error: "Please select valid countries",
+    z.string().refine((code) => SHIPPABLE_COUNTRY_CODES.includes(code), {
+      message: "Invalid country code",
     })
   ).default([]),
 });

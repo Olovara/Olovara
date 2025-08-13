@@ -39,6 +39,16 @@ export const EEA_COUNTRIES = [
   'LI', // Liechtenstein
 ];
 
+// Northern Ireland (special case - requires EU compliance but is part of UK)
+// Using NIR to avoid conflict with Nicaragua (NI)
+export const NORTHERN_IRELAND_CODE = 'NIR';
+
+// All countries that require GPSR compliance (EEA + Northern Ireland)
+export const GPSR_REQUIRED_COUNTRIES = [
+  ...EEA_COUNTRIES,
+  NORTHERN_IRELAND_CODE,
+];
+
 /**
  * Check if GPSR compliance is required based on shipping destinations
  * @param excludedCountries - Array of country codes that are excluded from shipping
@@ -54,12 +64,15 @@ export function isGPSRComplianceRequired(
     return true;
   }
 
-  // Check if any EU countries are NOT excluded (meaning seller ships to EU)
-  const shipsToEU = EU_MEMBER_STATES.some(
-    euCountry => !excludedCountries.includes(euCountry)
+  // Check if any EEA countries are NOT excluded (meaning seller ships to EEA)
+  const shipsToEEA = EEA_COUNTRIES.some(
+    eeaCountry => !excludedCountries.includes(eeaCountry)
   );
 
-  return shipsToEU;
+  // Check if Northern Ireland is NOT excluded (special case)
+  const shipsToNorthernIreland = !excludedCountries.includes(NORTHERN_IRELAND_CODE);
+
+  return shipsToEEA || shipsToNorthernIreland;
 }
 
 /**
@@ -68,7 +81,7 @@ export function isGPSRComplianceRequired(
  * @returns boolean indicating if the country requires GPSR compliance
  */
 export function isCountryGPSRCompliant(countryCode: string): boolean {
-  return EEA_COUNTRIES.includes(countryCode.toUpperCase());
+  return GPSR_REQUIRED_COUNTRIES.includes(countryCode.toUpperCase());
 }
 
 /**
@@ -179,4 +192,44 @@ export function getGPSRComplianceSummary(gpsrData: {
       ? (validation.isCompliant ? 'compliant' : 'non-compliant')
       : (hasSafetyInfo ? 'informational' : 'none'),
   };
+}
+
+/**
+ * Format business address for display
+ * @param address - Business address object
+ * @returns Formatted address string
+ */
+export function formatBusinessAddress(address: {
+  street?: string;
+  street2?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}): string {
+  const parts = [
+    address.street,
+    address.street2,
+    address.city,
+    address.state,
+    address.postalCode,
+    address.country
+  ].filter(Boolean);
+
+  return parts.join(', ');
+}
+
+/**
+ * Check if seller has provided complete business address
+ * @param address - Business address object
+ * @returns boolean indicating if address is complete
+ */
+export function hasCompleteBusinessAddress(address: {
+  street?: string;
+  city?: string;
+  country?: string;
+}): boolean {
+  return !!(address.street?.trim() && 
+           address.city?.trim() && 
+           address.country?.trim());
 }

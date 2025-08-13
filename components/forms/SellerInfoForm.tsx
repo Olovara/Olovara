@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getOnboardingCountriesByZone } from "@/data/countries";
+import { StateSelect } from "@/components/ui/state-select";
 
 const SellerInfoForm = () => {
   const isClient = useIsClient();
@@ -242,9 +243,11 @@ const SellerInfoForm = () => {
 
             <div className="flex flex-col gap-y-2">
               <Label>State/Province</Label>
-              <Input
-                placeholder="State or province"
-                {...form.register("shopState")}
+              <StateSelect
+                countryCode={form.watch("shopCountry")}
+                value={form.watch("shopState")}
+                onValueChange={(value) => form.setValue("shopState", value)}
+                placeholder="Select state or province"
                 disabled={isPending}
               />
             </div>

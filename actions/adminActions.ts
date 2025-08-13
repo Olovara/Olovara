@@ -9,6 +9,7 @@ import {
   INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
+import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
 
 interface GetUsersParams {
@@ -94,7 +95,9 @@ export async function getAllSellers() {
         // Simplified fields for enhanced application review
         onlinePresence: true,
         yearsOfExperience: true,
-        birthdate: true,
+        encryptedBirthdate: true,
+        birthdateIV: true,
+        birthdateSalt: true,
         agreeToHandmadePolicy: true,
         certifyOver18: true,
         agreeToTerms: true,
@@ -116,7 +119,30 @@ export async function getAllSellers() {
         email: applications[0].user?.email
       } : null
     });
-    return applications;
+    
+    // Decrypt birthdate for each application
+    const applicationsWithDecryptedBirthdate = applications.map(app => {
+      let birthdate = "N/A";
+      try {
+        if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
+          birthdate = decryptBirthdate({
+            encryptedBirthdate: app.encryptedBirthdate,
+            birthdateIV: app.birthdateIV,
+            birthdateSalt: app.birthdateSalt,
+          });
+        }
+      } catch (error) {
+        console.error("Error decrypting birthdate for application:", app.id, error);
+        birthdate = "Error decrypting";
+      }
+      
+      return {
+        ...app,
+        birthdate,
+      };
+    });
+    
+    return applicationsWithDecryptedBirthdate;
   } catch (error) {
     console.error("Error in getAllSellers:", {
       error: error instanceof Error ? {
@@ -145,7 +171,7 @@ export async function getApprovedSellers() {
       throw new Error("Forbidden: Insufficient permissions");
     }
 
-    return await db.sellerApplication.findMany({
+    const applications = await db.sellerApplication.findMany({
       where: {
         applicationApproved: true,
       },
@@ -159,7 +185,9 @@ export async function getApprovedSellers() {
         // Simplified fields for enhanced application review
         onlinePresence: true,
         yearsOfExperience: true,
-        birthdate: true,
+        encryptedBirthdate: true,
+        birthdateIV: true,
+        birthdateSalt: true,
         agreeToHandmadePolicy: true,
         certifyOver18: true,
         agreeToTerms: true,
@@ -172,6 +200,30 @@ export async function getApprovedSellers() {
         },
       },
     });
+    
+    // Decrypt birthdate for each application
+    const applicationsWithDecryptedBirthdate = applications.map(app => {
+      let birthdate = "N/A";
+      try {
+        if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
+          birthdate = decryptBirthdate({
+            encryptedBirthdate: app.encryptedBirthdate,
+            birthdateIV: app.birthdateIV,
+            birthdateSalt: app.birthdateSalt,
+          });
+        }
+      } catch (error) {
+        console.error("Error decrypting birthdate for application:", app.id, error);
+        birthdate = "Error decrypting";
+      }
+      
+      return {
+        ...app,
+        birthdate,
+      };
+    });
+    
+    return applicationsWithDecryptedBirthdate;
   } catch (error) {
     console.error("Error fetching approved seller applications:", error);
     return [];
@@ -210,7 +262,9 @@ export async function getUnapprovedSellers() {
         // Simplified fields for enhanced application review
         onlinePresence: true,
         yearsOfExperience: true,
-        birthdate: true,
+        encryptedBirthdate: true,
+        birthdateIV: true,
+        birthdateSalt: true,
         agreeToHandmadePolicy: true,
         certifyOver18: true,
         agreeToTerms: true,
@@ -232,7 +286,30 @@ export async function getUnapprovedSellers() {
         email: applications[0].user?.email
       } : null
     });
-    return applications;
+    
+    // Decrypt birthdate for each application
+    const applicationsWithDecryptedBirthdate = applications.map(app => {
+      let birthdate = "N/A";
+      try {
+        if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
+          birthdate = decryptBirthdate({
+            encryptedBirthdate: app.encryptedBirthdate,
+            birthdateIV: app.birthdateIV,
+            birthdateSalt: app.birthdateSalt,
+          });
+        }
+      } catch (error) {
+        console.error("Error decrypting birthdate for application:", app.id, error);
+        birthdate = "Error decrypting";
+      }
+      
+      return {
+        ...app,
+        birthdate,
+      };
+    });
+    
+    return applicationsWithDecryptedBirthdate;
   } catch (error) {
     console.error("Error in getUnapprovedSellers:", {
       error: error instanceof Error ? {

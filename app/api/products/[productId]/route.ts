@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
+import { generateBatchNumber, hasGPSRFieldsChanged, hasStockIncreased } from "@/lib/batchNumber";
 
 const utapi = new UTApi();
 
@@ -146,7 +147,20 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     // --- Step 1: Fetch CURRENT product state BEFORE update --- 
     const currentProduct = await db.product.findUnique({
       where: { id: productId, userId: session.user.id }, // Also verify ownership here
-      select: { images: true, productFile: true }
+      select: { 
+        images: true, 
+        productFile: true,
+        stock: true,
+        isDigital: true,
+        safetyWarnings: true,
+        materialsComposition: true,
+        safeUseInstructions: true,
+        ageRestriction: true,
+        chokingHazard: true,
+        smallPartsWarning: true,
+        chemicalWarnings: true,
+        careInstructions: true
+      }
     });
 
     if (!currentProduct) {
@@ -154,6 +168,32 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
         JSON.stringify({ success: false, error: "Product not found or not owned by user" }),
         { status: 404 }
       );
+    }
+
+    // --- Step 1.5: Check if batch number needs to be updated ---
+    let shouldUpdateBatchNumber = false;
+    
+    // Check if stock has increased (for physical products only)
+    if (!currentProduct.isDigital && updateData.stock !== undefined) {
+      if (hasStockIncreased(currentProduct.stock, updateData.stock)) {
+        shouldUpdateBatchNumber = true;
+        console.log('[API] Stock increased, will update batch number');
+      }
+    }
+    
+    // Check if GPSR fields have changed (for physical products only)
+    if (!currentProduct.isDigital) {
+      if (hasGPSRFieldsChanged(currentProduct, updateData)) {
+        shouldUpdateBatchNumber = true;
+        console.log('[API] GPSR fields changed, will update batch number');
+      }
+    }
+    
+    // Generate new batch number if needed
+    let newBatchNumber: string | undefined;
+    if (shouldUpdateBatchNumber) {
+      newBatchNumber = await generateBatchNumber(productId);
+      console.log('[API] Generated new batch number:', newBatchNumber);
     }
 
     // --- Step 2: Handle Image Deletion --- 
@@ -201,19 +241,155 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     }
 
     // --- Step 3: Update the product ---
-    const updatedProduct = await db.product.update({
-      where: { id: productId },
-      data: updateData,
-    });
+    console.log('[API] About to update product with data:', JSON.stringify(updateData, null, 2));
+    
+    // Split the update into smaller chunks to avoid MongoDB Atlas pipeline limit
+    // Group fields by category to reduce pipeline length
+    const basicFields = {
+      name: updateData.name,
+      sku: updateData.sku,
+      description: updateData.description,
+      price: updateData.price,
+      currency: updateData.currency,
+      status: updateData.status,
+      images: updateData.images,
+      isDigital: updateData.isDigital,
+      stock: updateData.stock,
+      productFile: updateData.productFile,
+      numberSold: updateData.numberSold,
+      primaryCategory: updateData.primaryCategory,
+      secondaryCategory: updateData.secondaryCategory,
+      tertiaryCategory: updateData.tertiaryCategory,
+      tags: updateData.tags,
+      materialTags: updateData.materialTags,
+      onSale: updateData.onSale,
+      freeShipping: updateData.freeShipping,
+      NSFW: updateData.NSFW,
+      isTestProduct: updateData.isTestProduct,
+      productDrop: updateData.productDrop,
+      dropDate: updateData.dropDate,
+      dropTime: updateData.dropTime,
+      batchNumber: newBatchNumber, // Add batch number if generated
+    };
+    
+    const shippingFields = {
+      shippingCost: updateData.shippingCost,
+      handlingFee: updateData.handlingFee,
+      itemWeight: updateData.itemWeight,
+      itemWeightUnit: updateData.itemWeightUnit,
+      itemLength: updateData.itemLength,
+      itemWidth: updateData.itemWidth,
+      itemHeight: updateData.itemHeight,
+      itemDimensionUnit: updateData.itemDimensionUnit,
+      shippingNotes: updateData.shippingNotes,
+      inStockProcessingTime: updateData.inStockProcessingTime,
+      outStockLeadTime: updateData.outStockLeadTime,
+      shippingProfileId: updateData.shippingProfileId,
+    };
+    
+    const taxFields = {
+      taxCategory: updateData.taxCategory,
+      taxCode: updateData.taxCode,
+      taxExempt: updateData.taxExempt,
+    };
+    
+    const seoFields = {
+      metaTitle: updateData.metaTitle,
+      metaDescription: updateData.metaDescription,
+      keywords: updateData.keywords,
+      ogTitle: updateData.ogTitle,
+      ogDescription: updateData.ogDescription,
+      ogImage: updateData.ogImage,
+    };
+    
+    const gpsrFields = {
+      safetyWarnings: updateData.safetyWarnings,
+      materialsComposition: updateData.materialsComposition,
+      safeUseInstructions: updateData.safeUseInstructions,
+      ageRestriction: updateData.ageRestriction,
+      chokingHazard: updateData.chokingHazard,
+      smallPartsWarning: updateData.smallPartsWarning,
+      chemicalWarnings: updateData.chemicalWarnings,
+      careInstructions: updateData.careInstructions,
+    };
+    
+    const otherFields = {
+      howItsMade: updateData.howItsMade,
+    };
+    
+    // Filter out undefined values from each group
+    const filterUndefined = (obj: any) => Object.fromEntries(
+      Object.entries(obj).filter(([_, value]) => value !== undefined)
+    );
+    
+    const updateGroups = [
+      filterUndefined(basicFields),
+      filterUndefined(shippingFields),
+      filterUndefined(taxFields),
+      filterUndefined(seoFields),
+      filterUndefined(gpsrFields),
+      filterUndefined(otherFields),
+    ].filter(group => Object.keys(group).length > 0);
+    
+    console.log('[API] Update groups:', updateGroups.map(group => ({
+      fields: Object.keys(group),
+      count: Object.keys(group).length
+    })));
+    
+    let updatedProduct: any;
+    try {
+      // Perform multiple smaller updates to avoid MongoDB Atlas pipeline limit
+      console.log('[API] Performing chunked updates to avoid pipeline limit...');
+      
+      // Update in chunks of max 40 fields to stay well under the 50 limit
+      const MAX_FIELDS_PER_UPDATE = 40;
+      
+      // Combine all groups and split into chunks
+      const allFields = Object.assign({}, ...updateGroups);
+      const fieldEntries = Object.entries(allFields);
+      const chunks = [];
+      
+      for (let i = 0; i < fieldEntries.length; i += MAX_FIELDS_PER_UPDATE) {
+        chunks.push(Object.fromEntries(fieldEntries.slice(i, i + MAX_FIELDS_PER_UPDATE)));
+      }
+      
+      console.log('[API] Split into', chunks.length, 'chunks:', chunks.map(chunk => ({
+        fields: Object.keys(chunk),
+        count: Object.keys(chunk).length
+      })));
+      
+      // Perform updates sequentially
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        console.log(`[API] Updating chunk ${i + 1}/${chunks.length} with ${Object.keys(chunk).length} fields`);
+        
+        updatedProduct = await db.product.update({
+          where: { id: productId },
+          data: chunk,
+        });
+        
+        console.log(`[API] Chunk ${i + 1} updated successfully`);
+      }
+      
+      console.log('[API] All chunks updated successfully:', updatedProduct.id);
+    } catch (dbError) {
+      console.error('[API] Database update error:', dbError);
+      throw dbError;
+    }
 
     return new Response(
       JSON.stringify({ success: true, product: updatedProduct }),
       { status: 200 }
     );
   } catch (error) {
-    console.error("[PRODUCT_PATCH]", error);
+    console.error("[PRODUCT_PATCH] Error details:", error);
+    console.error("[PRODUCT_PATCH] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
     return new Response(
-      JSON.stringify({ success: false, error: "Internal server error" }),
+      JSON.stringify({ 
+        success: false, 
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
       { status: 500 }
     );
   }

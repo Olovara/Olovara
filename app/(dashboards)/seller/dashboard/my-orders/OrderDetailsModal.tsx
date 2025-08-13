@@ -42,6 +42,7 @@ interface OrderDetailsModalProps {
     status: string;
     paymentStatus: string;
     shippingAddress?: any | null;
+    batchNumber?: string | null;
     createdAt: Date;
   };
   isOpen: boolean;
@@ -213,6 +214,15 @@ export function OrderDetailsModal({
                     <p className="text-sm text-muted-foreground">Quantity</p>
                     <p className="font-medium">{order.quantity}</p>
                   </div>
+                  {!order.isDigital && order.batchNumber && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Batch Number</p>
+                      <p className="font-medium font-mono text-sm">{order.batchNumber}</p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Include this batch number on a card or tag with the product to fulfill GPSR requirements
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               

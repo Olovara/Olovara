@@ -24,7 +24,7 @@ if (!ENCRYPTION_KEY) {
 }
 
 // Validate key length
-const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
 if (key.length !== KEY_LENGTH) {
   console.error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
   throw new Error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
@@ -95,31 +95,56 @@ export function decryptData(encryptedData: string, iv: string, salt: string): st
       return "Temporary Data - Please Update";
     }
 
-    // Convert salt and IV to buffers
-    const saltBuffer = Buffer.from(salt, 'hex');
-    const ivBuffer = Buffer.from(iv, 'hex');
-    
-    // Derive the same key used for encryption
-    const derivedKey = deriveKey(key, saltBuffer);
-    
-    // Extract auth tag from the end of encrypted data
-    const authTag = Buffer.from(encryptedData.slice(-32), 'hex');
-    const encrypted = encryptedData.slice(0, -32);
-    
-    // Create decipher
-    const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
-    
-    // Set authentication tag
-    decipher.setAuthTag(authTag);
-    
-    // Add associated data for authentication (must match encryption)
-    decipher.setAAD(Buffer.from('YarnnuMarketplace'));
-    
-    // Decrypt the data
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
+    // Try GCM decryption first (current method)
+    try {
+      // Convert salt and IV to buffers
+      const saltBuffer = Buffer.from(salt, 'hex');
+      const ivBuffer = Buffer.from(iv, 'hex');
+      
+      // Derive the same key used for encryption
+      const derivedKey = deriveKey(key, saltBuffer);
+      
+      // Extract auth tag from the end of encrypted data
+      const authTag = Buffer.from(encryptedData.slice(-32), 'hex');
+      const encrypted = encryptedData.slice(0, -32);
+      
+      // Create decipher
+      const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
+      
+      // Set authentication tag
+      decipher.setAuthTag(authTag);
+      
+      // Add associated data for authentication (must match encryption)
+      decipher.setAAD(Buffer.from('YarnnuMarketplace'));
+      
+      // Decrypt the data
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+           } catch (gcmError) {
+         // Try CBC decryption as fallback (older method)
+         try {
+           const keyBuffer = Buffer.from(ENCRYPTION_KEY!, 'hex');
+           const ivBuffer = Buffer.from(iv, 'hex');
+        
+        // For CBC, we need 16-byte IV, but we have 12-byte IV from GCM
+        // Let's pad it or use a different approach
+        let cbcIV = ivBuffer;
+        if (ivBuffer.length === 12) {
+          // Pad to 16 bytes for CBC
+          cbcIV = Buffer.concat([ivBuffer, Buffer.alloc(4)]);
+        }
+        
+        const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, cbcIV);
+        let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+      } catch (cbcError) {
+        throw gcmError; // Throw the original GCM error
+      }
+    }
   } catch (error) {
     console.error('Decryption error:', error);
     // Return a fallback value instead of throwing an error
@@ -206,7 +231,7 @@ export function decryptSellerTaxInfo(data: {
 export const encryptName = (name: string): { encrypted: string; iv: string } => {
   // Generate IV specifically for CBC mode (16 bytes)
   const iv = crypto.randomBytes(16).toString('hex');
-  const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
   const ivBuffer = Buffer.from(iv, 'hex');
   
   const cipher = crypto.createCipheriv('aes-256-cbc', key, ivBuffer);
@@ -218,7 +243,7 @@ export const encryptName = (name: string): { encrypted: string; iv: string } => 
 
 // Decrypt a name using AES-256-CBC
 export const decryptName = (encrypted: string, iv: string): string => {
-  const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
   const ivBuffer = Buffer.from(iv, 'hex');
   
   const decipher = crypto.createDecipheriv('aes-256-cbc', key, ivBuffer);
@@ -488,4 +513,229 @@ export function decryptAddress(address: {
   }
 
   return result;
-} 
+}
+
+// Helper function to encrypt responsible person data
+export function encryptResponsiblePerson(data: {
+  name: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  vatNumber?: string;
+  address: {
+    street: string;
+    street2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    country: string;
+  };
+}): {
+  encryptedName: string;
+  nameIV: string;
+  nameSalt: string;
+  encryptedEmail: string;
+  emailIV: string;
+  emailSalt: string;
+  encryptedPhone: string;
+  phoneIV: string;
+  phoneSalt: string;
+  encryptedCompanyName: string;
+  companyNameIV: string;
+  companyNameSalt: string;
+  encryptedVatNumber?: string;
+  vatNumberIV?: string;
+  vatNumberSalt?: string;
+  encryptedStreet: string;
+  streetIV: string;
+  streetSalt: string;
+  encryptedStreet2?: string;
+  street2IV?: string;
+  street2Salt?: string;
+  encryptedCity: string;
+  cityIV: string;
+  citySalt: string;
+  encryptedState?: string;
+  stateIV?: string;
+  stateSalt?: string;
+  encryptedPostalCode: string;
+  postalCodeIV: string;
+  postalCodeSalt: string;
+  encryptedCountry: string;
+  countryIV: string;
+  countrySalt: string;
+} {
+  // Encrypt personal information with individual IVs and salts
+  const { encrypted: encryptedName, iv: nameIV, salt: nameSalt } = encryptData(data.name);
+  const { encrypted: encryptedEmail, iv: emailIV, salt: emailSalt } = encryptData(data.email);
+  const { encrypted: encryptedPhone, iv: phoneIV, salt: phoneSalt } = encryptData(data.phone);
+  const { encrypted: encryptedCompanyName, iv: companyNameIV, salt: companyNameSalt } = encryptData(data.companyName);
+
+  // Encrypt address with individual IVs and salts
+  const addressEncryption = encryptAddress(data.address);
+
+  const result: any = {
+    encryptedName,
+    nameIV,
+    nameSalt,
+    encryptedEmail,
+    emailIV,
+    emailSalt,
+    encryptedPhone,
+    phoneIV,
+    phoneSalt,
+    encryptedCompanyName,
+    companyNameIV,
+    companyNameSalt,
+    encryptedStreet: addressEncryption.encryptedStreet,
+    streetIV: addressEncryption.streetIV,
+    streetSalt: addressEncryption.streetSalt,
+    encryptedCity: addressEncryption.encryptedCity,
+    cityIV: addressEncryption.cityIV,
+    citySalt: addressEncryption.citySalt,
+    encryptedPostalCode: addressEncryption.encryptedPostal,
+    postalCodeIV: addressEncryption.postalIV,
+    postalCodeSalt: addressEncryption.postalSalt,
+    encryptedCountry: addressEncryption.encryptedCountry,
+    countryIV: addressEncryption.countryIV,
+    countrySalt: addressEncryption.countrySalt,
+  };
+
+  // Add optional fields with individual IVs and salts
+  if (data.vatNumber) {
+    const { encrypted: encryptedVatNumber, iv: vatNumberIV, salt: vatNumberSalt } = encryptData(data.vatNumber);
+    result.encryptedVatNumber = encryptedVatNumber;
+    result.vatNumberIV = vatNumberIV;
+    result.vatNumberSalt = vatNumberSalt;
+  }
+
+  if (data.address.street2) {
+    result.encryptedStreet2 = addressEncryption.encryptedStreet2;
+    result.street2IV = addressEncryption.street2IV;
+    result.street2Salt = addressEncryption.street2Salt;
+  }
+
+  if (data.address.state) {
+    result.encryptedState = addressEncryption.encryptedState;
+    result.stateIV = addressEncryption.stateIV;
+    result.stateSalt = addressEncryption.stateSalt;
+  }
+
+  return result;
+}
+
+// Helper function to decrypt responsible person data
+export function decryptResponsiblePerson(data: {
+  encryptedName: string;
+  nameIV: string;
+  nameSalt: string;
+  encryptedEmail: string;
+  emailIV: string;
+  emailSalt: string;
+  encryptedPhone: string;
+  phoneIV: string;
+  phoneSalt: string;
+  encryptedCompanyName: string;
+  companyNameIV: string;
+  companyNameSalt: string;
+  encryptedVatNumber?: string;
+  vatNumberIV?: string;
+  vatNumberSalt?: string;
+  encryptedStreet: string;
+  streetIV: string;
+  streetSalt: string;
+  encryptedStreet2?: string;
+  street2IV?: string;
+  street2Salt?: string;
+  encryptedCity: string;
+  cityIV: string;
+  citySalt: string;
+  encryptedState?: string;
+  stateIV?: string;
+  stateSalt?: string;
+  encryptedPostalCode: string;
+  postalCodeIV: string;
+  postalCodeSalt: string;
+  encryptedCountry: string;
+  countryIV: string;
+  countrySalt: string;
+}): {
+  name: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  vatNumber?: string;
+  address: {
+    street: string;
+    street2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    country: string;
+  };
+} {
+  // Decrypt personal information with individual IVs and salts
+  const name = decryptData(data.encryptedName, data.nameIV, data.nameSalt);
+  const email = decryptData(data.encryptedEmail, data.emailIV, data.emailSalt);
+  const phone = decryptData(data.encryptedPhone, data.phoneIV, data.phoneSalt);
+  const companyName = decryptData(data.encryptedCompanyName, data.companyNameIV, data.companyNameSalt);
+
+  // Decrypt address with individual IVs and salts
+  const address = decryptAddress({
+    encryptedStreet: data.encryptedStreet,
+    streetIV: data.streetIV,
+    streetSalt: data.streetSalt,
+    encryptedStreet2: data.encryptedStreet2,
+    street2IV: data.street2IV,
+    street2Salt: data.street2Salt,
+    encryptedCity: data.encryptedCity,
+    cityIV: data.cityIV,
+    citySalt: data.citySalt,
+    encryptedState: data.encryptedState,
+    stateIV: data.stateIV,
+    stateSalt: data.stateSalt,
+    encryptedPostal: data.encryptedPostalCode,
+    postalIV: data.postalCodeIV,
+    postalSalt: data.postalCodeSalt,
+    encryptedCountry: data.encryptedCountry,
+    countryIV: data.countryIV,
+    countrySalt: data.countrySalt,
+  });
+
+  const result: any = {
+    name,
+    email,
+    phone,
+    companyName,
+    address,
+  };
+
+  if (data.encryptedVatNumber && data.vatNumberIV && data.vatNumberSalt) {
+    result.vatNumber = decryptData(data.encryptedVatNumber, data.vatNumberIV, data.vatNumberSalt);
+  }
+
+  return result;
+}
+
+// Helper function to encrypt birthdate data
+export function encryptBirthdate(birthdate: string): {
+  encryptedBirthdate: string;
+  birthdateIV: string;
+  birthdateSalt: string;
+} {
+  const { encrypted, iv, salt } = encryptData(birthdate);
+  return {
+    encryptedBirthdate: encrypted,
+    birthdateIV: iv,
+    birthdateSalt: salt,
+  };
+}
+
+// Helper function to decrypt birthdate data
+export function decryptBirthdate(data: {
+  encryptedBirthdate: string;
+  birthdateIV: string;
+  birthdateSalt: string;
+}): string {
+  return decryptData(data.encryptedBirthdate, data.birthdateIV, data.birthdateSalt);
+}

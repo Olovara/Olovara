@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useCurrency } from "@/hooks/useCurrency";
 import ProductActions from "@/components/ProductPageActions";
 import { ProductStructuredData } from "@/components/ProductStructuredData";
+import GPSRComplianceDisplay from "@/components/product/GPSRComplianceDisplay";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -49,20 +50,57 @@ interface ProductDetailsProps {
     howItsMade: string | null;
     tags: string[];
     NSFW: boolean;
+    // GPSR compliance fields
+    safetyWarnings?: string | null;
+    materialsComposition?: string | null;
+    safeUseInstructions?: string | null;
+    ageRestriction?: string | null;
+    chokingHazard?: boolean;
+    smallPartsWarning?: boolean;
+    chemicalWarnings?: string | null;
+    careInstructions?: string | null;
     seller: {
       shopName: string;
       shopNameSlug: string;
+      userId: string;
     } | null;
     dropDate: Date | null;
     dropTime: string | null;
+    batchNumber?: string | null;
+    // GPSR compliance additional data
+    responsiblePerson?: {
+      name: string;
+      email: string;
+      phone: string;
+      companyName: string;
+      vatNumber?: string;
+      address: {
+        street: string;
+        street2?: string;
+        city: string;
+        state?: string;
+        country: string;
+        postalCode: string;
+      };
+    } | null;
+    businessAddress?: {
+      street: string;
+      street2?: string;
+      city: string;
+      state?: string;
+      country: string;
+      postalCode: string;
+    } | null;
   };
 }
 
 export default function ProductDetails({ data }: ProductDetailsProps) {
   const [convertedPrice, setConvertedPrice] = useState<string>("");
   const [convertedFinalPrice, setConvertedFinalPrice] = useState<string>("");
-  const [convertedShippingCost, setConvertedShippingCost] = useState<string>("");
+  const [convertedShippingCost, setConvertedShippingCost] =
+    useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
+
   const { formatPrice } = useCurrency();
 
   // Update current time every minute for countdown
@@ -76,9 +114,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
 
   useEffect(() => {
     // Convert regular price
-    formatPrice(data.price, true)
-      .then(setConvertedPrice)
-      .catch(console.error);
+    formatPrice(data.price, true).then(setConvertedPrice).catch(console.error);
 
     // Calculate and convert final price (with discount if applicable)
     const finalPrice = data.discount
@@ -96,55 +132,61 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
         .then(setConvertedShippingCost)
         .catch(console.error);
     }
-  }, [data.price, data.discount, data.shippingCost, data.handlingFee, formatPrice]);
+  }, [
+    data.price,
+    data.discount,
+    data.shippingCost,
+    data.handlingFee,
+    formatPrice,
+  ]);
 
   // Check if sale is currently active
   const isOnSale = (() => {
     if (!data.onSale || !data.discount) return false;
-    
+
     const now = new Date();
-    
+
     // Check sale start date/time
     if (data.saleStartDate) {
       const saleStart = new Date(data.saleStartDate);
       if (data.saleStartTime) {
-        const [hours, minutes] = data.saleStartTime.split(':').map(Number);
+        const [hours, minutes] = data.saleStartTime.split(":").map(Number);
         saleStart.setHours(hours, minutes, 0, 0);
       }
       if (now < saleStart) return false;
     }
-    
+
     // Check sale end date/time
     if (data.saleEndDate) {
       const saleEnd = new Date(data.saleEndDate);
       if (data.saleEndTime) {
-        const [hours, minutes] = data.saleEndTime.split(':').map(Number);
+        const [hours, minutes] = data.saleEndTime.split(":").map(Number);
         saleEnd.setHours(hours, minutes, 0, 0);
       }
       if (now > saleEnd) return false;
     }
-    
+
     return true;
   })();
 
   // Calculate time remaining for sale
   const getSaleTimeRemaining = () => {
     if (!data.saleEndDate) return null;
-    
+
     const saleEnd = new Date(data.saleEndDate);
-    
+
     if (data.saleEndTime) {
-      const [hours, minutes] = data.saleEndTime.split(':').map(Number);
+      const [hours, minutes] = data.saleEndTime.split(":").map(Number);
       saleEnd.setHours(hours, minutes, 0, 0);
     }
-    
+
     const timeDiff = saleEnd.getTime() - currentTime.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-    
+
     if (daysDiff <= 0) return "Ends today";
     if (daysDiff === 1) return "Ends tomorrow";
     if (daysDiff <= 7) return `Ends in ${daysDiff} days`;
-    
+
     return `Ends ${saleEnd.toLocaleDateString()}`;
   };
 
@@ -184,9 +226,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             <div className="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
               SALE -{data.discount}% OFF
               {getSaleTimeRemaining() && (
-                <span className="ml-2 text-xs">
-                  • {getSaleTimeRemaining()}
-                </span>
+                <span className="ml-2 text-xs">• {getSaleTimeRemaining()}</span>
               )}
             </div>
           )}
@@ -224,10 +264,10 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             </p>
           )}
           {/* Quantity Selector & Buy Now Button */}
-          <ProductActions 
-            productId={data.id} 
+          <ProductActions
+            productId={data.id}
             productName={data.name}
-            maxStock={data.stock} 
+            maxStock={data.stock}
             dropDate={data.dropDate}
             dropTime={data.dropTime}
             isDigital={data.isDigital}
@@ -277,12 +317,32 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             )}
             {(data.itemLength || data.itemWidth || data.itemHeight) && (
               <p className="text-gray-600">
-                Dimensions: {data.itemLength || 0} × {data.itemWidth || 0} × {data.itemHeight || 0} {data.itemDimensionUnit}
+                Dimensions: {data.itemLength || 0} × {data.itemWidth || 0} ×{" "}
+                {data.itemHeight || 0} {data.itemDimensionUnit}
               </p>
             )}
           </div>
         )}
       </div>
+
+      {/* GPSR Compliance Information - Only for physical products */}
+      {!data.isDigital && (
+        <div className="mt-8 pb-8">
+          <GPSRComplianceDisplay
+            safetyWarnings={data.safetyWarnings}
+            materialsComposition={data.materialsComposition}
+            safeUseInstructions={data.safeUseInstructions}
+            ageRestriction={data.ageRestriction}
+            chokingHazard={data.chokingHazard}
+            smallPartsWarning={data.smallPartsWarning}
+            chemicalWarnings={data.chemicalWarnings}
+            careInstructions={data.careInstructions}
+            responsiblePerson={data.responsiblePerson}
+            businessAddress={data.businessAddress}
+            showAll={true}
+          />
+        </div>
+      )}
 
       {/* Digital Product Download */}
       {data.isDigital && data.productFile && (
@@ -302,9 +362,9 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           </a>
         </div>
       )}
-      
+
       {/* Add structured data for SEO */}
       <ProductStructuredData product={data} />
     </section>
   );
-} 
+}

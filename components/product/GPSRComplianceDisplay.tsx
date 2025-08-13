@@ -12,14 +12,37 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, AlertTriangle, Info, Baby, Droplets } from "lucide-react";
 
 interface GPSRComplianceDisplayProps {
-  safetyWarnings?: string;
-  materialsComposition?: string;
-  safeUseInstructions?: string;
-  ageRestriction?: string;
+  safetyWarnings?: string | null;
+  materialsComposition?: string | null;
+  safeUseInstructions?: string | null;
+  ageRestriction?: string | null;
   chokingHazard?: boolean;
   smallPartsWarning?: boolean;
-  chemicalWarnings?: string;
-  careInstructions?: string;
+  chemicalWarnings?: string | null;
+  careInstructions?: string | null;
+  responsiblePerson?: {
+    name: string;
+    email: string;
+    phone: string;
+    companyName: string;
+    vatNumber?: string;
+    address: {
+      street: string;
+      street2?: string;
+      city: string;
+      state?: string;
+      country: string;
+      postalCode: string;
+    };
+  } | null;
+  businessAddress?: {
+    street: string;
+    street2?: string;
+    city: string;
+    state?: string;
+    country: string;
+    postalCode: string;
+  } | null;
   showAll?: boolean; // Whether to show all fields or just warnings
 }
 
@@ -32,6 +55,8 @@ const GPSRComplianceDisplay = ({
   smallPartsWarning,
   chemicalWarnings,
   careInstructions,
+  responsiblePerson,
+  businessAddress,
   showAll = false,
 }: GPSRComplianceDisplayProps) => {
   // Check if there's any GPSR data to display
@@ -90,7 +115,7 @@ const GPSRComplianceDisplay = ({
               )}
               {ageRestriction && (
                 <div className="flex items-center gap-2">
-                  <Baby className="h-4 w-4 text-blue-600" />
+                  <Baby className="h-4 w-4 text-black-600" />
                   <span>
                     <strong>Age Restriction:</strong> {ageRestriction}
                   </span>
@@ -98,7 +123,7 @@ const GPSRComplianceDisplay = ({
               )}
               {chemicalWarnings && (
                 <div className="flex items-center gap-2">
-                  <Droplets className="h-4 w-4 text-purple-600" />
+                  <Droplets className="h-4 w-4 text-black-600" />
                   <span>
                     <strong>Chemical Warnings:</strong> {chemicalWarnings}
                   </span>
@@ -114,7 +139,7 @@ const GPSRComplianceDisplay = ({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-black-600" />
               <CardTitle className="text-lg">
                 Product Safety Information
               </CardTitle>
@@ -152,10 +177,75 @@ const GPSRComplianceDisplay = ({
               </div>
             )}
 
+            {/* Responsible Person Information */}
+            <div className="pt-2 border-t">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Responsible Person Information</h4>
+                {responsiblePerson ? (
+                  <div className="space-y-1 text-xs text-gray-700">
+                    <div><strong>Name:</strong> {responsiblePerson.name}</div>
+                    <div><strong>Company:</strong> {responsiblePerson.companyName}</div>
+                    <div><strong>Email:</strong> {responsiblePerson.email}</div>
+                    <div><strong>Phone:</strong> {responsiblePerson.phone}</div>
+                    {responsiblePerson.vatNumber && (
+                      <div><strong>VAT Number:</strong> {responsiblePerson.vatNumber}</div>
+                    )}
+                    <div className="mt-2">
+                      <strong>Address:</strong>
+                      <div className="ml-2">
+                        {responsiblePerson.address.street}
+                        {responsiblePerson.address.street2 && <br />}
+                        {responsiblePerson.address.street2 && responsiblePerson.address.street2}
+                        <br />
+                        {responsiblePerson.address.city}
+                        {responsiblePerson.address.state && `, ${responsiblePerson.address.state}`}
+                        <br />
+                        {responsiblePerson.address.postalCode}
+                        <br />
+                        {responsiblePerson.address.country}
+                      </div>
+                    </div>
+                  </div>
+                ) : businessAddress ? (
+                  <div className="space-y-1 text-xs text-gray-700">
+                    <div><strong>Business Address:</strong></div>
+                    <div className="ml-2">
+                      {businessAddress.street}
+                      {businessAddress.street2 && <br />}
+                      {businessAddress.street2 && businessAddress.street2}
+                      <br />
+                      {businessAddress.city}
+                      {businessAddress.state && `, ${businessAddress.state}`}
+                      <br />
+                      {businessAddress.postalCode}
+                      <br />
+                      {businessAddress.country}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600">⚠️</span>
+                        <div>
+                          <strong>No Responsible Person Information:</strong> The responsible person information for this product is not available. 
+                          This information is required for GPSR compliance.
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      For current responsible person or business address information, 
+                      please contact the seller directly through their shop page.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Safety Compliance Badge */}
             <div className="pt-2 border-t">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-green-600" />
+                <Shield className="h-4 w-4 text-black-600" />
                 <span className="text-xs text-gray-600">
                   This product includes safety information compliant with EU
                   General Product Safety Regulation (GPSR)

@@ -53,6 +53,7 @@ interface Order {
   buyerEmail?: string;
   buyerName?: string;
   shippingAddress?: any | null;
+  batchNumber?: string | null;
 }
 
 export function OrderActions({
@@ -190,6 +191,7 @@ export function OrderActions({
           status: order.status,
           paymentStatus: order.paymentStatus,
           shippingAddress: order.shippingAddress,
+          batchNumber: order.batchNumber,
           createdAt: order.createdAt,
         }} 
         isOpen={isModalOpen} 

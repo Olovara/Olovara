@@ -40,6 +40,7 @@ interface Purchase {
   buyerEmail?: string;
   buyerName?: string;
   shippingAddress?: any | null;
+  batchNumber?: string | null;
 }
 
 export function PurchaseActions({
@@ -72,6 +73,7 @@ export function PurchaseActions({
     status: purchase.status,
     paymentStatus: purchase.paymentStatus,
     shippingAddress: purchase.shippingAddress,
+    batchNumber: purchase.batchNumber,
     createdAt: purchase.createdAt,
   };
 

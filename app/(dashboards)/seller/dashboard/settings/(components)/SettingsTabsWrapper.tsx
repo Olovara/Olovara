@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ShopQRCode from "@/components/ShopQRCode";
 import ShippingProfilesTable from "./ShippingProfilesTable";
 import ShopPoliciesForm from "@/components/forms/ShopPoliciesForm";
-import CountryExclusionsForm from "@/components/forms/CountryExclusionsForm";
+import EnhancedCountryExclusionsForm from "@/components/forms/EnhancedCountryExclusionsForm";
 import SellerAboutForm from "@/components/forms/SellerAboutForm";
 import SellerInfoForm from "@/components/forms/SellerInfoForm";
 import SellerPreferencesForm from "@/components/forms/SellerPreferencesForm";
@@ -103,7 +103,7 @@ export default function SettingsTabsWrapper({ seller }: SettingsTabsWrapperProps
       <TabsContent value="exclusions" className="space-y-4">
         <Card className="w-full max-w-none">
           <CardContent className="p-4 sm:p-6">
-            <CountryExclusionsForm />
+            <EnhancedCountryExclusionsForm />
           </CardContent>
         </Card>
       </TabsContent>

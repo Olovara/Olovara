@@ -30,12 +30,15 @@ import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
 import { ProductFileSection } from "../product/productFile";
 import { ProductSEOSection } from "../product/productSEO";
+import GPSRComplianceForm from "../product/GPSRComplianceForm";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { getSellerPreferences } from "@/actions/getSellerPreferences";
+import { getCountryExclusions } from "@/actions/countryExclusionsActions";
 import { useTestEnvironment } from "@/hooks/useTestEnvironment";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { isGPSRComplianceRequired } from "@/lib/gpsr-compliance";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -97,6 +100,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
   
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
+  const [isGPSRRequired, setIsGPSRRequired] = useState(false);
   
   // Add a ref to track if form was submitted successfully
   const formSubmittedRef = useRef(false);
@@ -147,8 +152,34 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const { canAccessTest, loading: testAccessLoading } = useTestEnvironment();
 
+  // Fetch excluded countries and determine GPSR requirements
+  useEffect(() => {
+    const fetchExcludedCountries = async () => {
+      try {
+        const result = await getCountryExclusions();
+        if (result.data) {
+          const excluded = result.data.excludedCountries || [];
+          setExcludedCountries(excluded);
+          
+          // Determine if GPSR compliance is required
+          const gpsrRequired = isGPSRComplianceRequired(excluded);
+          setIsGPSRRequired(gpsrRequired);
+        }
+      } catch (error) {
+        console.error("Error fetching excluded countries:", error);
+        // Default to showing GPSR fields if we can't determine
+        setIsGPSRRequired(true);
+      }
+    };
+
+    fetchExcludedCountries();
+  }, []);
+
+
+
   const form = useForm<z.infer<typeof ProductSchema>>({
     resolver: zodResolver(initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema),
+    mode: "onSubmit",
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
@@ -168,8 +199,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       status: initialData?.status || "HIDDEN",
       isDigital: initialData?.isDigital || false,
       primaryCategory: initialData?.primaryCategory || "",
-      secondaryCategory: initialData?.secondaryCategory || "",
-      tertiaryCategory: initialData?.tertiaryCategory || "",
+      secondaryCategory: initialData?.secondaryCategory,
+      tertiaryCategory: initialData?.tertiaryCategory || null,
       stock: initialData?.stock || 0,
       inStockProcessingTime: initialData?.inStockProcessingTime || 0,
       outStockLeadTime: initialData?.outStockLeadTime || 0,
@@ -182,24 +213,58 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productFile: initialData?.productFile || null,
       currency: initialData?.currency || sellerPreferences.preferredCurrency,
       isTestProduct: initialData?.isTestProduct || false,
+      shippingProfileId: initialData?.shippingProfileId || null,
+      taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
+      taxCode: initialData?.taxCode || "",
+      taxExempt: initialData?.taxExempt || false,
+      // SEO fields
+      metaTitle: initialData?.metaTitle || "",
+      metaDescription: initialData?.metaDescription || "",
+      keywords: initialData?.keywords || [],
+      ogTitle: initialData?.ogTitle || "",
+      ogDescription: initialData?.ogDescription || "",
+      ogImage: initialData?.ogImage || "",
+      // GPSR Compliance fields
+      safetyWarnings: initialData?.safetyWarnings || "",
+      materialsComposition: initialData?.materialsComposition || "",
+      safeUseInstructions: initialData?.safeUseInstructions || "",
+      ageRestriction: initialData?.ageRestriction || "",
+      chokingHazard: initialData?.chokingHazard || false,
+      smallPartsWarning: initialData?.smallPartsWarning || false,
+      chemicalWarnings: initialData?.chemicalWarnings || "",
+      careInstructions: initialData?.careInstructions || "",
     }
   });
 
   // Add this console log to verify form initialization
   console.log("Form initialized with:", form);
   console.log("Form default values:", form.getValues());
+  
+
 
   const formState = form.formState;
   console.log("Form state:", formState);
 
   const { setValue } = form;
 
+  // Ensure shippingProfileId is set if it's missing
+  useEffect(() => {
+    const currentValue = form.getValues("shippingProfileId");
+    if (currentValue === undefined) {
+      form.setValue("shippingProfileId", null);
+    }
+  }, [form]);
+
+
+
   // Add this useEffect to monitor form errors
   useEffect(() => {
     if (Object.keys(formState.errors).length > 0) {
       console.log("Form errors:", formState.errors);
+      console.log("Current form values:", form.getValues());
+      console.log("shippingProfileId value:", form.getValues("shippingProfileId"));
     }
-  }, [formState.errors]);
+  }, [formState.errors, form]);
 
   // Add this useEffect to sync images with form state
   useEffect(() => {
@@ -287,9 +352,30 @@ export function ProductForm({ initialData }: ProductFormProps) {
   }, []);
 
   const onSubmit = async (data: ProductFormValues) => {
+    console.log("[DEBUG] onSubmit function called!");
     try {
       setIsLoading(true);
       console.log("[DEBUG] Submitting form with data:", data);
+
+      // Validate GPSR compliance if required
+      if (isGPSRRequired) {
+        const requiredGPSRFields = [
+          'safetyWarnings',
+          'materialsComposition', 
+          'safeUseInstructions'
+        ];
+        
+        const missingFields = requiredGPSRFields.filter(field => {
+          const value = data[field as keyof typeof data];
+          return !value || (typeof value === 'string' && value.trim() === '');
+        });
+        
+        if (missingFields.length > 0) {
+          toast.error(`GPSR compliance required: Please fill in ${missingFields.join(', ')}`);
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // Determine if this should be saved as a draft
       const isDraft = initialData?.status === "DRAFT" || data.status === "DRAFT";
@@ -634,6 +720,66 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   />
                 </div>
               </div>
+
+              {/* GPSR Compliance Section - Only show if GPSR compliance is required */}
+              {isGPSRRequired && !form.watch("isDigital") ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      Product Safety & Compliance
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">Ensure your product meets safety standards and regulatory requirements</p>
+                  </div>
+                  <div className="p-6">
+                    <GPSRComplianceForm
+                      safetyWarnings={form.watch("safetyWarnings") || ""}
+                      materialsComposition={form.watch("materialsComposition") || ""}
+                      safeUseInstructions={form.watch("safeUseInstructions") || ""}
+                      ageRestriction={form.watch("ageRestriction") || ""}
+                      chokingHazard={form.watch("chokingHazard") || false}
+                      smallPartsWarning={form.watch("smallPartsWarning") || false}
+                      chemicalWarnings={form.watch("chemicalWarnings") || ""}
+                      careInstructions={form.watch("careInstructions") || ""}
+                      onChange={(field, value) => form.setValue(field as any, value)}
+                      isRequired={true} // Now required since we only show when GPSR compliance is needed
+                    />
+                  </div>
+                </div>
+              ) : !form.watch("isDigital") ? (
+                // Show message when GPSR compliance is not required (for physical products)
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      Product Safety & Compliance
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">GPSR compliance not required for your shipping destinations</p>
+                  </div>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-600">
+                      <p>Since you have excluded all EU/EEA countries and Northern Ireland from your shipping destinations, GPSR (General Product Safety Regulation) compliance fields are not required.</p>
+                      <p className="mt-2">If you later decide to ship to EU/EEA countries or Northern Ireland, you can update your shipping exclusions in your seller settings, and these fields will become available.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Show message for digital products
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Digital Product
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">GPSR compliance not required for digital products</p>
+                  </div>
+                  <div className="p-6">
+                    <div className="text-sm text-gray-600">
+                      <p>GPSR (General Product Safety Regulation) compliance fields are not required for digital products since they don&apos;t pose physical safety risks.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Test Product Section - Full Width */}
               {canAccessTest && (

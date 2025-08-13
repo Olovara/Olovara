@@ -71,6 +71,15 @@ export async function POST(req: NextRequest) {
       ogTitle,
       ogDescription,
       ogImage,
+      // GPSR Compliance fields
+      safetyWarnings,
+      materialsComposition,
+      safeUseInstructions,
+      ageRestriction,
+      chokingHazard,
+      smallPartsWarning,
+      chemicalWarnings,
+      careInstructions,
     } = data;
 
     // Check if seller exists and get onboarding status
@@ -205,6 +214,15 @@ export async function POST(req: NextRequest) {
       ogDescription,
       ogImage,
       isTestProduct,
+      // GPSR Compliance fields
+      safetyWarnings,
+      materialsComposition,
+      safeUseInstructions,
+      ageRestriction,
+      chokingHazard,
+      smallPartsWarning,
+      chemicalWarnings,
+      careInstructions,
     };
 
     // --- Step 3: Validate data based on whether it's a draft or active product ---

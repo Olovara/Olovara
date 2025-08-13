@@ -74,12 +74,17 @@ export const EU_MEMBER_STATES = [
   'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
   'SI', 'ES', 'SE'
 ];
+
+export const NORTHERN_IRELAND_CODE = 'NI';
+export const GPSR_REQUIRED_COUNTRIES = [...EEA_COUNTRIES, NORTHERN_IRELAND_CODE];
 ```
 
 #### Key Functions
 - `isGPSRComplianceRequired()`: Determines if GPSR compliance is required based on shipping destinations
 - `validateGPSRCompliance()`: Validates GPSR data completeness
 - `getGPSRComplianceSummary()`: Generates compliance summary for display
+- `formatBusinessAddress()`: Formats business address for display
+- `hasCompleteBusinessAddress()`: Checks if business address is complete
 
 ### 5. Enhanced ExcludedCountries Component
 
@@ -88,6 +93,24 @@ Updated `components/shop/ExcludedCountries.tsx` to include EU compliance informa
 - **EU Compliant Seller Badge**: Shows when seller has provided EU compliance info
 - **Business Address Display**: Shows seller's address for EU compliance
 - **Visual Indicators**: Clear indication of EU compliance status
+
+### 6. Enhanced Country Exclusions Form
+
+Created `components/forms/EnhancedCountryExclusionsForm.tsx` that includes:
+
+- **Dynamic Address Fields**: Address fields appear when shipping to EEA countries or Northern Ireland
+- **Northern Ireland Support**: Handles Northern Ireland as a separate exclusion option
+- **EU Compliance Alerts**: Clear indication when EU compliance is required
+- **Business Address Collection**: Uses existing Address model with `isBusinessAddress` flag
+
+### 7. Business Address Actions
+
+Created `actions/businessAddressActions.ts` to handle business address operations:
+
+- **Address Creation/Update**: Creates or updates business addresses using the existing Address model
+- **Encryption**: Properly encrypts address data using the existing encryption system
+- **Validation**: Validates address data before saving
+- **Integration**: Works with the existing Address model structure
 
 ## Usage
 
@@ -130,6 +153,8 @@ npx ts-node scripts/add-gpsr-fields.ts
 # Or run Prisma migration
 npx prisma db push
 ```
+
+**Note**: Business addresses are handled by the existing Address model with the `isBusinessAddress` flag. No additional database migration is needed for business addresses.
 
 ## Testing
 

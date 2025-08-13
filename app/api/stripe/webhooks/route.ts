@@ -234,6 +234,7 @@ export async function POST(req: Request) {
             taxRate: session.total_details?.amount_tax ? 
               (session.total_details.amount_tax / (session.amount_total || 1)) : null,
             taxType: session.total_details?.amount_tax ? 'VAT' : null, // Default to VAT, adjust based on jurisdiction
+            batchNumber: product.batchNumber || null, // Include product batch number for traceability
           };
 
           const order = await db.order.create({ data: preliminaryOrderData });
@@ -444,6 +445,7 @@ export async function POST(req: Request) {
                 orderDetails: {
                   productName: product.name,
                   orderId: order.id,
+                  batchNumber: order.batchNumber || undefined,
                   shippingAddress: shippingAddress ? {
                     street: shippingAddress.line1 || "",
                     city: shippingAddress.city || "",
@@ -473,6 +475,7 @@ export async function POST(req: Request) {
                   orderDetails: {
                     productName: product.name,
                     orderId: order.id,
+                    batchNumber: order.batchNumber || undefined,
                     quantity: order.quantity,
                     totalAmount: order.totalAmount,
                     buyerName: decryptOrderData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt),
