@@ -1,13 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { decryptName } from "@/lib/encryption";
+import { decryptData } from "@/lib/encryption";
 import ProfileForm from "@/components/forms/ProfileForm";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = {
   title: "Member - Settings",
@@ -25,15 +20,20 @@ export default async function MemberSettings() {
     select: {
       encryptedFirstName: true,
       firstNameIV: true,
+      firstNameSalt: true,
       userBio: true,
     },
   });
 
   // Decrypt first name if it exists
   let firstName = null;
-  if (user?.encryptedFirstName && user?.firstNameIV) {
+  if (user?.encryptedFirstName && user?.firstNameIV && user?.firstNameSalt) {
     try {
-      firstName = decryptName(user.encryptedFirstName, user.firstNameIV);
+      firstName = decryptData(
+        user.encryptedFirstName,
+        user.firstNameIV,
+        user.firstNameSalt
+      );
     } catch (error) {
       console.error("Error decrypting first name:", error);
       firstName = null;

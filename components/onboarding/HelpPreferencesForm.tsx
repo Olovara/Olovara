@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -22,10 +22,11 @@ import {
   Calculator,
   Lightbulb,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
 } from "lucide-react";
 import OnboardingProgress from "./OnboardingProgress";
-import { saveHelpPreferences } from "@/actions/onboardingActions";
+import { saveHelpPreferences, getUserFirstName } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 
 // Define the help categories with icons and descriptions
@@ -78,6 +79,23 @@ export default function HelpPreferencesForm() {
   const router = useRouter();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [firstName, setFirstName] = useState<string | null>(null);
+
+  // Get user's first name for personalization
+  useEffect(() => {
+    const fetchFirstName = async () => {
+      try {
+        const result = await getUserFirstName();
+        if (result.firstName) {
+          setFirstName(result.firstName);
+        }
+      } catch (error) {
+        console.error("Error fetching first name:", error);
+      }
+    };
+
+    fetchFirstName();
+  }, []);
 
   const onboardingSteps = [
     {
@@ -135,10 +153,14 @@ export default function HelpPreferencesForm() {
     router.push("/onboarding/shop-preferences");
   };
 
+  const handleBack = () => {
+    router.push("/onboarding/welcome");
+  };
+
   return (
     <div className="space-y-8">
       <OnboardingProgress
-        currentStep="shop_preferences"
+        currentStep="help_preferences"
         steps={onboardingSteps}
       />
 
@@ -156,11 +178,13 @@ export default function HelpPreferencesForm() {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Welcome to Yarnnu!
+              {firstName ? `Hi, ${firstName}!` : "Hi!"}
             </CardTitle>
             <CardDescription className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Let&apos;s get you set up for success! What would you like help
-              with as you start your handmade business?
+              {firstName 
+                ? `Let's get you set up for success, ${firstName}! What areas would you like help with?`
+                : "Let's get you set up for success! What areas would you like help with?"
+              }
             </CardDescription>
           </CardHeader>
 
@@ -225,9 +249,9 @@ export default function HelpPreferencesForm() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+                className="bg-purple-50 border border-purple-200 rounded-lg p-4"
               >
-                <h3 className="font-semibold text-blue-900 mb-2">
+                <h3 className="font-semibold text-purple-900 mb-2">
                   We&apos;ll help you with:
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -239,7 +263,7 @@ export default function HelpPreferencesForm() {
                       <Badge
                         key={categoryId}
                         variant="secondary"
-                        className="bg-blue-100 text-blue-800"
+                        className="bg-purple-100 text-purple-800"
                       >
                         {category?.title}
                       </Badge>
@@ -252,27 +276,38 @@ export default function HelpPreferencesForm() {
             {/* Action Buttons */}
             <div className="flex justify-between items-center pt-6">
               <Button
-                variant="ghost"
-                onClick={handleSkip}
-                className="text-gray-600 hover:text-gray-800"
+                variant="outline"
+                onClick={handleBack}
+                className="flex items-center gap-2"
               >
-                Skip for now
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </Button>
 
-              <Button
-                onClick={handleContinue}
-                disabled={isSubmitting}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2"
-              >
-                {isSubmitting ? (
-                  "Saving..."
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleSkip}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Skip for now
+                </Button>
+
+                                <Button
+                  onClick={handleContinue}
+                  disabled={isSubmitting}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2"
+                >
+                  {isSubmitting ? (
+                    "Saving..."
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

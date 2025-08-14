@@ -6,6 +6,7 @@ import GoogleProvider from "next-auth/providers/google";
 import type { Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import { getUserPermissions } from "@/lib/permissions";
+import { decryptData } from "./encryption";
 
 export const currentUser = async () => {
   try {
@@ -64,6 +65,21 @@ export const currentRole = async () => {
     return null; // You can also return `null` or `undefined` here to handle the error gracefully
   }
 };
+
+export const getUserFirstName = (user: any): string | null => {
+  try {
+    if (!user?.encryptedFirstName || !user?.firstNameIV || !user?.firstNameSalt) {
+      return null;
+    }
+
+    const firstName = decryptData(user.encryptedFirstName, user.firstNameIV, user.firstNameSalt);
+    return firstName || null;
+  } catch (error) {
+    console.error("Error decrypting first name:", error);
+    return null;
+  }
+};
+
 export const authOptions: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
   providers: [

@@ -9,7 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import "react-quill/dist/quill.snow.css";
 import BlogComments from "@/components/blog/BlogComments";
-import { decryptName } from "@/lib/encryption";
+import { decryptData } from "@/lib/encryption";
 
 interface BlogPostPageProps {
   params: {
@@ -23,13 +23,29 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // Fetch the blog post
   const post = await db.blogPost.findUnique({
     where: { slug },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      content: true,
+      img: true,
+      status: true,
+      isPrivate: true,
+      createdAt: true,
+      publishedAt: true,
+      readTime: true,
+      views: true,
+      tags: true,
+      keywords: true,
+      allowComments: true,
+      slug: true,
       cat: true,
       user: {
         select: {
           image: true,
           encryptedFirstName: true,
           firstNameIV: true,
+          firstNameSalt: true,
         },
       },
     },
@@ -52,10 +68,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   // Get author name
   const getAuthorName = () => {
-    if (post.user?.encryptedFirstName && post.user?.firstNameIV) {
-      const firstName = decryptName(
+    if (
+      post.user?.encryptedFirstName &&
+      post.user?.firstNameIV &&
+      post.user?.firstNameSalt
+    ) {
+      const firstName = decryptData(
         post.user.encryptedFirstName,
-        post.user.firstNameIV
+        post.user.firstNameIV,
+        post.user.firstNameSalt
       );
       return firstName;
     }
@@ -91,9 +112,28 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="flex items-center gap-2">
             <span>By {getAuthorName()}</span>
           </div>
+          {post.createdAt &&
+            post.publishedAt &&
+            post.createdAt.toDateString() !==
+              post.publishedAt.toDateString() && (
+              <div className="flex items-center gap-2">
+                <span>
+                  Written{" "}
+                  {formatDistanceToNow(new Date(post.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+              </div>
+            )}
           {post.publishedAt && (
             <div className="flex items-center gap-2">
               <span>
+                {post.createdAt &&
+                post.publishedAt &&
+                post.createdAt.toDateString() ===
+                  post.publishedAt.toDateString()
+                  ? "Written"
+                  : "Updated"}{" "}
                 {formatDistanceToNow(new Date(post.publishedAt), {
                   addSuffix: true,
                 })}
@@ -205,11 +245,13 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       ogImage: true,
       ogTitle: true,
       ogDescription: true,
+      createdAt: true,
       publishedAt: true,
       user: {
         select: {
           encryptedFirstName: true,
           firstNameIV: true,
+          firstNameSalt: true,
         },
       },
     },
@@ -223,10 +265,15 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
 
   // Helper function to get author name
   const getAuthorName = () => {
-    if (post.user?.encryptedFirstName && post.user?.firstNameIV) {
-      const firstName = decryptName(
+    if (
+      post.user?.encryptedFirstName &&
+      post.user?.firstNameIV &&
+      post.user?.firstNameSalt
+    ) {
+      const firstName = decryptData(
         post.user.encryptedFirstName,
-        post.user.firstNameIV
+        post.user.firstNameIV,
+        post.user.firstNameSalt
       );
       return firstName;
     }
@@ -249,6 +296,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       images: post.ogImage ? [post.ogImage] : [],
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
+      modifiedTime: post.createdAt ? post.createdAt.toISOString() : undefined,
       authors: getAuthorName() !== "Anonymous" ? [getAuthorName()] : [],
       tags: post.tags || [],
     },

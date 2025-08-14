@@ -116,8 +116,10 @@ model User {
   // Profile fields
   encryptedFirstName    String? // Encrypted first name
   firstNameIV           String? // IV for first name encryption
+  firstNameSalt         String? // Salt for first name encryption (GCM)
   encryptedLastName     String?
   lastNameIV            String?  // Initialization vector for last name
+  lastNameSalt          String? // Salt for last name encryption (GCM)
   userBio               String? // User bio/description
   
   accounts              Account[]
@@ -161,6 +163,9 @@ model User {
   numChargebacks    Int       @default(0)
   numRefunds        Int       @default(0)
   numDisputes       Int       @default(0)
+  
+  // Help preferences for marketing and tailored guidance
+  helpPreferences   String[]  @default([]) // Array of help category IDs the user selected
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

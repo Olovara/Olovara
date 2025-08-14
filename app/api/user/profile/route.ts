@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { encryptName, decryptName } from "@/lib/encryption";
+import { encryptData, decryptData } from "@/lib/encryption";
 import { z } from "zod";
 
 // Schema for updating profile
@@ -33,6 +33,7 @@ export async function GET() {
       select: {
         encryptedFirstName: true,
         firstNameIV: true,
+        firstNameSalt: true,
         userBio: true,
       },
     });
@@ -46,9 +47,9 @@ export async function GET() {
 
     // Decrypt first name if it exists
     let firstName = null;
-    if (user.encryptedFirstName && user.firstNameIV) {
+    if (user.encryptedFirstName && user.firstNameIV && user.firstNameSalt) {
       try {
-        firstName = decryptName(user.encryptedFirstName, user.firstNameIV);
+        firstName = decryptData(user.encryptedFirstName, user.firstNameIV, user.firstNameSalt);
       } catch (error) {
         console.error("Error decrypting first name:", error);
         firstName = null;
@@ -85,11 +86,13 @@ export async function PUT(request: NextRequest) {
     // Encrypt first name if provided
     let encryptedFirstName = null;
     let firstNameIV = null;
+    let firstNameSalt = null;
     
     if (validatedData.firstName) {
-      const { encrypted, iv } = encryptName(validatedData.firstName);
+      const { encrypted, iv, salt } = encryptData(validatedData.firstName);
       encryptedFirstName = encrypted;
       firstNameIV = iv;
+      firstNameSalt = salt;
     }
 
     // Update user profile
@@ -98,19 +101,21 @@ export async function PUT(request: NextRequest) {
       data: {
         encryptedFirstName,
         firstNameIV,
+        firstNameSalt,
         userBio: validatedData.bio || null,
       },
       select: {
         encryptedFirstName: true,
         firstNameIV: true,
+        firstNameSalt: true,
         userBio: true,
       },
     });
 
     // Decrypt first name for response
     let firstName = null;
-    if (updatedUser.encryptedFirstName && updatedUser.firstNameIV) {
-      firstName = decryptName(updatedUser.encryptedFirstName, updatedUser.firstNameIV);
+    if (updatedUser.encryptedFirstName && updatedUser.firstNameIV && updatedUser.firstNameSalt) {
+      firstName = decryptData(updatedUser.encryptedFirstName, updatedUser.firstNameIV, updatedUser.firstNameSalt);
     }
 
     return NextResponse.json({

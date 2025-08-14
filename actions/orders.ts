@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { decryptName } from "@/lib/encryption";
+import { decryptData } from "@/lib/encryption";
 
 export async function getSellerOrders(userId: string) {
   if (!userId) {
@@ -43,10 +43,13 @@ export async function getSellerOrders(userId: string) {
         stripeTransferId: true,
         encryptedBuyerEmail: true,
         buyerEmailIV: true,
+        buyerEmailSalt: true,
         encryptedBuyerName: true,
         buyerNameIV: true,
+        buyerNameSalt: true,
         encryptedShippingAddress: true,
         shippingAddressIV: true,
+        shippingAddressSalt: true,
         discount: true,
         completedAt: true,
         createdAt: true,
@@ -66,13 +69,28 @@ export async function getSellerOrders(userId: string) {
     console.log("Found orders:", orders);
 
     // Decrypt sensitive data
-    return orders.map(order => ({
+    return orders.map((order) => ({
       ...order,
-      buyerEmail: decryptName(order.encryptedBuyerEmail, order.buyerEmailIV),
-      buyerName: decryptName(order.encryptedBuyerName, order.buyerNameIV),
-      shippingAddress: order.encryptedShippingAddress 
-        ? JSON.parse(decryptName(order.encryptedShippingAddress, order.shippingAddressIV))
-        : null,
+      buyerEmail: decryptData(
+        order.encryptedBuyerEmail,
+        order.buyerEmailIV,
+        order.buyerEmailSalt
+      ),
+      buyerName: decryptData(
+        order.encryptedBuyerName,
+        order.buyerNameIV,
+        order.buyerNameSalt
+      ),
+      shippingAddress:
+        order.encryptedShippingAddress && order.shippingAddressSalt
+          ? JSON.parse(
+              decryptData(
+                order.encryptedShippingAddress,
+                order.shippingAddressIV,
+                order.shippingAddressSalt
+              )
+            )
+          : null,
     }));
   } catch (error) {
     console.error("Error getting seller orders:", error);
@@ -83,7 +101,7 @@ export async function getSellerOrders(userId: string) {
 export async function getBuyerOrders(userId: string) {
   try {
     console.log("[DEBUG] Looking up orders for userId:", userId);
-    
+
     const orders = await db.order.findMany({
       where: { userId },
       select: {
@@ -105,10 +123,13 @@ export async function getBuyerOrders(userId: string) {
         stripeTransferId: true,
         encryptedBuyerEmail: true,
         buyerEmailIV: true,
+        buyerEmailSalt: true,
         encryptedBuyerName: true,
         buyerNameIV: true,
+        buyerNameSalt: true,
         encryptedShippingAddress: true,
         shippingAddressIV: true,
+        shippingAddressSalt: true,
         discount: true,
         completedAt: true,
         createdAt: true,
@@ -128,13 +149,28 @@ export async function getBuyerOrders(userId: string) {
     console.log("[DEBUG] Found orders:", orders);
 
     // Decrypt sensitive data
-    return orders.map(order => ({
+    return orders.map((order) => ({
       ...order,
-      buyerEmail: decryptName(order.encryptedBuyerEmail, order.buyerEmailIV),
-      buyerName: decryptName(order.encryptedBuyerName, order.buyerNameIV),
-      shippingAddress: order.encryptedShippingAddress 
-        ? JSON.parse(decryptName(order.encryptedShippingAddress, order.shippingAddressIV))
-        : null,
+      buyerEmail: decryptData(
+        order.encryptedBuyerEmail,
+        order.buyerEmailIV,
+        order.buyerEmailSalt
+      ),
+      buyerName: decryptData(
+        order.encryptedBuyerName,
+        order.buyerNameIV,
+        order.buyerNameSalt
+      ),
+      shippingAddress:
+        order.encryptedShippingAddress && order.shippingAddressSalt
+          ? JSON.parse(
+              decryptData(
+                order.encryptedShippingAddress,
+                order.shippingAddressIV,
+                order.shippingAddressSalt
+              )
+            )
+          : null,
     }));
   } catch (error) {
     console.error("Error getting buyer orders:", error);

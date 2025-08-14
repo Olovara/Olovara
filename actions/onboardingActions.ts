@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { encryptData, decryptData } from "@/lib/encryption";
 
 // Schema for help preferences
 const HelpPreferencesSchema = z.object({
@@ -18,14 +19,23 @@ const ShopPreferencesSchema = z.object({
 
 // Schema for shop name
 const ShopNameSchema = z.object({
-  shopName: z.string().min(3, "Shop name must be at least 3 characters").max(30, "Shop name must be 30 characters or less"),
+  shopName: z
+    .string()
+    .min(3, "Shop name must be at least 3 characters")
+    .max(30, "Shop name must be 30 characters or less"),
 });
 
 // Schema for first product
 const FirstProductSchema = z.object({
-  name: z.string().min(3, "Product name must be at least 3 characters").max(100, "Product name must be 100 characters or less"),
+  name: z
+    .string()
+    .min(3, "Product name must be at least 3 characters")
+    .max(100, "Product name must be 100 characters or less"),
   category: z.string().min(1, "Category is required"),
-  description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description must be 1000 characters or less"),
+  description: z
+    .string()
+    .min(10, "Description must be at least 10 characters")
+    .max(1000, "Description must be 1000 characters or less"),
   price: z.number().positive("Price must be greater than 0"),
   materials: z.string().optional(),
   dimensions: z.string().optional(),
@@ -33,7 +43,17 @@ const FirstProductSchema = z.object({
   processingTime: z.string().optional(),
 });
 
-export const saveHelpPreferences = async (data: z.infer<typeof HelpPreferencesSchema>) => {
+// Schema for first name
+const FirstNameSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .max(50, "First name must be 50 characters or less"),
+});
+
+export const saveHelpPreferences = async (
+  data: z.infer<typeof HelpPreferencesSchema>
+) => {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
@@ -43,9 +63,17 @@ export const saveHelpPreferences = async (data: z.infer<typeof HelpPreferencesSc
     // Validate the data
     const validatedData = HelpPreferencesSchema.parse(data);
 
-    // Save to database (placeholder for now)
-    console.log("Saving help preferences:", validatedData);
+    // Save help preferences to the user record
+    await db.user.update({
+      where: {
+        id: session.user.id,
+      },
+      data: {
+        helpPreferences: validatedData.helpCategories || [],
+      },
+    });
 
+    console.log("Help preferences saved successfully:", validatedData);
     return { success: "Help preferences saved successfully!" };
   } catch (error) {
     console.error("Error saving help preferences:", error);
@@ -53,7 +81,120 @@ export const saveHelpPreferences = async (data: z.infer<typeof HelpPreferencesSc
   }
 };
 
-export const saveShopPreferences = async (data: z.infer<typeof ShopPreferencesSchema>) => {
+// Analytics functions for marketing insights
+export const getHelpPreferencesAnalytics = async () => {
+  try {
+    // Get all users with help preferences
+    const users = await db.user.findMany({
+      where: {
+        helpPreferences: {
+          isEmpty: false,
+        },
+      },
+      select: {
+        helpPreferences: true,
+        createdAt: true,
+        seller: {
+          select: {
+            shopName: true,
+            shopCountry: true,
+          },
+        },
+      },
+    });
+
+    // Calculate analytics
+    const totalUsers = users.length;
+    const categoryCounts: Record<string, number> = {};
+    const recentUsers = users.filter(
+      (user) => user.createdAt > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+    );
+
+    // Count each category
+    users.forEach((user) => {
+      user.helpPreferences.forEach((category) => {
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+    });
+
+    // Get most popular categories
+    const popularCategories = Object.entries(categoryCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([category, count]) => ({
+        category,
+        count,
+        percentage: Math.round((count / totalUsers) * 100),
+      }));
+
+    return {
+      totalUsers,
+      recentUsers: recentUsers.length,
+      popularCategories,
+      categoryCounts,
+    };
+  } catch (error) {
+    console.error("Error getting help preferences analytics:", error);
+    return { error: "Failed to get analytics." };
+  }
+};
+
+// Get users by specific help category for targeted marketing
+export const getUsersByHelpCategory = async (category: string) => {
+  try {
+    const users = await db.user.findMany({
+      where: {
+        helpPreferences: {
+          has: category,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        seller: {
+          select: {
+            shopName: true,
+            shopCountry: true,
+          },
+        },
+      },
+    });
+
+    return { users, count: users.length };
+  } catch (error) {
+    console.error("Error getting users by help category:", error);
+    return { error: "Failed to get users." };
+  }
+};
+
+// Get user's help preferences for personalized guidance
+export const getUserHelpPreferences = async () => {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: {
+        id: session.user.id,
+      },
+      select: {
+        helpPreferences: true,
+      },
+    });
+
+    return { helpPreferences: user?.helpPreferences || [] };
+  } catch (error) {
+    console.error("Error getting user help preferences:", error);
+    return { error: "Failed to get help preferences." };
+  }
+};
+
+export const saveShopPreferences = async (
+  data: z.infer<typeof ShopPreferencesSchema>
+) => {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
@@ -63,9 +204,26 @@ export const saveShopPreferences = async (data: z.infer<typeof ShopPreferencesSc
     // Validate the data
     const validatedData = ShopPreferencesSchema.parse(data);
 
-    // Save to database (placeholder for now)
-    console.log("Saving shop preferences:", validatedData);
+    // Update or create the seller record with shop preferences
+    const seller = await db.seller.upsert({
+      where: {
+        userId: session.user.id,
+      },
+      update: {
+        shopCountry: validatedData.country,
+        preferredCurrency: validatedData.currency,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: session.user.id,
+        shopCountry: validatedData.country,
+        preferredCurrency: validatedData.currency,
+        shopName: "", // Will be set in shop naming step
+        shopNameSlug: "", // Will be set in shop naming step
+      },
+    });
 
+    console.log("Shop preferences saved successfully:", validatedData);
     return { success: "Shop preferences saved successfully!" };
   } catch (error) {
     console.error("Error saving shop preferences:", error);
@@ -83,25 +241,85 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
     // Validate the data
     const validatedData = ShopNameSchema.parse(data);
 
-    // Check if shop name is available (placeholder for now)
+    // Check if shop name is available
     const shopName = validatedData.shopName.trim();
-    
+
     // Basic validation
-    if (shopName.toLowerCase().includes('yarnnu')) {
+    if (shopName.toLowerCase().includes("yarnnu")) {
       return { error: "Shop name cannot contain 'Yarnnu'." };
     }
 
-    // Save to database (placeholder for now)
-    console.log("Saving shop name:", shopName);
+    // Check if shop name is already taken
+    const existingSeller = await db.seller.findFirst({
+      where: {
+        shopName: {
+          equals: shopName,
+          mode: "insensitive", // Case-insensitive search
+        },
+      },
+    });
 
-    return { success: "Shop name saved successfully!" };
+    if (existingSeller) {
+      return {
+        error:
+          "This shop name is already taken. Please choose a different name.",
+      };
+    }
+
+    // Create URL-friendly slug
+    const shopNameSlug = shopName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    // Check if slug is already taken
+    const existingSlug = await db.seller.findFirst({
+      where: {
+        shopNameSlug: {
+          equals: shopNameSlug,
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (existingSlug) {
+      return {
+        error:
+          "This shop name creates a URL that's already taken. Please choose a different name.",
+      };
+    }
+
+    // Check if seller record already exists (from shop preferences step)
+    const existingSellerRecord = await db.seller.findUnique({
+      where: {
+        userId: session.user.id,
+      },
+    });
+
+    // Update the seller record with the shop name
+    // The seller record should already exist from the shop preferences step
+    const seller = await db.seller.update({
+      where: {
+        userId: session.user.id,
+      },
+      data: {
+        shopName: shopName,
+        shopNameSlug: shopNameSlug,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log("Shop name saved successfully:", shopName);
+    return { success: "Shop name saved successfully!", shopName: shopName };
   } catch (error) {
     console.error("Error saving shop name:", error);
     return { error: "Failed to save shop name." };
   }
 };
 
-export const createFirstProduct = async (data: z.infer<typeof FirstProductSchema>) => {
+export const createFirstProduct = async (
+  data: z.infer<typeof FirstProductSchema>
+) => {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
@@ -111,10 +329,68 @@ export const createFirstProduct = async (data: z.infer<typeof FirstProductSchema
     // Validate the data
     const validatedData = FirstProductSchema.parse(data);
 
-    // Save to database (placeholder for now)
-    console.log("Creating first product:", validatedData);
+    // Check if user has a seller account
+    const seller = await db.seller.findUnique({
+      where: {
+        userId: session.user.id,
+      },
+    });
 
-    return { success: "First product created successfully!" };
+    if (!seller) {
+      return {
+        error: "Seller account not found. Please complete shop setup first.",
+      };
+    }
+
+    // Create the product
+    const product = await db.product.create({
+      data: {
+        userId: session.user.id,
+        name: validatedData.name,
+        description: {
+          text: validatedData.description,
+          materials: validatedData.materials || "",
+          dimensions: validatedData.dimensions || "",
+          weight: validatedData.weight || "",
+          processingTime: validatedData.processingTime || "3-5 business days",
+        },
+        price: Math.round(validatedData.price * 100), // Convert to cents
+        currency: "USD", // Default currency
+        status: "ACTIVE", // Set as active for first product
+        primaryCategory: validatedData.category,
+        secondaryCategory: validatedData.category, // Use same category for secondary
+        isDigital: false, // Default to physical product
+        stock: 1, // Default stock
+        images: [], // Empty array for now, can be updated later
+        tags: [], // Empty array for now
+        materialTags: validatedData.materials ? [validatedData.materials] : [],
+        inStockProcessingTime: validatedData.processingTime
+          ? parseInt(validatedData.processingTime.split("-")[0])
+          : 3,
+        itemWeightUnit: "lbs", // Default weight unit
+        itemDimensionUnit: "in", // Default dimension unit
+        taxCategory: "PHYSICAL_GOODS", // Default tax category
+      },
+    });
+
+    // Update seller's total products count
+    await db.seller.update({
+      where: {
+        userId: session.user.id,
+      },
+      data: {
+        totalProducts: {
+          increment: 1,
+        },
+        firstProductCreatedAt: new Date(),
+      },
+    });
+
+    console.log("First product created successfully:", product.id);
+    return {
+      success: "First product created successfully!",
+      productId: product.id,
+    };
   } catch (error) {
     console.error("Error creating first product:", error);
     return { error: "Failed to create first product." };
@@ -138,4 +414,79 @@ export const setupStripeAccount = async () => {
     console.error("Error setting up Stripe account:", error);
     return { error: "Failed to setup Stripe account." };
   }
-}; 
+};
+
+export const saveFirstName = async (data: z.infer<typeof FirstNameSchema>) => {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+
+  try {
+    // Validate the data
+    const validatedData = FirstNameSchema.parse(data);
+
+    // Encrypt the first name for privacy
+    const {
+      encrypted: encryptedFirstName,
+      iv: firstNameIV,
+      salt: firstNameSalt,
+    } = encryptData(validatedData.firstName);
+
+    // Update the user record with the encrypted first name
+    await db.user.update({
+      where: {
+        id: session.user.id,
+      },
+      data: {
+        encryptedFirstName: encryptedFirstName,
+        firstNameIV: firstNameIV,
+        firstNameSalt: firstNameSalt,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log("First name saved successfully");
+    return { success: "First name saved successfully!" };
+  } catch (error) {
+    console.error("Error saving first name:", error);
+    return { error: "Failed to save first name." };
+  }
+};
+
+export const getUserFirstName = async () => {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+
+  try {
+    // Get user data with encrypted first name
+    const user = await db.user.findUnique({
+      where: {
+        id: session.user.id,
+      },
+      select: {
+        encryptedFirstName: true,
+        firstNameIV: true,
+        firstNameSalt: true,
+      },
+    });
+
+    if (!user?.encryptedFirstName || !user?.firstNameIV) {
+      return { firstName: null };
+    }
+
+    // Decrypt the first name
+    const firstName = decryptData(
+      user.encryptedFirstName,
+      user.firstNameIV,
+      user.firstNameSalt!
+    );
+
+    return { firstName: firstName || null };
+  } catch (error) {
+    console.error("Error getting user first name:", error);
+    return { firstName: null };
+  }
+};

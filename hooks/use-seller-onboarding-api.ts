@@ -4,11 +4,19 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
 interface OnboardingStatus {
+  // New onboarding flow status
+  shopPreferencesCompleted: boolean;
+  shopNameCompleted: boolean;
+  paymentSetupCompleted: boolean;
+  
+  // Legacy fields for backward compatibility
   applicationAccepted: boolean;
   stripeConnected: boolean;
   shopProfileComplete: boolean;
   shippingProfileCreated: boolean;
   isFullyActivated: boolean;
+  
+  // Current step and completion
   currentStep: string;
   completionPercentage: number;
 }

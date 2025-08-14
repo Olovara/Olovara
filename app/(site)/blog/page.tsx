@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { BlogCard } from "./_components/blog-card";
 import { CategoryFilter } from "./_components/category-filter";
 import { BlogActions } from "./_components/blog-actions";
-import { decryptName } from "@/lib/encryption";
+import { decryptData } from "@/lib/encryption";
 
 interface BlogPageProps {
   searchParams: {
@@ -36,7 +36,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
       isActive: true,
     },
     orderBy: {
-      order: 'asc',
+      order: "asc",
     },
   });
 
@@ -56,22 +56,28 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
           image: true,
           encryptedFirstName: true,
           firstNameIV: true,
+          firstNameSalt: true,
         },
       },
     },
     orderBy: {
-      publishedAt: 'desc',
+      publishedAt: "desc",
     },
   });
 
   // Decrypt author names for each post
-  const postsWithDecryptedNames = posts.map(post => ({
+  const postsWithDecryptedNames = posts.map((post) => ({
     ...post,
     user: {
       ...post.user,
-      firstName: post.user.encryptedFirstName && post.user.firstNameIV 
-        ? decryptName(post.user.encryptedFirstName, post.user.firstNameIV)
-        : null,
+             firstName:
+         post.user.encryptedFirstName && post.user.firstNameIV && post.user.firstNameSalt
+           ? decryptData(
+               post.user.encryptedFirstName,
+               post.user.firstNameIV,
+               post.user.firstNameSalt
+             )
+           : null,
     },
   })) as BlogPost[];
 
@@ -82,7 +88,8 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">Blog</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.
+            Discover articles, guides, and insights about handmade crafts,
+            selling tips, and marketplace updates.
           </p>
         </div>
 
@@ -90,7 +97,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
         <BlogActions />
 
         {/* Category Filter */}
-        <CategoryFilter 
+        <CategoryFilter
           categories={categories}
           selectedCategory={searchParams.category}
         />
@@ -98,10 +105,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
         {/* Blog Posts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {postsWithDecryptedNames.map((post) => (
-            <BlogCard
-              key={post.id}
-              post={post}
-            />
+            <BlogCard key={post.id} post={post} />
           ))}
         </div>
 
@@ -110,7 +114,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold mb-2">No posts found</h3>
             <p className="text-muted-foreground">
-              {searchParams.category 
+              {searchParams.category
                 ? "No posts found in this category. Check back later!"
                 : "No posts available yet. Check back soon!"}
             </p>
@@ -126,11 +130,11 @@ export default BlogPage;
 // Generate metadata for the blog page
 export async function generateMetadata({ searchParams }: BlogPageProps) {
   const category = searchParams.category;
-  
-  const title = category 
+
+  const title = category
     ? `Blog - ${category.charAt(0).toUpperCase() + category.slice(1)} Category`
     : "Blog - Handmade Crafts, Selling Tips & Marketplace Updates";
-    
+
   const description = category
     ? `Explore ${category} articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.`
     : "Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.";

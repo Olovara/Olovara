@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
@@ -83,7 +84,8 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
             // If onSuccess is provided (modal context), let the modal handle it
             onSuccess?.();
           } else {
-            // If no onSuccess (standalone context), show the success message
+            // If no onSuccess (standalone context), show toast and success message
+            toast.success("Account created successfully! Please check your email to verify your account.");
             setSuccess(data.success);
           }
         }

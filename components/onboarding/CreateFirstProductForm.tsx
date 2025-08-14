@@ -152,7 +152,7 @@ export default function CreateFirstProductForm() {
   };
 
   const handleSkip = () => {
-    router.push("/seller/dashboard");
+    router.push("/onboarding/payment-setup");
   };
 
   const selectedCategory = productCategories.find(

@@ -1,152 +1,149 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
 // Constants
-const ALGORITHM = 'aes-256-gcm'; // Using GCM mode for authenticated encryption
+const ALGORITHM = "aes-256-gcm"; // Using GCM mode for authenticated encryption
 const KEY_LENGTH = 32; // 256 bits
 const IV_LENGTH = 12; // 96 bits for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits for GCM
 const SALT_LENGTH = 16; // 128 bits for key derivation
 
 // Get encryption key from environment
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
+const ENCRYPTION_KEY =
+  process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
 console.log("Encryption key exists:", !!ENCRYPTION_KEY);
 console.log("Encryption key length:", ENCRYPTION_KEY?.length);
 
 if (!ENCRYPTION_KEY) {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // Server-side error
-    throw new Error('ENCRYPTION_KEY environment variable is not set. Please add it to your .env file.');
+    throw new Error(
+      "ENCRYPTION_KEY environment variable is not set. Please add it to your .env file."
+    );
   } else {
     // Client-side error
-    console.error('ENCRYPTION_KEY environment variable is not set');
-    throw new Error('Encryption key is not configured properly');
+    console.error("ENCRYPTION_KEY environment variable is not set");
+    throw new Error("Encryption key is not configured properly");
   }
 }
 
 // Validate key length
-const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
+const key = Buffer.from(ENCRYPTION_KEY!, "hex");
 if (key.length !== KEY_LENGTH) {
-  console.error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
-  throw new Error(`Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`);
+  console.error(
+    `Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`
+  );
+  throw new Error(
+    `Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`
+  );
 }
 
 // Generate a random IV
 export function generateIV(): string {
-  return crypto.randomBytes(IV_LENGTH).toString('hex');
+  return crypto.randomBytes(IV_LENGTH).toString("hex");
 }
 
 // Generate a random salt for key derivation
 export function generateSalt(): string {
-  return crypto.randomBytes(SALT_LENGTH).toString('hex');
+  return crypto.randomBytes(SALT_LENGTH).toString("hex");
 }
 
 // Derive a key using PBKDF2
 function deriveKey(masterKey: Buffer, salt: Buffer): Buffer {
-  return crypto.pbkdf2Sync(masterKey, salt, 100000, KEY_LENGTH, 'sha256');
+  return crypto.pbkdf2Sync(masterKey, salt, 100000, KEY_LENGTH, "sha256");
 }
 
 // Encrypt data with additional security measures
-export function encryptData(data: string): { encrypted: string; iv: string; salt: string } {
+export function encryptData(data: string): {
+  encrypted: string;
+  iv: string;
+  salt: string;
+} {
   try {
     // Generate a random salt for key derivation
     const salt = generateSalt();
-    const saltBuffer = Buffer.from(salt, 'hex');
-    
+    const saltBuffer = Buffer.from(salt, "hex");
+
     // Derive a unique key for this encryption
     const derivedKey = deriveKey(key, saltBuffer);
-    
+
     // Generate a random IV
     const iv = generateIV();
-    const ivBuffer = Buffer.from(iv, 'hex');
-    
+    const ivBuffer = Buffer.from(iv, "hex");
+
     // Create cipher with GCM mode
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
-    
+
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from('YarnnuMarketplace'));
-    
+    cipher.setAAD(Buffer.from("YarnnuMarketplace"));
+
     // Encrypt the data
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
+    let encrypted = cipher.update(data, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
     // Get authentication tag
     const authTag = cipher.getAuthTag();
-    
+
     // Combine encrypted data with auth tag
-    const result = encrypted + authTag.toString('hex');
-    
+    const result = encrypted + authTag.toString("hex");
+
     return {
       encrypted: result,
       iv,
-      salt
+      salt,
     };
   } catch (error) {
-    console.error('Encryption error:', error);
-    throw new Error('Failed to encrypt data');
+    console.error("Encryption error:", error);
+    throw new Error("Failed to encrypt data");
   }
 }
 
 // Decrypt data with additional security measures
-export function decryptData(encryptedData: string, iv: string, salt: string): string {
+export function decryptData(
+  encryptedData: string,
+  iv: string,
+  salt: string
+): string {
   try {
     // Check for invalid encryption values (from old seller applications)
     if (iv === "temp-iv" || salt === "temp-salt" || !iv || !salt) {
-      console.warn("Invalid encryption values detected, returning fallback value");
+      console.warn(
+        "Invalid encryption values detected, returning fallback value"
+      );
       return "Temporary Data - Please Update";
     }
 
     // Try GCM decryption first (current method)
     try {
       // Convert salt and IV to buffers
-      const saltBuffer = Buffer.from(salt, 'hex');
-      const ivBuffer = Buffer.from(iv, 'hex');
-      
+      const saltBuffer = Buffer.from(salt, "hex");
+      const ivBuffer = Buffer.from(iv, "hex");
+
       // Derive the same key used for encryption
       const derivedKey = deriveKey(key, saltBuffer);
-      
+
       // Extract auth tag from the end of encrypted data
-      const authTag = Buffer.from(encryptedData.slice(-32), 'hex');
+      const authTag = Buffer.from(encryptedData.slice(-32), "hex");
       const encrypted = encryptedData.slice(0, -32);
-      
+
       // Create decipher
       const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
-      
+
       // Set authentication tag
       decipher.setAuthTag(authTag);
-      
+
       // Add associated data for authentication (must match encryption)
-      decipher.setAAD(Buffer.from('YarnnuMarketplace'));
-      
+      decipher.setAAD(Buffer.from("YarnnuMarketplace"));
+
       // Decrypt the data
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      
+      let decrypted = decipher.update(encrypted, "hex", "utf8");
+      decrypted += decipher.final("utf8");
+
       return decrypted;
-           } catch (gcmError) {
-         // Try CBC decryption as fallback (older method)
-         try {
-           const keyBuffer = Buffer.from(ENCRYPTION_KEY!, 'hex');
-           const ivBuffer = Buffer.from(iv, 'hex');
-        
-        // For CBC, we need 16-byte IV, but we have 12-byte IV from GCM
-        // Let's pad it or use a different approach
-        let cbcIV = ivBuffer;
-        if (ivBuffer.length === 12) {
-          // Pad to 16 bytes for CBC
-          cbcIV = Buffer.concat([ivBuffer, Buffer.alloc(4)]);
-        }
-        
-        const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, cbcIV);
-        let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        
-        return decrypted;
-      } catch (cbcError) {
-        throw gcmError; // Throw the original GCM error
-      }
+    } catch (error) {
+      throw error; // Re-throw the GCM error
     }
   } catch (error) {
-    console.error('Decryption error:', error);
+    console.error("Decryption error:", error);
     // Return a fallback value instead of throwing an error
     return "Temporary Data - Please Update";
   }
@@ -168,8 +165,16 @@ export function encryptSellerTaxInfo(data: {
   additionalTaxRegistrationsIV?: string;
   additionalTaxRegistrationsSalt?: string;
 } {
-  const { encrypted: encryptedBusinessName, iv: businessNameIV, salt: businessNameSalt } = encryptData(data.businessName);
-  const { encrypted: encryptedTaxId, iv: taxIdIV, salt: taxIdSalt } = encryptData(data.taxId);
+  const {
+    encrypted: encryptedBusinessName,
+    iv: businessNameIV,
+    salt: businessNameSalt,
+  } = encryptData(data.businessName);
+  const {
+    encrypted: encryptedTaxId,
+    iv: taxIdIV,
+    salt: taxIdSalt,
+  } = encryptData(data.taxId);
 
   const result: any = {
     encryptedBusinessName,
@@ -181,9 +186,13 @@ export function encryptSellerTaxInfo(data: {
   };
 
   if (data.additionalTaxRegistrations) {
-    const { encrypted: encryptedAdditionalTaxRegistrations, iv: additionalTaxRegistrationsIV, salt: additionalTaxRegistrationsSalt } = 
-      encryptData(data.additionalTaxRegistrations);
-    result.encryptedAdditionalTaxRegistrations = encryptedAdditionalTaxRegistrations;
+    const {
+      encrypted: encryptedAdditionalTaxRegistrations,
+      iv: additionalTaxRegistrationsIV,
+      salt: additionalTaxRegistrationsSalt,
+    } = encryptData(data.additionalTaxRegistrations);
+    result.encryptedAdditionalTaxRegistrations =
+      encryptedAdditionalTaxRegistrations;
     result.additionalTaxRegistrationsIV = additionalTaxRegistrationsIV;
     result.additionalTaxRegistrationsSalt = additionalTaxRegistrationsSalt;
   }
@@ -208,11 +217,19 @@ export function decryptSellerTaxInfo(data: {
   additionalTaxRegistrations?: string;
 } {
   const result: any = {
-    businessName: decryptData(data.encryptedBusinessName, data.businessNameIV, data.businessNameSalt),
+    businessName: decryptData(
+      data.encryptedBusinessName,
+      data.businessNameIV,
+      data.businessNameSalt
+    ),
     taxId: decryptData(data.encryptedTaxId, data.taxIdIV, data.taxIdSalt),
   };
 
-  if (data.encryptedAdditionalTaxRegistrations && data.additionalTaxRegistrationsIV && data.additionalTaxRegistrationsSalt) {
+  if (
+    data.encryptedAdditionalTaxRegistrations &&
+    data.additionalTaxRegistrationsIV &&
+    data.additionalTaxRegistrationsSalt
+  ) {
     result.additionalTaxRegistrations = decryptData(
       data.encryptedAdditionalTaxRegistrations,
       data.additionalTaxRegistrationsIV,
@@ -227,102 +244,84 @@ export function decryptSellerTaxInfo(data: {
 //console.log("ENCRYPTION_KEY exists:", !!ENCRYPTION_KEY);
 //console.log("ENCRYPTION_KEY length:", ENCRYPTION_KEY?.length);
 
-// Encrypt a name using AES-256-CBC
-export const encryptName = (name: string): { encrypted: string; iv: string } => {
-  // Generate IV specifically for CBC mode (16 bytes)
-  const iv = crypto.randomBytes(16).toString('hex');
-  const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
-  const ivBuffer = Buffer.from(iv, 'hex');
-  
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, ivBuffer);
-  let encrypted = cipher.update(name, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  
-  return { encrypted, iv };
-};
-
-// Decrypt a name using AES-256-CBC
-export const decryptName = (encrypted: string, iv: string): string => {
-  const key = Buffer.from(ENCRYPTION_KEY!, 'hex');
-  const ivBuffer = Buffer.from(iv, 'hex');
-  
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, ivBuffer);
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  
-  return decrypted;
-};
-
-export function encryptOrderData(data: string): { encrypted: string; iv: string; salt: string } {
+export function encryptOrderData(data: string): {
+  encrypted: string;
+  iv: string;
+  salt: string;
+} {
   try {
     // Generate a random salt for key derivation
     const salt = generateSalt();
-    const saltBuffer = Buffer.from(salt, 'hex');
-    
+    const saltBuffer = Buffer.from(salt, "hex");
+
     // Derive a unique key for this encryption
     const derivedKey = deriveKey(key, saltBuffer);
-    
+
     // Generate a random IV
     const iv = generateIV();
-    const ivBuffer = Buffer.from(iv, 'hex');
-    
+    const ivBuffer = Buffer.from(iv, "hex");
+
     // Create cipher with GCM mode
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
-    
+
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from('YarnnuMarketplace'));
-    
+    cipher.setAAD(Buffer.from("YarnnuMarketplace"));
+
     // Encrypt the data
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
+    let encrypted = cipher.update(data, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
     // Get authentication tag
     const authTag = cipher.getAuthTag();
-    
+
     // Combine encrypted data with auth tag
-    const result = encrypted + authTag.toString('hex');
-    
+    const result = encrypted + authTag.toString("hex");
+
     return {
       encrypted: result,
       iv,
-      salt
+      salt,
     };
   } catch (error) {
-    console.error('Encryption error:', error);
-    throw new Error('Failed to encrypt data');
+    console.error("Encryption error:", error);
+    throw new Error("Failed to encrypt data");
   }
 }
 
-export function decryptOrderData(encryptedData: string, iv: string, salt: string): string {
+export function decryptOrderData(
+  encryptedData: string,
+  iv: string,
+  salt: string
+): string {
   try {
     // Convert salt and IV to buffers
-    const saltBuffer = Buffer.from(salt, 'hex');
-    const ivBuffer = Buffer.from(iv, 'hex');
-    
+    const saltBuffer = Buffer.from(salt, "hex");
+    const ivBuffer = Buffer.from(iv, "hex");
+
     // Derive the same key used for encryption
     const derivedKey = deriveKey(key, saltBuffer);
-    
+
     // Extract auth tag from the end of encrypted data
-    const authTag = Buffer.from(encryptedData.slice(-32), 'hex');
+    const authTag = Buffer.from(encryptedData.slice(-32), "hex");
     const encrypted = encryptedData.slice(0, -32);
-    
+
     // Create decipher
     const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
-    
+
     // Set authentication tag
     decipher.setAuthTag(authTag);
-    
+
     // Add associated data for authentication (must match encryption)
-    decipher.setAAD(Buffer.from('YarnnuMarketplace'));
-    
+    decipher.setAAD(Buffer.from("YarnnuMarketplace"));
+
     // Decrypt the data
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
-    throw new Error('Failed to decrypt data');
+    console.error("Decryption error:", error);
+    throw new Error("Failed to decrypt data");
   }
 }
 
@@ -354,10 +353,26 @@ export function encryptAddress(address: {
   countryIV: string;
   countrySalt: string;
 } {
-  const { encrypted: encryptedStreet, iv: streetIV, salt: streetSalt } = encryptData(address.street);
-  const { encrypted: encryptedCity, iv: cityIV, salt: citySalt } = encryptData(address.city);
-  const { encrypted: encryptedPostal, iv: postalIV, salt: postalSalt } = encryptData(address.postalCode);
-  const { encrypted: encryptedCountry, iv: countryIV, salt: countrySalt } = encryptData(address.country);
+  const {
+    encrypted: encryptedStreet,
+    iv: streetIV,
+    salt: streetSalt,
+  } = encryptData(address.street);
+  const {
+    encrypted: encryptedCity,
+    iv: cityIV,
+    salt: citySalt,
+  } = encryptData(address.city);
+  const {
+    encrypted: encryptedPostal,
+    iv: postalIV,
+    salt: postalSalt,
+  } = encryptData(address.postalCode);
+  const {
+    encrypted: encryptedCountry,
+    iv: countryIV,
+    salt: countrySalt,
+  } = encryptData(address.country);
 
   const result: any = {
     encryptedStreet,
@@ -375,14 +390,22 @@ export function encryptAddress(address: {
   };
 
   if (address.street2) {
-    const { encrypted: encryptedStreet2, iv: street2IV, salt: street2Salt } = encryptData(address.street2);
+    const {
+      encrypted: encryptedStreet2,
+      iv: street2IV,
+      salt: street2Salt,
+    } = encryptData(address.street2);
     result.encryptedStreet2 = encryptedStreet2;
     result.street2IV = street2IV;
     result.street2Salt = street2Salt;
   }
 
   if (address.state) {
-    const { encrypted: encryptedState, iv: stateIV, salt: stateSalt } = encryptData(address.state);
+    const {
+      encrypted: encryptedState,
+      iv: stateIV,
+      salt: stateSalt,
+    } = encryptData(address.state);
     result.encryptedState = encryptedState;
     result.stateIV = stateIV;
     result.stateSalt = stateSalt;
@@ -392,10 +415,7 @@ export function encryptAddress(address: {
 }
 
 // Helper function to decrypt address fields
-export function encryptLocationInfo(data: {
-  state?: string;
-  city?: string;
-}): {
+export function encryptLocationInfo(data: { state?: string; city?: string }): {
   encryptedState?: string;
   stateIV?: string;
   stateSalt?: string;
@@ -413,7 +433,7 @@ export function encryptLocationInfo(data: {
   } = {};
 
   // Encrypt state if provided
-  if (data.state && data.state.trim() !== '') {
+  if (data.state && data.state.trim() !== "") {
     const stateEncryption = encryptData(data.state);
     result.encryptedState = stateEncryption.encrypted;
     result.stateIV = stateEncryption.iv;
@@ -421,7 +441,7 @@ export function encryptLocationInfo(data: {
   }
 
   // Encrypt city if provided
-  if (data.city && data.city.trim() !== '') {
+  if (data.city && data.city.trim() !== "") {
     const cityEncryption = encryptData(data.city);
     result.encryptedCity = cityEncryption.encrypted;
     result.cityIV = cityEncryption.iv;
@@ -450,10 +470,14 @@ export function decryptLocationInfo(data: {
   // Decrypt state if available
   if (data.encryptedState && data.stateIV && data.stateSalt) {
     try {
-      result.state = decryptData(data.encryptedState, data.stateIV, data.stateSalt);
+      result.state = decryptData(
+        data.encryptedState,
+        data.stateIV,
+        data.stateSalt
+      );
     } catch (error) {
-      console.error('Error decrypting state:', error);
-      result.state = '';
+      console.error("Error decrypting state:", error);
+      result.state = "";
     }
   }
 
@@ -462,8 +486,8 @@ export function decryptLocationInfo(data: {
     try {
       result.city = decryptData(data.encryptedCity, data.cityIV, data.citySalt);
     } catch (error) {
-      console.error('Error decrypting city:', error);
-      result.city = '';
+      console.error("Error decrypting city:", error);
+      result.city = "";
     }
   }
 
@@ -498,18 +522,38 @@ export function decryptAddress(address: {
   country: string;
 } {
   const result: any = {
-    street: decryptData(address.encryptedStreet, address.streetIV, address.streetSalt),
+    street: decryptData(
+      address.encryptedStreet,
+      address.streetIV,
+      address.streetSalt
+    ),
     city: decryptData(address.encryptedCity, address.cityIV, address.citySalt),
-    postalCode: decryptData(address.encryptedPostal, address.postalIV, address.postalSalt),
-    country: decryptData(address.encryptedCountry, address.countryIV, address.countrySalt),
+    postalCode: decryptData(
+      address.encryptedPostal,
+      address.postalIV,
+      address.postalSalt
+    ),
+    country: decryptData(
+      address.encryptedCountry,
+      address.countryIV,
+      address.countrySalt
+    ),
   };
 
   if (address.encryptedStreet2 && address.street2IV && address.street2Salt) {
-    result.street2 = decryptData(address.encryptedStreet2, address.street2IV, address.street2Salt);
+    result.street2 = decryptData(
+      address.encryptedStreet2,
+      address.street2IV,
+      address.street2Salt
+    );
   }
 
   if (address.encryptedState && address.stateIV && address.stateSalt) {
-    result.state = decryptData(address.encryptedState, address.stateIV, address.stateSalt);
+    result.state = decryptData(
+      address.encryptedState,
+      address.stateIV,
+      address.stateSalt
+    );
   }
 
   return result;
@@ -566,10 +610,26 @@ export function encryptResponsiblePerson(data: {
   countrySalt: string;
 } {
   // Encrypt personal information with individual IVs and salts
-  const { encrypted: encryptedName, iv: nameIV, salt: nameSalt } = encryptData(data.name);
-  const { encrypted: encryptedEmail, iv: emailIV, salt: emailSalt } = encryptData(data.email);
-  const { encrypted: encryptedPhone, iv: phoneIV, salt: phoneSalt } = encryptData(data.phone);
-  const { encrypted: encryptedCompanyName, iv: companyNameIV, salt: companyNameSalt } = encryptData(data.companyName);
+  const {
+    encrypted: encryptedName,
+    iv: nameIV,
+    salt: nameSalt,
+  } = encryptData(data.name);
+  const {
+    encrypted: encryptedEmail,
+    iv: emailIV,
+    salt: emailSalt,
+  } = encryptData(data.email);
+  const {
+    encrypted: encryptedPhone,
+    iv: phoneIV,
+    salt: phoneSalt,
+  } = encryptData(data.phone);
+  const {
+    encrypted: encryptedCompanyName,
+    iv: companyNameIV,
+    salt: companyNameSalt,
+  } = encryptData(data.companyName);
 
   // Encrypt address with individual IVs and salts
   const addressEncryption = encryptAddress(data.address);
@@ -603,7 +663,11 @@ export function encryptResponsiblePerson(data: {
 
   // Add optional fields with individual IVs and salts
   if (data.vatNumber) {
-    const { encrypted: encryptedVatNumber, iv: vatNumberIV, salt: vatNumberSalt } = encryptData(data.vatNumber);
+    const {
+      encrypted: encryptedVatNumber,
+      iv: vatNumberIV,
+      salt: vatNumberSalt,
+    } = encryptData(data.vatNumber);
     result.encryptedVatNumber = encryptedVatNumber;
     result.vatNumberIV = vatNumberIV;
     result.vatNumberSalt = vatNumberSalt;
@@ -678,7 +742,11 @@ export function decryptResponsiblePerson(data: {
   const name = decryptData(data.encryptedName, data.nameIV, data.nameSalt);
   const email = decryptData(data.encryptedEmail, data.emailIV, data.emailSalt);
   const phone = decryptData(data.encryptedPhone, data.phoneIV, data.phoneSalt);
-  const companyName = decryptData(data.encryptedCompanyName, data.companyNameIV, data.companyNameSalt);
+  const companyName = decryptData(
+    data.encryptedCompanyName,
+    data.companyNameIV,
+    data.companyNameSalt
+  );
 
   // Decrypt address with individual IVs and salts
   const address = decryptAddress({
@@ -711,7 +779,11 @@ export function decryptResponsiblePerson(data: {
   };
 
   if (data.encryptedVatNumber && data.vatNumberIV && data.vatNumberSalt) {
-    result.vatNumber = decryptData(data.encryptedVatNumber, data.vatNumberIV, data.vatNumberSalt);
+    result.vatNumber = decryptData(
+      data.encryptedVatNumber,
+      data.vatNumberIV,
+      data.vatNumberSalt
+    );
   }
 
   return result;
@@ -737,5 +809,9 @@ export function decryptBirthdate(data: {
   birthdateIV: string;
   birthdateSalt: string;
 }): string {
-  return decryptData(data.encryptedBirthdate, data.birthdateIV, data.birthdateSalt);
+  return decryptData(
+    data.encryptedBirthdate,
+    data.birthdateIV,
+    data.birthdateSalt
+  );
 }
