@@ -4,6 +4,7 @@ import * as z from "zod";
 import { db } from "@/lib/db";
 import { SellerApplicationSchema } from "@/schemas/SellerApplicationSchema";
 import { auth } from "@/auth";
+import { updateOnboardingStep } from "@/lib/onboarding";
 import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
@@ -103,8 +104,6 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           shopName: tempShopName,
           shopNameSlug: tempShopSlug,
           applicationAccepted: false, // Will be set to true when approved
-          shopProfileComplete: false, // Will be set to true when profile is completed
-          shippingProfileCreated: false, // Will be set to true when shipping profile is created
           isFullyActivated: false, // Will be set to true when all steps are completed
           // Default shop country
           shopCountry: "US", // Default to US, can be updated later
@@ -280,6 +279,9 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
+    // Mark application_submitted step as completed
+    await updateOnboardingStep(result.id, "application_submitted", true);
+
     console.log("Seller application submitted successfully. User role and permissions updated.");
 
     // Send notifications to admins (outside of transaction to avoid blocking)

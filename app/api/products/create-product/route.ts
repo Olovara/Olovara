@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
 import { generateUniqueSKU } from "@/lib/sku-generator";
+import { getSellerOnboardingSteps } from "@/lib/onboarding";
 
 // 60 seconds timeout
 
@@ -89,10 +90,6 @@ export async function POST(req: NextRequest) {
         id: true,
         userId: true,
         isFullyActivated: true,
-        applicationAccepted: true,
-        stripeConnected: true,
-        shopProfileComplete: true,
-        shippingProfileCreated: true,
       },
     });
 
@@ -106,6 +103,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get onboarding steps for detailed status
+    const onboardingSteps = await getSellerOnboardingSteps(seller.id);
+
     // Determine if this is a draft or active product
     const isDraft = status === "DRAFT";
     
@@ -118,11 +118,8 @@ export async function POST(req: NextRequest) {
             error: "You must complete your seller onboarding before creating active products. Please complete all onboarding steps first.",
             onboardingIncomplete: true,
             onboardingStatus: {
-              applicationAccepted: seller.applicationAccepted,
-              stripeConnected: seller.stripeConnected,
-              shopProfileComplete: seller.shopProfileComplete,
-              shippingProfileCreated: seller.shippingProfileCreated,
               isFullyActivated: seller.isFullyActivated,
+              steps: onboardingSteps
             }
           }),
           { status: 403 }

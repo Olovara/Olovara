@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getSellerOnboardingSteps, getOnboardingProgress, getNextOnboardingStep } from "@/lib/onboarding";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
         stripeConnected: true,
         connectedAccountId: true,
         shopCountry: true,
-        shippingProfileCreated: true,
+        isFullyActivated: true,
         shippingProfiles: {
           select: { id: true },
           take: 1,
@@ -29,22 +30,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get seller application
-    const application = await db.sellerApplication.findUnique({
-      where: { userId },
-      select: {
-        applicationApproved: true,
-      },
-    });
-
     if (!seller) {
       return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
-    // Determine completion status
-    const applicationApproved = application?.applicationApproved || false;
-    const profileCompleted = !!(seller.shopCountry && seller.shopCountry.trim() !== "");
-    
+    // Get onboarding steps
+    const onboardingSteps = await getSellerOnboardingSteps(seller.id);
+    const completionPercentage = await getOnboardingProgress(seller.id);
+    const nextStep = await getNextOnboardingStep(seller.id);
+
     // Check Stripe connection status - if we have a connectedAccountId but stripeConnected is false,
     // check if the account is actually fully onboarded
     let stripeConnected = seller.stripeConnected && !!seller.connectedAccountId;
@@ -68,40 +62,14 @@ export async function GET(request: NextRequest) {
         // Keep stripeConnected as false if we can't verify
       }
     }
-    
-    // Use the database field, but also check if there are actually shipping profiles
-    // This ensures consistency between the flag and actual data
-    const shippingProfileCreated = seller.shippingProfileCreated && seller.shippingProfiles.length > 0;
-
-    // Calculate completion percentage
-    let completionPercentage = 0;
-    if (applicationApproved) completionPercentage += 20;
-    if (profileCompleted) completionPercentage += 20;
-    if (stripeConnected) completionPercentage += 20;
-    if (shippingProfileCreated) completionPercentage += 20;
-    if (shippingProfileCreated) completionPercentage += 20; // Fully activated
-
-    // Determine current step
-    let currentStep = 'application_submitted';
-    if (!applicationApproved) {
-      currentStep = 'application_approved';
-    } else if (!profileCompleted) {
-      currentStep = 'profile_completed';
-    } else if (!stripeConnected) {
-      currentStep = 'stripe_connected';
-    } else if (!shippingProfileCreated) {
-      currentStep = 'shipping_profile_created';
-    } else {
-      currentStep = 'fully_activated';
-    }
 
     return NextResponse.json({
-      applicationApproved,
-      profileCompleted,
+      isFullyActivated: seller.isFullyActivated,
       stripeConnected,
-      shippingProfileCreated,
-      currentStep,
+      onboardingSteps,
       completionPercentage,
+      nextStep,
+      currentStep: nextStep || 'fully_activated',
     });
 
   } catch (error) {

@@ -4,6 +4,98 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { encryptData, decryptData } from "@/lib/encryption";
+import { updateOnboardingStep } from "@/lib/onboarding";
+import { prisma } from "@/lib/prisma";
+import { recalculateOnboardingSteps } from "@/lib/onboarding";
+
+/**
+ * Recalculate onboarding steps when seller settings change
+ * This should be called when:
+ * - Seller changes shop country
+ * - Seller updates shipping exclusions
+ * - Seller creates/updates products
+ */
+export async function recalculateSellerOnboardingSteps() {
+  try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    // Get the seller record
+    const seller = await prisma.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
+    });
+
+    if (!seller) {
+      return { error: "Seller not found" };
+    }
+
+    // Recalculate onboarding steps
+    await recalculateOnboardingSteps(seller.id);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error recalculating onboarding steps:", error);
+    return { error: "Failed to recalculate onboarding steps" };
+  }
+}
+
+/**
+ * Update seller shop country and recalculate onboarding steps
+ */
+export async function updateSellerShopCountry(countryCode: string) {
+  try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    // Update seller shop country
+    await prisma.seller.update({
+      where: { userId: session.user.id },
+      data: { shopCountry: countryCode }
+    });
+
+    // Recalculate onboarding steps
+    await recalculateSellerOnboardingSteps();
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating seller shop country:", error);
+    return { error: "Failed to update shop country" };
+  }
+}
+
+/**
+ * Update seller shipping exclusions and recalculate onboarding steps
+ */
+export async function updateSellerShippingExclusions(excludedCountries: string[]) {
+  try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    // Update seller shipping exclusions
+    await prisma.seller.update({
+      where: { userId: session.user.id },
+      data: { excludedCountries }
+    });
+
+    // Recalculate onboarding steps
+    await recalculateSellerOnboardingSteps();
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating shipping exclusions:", error);
+    return { error: "Failed to update shipping exclusions" };
+  }
+}
 
 // Schema for help preferences
 const HelpPreferencesSchema = z.object({
@@ -41,6 +133,10 @@ const FirstProductSchema = z.object({
   dimensions: z.string().optional(),
   weight: z.string().optional(),
   processingTime: z.string().optional(),
+  isDigital: z.boolean().default(false),
+  freeShipping: z.boolean().default(false),
+  shippingCost: z.number().min(0).default(0),
+  shippingProfileId: z.string().optional(),
 });
 
 // Schema for first name
@@ -223,6 +319,9 @@ export const saveShopPreferences = async (
       },
     });
 
+    // Mark shop_preferences step as completed
+    await updateOnboardingStep(seller.id, "shop_preferences", true);
+
     console.log("Shop preferences saved successfully:", validatedData);
     return { success: "Shop preferences saved successfully!" };
   } catch (error) {
@@ -309,6 +408,9 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
       },
     });
 
+    // Mark shop_naming step as completed
+    await updateOnboardingStep(seller.id, "shop_naming", true);
+
     console.log("Shop name saved successfully:", shopName);
     return { success: "Shop name saved successfully!", shopName: shopName };
   } catch (error) {
@@ -359,7 +461,7 @@ export const createFirstProduct = async (
         status: "ACTIVE", // Set as active for first product
         primaryCategory: validatedData.category,
         secondaryCategory: validatedData.category, // Use same category for secondary
-        isDigital: false, // Default to physical product
+        isDigital: validatedData.isDigital || false,
         stock: 1, // Default stock
         images: [], // Empty array for now, can be updated later
         tags: [], // Empty array for now
@@ -369,7 +471,10 @@ export const createFirstProduct = async (
           : 3,
         itemWeightUnit: "lbs", // Default weight unit
         itemDimensionUnit: "in", // Default dimension unit
-        taxCategory: "PHYSICAL_GOODS", // Default tax category
+        taxCategory: validatedData.isDigital ? "DIGITAL_GOODS" : "PHYSICAL_GOODS",
+        freeShipping: validatedData.freeShipping || false,
+        shippingCost: Math.round((validatedData.shippingCost || 0) * 100), // Convert to cents
+        shippingProfileId: validatedData.shippingProfileId || null,
       },
     });
 
@@ -385,6 +490,9 @@ export const createFirstProduct = async (
         firstProductCreatedAt: new Date(),
       },
     });
+
+    // Note: We don't mark first_product as completed since it's not a required step
+    // Product creation is optional and sellers can create products whenever they want
 
     console.log("First product created successfully:", product.id);
     return {

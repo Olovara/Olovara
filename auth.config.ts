@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
 
-const authConfig = {
+export const authConfig = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -51,10 +51,9 @@ const authConfig = {
           include: {
             seller: {
               select: {
+                id: true,
                 applicationAccepted: true,
                 stripeConnected: true,
-                shopProfileComplete: true,
-                shippingProfileCreated: true,
                 isFullyActivated: true,
               }
             }
@@ -68,10 +67,9 @@ const authConfig = {
           // Include seller onboarding fields in token
           if (dbUser.seller) {
             token.sellerOnboarding = {
+              sellerId: dbUser.seller.id,
               applicationAccepted: dbUser.seller.applicationAccepted,
               stripeConnected: dbUser.seller.stripeConnected,
-              shopProfileComplete: dbUser.seller.shopProfileComplete,
-              shippingProfileCreated: dbUser.seller.shippingProfileCreated,
               isFullyActivated: dbUser.seller.isFullyActivated,
             };
           }
@@ -89,10 +87,9 @@ const authConfig = {
         // Include seller onboarding fields in session
         if (token.sellerOnboarding) {
           session.user.sellerOnboarding = token.sellerOnboarding as {
+            sellerId: string;
             applicationAccepted: boolean;
             stripeConnected: boolean;
-            shopProfileComplete: boolean;
-            shippingProfileCreated: boolean;
             isFullyActivated: boolean;
           };
         }

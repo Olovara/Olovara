@@ -9,6 +9,7 @@ import ProductEmail from "@/components/emails/ProductEmail";
 import SellerOrderEmail from "@/components/emails/SellerOrderEmail";
 import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
 import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
+import { updateOnboardingStep } from "@/lib/onboarding";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -611,6 +612,9 @@ export async function POST(req: Request) {
                   where: { id: seller.id },
                   data: { stripeConnected: true }
                 });
+
+                // Mark payment_setup step as completed
+                await updateOnboardingStep(seller.id, "payment_setup", true);
 
                 console.log(`✅ Stripe account ${account.id} fully onboarded for seller ${seller.id}`);
               }

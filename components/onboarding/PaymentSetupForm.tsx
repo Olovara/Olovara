@@ -21,7 +21,7 @@ import {
   Lightbulb,
   Zap,
 } from "lucide-react";
-import OnboardingProgress from "./OnboardingProgress";
+
 import { setupStripeAccount } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 
@@ -30,25 +30,7 @@ export default function PaymentSetupForm() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  const onboardingSteps = [
-    {
-      id: "shop_preferences",
-      title: "Shop Setup",
-      path: "/onboarding/shop-preferences",
-    },
-    { id: "shop_naming", title: "Shop Name", path: "/onboarding/shop-naming" },
-    {
-      id: "create_first_product",
-      title: "First Product",
-      path: "/onboarding/create-first-product",
-    },
-    {
-      id: "payment_setup",
-      title: "Get Paid",
-      path: "/onboarding/payment-setup",
-    },
-    { id: "dashboard", title: "Dashboard", path: "/seller/dashboard" },
-  ];
+
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
@@ -89,7 +71,7 @@ export default function PaymentSetupForm() {
 
   return (
     <div className="space-y-8">
-      <OnboardingProgress currentStep="payment_setup" steps={onboardingSteps} />
+
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

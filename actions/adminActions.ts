@@ -11,6 +11,7 @@ import {
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
+import { updateOnboardingStep } from "@/lib/onboarding";
 
 interface GetUsersParams {
   role?: string;
@@ -421,6 +422,9 @@ export async function approveApplication(applicationId: string) {
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
+    // Mark application_approved step as completed
+    await updateOnboardingStep(sellerApplication.id, "application_approved", true);
+
     console.log(`Seller application approved for user ${userId}. User role and permissions updated.`);
 
     return { success: true };

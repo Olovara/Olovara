@@ -2,21 +2,17 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { updateOnboardingStep } from "@/lib/onboarding";
 
-// Helper function to check if all three forms are completed
-async function checkAndMarkProfileComplete(userId: string) {
+// Helper function to check if shop naming step should be completed
+async function checkAndMarkShopNamingComplete(userId: string) {
   try {
     const seller = await db.seller.findUnique({
       where: { userId },
       select: {
+        id: true,
         shopName: true,
         shopDescription: true,
-        shopCountry: true,
-        preferredCurrency: true,
-        preferredWeightUnit: true,
-        preferredDimensionUnit: true,
-        preferredDistanceUnit: true,
-        shopProfileComplete: true,
       }
     });
 
@@ -25,26 +21,16 @@ async function checkAndMarkProfileComplete(userId: string) {
     // Check if About form is completed (shop name and description are required)
     const aboutComplete = seller.shopName && seller.shopDescription && seller.shopName.trim() !== "" && seller.shopDescription.trim() !== "";
     
-    // Check if Info form is completed (shop country is required)
-    const infoComplete = seller.shopCountry && seller.shopCountry.trim() !== "";
-    
-    // Check if Preferences form is completed (all unit preferences are set)
-    const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;
-
-    // If all three forms are complete and profile isn't already marked complete
-    if (aboutComplete && infoComplete && preferencesComplete && !seller.shopProfileComplete) {
-      await db.seller.update({
-        where: { userId },
-        data: { shopProfileComplete: true }
-      });
-      
-      console.log(`Shop profile marked as complete for user: ${userId}`);
+    if (aboutComplete) {
+      // Mark the shop_naming step as complete
+      await updateOnboardingStep(seller.id, "shop_naming", true);
+      console.log(`Shop naming step marked as complete for user: ${userId}`);
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error("Error checking profile completion:", error);
+    console.error("Error checking shop profile completion:", error);
     return false;
   }
 }
@@ -111,7 +97,7 @@ export async function updateSellerAbout(data: {
     });
 
     // Check if profile should be marked as complete
-    const profileCompleted = await checkAndMarkProfileComplete(session.user.id);
+    const profileCompleted = await checkAndMarkShopNamingComplete(session.user.id);
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's profile has been updated in the database

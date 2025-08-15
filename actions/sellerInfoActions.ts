@@ -3,49 +3,42 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptLocationInfo, decryptLocationInfo } from "@/lib/encryption";
+import { updateOnboardingStep } from "@/lib/onboarding";
 
-// Helper function to check if all three forms are completed
-async function checkAndMarkProfileComplete(userId: string) {
+// Helper function to check if shop preferences step should be completed
+async function checkAndMarkShopPreferencesComplete(userId: string) {
   try {
     const seller = await db.seller.findUnique({
       where: { userId },
       select: {
-        shopName: true,
-        shopDescription: true,
+        id: true,
         shopCountry: true,
         preferredCurrency: true,
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
         preferredDistanceUnit: true,
-        shopProfileComplete: true,
       }
     });
 
     if (!seller) return false;
 
-    // Check if About form is completed (shop name and description are required)
-    const aboutComplete = seller.shopName && seller.shopDescription && seller.shopName.trim() !== "" && seller.shopDescription.trim() !== "";
-    
-    // Check if Info form is completed (shop name and location are required)
-    const infoComplete = seller.shopName && seller.shopCountry && seller.shopName.trim() !== "" && seller.shopName !== "Temporary Shop Name";
+    // Check if Info form is completed (shop country is required)
+    const infoComplete = seller.shopCountry && seller.shopCountry.trim() !== "";
     
     // Check if Preferences form is completed (all unit preferences are set)
     const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;
 
-    // If all three forms are complete and profile isn't already marked complete
-    if (aboutComplete && infoComplete && preferencesComplete && !seller.shopProfileComplete) {
-      await db.seller.update({
-        where: { userId },
-        data: { shopProfileComplete: true }
-      });
-      
-      console.log(`Shop profile marked as complete for user: ${userId}`);
+    // If both info and preferences are complete
+    if (infoComplete && preferencesComplete) {
+      // Mark the shop_preferences step as complete
+      await updateOnboardingStep(seller.id, "shop_preferences", true);
+      console.log(`Shop preferences step marked as complete for user: ${userId}`);
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error("Error checking profile completion:", error);
+    console.error("Error checking shop preferences completion:", error);
     return false;
   }
 }
@@ -89,7 +82,7 @@ export async function updateSellerInfo(data: {
     });
 
     // Check if profile should be marked as complete
-    const profileCompleted = await checkAndMarkProfileComplete(session.user.id);
+    const profileCompleted = await checkAndMarkShopPreferencesComplete(session.user.id);
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's tax information has been updated in the database

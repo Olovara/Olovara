@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getSellerOnboardingSteps } from "@/lib/onboarding";
 
 // GET - Fetch seller dashboard data
 export async function GET(request: NextRequest) {
@@ -35,8 +36,6 @@ export async function GET(request: NextRequest) {
         totalSales: true,
         totalProducts: true,
         acceptsCustom: true,
-        shopProfileComplete: true,
-        shippingProfileCreated: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -45,6 +44,9 @@ export async function GET(request: NextRequest) {
     if (!seller) {
       return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
+
+    // Get onboarding steps
+    const onboardingSteps = await getSellerOnboardingSteps(seller.id);
 
     // Check if user is the seller or has admin permissions
     if (session.user.id !== sellerId) {
@@ -58,7 +60,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(seller);
+    return NextResponse.json({
+      ...seller,
+      onboardingSteps
+    });
   } catch (error) {
     console.error("Error fetching seller dashboard data:", error);
     return NextResponse.json(

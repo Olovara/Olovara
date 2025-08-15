@@ -96,6 +96,40 @@ export function getGPSRRequiredCountries(shippingCountries: string[]): string[] 
 }
 
 /**
+ * Check if GPSR compliance is required for a seller based on their location and shipping preferences
+ * This is a client-side version that can be used in components
+ * @param shopCountry - Seller's shop country code
+ * @param excludedCountries - Array of country codes that seller excludes from shipping
+ * @returns boolean indicating if GPSR compliance is required
+ */
+export function isSellerGPSRComplianceRequired(
+  shopCountry: string,
+  excludedCountries: string[] = []
+): boolean {
+  // Check if seller is based in EU/EEA
+  const isEUBased = EEA_COUNTRIES.includes(shopCountry);
+  
+  if (isEUBased) {
+    return true; // EU-based sellers always need GPSR compliance
+  }
+
+  // Check shipping exclusions
+  if (excludedCountries.length === 0) {
+    return true; // If no countries are excluded, seller ships worldwide (including EU)
+  }
+
+  // Check if any EEA countries are NOT excluded (meaning seller ships to EEA)
+  const shipsToEEA = EEA_COUNTRIES.some(
+    eeaCountry => !excludedCountries.includes(eeaCountry)
+  );
+
+  // Check if Northern Ireland is NOT excluded (special case)
+  const shipsToNorthernIreland = !excludedCountries.includes(NORTHERN_IRELAND_CODE);
+
+  return shipsToEEA || shipsToNorthernIreland;
+}
+
+/**
  * Validate GPSR compliance data
  * @param gpsrData - Object containing GPSR compliance fields
  * @param isRequired - Whether GPSR compliance is required

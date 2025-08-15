@@ -781,6 +781,58 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 </div>
               )}
 
+              {/* GPSR Warning Section - Show when GPSR is required but fields are empty */}
+              {isGPSRRequired && !form.watch("isDigital") && (
+                (() => {
+                  const safetyWarnings = form.watch("safetyWarnings") || "";
+                  const materialsComposition = form.watch("materialsComposition") || "";
+                  const safeUseInstructions = form.watch("safeUseInstructions") || "";
+                  const hasGPSRData = safetyWarnings.trim() || materialsComposition.trim() || safeUseInstructions.trim();
+                  
+                  if (!hasGPSRData) {
+                    return (
+                      <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                          <h2 className="text-lg font-semibold text-orange-900 flex items-center gap-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            EU Compliance Required
+                          </h2>
+                          <p className="text-sm text-orange-700 mt-1">Complete GPSR information to sell in EU/EEA countries</p>
+                        </div>
+                        <div className="p-6">
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-sm font-medium text-orange-900 mb-1">
+                                  GPSR Information Required
+                                </h3>
+                                <p className="text-sm text-orange-800 mb-3">
+                                  Since you ship to EU/EEA countries, you must provide product safety information to comply with the General Product Safety Regulation (GPSR). Your product cannot be activated for EU sales without this information.
+                                </p>
+                                <div className="text-sm text-orange-800">
+                                  <p className="font-medium mb-1">Required fields:</p>
+                                  <ul className="list-disc list-inside space-y-1">
+                                    <li>Safety warnings</li>
+                                    <li>Materials composition</li>
+                                    <li>Safe use instructions</li>
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
+
               {/* Test Product Section - Full Width */}
               {canAccessTest && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

@@ -6,12 +6,12 @@ import SellerDashboardInfo from "./SellerDashboardInfo";
 import SellerOnboardingDashboard from "@/components/seller/SellerOnboardingDashboard";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import { SessionRefreshButton } from "@/components/SessionRefreshButton";
-import { useSellerOnboardingAPI } from "@/hooks/use-seller-onboarding-api";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 export function SellerDashboardContent() {
   const { data: session } = useSession();
   const { role, loading: permissionsLoading, error: permissionsError } = usePermissions();
-  const { status: onboardingData, loading: onboardingLoading, error: onboardingError, refresh } = useSellerOnboardingAPI();
+  const { steps, isFullyActivated, isLoading: onboardingLoading } = useOnboarding();
 
   // Debug logging
   console.log("SellerDashboardContent - Debug:", {
@@ -19,9 +19,9 @@ export function SellerDashboardContent() {
     role,
     permissionsLoading,
     permissionsError,
-    onboardingData,
-    onboardingLoading,
-    onboardingError
+    steps,
+    isFullyActivated,
+    onboardingLoading
   });
 
   // Show loading state
@@ -84,7 +84,7 @@ export function SellerDashboardContent() {
   }
 
   // If no seller data, show error
-  if (!onboardingData) {
+  if (!steps || steps.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -111,9 +111,6 @@ export function SellerDashboardContent() {
       </div>
     );
   }
-
-  // Check if seller is fully activated
-  const isFullyActivated = onboardingData.isFullyActivated;
 
   return (
     <OnboardingSurveyProvider>

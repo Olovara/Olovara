@@ -5,10 +5,9 @@ export type ExtendedUser = DefaultSession["user"] & {
   isTwoFactorEnabled: boolean;
   isOAuth: boolean;
   sellerOnboarding?: {
+    sellerId: string;
     applicationAccepted: boolean;
     stripeConnected: boolean;
-    shopProfileComplete: boolean;
-    shippingProfileCreated: boolean;
     isFullyActivated: boolean;
   };
 };
@@ -25,10 +24,9 @@ declare module "next-auth/jwt" {
     isTwoFactorEnabled?: boolean;
     isOAuth?: boolean;
     sellerOnboarding?: {
+      sellerId: string;
       applicationAccepted: boolean;
       stripeConnected: boolean;
-      shopProfileComplete: boolean;
-      shippingProfileCreated: boolean;
       isFullyActivated: boolean;
     };
   }

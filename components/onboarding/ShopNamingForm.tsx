@@ -24,7 +24,7 @@ import {
   Lightbulb,
   Heart,
 } from "lucide-react";
-import OnboardingProgress from "./OnboardingProgress";
+
 import { saveShopName } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 
@@ -92,25 +92,7 @@ export default function ShopNamingForm() {
     type: "success" | "error" | "warning" | "info";
   } | null>(null);
 
-  const onboardingSteps = [
-    {
-      id: "shop_preferences",
-      title: "Shop Setup",
-      path: "/onboarding/shop-preferences",
-    },
-    { id: "shop_naming", title: "Shop Name", path: "/onboarding/shop-naming" },
-    {
-      id: "create_first_product",
-      title: "First Product",
-      path: "/onboarding/create-first-product",
-    },
-    {
-      id: "payment_setup",
-      title: "Get Paid",
-      path: "/onboarding/payment-setup",
-    },
-    { id: "dashboard", title: "Dashboard", path: "/seller/dashboard" },
-  ];
+
 
   // Validate shop name as user types
   useEffect(() => {
@@ -238,7 +220,7 @@ export default function ShopNamingForm() {
 
   return (
     <div className="space-y-8">
-      <OnboardingProgress currentStep="shop_naming" steps={onboardingSteps} />
+
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

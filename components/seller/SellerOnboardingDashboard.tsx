@@ -19,31 +19,34 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { useSellerOnboardingAPI } from "@/hooks/use-seller-onboarding-api";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import Link from "next/link";
+import Spinner from "../spinner";
 
 const SellerOnboardingDashboard = () => {
   const {
-    status: onboardingData,
-    loading,
-    error,
-    refresh,
-  } = useSellerOnboardingAPI();
+    steps,
+    progress,
+    nextStep,
+    isFullyActivated,
+    isLoading,
+    refreshSteps,
+  } = useOnboarding();
 
   const handleRefreshStatus = async () => {
-    await refresh();
+    await refreshSteps();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <Spinner />
       </div>
     );
   }
 
-  if (error || !onboardingData) {
+  if (!steps || steps.length === 0) {
     return (
       <div className="text-center p-8">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -94,24 +97,8 @@ const SellerOnboardingDashboard = () => {
   ];
 
   const getStepStatus = (stepId: string) => {
-    switch (stepId) {
-      case "application_submitted":
-        return "completed";
-      case "application_approved":
-        return onboardingData.applicationAccepted ? "completed" : "pending";
-      case "shop_preferences":
-        return onboardingData.shopPreferencesCompleted
-          ? "completed"
-          : "pending";
-      case "shop_naming":
-        return onboardingData.shopNameCompleted ? "completed" : "pending";
-      case "payment_setup":
-        return onboardingData.paymentSetupCompleted ? "completed" : "pending";
-      case "fully_activated":
-        return onboardingData.isFullyActivated ? "completed" : "pending";
-      default:
-        return "pending";
-    }
+    const step = steps.find((s) => s.stepKey === stepId);
+    return step?.completed ? "completed" : "pending";
   };
 
   const getStepIcon = (status: string) => {
@@ -134,7 +121,10 @@ const SellerOnboardingDashboard = () => {
 
     switch (stepId) {
       case "application_approved":
-        if (!onboardingData.applicationAccepted) {
+        const applicationSubmitted = steps.find(
+          (s) => s.stepKey === "application_submitted"
+        )?.completed;
+        if (!applicationSubmitted) {
           return (
             <div className="text-sm text-muted-foreground">
               Your application is under review. We&apos;ll notify you once
@@ -146,14 +136,17 @@ const SellerOnboardingDashboard = () => {
       case "shop_preferences":
         return (
           <Button asChild size="sm" className="mt-2">
-            <Link href="/onboarding/shop-preferences">
+            <Link href="/seller/dashboard/settings?tab=preferences">
               Set Up Shop
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>
           </Button>
         );
       case "shop_naming":
-        if (!onboardingData.shopPreferencesCompleted) {
+        const shopPreferencesCompleted = steps.find(
+          (s) => s.stepKey === "shop_preferences"
+        )?.completed;
+        if (!shopPreferencesCompleted) {
           return (
             <div className="text-sm text-muted-foreground">
               Complete shop setup first to choose your shop name.
@@ -162,14 +155,17 @@ const SellerOnboardingDashboard = () => {
         }
         return (
           <Button asChild size="sm" className="mt-2">
-            <Link href="/onboarding/shop-naming">
+            <Link href="/seller/dashboard/settings?tab=about">
               Choose Shop Name
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>
           </Button>
         );
       case "payment_setup":
-        if (!onboardingData.shopNameCompleted) {
+        const shopNamingCompleted = steps.find(
+          (s) => s.stepKey === "shop_naming"
+        )?.completed;
+        if (!shopNamingCompleted) {
           return (
             <div className="text-sm text-muted-foreground">
               Complete shop naming first to set up payments.
@@ -185,7 +181,10 @@ const SellerOnboardingDashboard = () => {
           </Button>
         );
       case "fully_activated":
-        if (!onboardingData.paymentSetupCompleted) {
+        const paymentSetupCompleted = steps.find(
+          (s) => s.stepKey === "payment_setup"
+        )?.completed;
+        if (!paymentSetupCompleted) {
           return (
             <div className="text-sm text-muted-foreground">
               Set up payments first to fully activate your account.
@@ -200,6 +199,8 @@ const SellerOnboardingDashboard = () => {
             </Link>
           </Button>
         );
+      default:
+        return null;
     }
   };
 
@@ -231,12 +232,9 @@ const SellerOnboardingDashboard = () => {
           <div className="max-w-md mx-auto mb-6">
             <div className="flex justify-between text-sm text-muted-foreground mb-2">
               <span>Setup Progress</span>
-              <span>{onboardingData.completionPercentage}% Complete</span>
+              <span>{progress}% Complete</span>
             </div>
-            <Progress
-              value={onboardingData.completionPercentage}
-              className="h-2"
-            />
+            <Progress value={progress} className="h-2" />
           </div>
         </div>
 
@@ -246,18 +244,23 @@ const SellerOnboardingDashboard = () => {
             const status = getStepStatus(step.id);
             const isActive =
               status === "pending" &&
-              (step.id === onboardingData.currentStep ||
+              step.id !== "application_approved" && // Exclude application_approved from being highlighted
+              (step.id === nextStep ||
                 (step.id === "shop_preferences" &&
-                  onboardingData.applicationAccepted &&
-                  !onboardingData.shopPreferencesCompleted) ||
+                  steps.find((s) => s.stepKey === "application_approved")
+                    ?.completed &&
+                  !steps.find((s) => s.stepKey === "shop_preferences")
+                    ?.completed) ||
                 (step.id === "shop_naming" &&
-                  onboardingData.shopPreferencesCompleted &&
-                  !onboardingData.shopNameCompleted) ||
+                  steps.find((s) => s.stepKey === "shop_preferences")
+                    ?.completed &&
+                  !steps.find((s) => s.stepKey === "shop_naming")?.completed) ||
                 (step.id === "payment_setup" &&
-                  onboardingData.shopNameCompleted &&
-                  !onboardingData.paymentSetupCompleted) ||
+                  steps.find((s) => s.stepKey === "shop_naming")?.completed &&
+                  !steps.find((s) => s.stepKey === "payment_setup")
+                    ?.completed) ||
                 (step.id === "fully_activated" &&
-                  onboardingData.paymentSetupCompleted));
+                  steps.find((s) => s.stepKey === "payment_setup")?.completed));
 
             return (
               <Card
@@ -284,7 +287,9 @@ const SellerOnboardingDashboard = () => {
                       )}
                       {status === "pending" &&
                         step.id === "application_approved" &&
-                        !onboardingData.applicationAccepted && (
+                        !steps.find(
+                          (s) => s.stepKey === "application_submitted"
+                        )?.completed && (
                           <Badge
                             variant="secondary"
                             className="bg-yellow-100 text-yellow-800"
@@ -310,7 +315,7 @@ const SellerOnboardingDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        {onboardingData.completionPercentage === 100 && (
+        {progress === 100 && (
           <Card className="bg-green-50 border-green-200">
             <CardHeader>
               <CardTitle className="text-green-800 flex items-center">
@@ -337,7 +342,7 @@ const SellerOnboardingDashboard = () => {
         )}
 
         {/* Help Section */}
-        {onboardingData.completionPercentage < 100 && (
+        {progress < 100 && (
           <Card className="bg-blue-50 border-blue-200">
             <CardHeader>
               <CardTitle className="text-blue-800 flex items-center">

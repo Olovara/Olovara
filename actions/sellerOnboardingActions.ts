@@ -3,8 +3,9 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { currentUser } from "@/lib/auth";
+import { updateOnboardingStep, getSellerOnboardingSteps } from "@/lib/onboarding";
 
-export async function markShopProfileComplete() {
+export async function markShopNamingComplete() {
   try {
     const session = await auth();
     
@@ -12,77 +13,145 @@ export async function markShopProfileComplete() {
       throw new Error("Not authenticated");
     }
 
-    // Update seller profile to mark as complete
-    await db.seller.update({
+    // Get seller ID
+    const seller = await db.seller.findUnique({
       where: { userId: session.user.id },
-      data: { shopProfileComplete: true }
+      select: { id: true }
     });
 
-    // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
-    console.log("Shop profile marked as complete for user:", session.user.id);
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Mark shop naming step as complete
+    await updateOnboardingStep(seller.id, "shop_naming", true);
+
+    console.log("Shop naming step marked as complete for user:", session.user.id);
 
     return { success: true };
   } catch (error) {
-    console.error("Error marking shop profile complete:", error);
-    return { success: false, error: "Failed to mark shop profile complete" };
+    console.error("Error marking shop naming complete:", error);
+    return { success: false, error: "Failed to mark shop naming complete" };
   }
 }
 
-export async function markStripeConnected(userId: string) {
+export async function markShopPreferencesComplete() {
   try {
-    // Update seller to mark Stripe as connected
-    await db.seller.update({
-      where: { userId },
-      data: { stripeConnected: true }
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get seller ID
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
     });
 
-    // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
-    console.log("Stripe marked as connected for user:", userId);
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Mark shop preferences step as complete
+    await updateOnboardingStep(seller.id, "shop_preferences", true);
+
+    console.log("Shop preferences step marked as complete for user:", session.user.id);
 
     return { success: true };
   } catch (error) {
-    console.error("Error marking Stripe connected:", error);
-    return { success: false, error: "Failed to mark Stripe connected" };
+    console.error("Error marking shop preferences complete:", error);
+    return { success: false, error: "Failed to mark shop preferences complete" };
   }
 }
 
-export async function markShippingProfileCreated(userId: string) {
+export async function markPaymentSetupComplete() {
   try {
-    // Update seller to mark shipping profile as created
-    await db.seller.update({
-      where: { userId },
-      data: { shippingProfileCreated: true }
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get seller ID
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
     });
 
-    // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
-    console.log("Shipping profile marked as created for user:", userId);
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Mark payment setup step as complete
+    await updateOnboardingStep(seller.id, "payment_setup", true);
+
+    console.log("Payment setup step marked as complete for user:", session.user.id);
 
     return { success: true };
   } catch (error) {
-    console.error("Error marking shipping profile created:", error);
-    return { success: false, error: "Failed to mark shipping profile created" };
+    console.error("Error marking payment setup complete:", error);
+    return { success: false, error: "Failed to mark payment setup complete" };
   }
 }
 
-export async function markSellerFullyActivated(userId: string) {
+export async function markApplicationSubmitted() {
   try {
-    // Update seller to mark as fully activated
-    await db.seller.update({
-      where: { userId },
-      data: { isFullyActivated: true }
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get seller ID
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
     });
 
-    // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
-    console.log("Seller marked as fully activated for user:", userId);
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Mark application submitted step as complete
+    await updateOnboardingStep(seller.id, "application_submitted", true);
+
+    console.log("Application submitted step marked as complete for user:", session.user.id);
 
     return { success: true };
   } catch (error) {
-    console.error("Error marking seller fully activated:", error);
-    return { success: false, error: "Failed to mark seller fully activated" };
+    console.error("Error marking application submitted:", error);
+    return { success: false, error: "Failed to mark application submitted" };
+  }
+}
+
+export async function markApplicationApproved() {
+  try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get seller ID
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
+    });
+
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Mark application approved step as complete
+    await updateOnboardingStep(seller.id, "application_approved", true);
+
+    console.log("Application approved step marked as complete for user:", session.user.id);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking application approved:", error);
+    return { success: false, error: "Failed to mark application approved" };
   }
 }
 
@@ -91,10 +160,7 @@ export async function getSellerOnboardingStatus(userId: string) {
     const seller = await db.seller.findUnique({
       where: { userId },
       select: {
-        applicationAccepted: true,
-        stripeConnected: true,
-        shopProfileComplete: true,
-        shippingProfileCreated: true,
+        id: true,
         isFullyActivated: true,
       }
     });
@@ -103,9 +169,15 @@ export async function getSellerOnboardingStatus(userId: string) {
       return { success: false, error: "Seller profile not found" };
     }
 
+    // Get onboarding steps
+    const steps = await getSellerOnboardingSteps(seller.id);
+
     return {
       success: true,
-      onboardingStatus: seller
+      onboardingStatus: {
+        isFullyActivated: seller.isFullyActivated,
+        steps: steps
+      }
     };
   } catch (error) {
     console.error("Error getting seller onboarding status:", error);
@@ -115,32 +187,18 @@ export async function getSellerOnboardingStatus(userId: string) {
 
 export async function updateSellerOnboardingStep(userId: string, step: string, completed: boolean) {
   try {
-    const updateData: any = {};
-    
-    switch (step) {
-      case 'shopProfileComplete':
-        updateData.shopProfileComplete = completed;
-        break;
-      case 'stripeConnected':
-        updateData.stripeConnected = completed;
-        break;
-      case 'shippingProfileCreated':
-        updateData.shippingProfileCreated = completed;
-        break;
-      case 'isFullyActivated':
-        updateData.isFullyActivated = completed;
-        break;
-      default:
-        throw new Error(`Invalid onboarding step: ${step}`);
-    }
-
-    await db.seller.update({
+    const seller = await db.seller.findUnique({
       where: { userId },
-      data: updateData
+      select: { id: true }
     });
 
-    // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Update the specific onboarding step
+    await updateOnboardingStep(seller.id, step as any, completed);
+
     console.log(`Onboarding step ${step} updated for user:`, userId);
 
     return { success: true };

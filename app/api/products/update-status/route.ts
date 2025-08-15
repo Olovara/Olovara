@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ProductSchema } from "@/schemas/ProductSchema";
+import { getSellerOnboardingSteps } from "@/lib/onboarding";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -36,10 +37,6 @@ export async function PUT(req: NextRequest) {
         id: true,
         userId: true,
         isFullyActivated: true,
-        applicationAccepted: true,
-        stripeConnected: true,
-        shopProfileComplete: true,
-        shippingProfileCreated: true,
       },
     });
 
@@ -52,6 +49,9 @@ export async function PUT(req: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Get onboarding steps for detailed status
+    const onboardingSteps = await getSellerOnboardingSteps(seller.id);
 
     // Get the product and verify ownership
     const product = await db.product.findUnique({
@@ -135,11 +135,8 @@ export async function PUT(req: NextRequest) {
             error: "You must complete your seller onboarding before activating products. Please complete all onboarding steps first.",
             onboardingIncomplete: true,
             onboardingStatus: {
-              applicationAccepted: seller.applicationAccepted,
-              stripeConnected: seller.stripeConnected,
-              shopProfileComplete: seller.shopProfileComplete,
-              shippingProfileCreated: seller.shippingProfileCreated,
               isFullyActivated: seller.isFullyActivated,
+              steps: onboardingSteps
             }
           }),
           { status: 403 }

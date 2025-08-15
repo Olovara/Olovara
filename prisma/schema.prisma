@@ -248,7 +248,7 @@ model Seller {
   preferredDimensionUnit String            @default("in") // Store seller's preferred dimension unit (cm/inches)
   preferredDistanceUnit  String            @default("miles") // Store seller's preferred distance unit (km/miles)
   applicationAccepted    Boolean           @default(false)
-  isFullyActivated       Boolean           @default(false) // Track if seller is fully activated and ready to sell
+  isFullyActivated       Boolean           @default(false) // Track if seller is fully activated and ready to sell (calculated field)
   stripeConnected        Boolean           @default(false)
   connectedAccountId     String?           @unique // Optional, but required for selling
   totalSales             Int               @default(0)
@@ -275,10 +275,7 @@ model Seller {
   discountCodes          DiscountCode[]
   responsiblePerson      ResponsiblePerson?
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Onboarding progress fields
-  shopProfileComplete    Boolean @default(false) // Business info and tax details completed
-  shippingProfileCreated Boolean @default(false) // At least one shipping profile created
+  onboardingSteps        OnboardingStep[] // New relation to onboarding steps
 
   // Founding Seller Program
   isFoundingSeller       Boolean @default(false) // Whether this seller qualifies for founding seller benefits
@@ -327,6 +324,25 @@ model Seller {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// New OnboardingStep model for flexible onboarding tracking
+model OnboardingStep {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId    String
+  stepKey     String   // e.g., "application_submitted", "shop_name", "stripe_connected", "first_product", "shipping_profile"
+  completed   Boolean  @default(false)
+  skipped     Boolean  @default(false)
+  completedAt DateTime?
+  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sellerId, stepKey]) // Ensure one record per step per seller
+  @@index([sellerId])
+  @@index([stepKey])
+  @@index([completed])
 }
 
 model ResponsiblePerson {

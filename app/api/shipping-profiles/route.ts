@@ -53,14 +53,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Update seller to mark shipping profile as created
-    await db.seller.update({
-      where: { userId: session.user.id },
-      data: { shippingProfileCreated: true }
-    });
-
     // Note: Session refresh is now handled by the client-side page reload
-    // The user's onboarding status has been updated in the database
+    // The user's shipping profile has been created in the database
     console.log("Shipping profile created successfully for user:", session.user.id);
 
     return NextResponse.json({
