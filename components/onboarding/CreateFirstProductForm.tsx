@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -13,151 +13,196 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import {
   Package,
   ArrowRight,
   ArrowLeft,
-  Camera,
-  DollarSign,
-  FileText,
-  Sparkles,
   Lightbulb,
-  Truck,
   AlertTriangle,
-  Info,
-  Plus,
 } from "lucide-react";
 
 import { createFirstProduct } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 import { EEA_COUNTRIES } from "@/lib/gpsr-compliance";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Simplified product schema for onboarding
+// Import the same components as the main product form
+import { ProductInfoSection } from "@/components/product/productInformation";
+import { ProductPhotosSection } from "@/components/product/productPhotos";
+import { ProductOptionsSection } from "@/components/product/productOptions";
+import { ProductShippingSection } from "@/components/product/productShipping";
+import { ProductInventorySection } from "@/components/product/productInventory";
+import { ProductHowItsMadeSection } from "@/components/product/productHowMade";
+import { ProductFileSection } from "@/components/product/productFile";
+
+// Create a simplified schema that matches the product components but excludes advanced features
 const FirstProductSchema = z.object({
   name: z.string().min(1, "Product name is required").max(100),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().min(10, "Description must be at least 10 characters").max(1000),
+  sku: z.string().optional(),
+  description: z.object({
+    html: z.string(),
+    text: z.string(),
+  }),
+  options: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Option name is required"),
+        value: z.string().min(1, "Option value is required"),
+      })
+    )
+    .nullable()
+    .optional(),
   price: z.number().min(0.01, "Price must be greater than 0"),
-  materials: z.string().optional(),
-  dimensions: z.string().optional(),
-  weight: z.string().optional(),
-  processingTime: z.string().default("3-5"),
+  currency: z.string().default("USD"),
+  status: z.string().default("draft"),
+  images: z.array(z.string().url()).min(1, "Please add at least one image."),
   isDigital: z.boolean().default(false),
-  freeShipping: z.boolean().default(false),
   shippingCost: z.number().min(0).default(0),
+  handlingFee: z.number().min(0).default(0),
+  stock: z.number().int().min(1).optional(),
+  productFile: z.string().nullable().optional(),
+  numberSold: z.number().int().optional().default(0),
+  primaryCategory: z.string(),
+  secondaryCategory: z.string(),
+  tertiaryCategory: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  materialTags: z.array(z.string()).default([]),
+  itemWeight: z.number().optional(),
+  itemLength: z.number().optional(),
+  itemWidth: z.number().optional(),
+  itemHeight: z.number().optional(),
+  weightUnit: z.string().default("lbs"),
+  dimensionUnit: z.string().default("in"),
+  processingTime: z.string().default("3-5"),
+  careInstructions: z.string().optional(),
+  howItsMade: z.string().optional(),
+  story: z.string().optional(),
+  materials: z.string().optional(),
+  techniques: z.string().optional(),
+  tools: z.string().optional(),
+  timeToMake: z.string().optional(),
+  skillLevel: z.string().optional(),
+  freeShipping: z.boolean().default(false),
   shippingProfileId: z.string().optional(),
+  // Add missing fields that ProductSchema expects
+  itemWeightUnit: z.string().default("lbs"),
+  itemDimensionUnit: z.string().default("in"),
+  shippingNotes: z.string().optional(),
+  inStockProcessingTime: z.number().optional(),
+  outStockLeadTime: z.number().optional(),
+  productDrop: z.boolean().default(false),
+  dropDate: z.string().nullable(),
+  dropTime: z.string().optional(),
+  discountEndDate: z.string().optional(),
+  discountEndTime: z.string().optional(),
+  isTestProduct: z.boolean().default(false),
+  taxCategory: z
+    .enum([
+      "PHYSICAL_GOODS",
+      "DIGITAL_GOODS",
+      "SERVICES",
+      "SHIPPING",
+      "HANDLING",
+    ])
+    .default("PHYSICAL_GOODS"),
+  taxCode: z.string().optional(),
+  taxExempt: z.boolean().default(false),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  keywords: z.array(z.string()).default([]),
+  ogTitle: z.string().optional(),
+  ogDescription: z.string().optional(),
+  ogImage: z.string().optional(),
+  safetyWarnings: z.string().optional(),
+  materialsComposition: z.string().optional(),
+  safeUseInstructions: z.string().optional(),
+  ageRestriction: z.string().optional(),
+  chokingHazard: z.boolean().default(false),
+  smallPartsWarning: z.boolean().default(false),
+  chemicalWarnings: z.string().optional(),
+  onSale: z.boolean().default(false),
+  NSFW: z.boolean().default(false),
 });
 
 type FirstProductFormValues = z.infer<typeof FirstProductSchema>;
 
-// Product categories for handmade items
-const productCategories = [
-  { id: "jewelry", name: "Jewelry & Accessories", icon: "💍" },
-  { id: "clothing", name: "Clothing & Shoes", icon: "👕" },
-  { id: "home", name: "Home & Living", icon: "🏠" },
-  { id: "art", name: "Art & Collectibles", icon: "🎨" },
-  { id: "toys", name: "Toys & Games", icon: "🧸" },
-  { id: "beauty", name: "Beauty & Personal Care", icon: "💄" },
-  { id: "books", name: "Books & Media", icon: "📚" },
-  { id: "sports", name: "Sports & Outdoors", icon: "⚽" },
-  { id: "other", name: "Other", icon: "✨" },
-];
-
-// Shipping option creation schema
-const ShippingOptionSchema = z.object({
-  name: z.string().min(1, "Shipping option name is required"),
-  price: z.number().min(0, "Price must be 0 or greater"),
-  estimatedDays: z.string().min(1, "Estimated delivery time is required"),
-  isFreeShipping: z.boolean().default(false),
-});
-
-type ShippingOptionFormValues = z.infer<typeof ShippingOptionSchema>;
-
-interface ShippingOption {
-  id: string;
-  name: string;
-  price: number;
-  estimatedDays: string;
-  isFreeShipping: boolean;
-}
+// This is the type expected by the ProductOptionsSection component
+type DropdownOption = {
+  label: string;
+  values: { name: string; stock: number }[];
+};
 
 export default function CreateFirstProductForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sellerCountry, setSellerCountry] = useState<string>("");
-  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-  const [showShippingModal, setShowShippingModal] = useState(false);
-  const [isCreatingShipping, setIsCreatingShipping] = useState(false);
+
+  // State for form components (same as main product form)
+  const [description, setDescription] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [materialTags, setMaterialTags] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [tempImages, setTempImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+  const [tempFiles, setTempFiles] = useState<string[]>([]);
+  const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([]);
 
   const form = useForm<FirstProductFormValues>({
     resolver: zodResolver(FirstProductSchema),
     defaultValues: {
       name: "",
-      category: "",
-      description: "",
+      sku: "",
+      description: { html: "", text: "" },
+      options: null,
       price: 0,
-      materials: "",
-      dimensions: "",
-      weight: "",
-      processingTime: "3-5",
+      currency: "USD",
+      status: "draft",
+      images: [],
       isDigital: false,
-      freeShipping: false,
       shippingCost: 0,
+      handlingFee: 0,
+      stock: undefined,
+      productFile: null,
+      numberSold: 0,
+      primaryCategory: "",
+      secondaryCategory: "",
+      tertiaryCategory: "",
+      tags: [],
+      materialTags: [],
+      itemWeight: undefined,
+      itemLength: undefined,
+      itemWidth: undefined,
+      itemHeight: undefined,
+      weightUnit: "lbs",
+      dimensionUnit: "in",
+      processingTime: "3-5",
+      careInstructions: "",
+      howItsMade: "",
+      story: "",
+      materials: "",
+      techniques: "",
+      tools: "",
+      timeToMake: "",
+      skillLevel: "",
+      freeShipping: false,
+      shippingProfileId: "",
     },
   });
 
-  const shippingForm = useForm<ShippingOptionFormValues>({
-    resolver: zodResolver(ShippingOptionSchema),
-    defaultValues: {
-      name: "",
-      price: 0,
-      estimatedDays: "",
-      isFreeShipping: false,
-    },
-  });
-
-  const { watch, setValue } = form;
+  const { watch } = form;
   const isDigital = watch("isDigital");
   const freeShipping = watch("freeShipping");
-  const selectedCategory = watch("category");
 
-  // Fetch seller's country and existing shipping options
+  // Fetch seller's country
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch seller's country
         const countryResponse = await fetch("/api/seller/country");
         if (countryResponse.ok) {
           const countryData = await countryResponse.json();
           setSellerCountry(countryData.country);
-        }
-
-        // Fetch existing shipping options
-        const shippingResponse = await fetch("/api/shipping-profiles");
-        if (shippingResponse.ok) {
-          const shippingData = await shippingResponse.json();
-          setShippingOptions(shippingData);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -168,20 +213,21 @@ export default function CreateFirstProductForm() {
   }, []);
 
   // Check if seller is in EU/EEA
-  const isSellerInEU = sellerCountry && EEA_COUNTRIES.includes(sellerCountry.toUpperCase());
+  const isSellerInEU =
+    sellerCountry && EEA_COUNTRIES.includes(sellerCountry.toUpperCase());
 
-  const handleSubmit = async (data: FirstProductFormValues) => {
+  const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
 
     try {
       const result = await createFirstProduct({
         name: data.name.trim(),
-        category: data.category,
-        description: data.description.trim(),
+        category: data.primaryCategory, // Keep using category for backward compatibility
+        description: data.description.text || data.description.html || "",
         price: data.price,
-        materials: data.materials?.trim() || "",
-        dimensions: data.dimensions?.trim() || "",
-        weight: data.weight?.trim() || "",
+        materials: materialTags.join(", "),
+        dimensions: "",
+        weight: "",
         processingTime: data.processingTime,
         isDigital: data.isDigital,
         freeShipping: data.freeShipping,
@@ -201,51 +247,6 @@ export default function CreateFirstProductForm() {
       toast.error("Failed to create product");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateShippingOption = async (data: ShippingOptionFormValues) => {
-    setIsCreatingShipping(true);
-
-    try {
-      const response = await fetch("/api/shipping-profiles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: data.name,
-          isDefault: shippingOptions.length === 0,
-          countryOfOrigin: sellerCountry,
-          rates: [
-            {
-              zone: "Domestic",
-              price: data.isFreeShipping ? 0 : data.price * 100, // Convert to cents
-              currency: "USD",
-              estimatedDays: parseInt(data.estimatedDays),
-              additionalItem: null,
-              serviceLevel: "Standard",
-              isFreeShipping: data.isFreeShipping,
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create shipping option");
-      }
-
-      const newShippingOption = await response.json();
-      setShippingOptions([...shippingOptions, newShippingOption]);
-      setValue("shippingProfileId", newShippingOption.id);
-      setShowShippingModal(false);
-      shippingForm.reset();
-      toast.success("Shipping option created successfully!");
-    } catch (error) {
-      console.error("Error creating shipping option:", error);
-      toast.error("Failed to create shipping option");
-    } finally {
-      setIsCreatingShipping(false);
     }
   };
 
@@ -276,354 +277,136 @@ export default function CreateFirstProductForm() {
               Create Your First Product
             </CardTitle>
             <CardDescription className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Let&apos;s get you started! Create your first product listing to begin your selling journey.
+              Let&apos;s get you started! Create your first product listing to
+              begin your selling journey.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-8">
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+                     <CardContent className="space-y-8">
+             <FormProvider {...form}>
+               <form
+                 onSubmit={form.handleSubmit(handleSubmit)}
+                 className="space-y-8"
+               >
               {/* Basic Information Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <h3 className="text-lg font-semibold">Basic Information</h3>
-                </div>
-
-                {/* Product Name */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Product Name *
-                  </Label>
-                  <Input
-                    {...form.register("name")}
-                    placeholder="e.g., Hand-knitted Wool Scarf, Ceramic Coffee Mug"
-                    className="text-lg p-4"
-                    maxLength={100}
-                  />
-                  {form.formState.errors.name && (
-                    <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    Be descriptive and include key details that buyers would search for
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Basic Information
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Essential product details that customers will see first
                   </p>
                 </div>
-
-                {/* Category */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Category *
-                  </Label>
-                  <Select onValueChange={(value) => setValue("category", value)}>
-                    <SelectTrigger className="w-full text-lg p-4">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {productCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{category.icon}</span>
-                            <span>{category.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.category && (
-                    <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Description *
-                  </Label>
-                  <Textarea
-                    {...form.register("description")}
-                    placeholder="Describe your product in detail. What makes it special? What materials did you use?"
-                    className="min-h-[120px] text-lg p-4"
-                    maxLength={1000}
+                <div className="p-6 space-y-6">
+                  <ProductInfoSection
+                    form={form as any}
+                    description={description}
+                    setDescription={setDescription}
+                    tags={tags}
+                    setTags={setTags}
+                    materialTags={materialTags}
+                    setMaterialTags={setMaterialTags}
                   />
-                  {form.formState.errors.description && (
-                    <p className="text-sm text-red-600">{form.formState.errors.description.message}</p>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    {form.watch("description")?.length || 0}/1000 characters
-                  </p>
-                </div>
-
-                {/* Price */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Price (USD) *
-                  </Label>
-                  <Input
-                    {...form.register("price", { valueAsNumber: true })}
-                    placeholder="0.00"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="text-lg p-4"
-                  />
-                  {form.formState.errors.price && (
-                    <p className="text-sm text-red-600">{form.formState.errors.price.message}</p>
-                  )}
-                </div>
-
-                {/* Digital Product Checkbox */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isDigital"
-                    checked={isDigital}
-                    onCheckedChange={(checked) => setValue("isDigital", checked as boolean)}
-                  />
-                  <Label htmlFor="isDigital" className="text-base font-medium">
-                    This is a digital product (downloadable file, digital art, etc.)
-                  </Label>
                 </div>
               </div>
 
-              {/* Physical Product Details */}
-              {!isDigital && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 mb-4">
+              {/* Media Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <h3 className="text-lg font-semibold">Product Details</h3>
-                  </div>
-
-                  {/* Materials */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Materials Used
-                    </Label>
-                    <Input
-                      {...form.register("materials")}
-                      placeholder="e.g., 100% merino wool, sterling silver, ceramic"
-                      className="text-lg p-4"
-                    />
-                  </div>
-
-                  {/* Dimensions */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Dimensions (Optional)
-                    </Label>
-                    <Input
-                      {...form.register("dimensions")}
-                      placeholder="e.g., 8 inches x 6 inches x 2 inches"
-                      className="text-lg p-4"
-                    />
-                  </div>
-
-                  {/* Weight */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Weight (Optional)
-                    </Label>
-                    <Input
-                      {...form.register("weight")}
-                      placeholder="e.g., 8 oz, 250g"
-                      className="text-lg p-4"
-                    />
-                  </div>
-
-                  {/* Processing Time */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Processing Time
-                    </Label>
-                    <Select onValueChange={(value) => setValue("processingTime", value)}>
-                      <SelectTrigger className="w-full text-lg p-4">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1-2">1-2 business days</SelectItem>
-                        <SelectItem value="3-5">3-5 business days</SelectItem>
-                        <SelectItem value="1-2 weeks">1-2 weeks</SelectItem>
-                        <SelectItem value="2-3 weeks">2-3 weeks</SelectItem>
-                        <SelectItem value="3-4 weeks">3-4 weeks</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    Media & Visuals
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Images and files that showcase your product
+                  </p>
                 </div>
-              )}
+                <div className="p-6 space-y-6">
+                  <ProductPhotosSection
+                    images={images}
+                    setImages={setImages}
+                    setTempImages={setTempImages}
+                    tempImages={tempImages}
+                    form={form as any}
+                    setTempUploadsCreated={setTempUploadsCreated}
+                  />
 
-              {/* Shipping Section */}
-              {!isDigital && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 mb-4">
+                  <ProductFileSection
+                    form={form as any}
+                    tempFiles={tempFiles}
+                    setTempFiles={setTempFiles}
+                    setTempUploadsCreated={setTempUploadsCreated}
+                  />
+                </div>
+              </div>
+
+              {/* Inventory & Options Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Inventory & Options
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Stock levels, variants, and product options
+                  </p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductInventorySection form={form as any} />
+
+                  <ProductOptionsSection
+                    dropdownOptions={dropdownOptions}
+                    setDropdownOptions={setDropdownOptions}
+                  />
+                </div>
+              </div>
+
+              {/* Shipping & Dimensions Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <h3 className="text-lg font-semibold">Shipping</h3>
-                  </div>
-
-                  {/* Free Shipping Checkbox */}
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="freeShipping"
-                      checked={freeShipping}
-                      onCheckedChange={(checked) => {
-                        setValue("freeShipping", checked as boolean);
-                        if (checked) {
-                          setValue("shippingCost", 0);
-                        }
-                      }}
-                    />
-                    <Label htmlFor="freeShipping" className="text-base font-medium">
-                      Offer free shipping
-                    </Label>
-                  </div>
-
-                  {/* Shipping Cost */}
-                  {!freeShipping && (
-                    <div className="space-y-3">
-                      <Label className="text-base font-medium flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Shipping Cost (USD)
-                      </Label>
-                      <Input
-                        {...form.register("shippingCost", { valueAsNumber: true })}
-                        placeholder="0.00"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="text-lg p-4"
-                      />
-                    </div>
-                  )}
-
-                  {/* Shipping Options */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-medium flex items-center gap-2">
-                        <Truck className="h-4 w-4" />
-                        Shipping Options
-                      </Label>
-                      <Dialog open={showShippingModal} onOpenChange={setShowShippingModal}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="flex items-center gap-2">
-                            <Plus className="h-4 w-4" />
-                            Create Shipping Option
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Create Shipping Option</DialogTitle>
-                            <DialogDescription>
-                              Set up a shipping option for your products.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <form onSubmit={shippingForm.handleSubmit(handleCreateShippingOption)} className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Name</Label>
-                              <Input
-                                {...shippingForm.register("name")}
-                                placeholder="e.g., Standard Shipping"
-                              />
-                              {shippingForm.formState.errors.name && (
-                                <p className="text-sm text-red-600">{shippingForm.formState.errors.name.message}</p>
-                              )}
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Price (USD)</Label>
-                              <Input
-                                {...shippingForm.register("price", { valueAsNumber: true })}
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                disabled={shippingForm.watch("isFreeShipping")}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Estimated Delivery (days)</Label>
-                              <Input
-                                {...shippingForm.register("estimatedDays")}
-                                placeholder="e.g., 3-5"
-                              />
-                              {shippingForm.formState.errors.estimatedDays && (
-                                <p className="text-sm text-red-600">{shippingForm.formState.errors.estimatedDays.message}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="isFreeShipping"
-                                checked={shippingForm.watch("isFreeShipping")}
-                                onCheckedChange={(checked) => {
-                                  shippingForm.setValue("isFreeShipping", checked as boolean);
-                                  if (checked) {
-                                    shippingForm.setValue("price", 0);
-                                  }
-                                }}
-                              />
-                              <Label htmlFor="isFreeShipping">Free shipping</Label>
-                            </div>
-                            <div className="flex gap-2 pt-4">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setShowShippingModal(false)}
-                                className="flex-1"
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                type="submit"
-                                disabled={isCreatingShipping}
-                                className="flex-1"
-                              >
-                                {isCreatingShipping ? "Creating..." : "Create"}
-                              </Button>
-                            </div>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    {shippingOptions.length > 0 ? (
-                      <div className="space-y-2">
-                        {shippingOptions.map((option) => (
-                          <div
-                            key={option.id}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div>
-                              <p className="font-medium">{option.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {option.isFreeShipping ? "Free" : `$${option.price}`} • {option.estimatedDays} days
-                              </p>
-                            </div>
-                            <Checkbox
-                              checked={form.watch("shippingProfileId") === option.id}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setValue("shippingProfileId", option.id);
-                                }
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        No shipping options created yet. Create one to continue.
-                      </p>
-                    )}
-                  </div>
+                    Shipping & Dimensions
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Shipping costs, dimensions, and handling information
+                  </p>
                 </div>
-              )}
+                <div className="p-6 space-y-6">
+                  <ProductShippingSection
+                    form={form as any}
+                    freeShipping={freeShipping}
+                  />
+                </div>
+              </div>
+
+              {/* Story & Details Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                    Story & Details
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tell customers about your product and how it&apos;s made
+                  </p>
+                </div>
+                <div className="p-6 space-y-6">
+                  <ProductHowItsMadeSection form={form as any} />
+                </div>
+              </div>
 
               {/* EU Compliance Alert */}
               {isSellerInEU && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Selling to EU buyers?</strong> You&apos;ll need to provide GPSR product safety details before your products can go live in those countries. You can still sell elsewhere without this step.
+                    <strong>Selling to EU buyers?</strong> You&apos;ll need to
+                    provide GPSR product safety details before your products can
+                    go live in those countries. You can still sell elsewhere
+                    without this step.
                   </AlertDescription>
                 </Alert>
               )}
@@ -635,11 +418,19 @@ export default function CreateFirstProductForm() {
                   Pro Tips for Your First Product
                 </h3>
                 <ul className="text-sm text-purple-800 space-y-1">
-                  <li>• Use clear, high-quality photos (you can add these later)</li>
+                  <li>
+                    • Use clear, high-quality photos to showcase your product
+                  </li>
                   <li>• Be honest about materials and craftsmanship</li>
-                  <li>• Include all relevant measurements</li>
+                  <li>• Include all relevant measurements and details</li>
                   <li>• Set a realistic processing time</li>
-                  <li>• Price competitively but don&apos;t undervalue your work</li>
+                  <li>
+                    • Price competitively but don&apos;t undervalue your work
+                  </li>
+                  <li>
+                    • Tell your story - customers love to know how things are
+                    made
+                  </li>
                 </ul>
               </div>
 
@@ -670,10 +461,11 @@ export default function CreateFirstProductForm() {
                     disabled={
                       isSubmitting ||
                       !form.watch("name")?.trim() ||
-                      !form.watch("category") ||
-                      !form.watch("description")?.trim() ||
+                      !form.watch("primaryCategory") ||
+                      !form.watch("secondaryCategory") ||
+                      !form.watch("description")?.text?.trim() ||
                       !form.watch("price") ||
-                      (!isDigital && shippingOptions.length === 0)
+                      images.length === 0
                     }
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2"
                   >
@@ -687,9 +479,10 @@ export default function CreateFirstProductForm() {
                     )}
                   </Button>
                 </div>
-              </div>
-            </form>
-          </CardContent>
+                             </div>
+             </form>
+           </FormProvider>
+         </CardContent>
         </Card>
       </motion.div>
     </div>

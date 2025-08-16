@@ -61,7 +61,7 @@ export const ProductInfoSection = ({
   materialTags,
   setMaterialTags,
 }: ProductInfoSectionProps) => {
-  const { register, control, setValue, watch } = useFormContext();
+  const { register, control, setValue, watch } = form;
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });

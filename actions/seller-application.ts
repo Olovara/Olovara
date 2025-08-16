@@ -99,7 +99,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // No longer need to encrypt temporary tax information since we removed tax fields
 
-      await tx.seller.create({
+      const seller = await tx.seller.create({
         data: {
           shopName: tempShopName,
           shopNameSlug: tempShopSlug,
@@ -274,13 +274,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         });
       }
 
-      return application;
+      return { application, sellerId: seller.id };
     });
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
     // Mark application_submitted step as completed
-    await updateOnboardingStep(result.id, "application_submitted", true);
+    await updateOnboardingStep(result.sellerId, "application_submitted", true);
 
     console.log("Seller application submitted successfully. User role and permissions updated.");
 
@@ -314,7 +314,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
               admin.user.username || 'Admin',
               applicant.username || 'Unknown',
               applicant.email!,
-              result.id
+              result.application.id
             ).catch(error => {
               console.error(`Failed to send notification to admin ${admin.user.email}:`, error);
               return null; // Don't fail the whole process if one email fails
