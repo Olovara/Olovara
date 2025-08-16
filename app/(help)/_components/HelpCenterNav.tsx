@@ -115,8 +115,8 @@ export function HelpCenterNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "block text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors",
-                    pathname === item.href && "text-blue-600 bg-blue-50 font-medium"
+                    "block text-sm text-gray-600 hover:text-purple-600 hover:bg-purple-50 px-2 py-1 rounded transition-colors",
+                    pathname === item.href && "text-purple-600 bg-purple-50 font-medium"
                   )}
                 >
                   {item.title}

@@ -3,27 +3,30 @@ import Link from "next/link"
 import { 
   CheckCircle, 
   AlertCircle, 
-  Camera, 
+  Clock, 
+  Store, 
   Palette, 
-  FileText, 
-  Globe,
-  Settings,
+  Shield,
   ArrowLeft,
   ArrowRight,
   Info,
+  Camera,
+  Globe,
+  DollarSign,
+  Settings,
+  FileText,
   Star,
-  MapPin,
-  Clock
+  MapPin
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export const metadata: Metadata = {
   title: "Setting Up Your Shop | Help Center | Yarnnu",
-  description: "Learn how to create and customize your shop profile on Yarnnu. Complete guide to shop setup, branding, and optimization.",
+  description: "Complete guide to setting up and customizing your Yarnnu shop. Learn about shop profiles, branding, and optimization.",
 }
 
-const shopSetupSteps = [
+const setupSteps = [
   {
     step: 1,
     title: "Shop Profile Basics",
@@ -248,13 +251,36 @@ const optimizationTips = [
   }
 ]
 
+const commonMistakes = [
+  {
+    mistake: "Incomplete Profiles",
+    description: "Shops with missing information appear less professional and trustworthy to customers",
+    solution: "Complete all profile sections with detailed, accurate information"
+  },
+  {
+    mistake: "Poor Quality Images",
+    description: "Blurry or poorly lit photos make your products look unprofessional and reduce customer confidence",
+    solution: "Invest in good photography or learn basic photo editing techniques"
+  },
+  {
+    mistake: "Vague Policies",
+    description: "Unclear shipping, return, or processing policies lead to customer confusion and potential disputes",
+    solution: "Create specific, detailed policies that address common customer questions"
+  },
+  {
+    mistake: "Generic Descriptions",
+    description: "Copy-pasted or generic shop descriptions don't help customers connect with your unique brand and story",
+    solution: "Write authentic descriptions that reflect your personality and craftsmanship"
+  }
+]
+
 export default function ShopSetupPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Link href="/help-center" className="hover:text-blue-600">
+          <Link href="/help-center" className="hover:text-purple-600 transition-colors">
             Help Center
           </Link>
           <span>/</span>
@@ -271,9 +297,9 @@ export default function ShopSetupPage() {
       </div>
 
       {/* Overview Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
+      <Alert className="border-purple-200 bg-purple-50">
+        <Info className="h-4 w-4 text-purple-600" />
+        <AlertDescription className="text-purple-800">
           <strong>Shop Setup Timeline:</strong> Plan for 2-3 hours to complete your initial shop setup. 
           You can always update and improve your shop over time as your business grows.
         </AlertDescription>
@@ -289,9 +315,9 @@ export default function ShopSetupPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {shopElements.map((element) => (
-            <div key={element.title} className="border border-gray-200 rounded-lg p-4">
+            <div key={element.title} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
               <div className="flex items-start space-x-3">
-                <element.icon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <element.icon className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <h3 className="font-medium text-gray-900">{element.title}</h3>
@@ -307,7 +333,7 @@ export default function ShopSetupPage() {
                   <ul className="space-y-1">
                     {element.tips.map((tip, index) => (
                       <li key={index} className="flex items-start space-x-2 text-xs text-gray-600">
-                        <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="h-3 w-3 text-purple-600 mt-0.5 flex-shrink-0" />
                         <span>{tip}</span>
                       </li>
                     ))}
@@ -323,10 +349,10 @@ export default function ShopSetupPage() {
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-900">Shop Setup Process</h2>
         
-        {shopSetupSteps.map((step) => (
-          <div key={step.step} className="border border-gray-200 rounded-lg p-6">
+        {setupSteps.map((step) => (
+          <div key={step.step} className="border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors">
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-full flex items-center justify-center font-semibold">
                 {step.step}
               </div>
               
@@ -346,7 +372,7 @@ export default function ShopSetupPage() {
                     <ul className="space-y-1">
                       {step.details.map((detail, detailIndex) => (
                         <li key={detailIndex} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                           <span>{detail}</span>
                         </li>
                       ))}
@@ -358,7 +384,7 @@ export default function ShopSetupPage() {
                     <ul className="space-y-1">
                       {step.tips.map((tip, tipIndex) => (
                         <li key={tipIndex} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                           <span>{tip}</span>
                         </li>
                       ))}
@@ -380,12 +406,12 @@ export default function ShopSetupPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {optimizationTips.map((category) => (
-            <div key={category.category} className="border border-gray-200 rounded-lg p-4">
+            <div key={category.category} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
               <h3 className="font-semibold text-gray-900 mb-3">{category.category}</h3>
               <ul className="space-y-2">
                 {category.tips.map((tip, index) => (
                   <li key={index} className="flex items-start space-x-2 text-sm text-gray-600">
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                     <span>{tip}</span>
                   </li>
                 ))}
@@ -403,58 +429,27 @@ export default function ShopSetupPage() {
         </p>
         
         <div className="space-y-4">
-          <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-red-900">Incomplete Profiles</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Shops with missing information appear less professional and trustworthy to customers.
-                </p>
+          {commonMistakes.map((mistake) => (
+            <div key={mistake.mistake} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-medium text-gray-900">{mistake.mistake}</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {mistake.description}
+                  </p>
+                  <p className="text-sm text-purple-600 mt-2">
+                    <strong>Solution:</strong> {mistake.solution}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-red-900">Poor Quality Images</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Blurry or poorly lit photos make your products look unprofessional and reduce customer confidence.
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-red-900">Vague Policies</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Unclear shipping, return, or processing policies lead to customer confusion and potential disputes.
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-red-900">Generic Descriptions</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Copy-pasted or generic shop descriptions don&apos;t help customers connect with your unique brand and story.
-                </p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* Next Steps */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Ready to Set Up Your Shop?</h2>
         <p className="text-gray-600 mb-4">
           Now that you understand the shop setup process, you&apos;re ready to create a professional, 
@@ -462,12 +457,12 @@ export default function ShopSetupPage() {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button asChild>
-            <Link href="/seller/dashboard/shop">
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
+            <Link href="/seller/dashboard/settings">
               Go to Shop Settings
             </Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="border-purple-300 text-purple-600 hover:bg-purple-50">
             <Link href="/help-center/create-product">
               Next: Creating Your First Product →
             </Link>
@@ -481,14 +476,14 @@ export default function ShopSetupPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link 
             href="/help-center/create-product"
-            className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+            className="block p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
           >
             <h3 className="font-medium text-gray-900">Creating Your First Product</h3>
             <p className="text-sm text-gray-600 mt-1">Step-by-step guide to listing your first handmade item</p>
           </Link>
           <Link 
             href="/help-center/shop-policies"
-            className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+            className="block p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
           >
             <h3 className="font-medium text-gray-900">Shop Policies</h3>
             <p className="text-sm text-gray-600 mt-1">Learn how to create effective shop policies</p>

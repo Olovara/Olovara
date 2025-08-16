@@ -27,13 +27,11 @@ const applicationSteps = [
     details: [
       "Sign up with your email address",
       "Verify your email through the confirmation link",
-      "Complete your basic profile information",
       "Choose a secure password"
     ],
     tips: [
       "Use a professional email address that you check regularly",
       "Keep your password secure and unique to Yarnnu",
-      "Complete your profile with accurate information"
     ],
     estimatedTime: "5 minutes"
   },
@@ -99,15 +97,14 @@ const applicationSteps = [
       "Verification of submitted documents",
       "Review of product portfolio",
       "Assessment of handmade compliance",
-      "Background checks (if required)"
     ],
     tips: [
-      "Review process typically takes 3-5 business days",
+      "Review process typically takes 1-2 business days",
       "You'll receive email updates on your application status",
       "Be patient during the review period",
       "Ensure all contact information is current"
     ],
-    estimatedTime: "3-5 business days"
+    estimatedTime: "1-2 business days"
   },
   {
     step: 6,
@@ -196,7 +193,7 @@ export default function SellerApplicationPage() {
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Link href="/help-center" className="hover:text-blue-600">
+          <Link href="/help-center" className="hover:text-purple-600 transition-colors">
             Help Center
           </Link>
           <span>/</span>
@@ -212,10 +209,10 @@ export default function SellerApplicationPage() {
       </div>
 
       {/* Overview Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Application Timeline:</strong> The complete process typically takes 3-5 business days from submission to approval. 
+      <Alert className="border-purple-200 bg-purple-50">
+        <Info className="h-4 w-4 text-purple-600" />
+        <AlertDescription className="text-purple-800">
+          <strong>Application Timeline:</strong> The complete process typically takes 1-2 business days from submission to approval. 
           Make sure you have all required documents ready before starting.
         </AlertDescription>
       </Alert>
@@ -229,8 +226,8 @@ export default function SellerApplicationPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {requirements.map((req) => (
-            <div key={req.title} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
-              <req.icon className="h-5 w-5 text-green-600 mt-0.5" />
+            <div key={req.title} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
+              <req.icon className="h-5 w-5 text-purple-600 mt-0.5" />
               <div>
                 <h3 className="font-medium text-gray-900">{req.title}</h3>
                 <p className="text-sm text-gray-600">{req.description}</p>
@@ -245,9 +242,9 @@ export default function SellerApplicationPage() {
         <h2 className="text-2xl font-semibold text-gray-900">Application Steps</h2>
         
         {applicationSteps.map((step, index) => (
-          <div key={step.step} className="border border-gray-200 rounded-lg p-6">
+          <div key={step.step} className="border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors">
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-full flex items-center justify-center font-semibold">
                 {step.step}
               </div>
               
@@ -267,7 +264,7 @@ export default function SellerApplicationPage() {
                     <ul className="space-y-1">
                       {step.details.map((detail, detailIndex) => (
                         <li key={detailIndex} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                           <span>{detail}</span>
                         </li>
                       ))}
@@ -279,7 +276,7 @@ export default function SellerApplicationPage() {
                     <ul className="space-y-1">
                       {step.tips.map((tip, tipIndex) => (
                         <li key={tipIndex} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                           <span>{tip}</span>
                         </li>
                       ))}
@@ -301,13 +298,13 @@ export default function SellerApplicationPage() {
         
         <div className="space-y-4">
           {commonReasons.map((reason) => (
-            <div key={reason.reason} className="border border-gray-200 rounded-lg p-4">
+            <div key={reason.reason} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <h3 className="font-medium text-gray-900">{reason.reason}</h3>
                   <p className="text-sm text-gray-600 mt-1">{reason.description}</p>
-                  <p className="text-sm text-blue-600 mt-2">
+                  <p className="text-sm text-purple-600 mt-2">
                     <strong>Solution:</strong> {reason.solution}
                   </p>
                 </div>
@@ -318,7 +315,7 @@ export default function SellerApplicationPage() {
       </div>
 
       {/* Next Steps */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Ready to Apply?</h2>
         <p className="text-gray-600 mb-4">
           Now that you understand the process, you&apos;re ready to start your seller application. 
@@ -326,12 +323,12 @@ export default function SellerApplicationPage() {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button asChild>
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
             <Link href="/seller-application">
               Start Application
             </Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="border-purple-300 text-purple-600 hover:bg-purple-50">
             <Link href="/help-center/shop-setup">
               Next: Setting Up Your Shop →
             </Link>
@@ -345,14 +342,14 @@ export default function SellerApplicationPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link 
             href="/help-center/shop-setup"
-            className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+            className="block p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
           >
             <h3 className="font-medium text-gray-900">Setting Up Your Shop</h3>
             <p className="text-sm text-gray-600 mt-1">Learn how to create and customize your shop profile</p>
           </Link>
           <Link 
             href="/help-center/stripe-setup"
-            className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+            className="block p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
           >
             <h3 className="font-medium text-gray-900">Stripe Connect Setup</h3>
             <p className="text-sm text-gray-600 mt-1">Secure payment processing setup for your shop</p>

@@ -72,7 +72,7 @@ const quickLinks = [
     description: "New seller onboarding",
     href: "/help-center/seller-application",
     icon: BookOpen,
-    color: "bg-blue-100 text-blue-600"
+    color: "bg-purple-100 text-purple-600"
   },
   {
     title: "Shop Management",
@@ -141,21 +141,21 @@ export default function HelpCenterPage() {
             <Link
               key={link.href}
               href={link.href}
-              className="group block p-6 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              className="group block p-6 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
             >
               <div className="flex items-start space-x-4">
                 <div className={`p-2 rounded-lg ${link.color}`}>
                   <link.icon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
                     {link.title}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     {link.description}
                   </p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
               </div>
             </Link>
           ))}
@@ -166,7 +166,7 @@ export default function HelpCenterPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-gray-900">Featured Guides</h2>
-          <Link href="/help-center" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+          <Link href="/help-center" className="text-purple-600 hover:text-purple-700 text-sm font-medium">
             View all guides →
           </Link>
         </div>
@@ -176,25 +176,25 @@ export default function HelpCenterPage() {
             <Link
               key={guide.href}
               href={guide.href}
-              className="group block p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              className="group block p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
             >
               <div className="flex items-start space-x-4">
-                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
                   <guide.icon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-xs font-medium text-blue-600">Featured</span>
+                    <span className="text-xs font-medium text-purple-600">Featured</span>
                   </div>
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
                     {guide.title}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     {guide.description}
                   </p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
               </div>
             </Link>
           ))}
@@ -209,14 +209,14 @@ export default function HelpCenterPage() {
             <Link
               key={guide.href}
               href={guide.href}
-              className="group block p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all"
+              className="group block p-4 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
             >
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
                   <guide.icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-medium text-gray-900 group-hover:text-purple-600 transition-colors">
                     {guide.title}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">
@@ -230,17 +230,17 @@ export default function HelpCenterPage() {
       </div>
 
       {/* Contact Support */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-6 text-white">
         <div className="text-center space-y-4">
           <h3 className="text-xl font-semibold">Still need help?</h3>
-          <p className="text-blue-100">
+          <p className="text-purple-100">
             Can&apos;t find what you&apos;re looking for? Our support team is here to help.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button variant="secondary" size="lg">
               Contact Support
             </Button>
-            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600">
+            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-purple-600">
               Live Chat
             </Button>
           </div>
