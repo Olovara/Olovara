@@ -24,6 +24,11 @@ interface SimplifiedProduct {
   stock: number;
   dropDate: Date | null;
   dropTime: string | null;
+  onSale: boolean;
+  saleStartDate: Date | null;
+  saleEndDate: Date | null;
+  saleStartTime: string | null;
+  saleEndTime: string | null;
   seller?: {
     shopName: string;
     shopNameSlug: string;
@@ -46,8 +51,38 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDropActive, setIsDropActive] = useState<boolean>(false);
   const [convertedPrice, setConvertedPrice] = useState<string>("");
-  const [convertedDiscountedPrice, setConvertedDiscountedPrice] = useState<string>("");
+  const [convertedDiscountedPrice, setConvertedDiscountedPrice] =
+    useState<string>("");
   const { formatPrice } = useCurrency();
+
+  // Check if sale is currently active
+  const isOnSale = (() => {
+    if (!product?.onSale || !product?.discount) return false;
+
+    const now = new Date();
+
+    // Check sale start date/time
+    if (product.saleStartDate) {
+      const saleStart = new Date(product.saleStartDate);
+      if (product.saleStartTime) {
+        const [hours, minutes] = product.saleStartTime.split(":").map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      if (now < saleStart) return false;
+    }
+
+    // Check sale end date/time
+    if (product.saleEndDate) {
+      const saleEnd = new Date(product.saleEndDate);
+      if (product.saleEndTime) {
+        const [hours, minutes] = product.saleEndTime.split(":").map(Number);
+        saleEnd.setHours(hours, minutes, 0, 0);
+      }
+      if (now > saleEnd) return false;
+    }
+
+    return true;
+  })();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,7 +92,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     return () => clearTimeout(timer);
   }, [index]);
 
-  // Convert price when product or currency changes
+    // Convert price when product or currency changes
   useEffect(() => {
     if (product) {
       // Format original price
@@ -65,15 +100,17 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
         .then(setConvertedPrice)
         .catch(console.error);
       
-      // Format discounted price if there's a discount
-      if (product.discount && product.discount > 0) {
+      // Format discounted price if sale is active
+      if (isOnSale && product.discount) {
         const discountedAmount = product.price * (1 - product.discount / 100);
         formatPrice(discountedAmount, true)
           .then(setConvertedDiscountedPrice)
           .catch(console.error);
+      } else {
+        setConvertedDiscountedPrice("");
       }
     }
-  }, [product, formatPrice]);
+  }, [product, formatPrice, isOnSale]);
 
   // Check if drop is active
   useEffect(() => {
@@ -97,19 +134,20 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const primaryCategories = CategoriesMap.PRIMARY;
   const secondaryCategories = CategoriesMap.SECONDARY;
   const tertiaryCategories = CategoriesMap.TERTIARY;
-  
+
   const primaryLabel = primaryCategories.find(
     ({ id }) => id === product.primaryCategory
   )?.name;
-  
-  const secondaryLabel = product.secondaryCategory 
-    ? secondaryCategories.find(({ id }) => id === product.secondaryCategory)?.name 
+
+  const secondaryLabel = product.secondaryCategory
+    ? secondaryCategories.find(({ id }) => id === product.secondaryCategory)
+        ?.name
     : null;
-    
-  const tertiaryLabel = product.tertiaryCategory 
-    ? tertiaryCategories.find(({ id }) => id === product.tertiaryCategory)?.name 
+
+  const tertiaryLabel = product.tertiaryCategory
+    ? tertiaryCategories.find(({ id }) => id === product.tertiaryCategory)?.name
     : null;
-    
+
   // Build category display string
   const categoryDisplay = [tertiaryLabel, secondaryLabel, primaryLabel]
     .filter(Boolean)
@@ -117,10 +155,10 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
   // Filter out any invalid image URLs
   const validUrls = product.images.filter(Boolean) as string[];
-  const imageUrlsToUse = validUrls.length > 0 ? validUrls : ["/placeholder.jpg"];
+  const imageUrlsToUse =
+    validUrls.length > 0 ? validUrls : ["/placeholder.jpg"];
 
   const isDropProduct = product.dropDate && product.dropTime;
-  const isOnSale = product.discount && product.discount > 0;
 
   return (
     <Link
@@ -136,19 +174,19 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
         </div>
-        
+
         {/* Product Name - First */}
         <h3 className="mt-4 font-medium text-sm text-gray-700 line-clamp-2">
           {product.name}
         </h3>
-        
+
         {/* Shop Name - Second */}
         {product.seller?.shopName && (
           <p className="mt-1 text-sm text-gray-500">
             {product.seller.shopName}
           </p>
         )}
-        
+
         {/* Price - Third with sale indication */}
         <div className="mt-1">
           {isOnSale ? (
@@ -169,7 +207,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             </p>
           )}
         </div>
-        
+
         {/* Drop countdown (if applicable) */}
         {isDropProduct && (
           <div className="mt-1">

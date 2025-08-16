@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create shipping profile with rates
-    const shippingProfile = await db.shippingProfile.create({
+    const shippingOption = await db.shippingOption.create({
       data: {
         name,
         countryOfOrigin,
@@ -54,18 +54,18 @@ export async function POST(request: NextRequest) {
     });
 
     // Note: Session refresh is now handled by the client-side page reload
-    // The user's shipping profile has been created in the database
-    console.log("Shipping profile created successfully for user:", session.user.id);
+    // The user's shipping option has been created in the database
+    console.log("Shipping option created successfully for user:", session.user.id);
 
     return NextResponse.json({
       success: true,
-      shippingProfile
+      shippingOption
     });
 
   } catch (error) {
-    console.error("Error creating shipping profile:", error);
-    return NextResponse.json(
-      { error: "Failed to create shipping profile" },
+          console.error("Error creating shipping option:", error);
+      return NextResponse.json(
+        { error: "Failed to create shipping option" },
       { status: 500 }
     );
   }
@@ -78,7 +78,7 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const shippingProfiles = await db.shippingProfile.findMany({
+    const shippingOptions = await db.shippingOption.findMany({
       where: {
         sellerId: session.user.id,
       },
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json(shippingProfiles);
+    return NextResponse.json(shippingOptions);
   } catch (error) {
     console.error("[SHIPPING_PROFILES_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });

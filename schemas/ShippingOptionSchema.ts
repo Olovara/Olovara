@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
-import { SHIPPING_ZONES, SHIPPING_SERVICE_LEVELS } from "@/data/shipping";
+import { SHIPPING_ZONES } from "@/data/shipping";
 
 // Create a base schema for monetary values
 const createMonetarySchema = (fieldName: string) => {
@@ -49,7 +49,7 @@ export const ShippingRateSchema = z.object({
       .min(0, "Additional item cost must be at least $0")
       .nullable()
   ),
-  serviceLevel: z.enum(SHIPPING_SERVICE_LEVELS.map(s => s.id) as [string, ...string[]]).nullable(),
+
   isFreeShipping: z.boolean().default(false),
 }).transform((data) => ({
   ...data,
@@ -57,9 +57,9 @@ export const ShippingRateSchema = z.object({
   additionalItem: data.additionalItem ? Math.round(data.additionalItem * 100) : null,
 }));
 
-export const ShippingProfileSchema = z.object({
+export const ShippingOptionSchema = z.object({
   name: z.string().min(1, {
-    message: "Please enter a name for the shipping profile.",
+    message: "Please enter a name for the shipping option.",
   }),
   isDefault: z.boolean().default(false),
   countryOfOrigin: z.string().min(1, {
@@ -70,5 +70,5 @@ export const ShippingProfileSchema = z.object({
   }),
 });
 
-export type ShippingProfileFormValues = z.infer<typeof ShippingProfileSchema>;
+export type ShippingOptionFormValues = z.infer<typeof ShippingOptionSchema>;
 export type ShippingRateFormValues = z.infer<typeof ShippingRateSchema>;

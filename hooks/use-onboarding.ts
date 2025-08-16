@@ -33,11 +33,17 @@ export function useOnboarding(): UseOnboardingReturn {
     try {
       const response = await fetch("/api/seller/onboarding");
       if (response.ok) {
-        const data = await response.json();
-        setSteps(data.steps);
-        setProgress(data.progress);
-        setNextStep(data.nextStep);
-        setIsFullyActivated(data.isFullyActivated);
+        const result = await response.json();
+        
+        // Handle the nested data structure from the API
+        const data = result.data || result;
+        
+        setSteps(data.steps || []);
+        setProgress(data.progress || 0);
+        setNextStep(data.nextStep || null);
+        setIsFullyActivated(data.isFullyActivated || false);
+        
+        console.log("Onboarding data fetched:", data);
       }
     } catch (error) {
       console.error("Failed to fetch onboarding data:", error);

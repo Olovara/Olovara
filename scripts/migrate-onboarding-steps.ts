@@ -23,9 +23,9 @@ async function migrateOnboardingSteps() {
           select: { id: true },
           take: 1 // Just check if they have any products
         },
-        shippingProfiles: {
+        shippingOptions: {
           select: { id: true },
-          take: 1 // Just check if they have any shipping profiles
+          take: 1 // Just check if they have any shipping options
         }
       }
     });

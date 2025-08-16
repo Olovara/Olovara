@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 export async function PUT(
   req: Request,
-  { params }: { params: { profileId: string } }
+  { params }: { params: { optionId: string } }
 ) {
   try {
     const session = await auth();
@@ -13,21 +13,21 @@ export async function PUT(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Validate that the profileId is a valid ObjectID
-    if (!ObjectId.isValid(params.profileId)) {
-      return new NextResponse("Invalid profile ID format", { status: 400 });
+    // Validate that the optionId is a valid ObjectID
+    if (!ObjectId.isValid(params.optionId)) {
+      return new NextResponse("Invalid option ID format", { status: 400 });
     }
 
     const body = await req.json();
     const { name, rates, isDefault, countryOfOrigin } = body;
 
-    // If this is set as default, unset any existing default profiles
+    // If this is set as default, unset any existing default options
     if (isDefault) {
-      await db.shippingProfile.updateMany({
+      await db.shippingOption.updateMany({
         where: {
           sellerId: session.user.id,
           isDefault: true,
-          id: { not: params.profileId },
+          id: { not: params.optionId },
         },
         data: {
           isDefault: false,
@@ -38,14 +38,14 @@ export async function PUT(
     // First, delete all existing rates
     await db.shippingRate.deleteMany({
       where: {
-        profileId: params.profileId,
+        profileId: params.optionId,
       },
     });
 
-    // Then update the profile and create new rates
-    const shippingProfile = await db.shippingProfile.update({
+    // Then update the option and create new rates
+    const shippingOption = await db.shippingOption.update({
       where: {
-        id: params.profileId,
+        id: params.optionId,
         sellerId: session.user.id,
       },
       data: {
@@ -69,7 +69,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(shippingProfile);
+    return NextResponse.json(shippingOption);
   } catch (error) {
     console.error("[SHIPPING_PROFILES_PUT]", error);
     return new NextResponse("Internal Error", { status: 500 });
@@ -78,7 +78,7 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { profileId: string } }
+  { params }: { params: { optionId: string } }
 ) {
   try {
     const session = await auth();
@@ -86,15 +86,15 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Validate that the profileId is a valid ObjectID
-    if (!ObjectId.isValid(params.profileId)) {
-      return new NextResponse("Invalid profile ID format", { status: 400 });
+    // Validate that the optionId is a valid ObjectID
+    if (!ObjectId.isValid(params.optionId)) {
+      return new NextResponse("Invalid option ID format", { status: 400 });
     }
 
-    // Delete the profile (this will cascade delete the rates)
-    await db.shippingProfile.delete({
+    // Delete the option (this will cascade delete the rates)
+    await db.shippingOption.delete({
       where: {
-        id: params.profileId,
+        id: params.optionId,
         sellerId: session.user.id,
       },
     });

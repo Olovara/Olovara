@@ -171,8 +171,11 @@ export async function getSellerOnboardingSteps(
   // Create a map of existing steps
   const stepMap = new Map(steps.map((step) => [step.stepKey, step]));
 
-  // Return all required steps with their completion status
-  return requiredSteps.map((stepKey) => {
+  // Always include all base steps plus GPSR compliance (even if not required)
+  const allSteps = [...BASE_ONBOARDING_STEPS, GPSR_COMPLIANCE_STEP];
+  
+  // Return all steps with their completion status
+  return allSteps.map((stepKey) => {
     const step = stepMap.get(stepKey);
     return {
       stepKey,
@@ -234,10 +237,11 @@ export async function getNextOnboardingStep(
 export async function initializeOnboardingSteps(
   sellerId: string
 ): Promise<void> {
-  const requiredSteps = await getRequiredOnboardingSteps(sellerId);
+  // Always include all base steps plus GPSR compliance (even if not required)
+  const allSteps = [...BASE_ONBOARDING_STEPS, GPSR_COMPLIANCE_STEP];
 
-  // Create records for all required steps (initially incomplete)
-  const stepData = requiredSteps.map((stepKey) => ({
+  // Create records for all steps (initially incomplete)
+  const stepData = allSteps.map((stepKey) => ({
     sellerId,
     stepKey,
     completed: false,
@@ -403,18 +407,18 @@ export async function recalculateOnboardingSteps(
       where: { sellerId },
     });
 
-    // Check if GPSR step exists but is no longer required
+    // Always ensure GPSR step exists (even if not required)
     const gpsrStep = existingSteps.find(
       (step) => step.stepKey === "gpsr_compliance"
     );
     const isGPSRRequired = currentRequiredSteps.includes("gpsr_compliance");
 
-    if (gpsrStep && !isGPSRRequired) {
-      // GPSR is no longer required, mark it as completed to skip it
-      await updateOnboardingStep(sellerId, "gpsr_compliance", true);
-    } else if (!gpsrStep && isGPSRRequired) {
-      // GPSR is now required, create the step
+    if (!gpsrStep) {
+      // GPSR step doesn't exist, create it
       await updateOnboardingStep(sellerId, "gpsr_compliance", false);
+    } else if (gpsrStep && !isGPSRRequired) {
+      // GPSR is no longer required, but keep it visible (don't auto-complete)
+      // This allows sellers to see what they need to complete for EU sales
     }
 
     // Recalculate isFullyActivated

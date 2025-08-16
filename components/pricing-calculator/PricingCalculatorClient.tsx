@@ -1,0 +1,281 @@
+"use client";
+
+import { useState } from "react";
+import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+import MaterialsSection from "@/components/pricing-calculator/MaterialsSection";
+import LaborSection from "@/components/pricing-calculator/LaborSection";
+import { LaborCostItem } from "@/components/pricing-calculator/LaborSection";
+import PackagingSection from "@/components/pricing-calculator/PackagingSection";
+import CraftShowCostsSection from "@/components/pricing-calculator/CraftShowCostsSection";
+import WebsiteCostsSection from "@/components/pricing-calculator/WebsiteCostsSection";
+import PricingOverviewSection from "@/components/pricing-calculator/PricingOverviewSection";
+import PricingBreakdownSection from "@/components/pricing-calculator/PricingBreakdownSection";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+
+Chart.register(ArcElement, Tooltip, Legend);
+
+export default function PricingCalculatorClient() {
+  const [materials, setMaterials] = useState([
+    { name: "", cost: "", size: "", quantity: "", total: 0 },
+  ]);
+  const [packaging, setPackaging] = useState([
+    { description: "", cost: "", size: "", quantity: "", total: 0 },
+  ]);
+  const [labor, setLabor] = useState<LaborCostItem[]>([
+    { description: "", hourlyWage: "", time: "", total: 0 },
+  ]);
+  const [otherCosts, setOtherCosts] = useState([
+    { description: "", total: "" },
+  ]);
+
+  // State to track total costs from each section (including misc costs)
+  const [totalMaterialCost, setTotalMaterialCost] = useState(0);
+  const [totalPackagingCost, setTotalPackagingCost] = useState(0);
+  const [totalLaborCost, setTotalLaborCost] = useState(0);
+
+  const [discount, setDiscount] = useState(0);
+  const [markup, setMarkup] = useState(0);
+  const [salesTax, setSalesTax] = useState(0);
+  
+  // Transaction fees (shared between website and craft show)
+  const [transactionFeePercent, setTransactionFeePercent] = useState(2.9);
+  const [transactionFeeDollar, setTransactionFeeDollar] = useState(0.25);
+  
+  // Craft show specific fees
+  const [boothFee, setBoothFee] = useState(0);
+  const [averageItemsSold, setAverageItemsSold] = useState(1);
+  
+  // Website specific fees
+  const [websiteFeePercent, setWebsiteFeePercent] = useState(10);
+  const [websiteFeeDollar, setWebsiteFeeDollar] = useState(0);
+  
+  // Toggle between Website and Craft Show Costs
+  const [isWebsiteMode, setIsWebsiteMode] = useState(false);
+  
+  // Toggle between Calculate Price and Calculate Profit modes
+  const [isReverseMode, setIsReverseMode] = useState(false);
+  const [desiredSellingPrice, setDesiredSellingPrice] = useState(0);
+
+  // Calculate other costs
+  const totalOtherCosts = otherCosts.reduce(
+    (acc, item) => acc + parseFloat(item.total || "0"),
+    0
+  );
+
+  // Calculate booth cost per item
+  const boothCostPerItem = boothFee / (averageItemsSold || 1);
+  const totalBoothFees = boothCostPerItem;
+
+  // Calculate total cost before markup
+  const totalCost =
+    totalMaterialCost +
+    totalPackagingCost +
+    totalLaborCost +
+    totalOtherCosts +
+    (isWebsiteMode ? 0 : totalBoothFees);
+
+  let sellingPrice: number;
+  let profit: number;
+  let transactionFees: number;
+  let websiteFees: number;
+
+  if (isReverseMode) {
+    // Reverse calculation: Calculate profit from desired selling price
+    sellingPrice = desiredSellingPrice;
+    
+    // Calculate transaction fees based on the desired selling price
+    transactionFees = (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
+    
+    // Calculate website fees if in website mode
+    websiteFees = isWebsiteMode
+      ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
+      : 0;
+    
+    // Calculate profit: Selling Price - Total Cost - Transaction Fees - Website Fees
+    profit = sellingPrice - totalCost - transactionFees - websiteFees;
+  } else {
+    // Forward calculation: Calculate selling price from costs + markup
+    // Initial selling price before fees
+    sellingPrice =
+      totalCost *
+      (1 + markup / 100) *
+      (1 - discount / 100) *
+      (1 + salesTax / 100);
+
+    // Calculate transaction fees based on this initial selling price
+    transactionFees =
+      (sellingPrice * transactionFeePercent) / 100 + transactionFeeDollar;
+
+    // Calculate website fees if in website mode
+    websiteFees = isWebsiteMode
+      ? (sellingPrice * websiteFeePercent) / 100 + websiteFeeDollar
+      : 0;
+
+    // Final selling price, including all fees
+    sellingPrice += transactionFees + websiteFees;
+
+    // Calculate profit
+    profit = sellingPrice - (totalCost + transactionFees + websiteFees);
+  }
+
+  // Function to update costs dynamically
+  const updateField = (
+    setState: Function,
+    stateArray: any[],
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const updatedState = [...stateArray];
+    updatedState[index][field] = value;
+
+    if (setState === setLabor) {
+      const hourlyWage = parseFloat(updatedState[index].hourlyWage || "0");
+      const time = parseFloat(updatedState[index].time || "0");
+      updatedState[index].total = hourlyWage * time || 0;
+    } else {
+      const cost = parseFloat(updatedState[index].cost || "0");
+      const size = parseFloat(updatedState[index].size || "1");
+      const quantity = parseFloat(updatedState[index].quantity || "0");
+      updatedState[index].total = (cost / size) * quantity || 0;
+    }
+
+    setState(updatedState);
+  };
+
+  return (
+    <div className="p-4 space-y-6">
+      <MaterialsSection 
+        materials={materials} 
+        setMaterials={setMaterials} 
+        onTotalChange={setTotalMaterialCost}
+      />
+
+      <LaborSection 
+        labor={labor} 
+        setLabor={setLabor} 
+        onTotalChange={setTotalLaborCost}
+      />
+
+      <PackagingSection 
+        packaging={packaging} 
+        setPackaging={setPackaging} 
+        onTotalChange={setTotalPackagingCost}
+      />
+
+      {/* Toggle between Website and Craft Show Costs */}
+      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+        <Switch
+          id="cost-mode"
+          checked={isWebsiteMode}
+          onCheckedChange={setIsWebsiteMode}
+        />
+        <Label htmlFor="cost-mode" className="text-lg font-semibold">
+          {isWebsiteMode ? "Website Mode" : "Craft Show Mode"}
+        </Label>
+      </div>
+
+      {isWebsiteMode ? (
+        <WebsiteCostsSection
+          transactionFeePercent={transactionFeePercent}
+          setTransactionFeePercent={setTransactionFeePercent}
+          transactionFeeDollar={transactionFeeDollar}
+          setTransactionFeeDollar={setTransactionFeeDollar}
+          websiteFeePercent={websiteFeePercent}
+          setWebsiteFeePercent={setWebsiteFeePercent}
+          websiteFeeDollar={websiteFeeDollar}
+          setWebsiteFeeDollar={setWebsiteFeeDollar}
+          transactionFees={transactionFees}
+          websiteFees={websiteFees}
+        />
+      ) : (
+        <CraftShowCostsSection
+          transactionFeePercent={transactionFeePercent}
+          setTransactionFeePercent={setTransactionFeePercent}
+          transactionFeeDollar={transactionFeeDollar}
+          setTransactionFeeDollar={setTransactionFeeDollar}
+          boothFee={boothFee}
+          setBoothFee={setBoothFee}
+          averageItemsSold={averageItemsSold}
+          setAverageItemsSold={setAverageItemsSold}
+          transactionFees={transactionFees}
+          totalBoothFees={totalBoothFees}
+          updateField={updateField}
+        />
+      )}
+
+      <PricingOverviewSection
+        markup={markup}
+        setMarkup={setMarkup}
+        discount={discount}
+        setDiscount={setDiscount}
+        salesTax={salesTax}
+        setSalesTax={setSalesTax}
+      />
+
+      {/* Toggle between Calculate Price and Calculate Profit modes */}
+      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+        <Switch
+          id="calculation-mode"
+          checked={isReverseMode}
+          onCheckedChange={setIsReverseMode}
+        />
+        <Label htmlFor="calculation-mode" className="text-lg font-semibold">
+          {isReverseMode ? "Reverse Calculation" : "Forward Calculation"}
+        </Label>
+      </div>
+
+      {/* Explanation of calculation modes */}
+      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+        <h3 className="font-semibold text-purple-900 mb-2">
+          {isReverseMode ? "Reverse Calculation Mode" : "Forward Calculation Mode"}
+        </h3>
+        <p className="text-purple-800 text-sm">
+          {isReverseMode 
+            ? "Enter your desired selling price to see what profit you would make. Perfect for checking if a specific price point is profitable or comparing different price options."
+            : "Calculate the selling price based on your costs and markup percentage. This is the traditional approach to pricing your products."
+          }
+        </p>
+      </div>
+
+      {/* Desired Selling Price Input (only show in reverse mode) */}
+      {isReverseMode && (
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-4">Desired Selling Price</h2>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="desired-price" className="text-sm font-medium">
+              What price do you want to sell for?
+            </Label>
+            <Input
+              id="desired-price"
+              type="number"
+              value={desiredSellingPrice}
+              onChange={(e) => setDesiredSellingPrice(parseFloat(e.target.value) || 0)}
+              placeholder="0.00"
+              className="w-32"
+            />
+          </div>
+          <p className="text-sm text-gray-600 mt-2">
+            Enter your desired selling price to see what profit you would make
+          </p>
+        </Card>
+      )}
+
+      <PricingBreakdownSection
+        totalMaterialCost={totalMaterialCost}
+        totalPackagingCost={totalPackagingCost}
+        totalLaborCost={totalLaborCost}
+        totalOtherCosts={totalOtherCosts}
+        totalBoothFees={isWebsiteMode ? 0 : totalBoothFees}
+        transactionFees={transactionFees}
+        websiteFees={websiteFees}
+        totalCost={totalCost}
+        sellingPrice={sellingPrice}
+        profit={profit}
+      />
+    </div>
+  );
+}

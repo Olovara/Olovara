@@ -10,7 +10,7 @@ export const metadata = {
 
 export default async function SellerSettings() {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     redirect("/login");
   }
@@ -18,7 +18,7 @@ export default async function SellerSettings() {
   // Get seller data to access shopNameSlug and shipping profiles
   const seller = await db.seller.findUnique({
     where: { userId: session.user.id },
-    select: { 
+    select: {
       shopNameSlug: true,
       // SEO fields
       metaTitle: true,
@@ -28,7 +28,7 @@ export default async function SellerSettings() {
       ogTitle: true,
       ogDescription: true,
       ogImage: true,
-      shippingProfiles: {
+      shippingOptions: {
         select: {
           id: true,
           name: true,
@@ -47,15 +47,13 @@ export default async function SellerSettings() {
               estimatedDays: true,
               additionalItem: true,
               serviceLevel: true,
-              isFreeShipping: true
-            }
-          }
-        }
-      }
-    }
+              isFreeShipping: true,
+            },
+          },
+        },
+      },
+    },
   });
-
-
 
   return (
     <PermissionGate requiredPermission="MANAGE_SELLER_SETTINGS">
@@ -67,7 +65,7 @@ export default async function SellerSettings() {
           </p>
         </div>
         <SettingsTabsWrapper seller={seller} />
-        </div>
+      </div>
     </PermissionGate>
   );
 }

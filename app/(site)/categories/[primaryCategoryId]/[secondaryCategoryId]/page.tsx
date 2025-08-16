@@ -92,6 +92,10 @@ export default async function SecondaryCategoryPage({
       isDigital: true,
       onSale: true,
       discount: true,
+      saleStartDate: true,
+      saleEndDate: true,
+      saleStartTime: true,
+      saleEndTime: true,
       stock: true,
       dropDate: true,
       dropTime: true,
@@ -175,6 +179,11 @@ export default async function SecondaryCategoryPage({
                     ...product,
                     secondaryCategory: product.secondaryCategory || undefined,
                     tertiaryCategory: product.tertiaryCategory || undefined,
+                    onSale: product.onSale,
+                    saleStartDate: product.saleStartDate,
+                    saleEndDate: product.saleEndDate,
+                    saleStartTime: product.saleStartTime,
+                    saleEndTime: product.saleEndTime,
                   }} 
                   index={index} 
                 />

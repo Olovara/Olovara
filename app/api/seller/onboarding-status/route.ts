@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         connectedAccountId: true,
         shopCountry: true,
         isFullyActivated: true,
-        shippingProfiles: {
+        shippingOptions: {
           select: { id: true },
           take: 1,
         },

@@ -60,7 +60,7 @@ export async function POST(req: Request) {
               where: { isDefault: true },
               select: { encryptedCountry: true, countryIV: true, countrySalt: true }
             },
-            shippingProfiles: {
+            shippingOptions: {
               where: { isDefault: true },
               select: {
                 id: true,
@@ -104,23 +104,23 @@ export async function POST(req: Request) {
         sellerAddress.countryIV, 
         sellerAddress.countrySalt
       );
-    } else if (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0) {
-      // Fallback to shipping profile country of origin
-      const defaultProfile = product.seller.shippingProfiles[0];
-      sellerOriginCountry = defaultProfile.countryOfOrigin;
+    } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
+      // Fallback to shipping option country of origin
+      const defaultOption = product.seller.shippingOptions[0];
+      sellerOriginCountry = defaultOption.countryOfOrigin;
     }
     
     // If still no country found, we can't calculate dynamic shipping
     if (!sellerOriginCountry) {
       console.warn(`No seller country found for product ${productId}, using static shipping cost`);
-    } else if (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0) {
+    } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
       // Get user's country from shipping address or fallback
       const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
       
       // Calculate shipping cost based on origin and destination
-      const defaultProfile = product.seller.shippingProfiles[0];
+      const defaultOption = product.seller.shippingOptions[0];
       const shippingCalculation = calculateShippingCost(
-        defaultProfile.rates,
+        defaultOption.rates,
         sellerOriginCountry,
         userCountry,
         parseInt(quantity.toString())
@@ -402,7 +402,7 @@ export async function POST(req: Request) {
         orderValue: totalOrderValue.toString(),
         sellerOriginCountry: sellerOriginCountry,
         userCountry: shippingAddress?.country || req.headers.get('x-user-country') || 'US',
-        dynamicShipping: (product.seller?.shippingProfiles && product.seller.shippingProfiles.length > 0).toString(),
+        dynamicShipping: (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0).toString(),
         // Discount information
         discountCodeId: discountCodeId || '',
         discountCodeUsed: discountCodeUsed || '',

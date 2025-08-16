@@ -9,23 +9,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import ShippingProfileForm from "@/components/forms/ShippingProfileForm";
+import ShippingOptionForm from "@/components/forms/ShippingOptionForm";
 
-export default function ShippingProfileModal() {
+export default function ShippingOptionModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
       <Button onClick={() => setIsOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
-        Add Shipping Profile
+        Add Shipping Option
       </Button>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Shipping Profile</DialogTitle>
+            <DialogTitle>Add Shipping Option</DialogTitle>
           </DialogHeader>
-          <ShippingProfileForm onSuccess={() => setIsOpen(false)} />
+          <ShippingOptionForm onSuccess={() => setIsOpen(false)} />
         </DialogContent>
       </Dialog>
     </>

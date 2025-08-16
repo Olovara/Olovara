@@ -284,7 +284,7 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       shippingNotes: updateData.shippingNotes,
       inStockProcessingTime: updateData.inStockProcessingTime,
       outStockLeadTime: updateData.outStockLeadTime,
-      shippingProfileId: updateData.shippingProfileId,
+      shippingOptionId: updateData.shippingOptionId,
     };
     
     const taxFields = {

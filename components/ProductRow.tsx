@@ -34,6 +34,10 @@ type ProductWithSeller = {
   numberSold: number;
   onSale: boolean;
   discount: number | null;
+  saleStartDate: Date | null;
+  saleEndDate: Date | null;
+  saleStartTime: string | null;
+  saleEndTime: string | null;
   primaryCategory: string;
   secondaryCategory: string | null;
   tertiaryCategory: string | null;
@@ -87,6 +91,10 @@ const PRODUCT_SELECT_FIELDS = {
   numberSold: true,
   onSale: true,
   discount: true,
+  saleStartDate: true,
+  saleEndDate: true,
+  saleStartTime: true,
+  saleEndTime: true,
   primaryCategory: true,
   secondaryCategory: true,
   tertiaryCategory: true,
@@ -244,6 +252,11 @@ export async function LoadRows({ category }: iAppProps) {
               stock: product.stock,
               dropDate: product.dropDate,
               dropTime: product.dropTime,
+              onSale: product.onSale,
+              saleStartDate: product.saleStartDate,
+              saleEndDate: product.saleEndDate,
+              saleStartTime: product.saleStartTime,
+              saleEndTime: product.saleEndTime,
               seller: product.seller ? {
                 shopName: product.seller.shopName,
                 shopNameSlug: product.seller.shopNameSlug,

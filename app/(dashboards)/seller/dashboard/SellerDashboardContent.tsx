@@ -20,6 +20,7 @@ export function SellerDashboardContent() {
     permissionsLoading,
     permissionsError,
     steps,
+    stepsLength: steps?.length,
     isFullyActivated,
     onboardingLoading
   });

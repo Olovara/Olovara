@@ -11,6 +11,10 @@ interface ProductStructuredDataProps {
     stock: number
     onSale: boolean
     discount?: number | null
+    saleStartDate?: Date | null
+    saleEndDate?: Date | null
+    saleStartTime?: string | null
+    saleEndTime?: string | null
     seller: {
       shopName: string
       shopNameSlug: string
@@ -21,8 +25,37 @@ interface ProductStructuredDataProps {
 }
 
 export function ProductStructuredData({ product }: ProductStructuredDataProps) {
+  // Check if sale is currently active
+  const isOnSale = (() => {
+    if (!product.onSale || !product.discount) return false;
+
+    const now = new Date();
+
+    // Check sale start date/time
+    if (product.saleStartDate) {
+      const saleStart = new Date(product.saleStartDate);
+      if (product.saleStartTime) {
+        const [hours, minutes] = product.saleStartTime.split(':').map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      if (now < saleStart) return false;
+    }
+
+    // Check sale end date/time
+    if (product.saleEndDate) {
+      const saleEnd = new Date(product.saleEndDate);
+      if (product.saleEndTime) {
+        const [hours, minutes] = product.saleEndTime.split(':').map(Number);
+        saleEnd.setHours(hours, minutes, 0, 0);
+      }
+      if (now > saleEnd) return false;
+    }
+
+    return true;
+  })();
+
   // Calculate current price
-  const currentPrice = product.onSale && product.discount 
+  const currentPrice = isOnSale && product.discount 
     ? product.price - (product.price * product.discount / 100)
     : product.price
 

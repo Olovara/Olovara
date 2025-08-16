@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
         taxCategory: true,
         taxCode: true,
         taxExempt: true,
-        shippingProfileId: true,
+        shippingOptionId: true,
       },
     });
 

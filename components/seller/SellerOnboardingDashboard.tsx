@@ -90,6 +90,11 @@ const SellerOnboardingDashboard = () => {
       description: "Connect your payment account to start receiving money.",
     },
     {
+      id: "gpsr_compliance",
+      title: "EU Compliance (Optional)",
+      description: "Complete GPSR compliance to sell to EU/EEA countries.",
+    },
+    {
       id: "fully_activated",
       title: "Ready to Sell!",
       description: "Your shop is set up and ready to start selling.",
@@ -180,11 +185,35 @@ const SellerOnboardingDashboard = () => {
             </Link>
           </Button>
         );
-      case "fully_activated":
-        const paymentSetupCompleted = steps.find(
+      case "gpsr_compliance":
+        const gpsrPaymentSetupCompleted = steps.find(
           (s) => s.stepKey === "payment_setup"
         )?.completed;
-        if (!paymentSetupCompleted) {
+        if (!gpsrPaymentSetupCompleted) {
+          return (
+            <div className="text-sm text-muted-foreground">
+              Complete payment setup first to access EU compliance.
+            </div>
+          );
+        }
+        return (
+          <div className="space-y-2">
+            <Button asChild size="sm" className="mt-2">
+              <Link href="/seller/dashboard/products/create-product">
+                Add Product with EU Compliance
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+            <div className="text-xs text-muted-foreground">
+              This step is optional unless you plan to sell to EU/EEA countries.
+            </div>
+          </div>
+        );
+      case "fully_activated":
+        const fullyActivatedPaymentSetupCompleted = steps.find(
+          (s) => s.stepKey === "payment_setup"
+        )?.completed;
+        if (!fullyActivatedPaymentSetupCompleted) {
           return (
             <div className="text-sm text-muted-foreground">
               Set up payments first to fully activate your account.
@@ -259,6 +288,9 @@ const SellerOnboardingDashboard = () => {
                   steps.find((s) => s.stepKey === "shop_naming")?.completed &&
                   !steps.find((s) => s.stepKey === "payment_setup")
                     ?.completed) ||
+                (step.id === "gpsr_compliance" &&
+                  steps.find((s) => s.stepKey === "payment_setup")?.completed &&
+                  !steps.find((s) => s.stepKey === "gpsr_compliance")?.completed) ||
                 (step.id === "fully_activated" &&
                   steps.find((s) => s.stepKey === "payment_setup")?.completed));
 
@@ -297,6 +329,14 @@ const SellerOnboardingDashboard = () => {
                             Pending
                           </Badge>
                         )}
+                      {status === "pending" && step.id === "gpsr_compliance" && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-100 text-blue-800"
+                        >
+                          Optional
+                        </Badge>
+                      )}
                       {isActive && (
                         <Badge
                           variant="default"

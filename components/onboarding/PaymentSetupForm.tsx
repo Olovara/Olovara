@@ -22,36 +22,42 @@ import {
   Zap,
 } from "lucide-react";
 
-import { setupStripeAccount } from "@/actions/onboardingActions";
 import { toast } from "sonner";
+import { StepIndicator } from "@/components/onboarding/StepIndicator";
 
 export default function PaymentSetupForm() {
   const router = useRouter();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-
-
   const handleConnectStripe = async () => {
     setIsConnecting(true);
 
     try {
-      // This would typically redirect to Stripe Connect onboarding
-      const result = await setupStripeAccount();
+      // Use the same API route as the billing page
+      const response = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (result.error) {
-        toast.error(result.error);
-        return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create Stripe account link');
       }
 
-      // Simulate successful connection
-      setTimeout(() => {
-        setIsConnected(true);
-        toast.success("Stripe account connected successfully!");
-      }, 2000);
+      const result = await response.json();
+
+      if (result.success && result.url) {
+        // Redirect to Stripe onboarding
+        window.location.href = result.url;
+      } else {
+        throw new Error('No Stripe account link received');
+      }
     } catch (error) {
       console.error("Error connecting Stripe:", error);
-      toast.error("Failed to connect Stripe account");
+      toast.error(error instanceof Error ? error.message : "Failed to connect Stripe account");
     } finally {
       setIsConnecting(false);
     }
@@ -71,7 +77,10 @@ export default function PaymentSetupForm() {
 
   return (
     <div className="space-y-8">
-
+      {/* Step Indicator */}
+      <div className="w-full max-w-4xl mx-auto">
+        <StepIndicator currentStep="payment-setup" className="mb-8" />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -97,189 +106,129 @@ export default function PaymentSetupForm() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Stripe Connection Status */}
-            {!isConnected ? (
-              <div className="space-y-6">
-                {/* Stripe Benefits */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                  <h3 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Why Stripe?
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-purple-900">
-                          Secure Payments
-                        </p>
-                        <p className="text-sm text-purple-700">
-                          Bank-level security for all transactions
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-purple-900">
-                          Fast Transfers
-                        </p>
-                        <p className="text-sm text-purple-700">
-                          Money in your bank account within 2-3 days
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-purple-900">
-                          Global Support
-                        </p>
-                        <p className="text-sm text-purple-700">
-                          Accept payments from customers worldwide
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-purple-900">
-                          Easy Setup
-                        </p>
-                        <p className="text-sm text-purple-700">
-                          Connect in just a few minutes
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            {/* Security Features */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                <Shield className="h-6 w-6 text-green-600" />
+                <div>
+                  <h4 className="font-semibold text-green-800">Secure</h4>
+                  <p className="text-sm text-green-700">Bank-level security</p>
                 </div>
+              </div>
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <Zap className="h-6 w-6 text-blue-600" />
+                <div>
+                  <h4 className="font-semibold text-blue-800">Fast</h4>
+                  <p className="text-sm text-blue-700">Instant transfers</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                <Sparkles className="h-6 w-6 text-purple-600" />
+                <div>
+                  <h4 className="font-semibold text-purple-800">Reliable</h4>
+                  <p className="text-sm text-purple-700">99.9% uptime</p>
+                </div>
+              </div>
+            </div>
 
-                {/* What You'll Need */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5" />
+            {/* Connection Status */}
+            {isConnected ? (
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center space-x-2 text-green-600">
+                  <CheckCircle className="h-6 w-6" />
+                  <span className="font-semibold">Stripe Account Connected!</span>
+                </div>
+                <p className="text-gray-600">
+                  Your payment account is ready. You can now receive payments for your sales.
+                </p>
+                <Button
+                  onClick={handleContinue}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                >
+                  Continue to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* What You&apos;ll Need */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <Lightbulb className="h-5 w-5 mr-2 text-yellow-600" />
                     What You&apos;ll Need
                   </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      <span className="text-blue-800">
-                        Government-issued ID (driver&apos;s license, passport)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      <span className="text-blue-800">
-                        Social Security Number (US) or Tax ID
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      <span className="text-blue-800">
-                        Bank account information
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      <span className="text-blue-800">
-                        Business information (if applicable)
-                      </span>
-                    </div>
-                  </div>
+                  <ul className="space-y-2 text-gray-700">
+                    <li className="flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      Government-issued ID (driver&apos;s license, passport, etc.)
+                    </li>
+                    <li className="flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      Bank account information
+                    </li>
+                    <li className="flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      Business information (if applicable)
+                    </li>
+                    <li className="flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      Social Security Number (US) or Tax ID
+                    </li>
+                  </ul>
                 </div>
 
                 {/* Connect Button */}
-                <div className="text-center">
+                <div className="text-center space-y-4">
                   <Button
                     onClick={handleConnectStripe}
                     disabled={isConnecting}
-                    size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 text-lg"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isConnecting ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                         Connecting...
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-5 w-5" />
+                      <>
                         Connect Stripe Account
-                      </div>
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
                     )}
                   </Button>
-                  <p className="text-sm text-gray-500 mt-3">
+                  
+                  <p className="text-sm text-gray-500">
                     You&apos;ll be redirected to Stripe to complete the setup
                   </p>
                 </div>
-              </div>
-            ) : (
-              /* Success State */
-              <div className="text-center space-y-6">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-3 bg-green-500 rounded-full">
-                      <CheckCircle className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-green-900 mb-2">
-                    Payment Setup Complete!
-                  </h3>
-                  <p className="text-green-700">
-                    Your Stripe account is connected and ready to receive
-                    payments.
-                  </p>
-                </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    What&apos;s Next?
-                  </h4>
-                  <ul className="text-sm text-blue-800 space-y-1 text-left">
-                    <li>• Start receiving payments for your sales</li>
-                    <li>• View your earnings in your dashboard</li>
-                    <li>• Set up automatic transfers to your bank</li>
-                    <li>• Access detailed payment reports</li>
-                  </ul>
+                {/* Skip Option */}
+                <div className="text-center">
+                  <Button
+                    onClick={handleSkip}
+                    variant="ghost"
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    Skip for now
+                  </Button>
                 </div>
               </div>
             )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-6">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="ghost"
-                  onClick={handleSkip}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  Skip for now
-                </Button>
-
-                {isConnected && (
-                  <Button
-                    onClick={handleContinue}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2"
-                  >
-                    Continue to Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Navigation */}
+      <div className="flex justify-between items-center w-full max-w-4xl mx-auto">
+        <Button
+          onClick={handleBack}
+          variant="outline"
+          className="flex items-center space-x-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Button>
+      </div>
     </div>
   );
 }

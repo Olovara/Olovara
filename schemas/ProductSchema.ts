@@ -141,7 +141,7 @@ const baseProductSchema = z.object({
   ]).default("PHYSICAL_GOODS"),
   taxCode: z.string().optional(),
   taxExempt: z.boolean().default(false),
-  shippingProfileId: z.string().nullable().optional(),
+  shippingOptionId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
   // SEO fields
   metaTitle: z.string().max(60, "Meta title must be 60 characters or less").optional(),

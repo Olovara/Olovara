@@ -27,6 +27,7 @@ import {
 
 import { saveShopName } from "@/actions/onboardingActions";
 import { toast } from "sonner";
+import { StepIndicator } from "@/components/onboarding/StepIndicator";
 
 // Shop name suggestions based on common handmade categories
 const shopNameSuggestions = [
@@ -220,7 +221,10 @@ export default function ShopNamingForm() {
 
   return (
     <div className="space-y-8">
-
+      {/* Step Indicator */}
+      <div className="w-full max-w-4xl mx-auto">
+        <StepIndicator currentStep="shop-naming" className="mb-8" />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

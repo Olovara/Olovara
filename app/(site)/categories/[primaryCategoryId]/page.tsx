@@ -138,6 +138,10 @@ export default async function PrimaryCategoryPage({
       isDigital: true,
       onSale: true,
       discount: true,
+      saleStartDate: true,
+      saleEndDate: true,
+      saleStartTime: true,
+      saleEndTime: true,
       stock: true,
       dropDate: true,
       dropTime: true,
@@ -164,6 +168,11 @@ export default async function PrimaryCategoryPage({
     currency: product.currency || "USD", // Ensure currency is included with a default
     secondaryCategory: product.secondaryCategory || undefined,
     tertiaryCategory: product.tertiaryCategory || undefined,
+    onSale: product.onSale,
+    saleStartDate: product.saleStartDate,
+    saleEndDate: product.saleEndDate,
+    saleStartTime: product.saleStartTime,
+    saleEndTime: product.saleEndTime,
     seller: product.seller ? {
       shopName: product.seller.shopName,
       shopNameSlug: product.seller.shopNameSlug,

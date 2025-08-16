@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ShippingProfileForm from "@/components/forms/ShippingProfileForm";
+import ShippingOptionForm from "@/components/forms/ShippingOptionForm";
 
 interface ShippingRate {
   id: string;
@@ -17,11 +17,10 @@ interface ShippingRate {
   currency: string;
   estimatedDays: number;
   additionalItem: number | null;
-  serviceLevel: string | null;
   isFreeShipping: boolean;
 }
 
-interface ShippingProfile {
+interface ShippingOption {
   id: string;
   name: string;
   isDefault: boolean;
@@ -32,27 +31,27 @@ interface ShippingProfile {
   updatedAt: Date;
 }
 
-interface EditShippingProfileModalProps {
-  profile: ShippingProfile;
+interface EditShippingOptionModalProps {
+  option: ShippingOption;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function EditShippingProfileModal({
-  profile,
+export default function EditShippingOptionModal({
+  option,
   isOpen,
   onClose,
-}: EditShippingProfileModalProps) {
+}: EditShippingOptionModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Shipping Profile</DialogTitle>
-        </DialogHeader>
-        <ShippingProfileForm 
-          initialData={profile} 
-          onSuccess={onClose} 
-        />
+                  <DialogTitle>Edit Shipping Option</DialogTitle>
+      </DialogHeader>
+      <ShippingOptionForm
+        initialData={option}
+        onSuccess={onClose}
+      />
       </DialogContent>
     </Dialog>
   );

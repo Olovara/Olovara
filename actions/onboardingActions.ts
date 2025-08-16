@@ -136,7 +136,7 @@ const FirstProductSchema = z.object({
   isDigital: z.boolean().default(false),
   freeShipping: z.boolean().default(false),
   shippingCost: z.number().min(0).default(0),
-  shippingProfileId: z.string().optional(),
+  shippingOptionId: z.string().optional(),
 });
 
 // Schema for first name
@@ -474,7 +474,7 @@ export const createFirstProduct = async (
         taxCategory: validatedData.isDigital ? "DIGITAL_GOODS" : "PHYSICAL_GOODS",
         freeShipping: validatedData.freeShipping || false,
         shippingCost: Math.round((validatedData.shippingCost || 0) * 100), // Convert to cents
-        shippingProfileId: validatedData.shippingProfileId || null,
+        shippingOptionId: validatedData.shippingOptionId || null,
       },
     });
 

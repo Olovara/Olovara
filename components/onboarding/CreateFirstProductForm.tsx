@@ -26,6 +26,7 @@ import { createFirstProduct } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 import { EEA_COUNTRIES } from "@/lib/gpsr-compliance";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { StepIndicator } from "@/components/onboarding/StepIndicator";
 
 // Import the same components as the main product form
 import { ProductInfoSection } from "@/components/product/productInformation";
@@ -84,7 +85,7 @@ const FirstProductSchema = z.object({
   timeToMake: z.string().optional(),
   skillLevel: z.string().optional(),
   freeShipping: z.boolean().default(false),
-  shippingProfileId: z.string().optional(),
+  shippingOptionId: z.string().optional(),
   // Add missing fields that ProductSchema expects
   itemWeightUnit: z.string().default("lbs"),
   itemDimensionUnit: z.string().default("in"),
@@ -187,7 +188,7 @@ export default function CreateFirstProductForm() {
       timeToMake: "",
       skillLevel: "",
       freeShipping: false,
-      shippingProfileId: "",
+      shippingOptionId: "",
     },
   });
 
@@ -232,7 +233,7 @@ export default function CreateFirstProductForm() {
         isDigital: data.isDigital,
         freeShipping: data.freeShipping,
         shippingCost: data.shippingCost,
-        shippingProfileId: data.shippingProfileId,
+        shippingOptionId: data.shippingOptionId,
       });
 
       if (result.error) {
@@ -260,6 +261,11 @@ export default function CreateFirstProductForm() {
 
   return (
     <div className="space-y-8">
+      {/* Step Indicator */}
+      <div className="w-full max-w-4xl mx-auto">
+        <StepIndicator currentStep="create-first-product" className="mb-8" />
+      </div>
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -290,9 +296,9 @@ export default function CreateFirstProductForm() {
                >
               {/* Basic Information Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Basic Information
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
@@ -314,9 +320,9 @@ export default function CreateFirstProductForm() {
 
               {/* Media Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Media & Visuals
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
@@ -344,7 +350,7 @@ export default function CreateFirstProductForm() {
 
               {/* Inventory & Options Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Inventory & Options
@@ -365,9 +371,9 @@ export default function CreateFirstProductForm() {
 
               {/* Shipping & Dimensions Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Shipping & Dimensions
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
@@ -384,9 +390,9 @@ export default function CreateFirstProductForm() {
 
               {/* Story & Details Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Story & Details
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">

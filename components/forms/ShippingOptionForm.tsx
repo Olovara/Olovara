@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { ShippingProfileSchema, type ShippingProfileFormValues } from "@/schemas/ShippingProfileSchema";
+import { ShippingOptionSchema, type ShippingOptionFormValues } from "@/schemas/ShippingOptionSchema";
 import {
   Select,
   SelectContent,
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
-import { SHIPPING_ZONES, SHIPPING_SERVICE_LEVELS } from "@/data/shipping";
+import { SHIPPING_ZONES } from "@/data/shipping";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -37,11 +37,10 @@ interface ShippingRate {
   currency: string;
   estimatedDays: number;
   additionalItem: number | null;
-  serviceLevel: string | null;
   isFreeShipping: boolean;
 }
 
-interface ShippingProfile {
+interface ShippingOption {
   id: string;
   name: string;
   isDefault: boolean;
@@ -49,15 +48,15 @@ interface ShippingProfile {
   rates: ShippingRate[];
 }
 
-interface ShippingProfileFormProps {
-  initialData?: ShippingProfile;
+interface ShippingOptionFormProps {
+  initialData?: ShippingOption;
   onSuccess?: () => void;
 }
 
-export default function ShippingProfileForm({
+export default function ShippingOptionForm({
   initialData,
   onSuccess,
-}: ShippingProfileFormProps) {
+}: ShippingOptionFormProps) {
   const router = useRouter();
   const [sellerCountry, setSellerCountry] = useState<string>("");
 
@@ -78,8 +77,8 @@ export default function ShippingProfileForm({
     void fetchSellerCountry();
   }, []);
 
-  const form = useForm<ShippingProfileFormValues>({
-    resolver: zodResolver(ShippingProfileSchema),
+  const form = useForm<ShippingOptionFormValues>({
+    resolver: zodResolver(ShippingOptionSchema),
     defaultValues: {
       name: initialData?.name || "",
       isDefault: initialData?.isDefault || false,
@@ -104,9 +103,9 @@ export default function ShippingProfileForm({
     name: "rates",
   });
 
-  async function onSubmit(values: ShippingProfileFormValues) {
+  async function onSubmit(values: ShippingOptionFormValues) {
     try {
-      const response = await fetch("/api/shipping-profiles", {
+              const response = await fetch("/api/shipping-options", {
         method: initialData ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,13 +117,13 @@ export default function ShippingProfileForm({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save shipping profile");
+        throw new Error("Failed to save shipping option");
       }
 
       toast.success(
         initialData
-          ? "Shipping profile updated successfully"
-          : "Shipping profile created successfully"
+          ? "Shipping option updated successfully"
+          : "Shipping option created successfully"
       );
       
       // If this is a new profile creation, refresh the page to get updated session data TODO: The same modification here as seller form
@@ -149,7 +148,7 @@ export default function ShippingProfileForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Profile Name</FormLabel>
+              <FormLabel>Option Name</FormLabel>
               <FormControl>
                 <Input placeholder="Standard Shipping" {...field} />
               </FormControl>
@@ -372,33 +371,7 @@ export default function ShippingProfileForm({
                           )}
                         />
 
-                        <FormField
-                          control={form.control}
-                          name={`rates.${index}.serviceLevel`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Service Level</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value || undefined}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select service level" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {SHIPPING_SERVICE_LEVELS.map((level) => (
-                                    <SelectItem key={level.id} value={level.id}>
-                                      {level.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+
                       </>
                     )}
 
@@ -431,21 +404,20 @@ export default function ShippingProfileForm({
             );
           })}
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => append({
-              id: crypto.randomUUID(),
-              zone: SHIPPING_ZONES[0].id,
-              isInternational: false,
-              price: 0,
-              currency: "USD",
-              estimatedDays: 1,
-              additionalItem: null,
-              serviceLevel: null,
-              isFreeShipping: false,
-            })}
-          >
+                     <Button
+             type="button"
+             variant="outline"
+             onClick={() => append({
+               id: crypto.randomUUID(),
+               zone: SHIPPING_ZONES[0].id,
+               isInternational: false,
+               price: 0,
+               currency: "USD",
+               estimatedDays: 1,
+               additionalItem: null,
+               isFreeShipping: false,
+             })}
+           >
             <Plus className="h-4 w-4 mr-2" />
             Add Rate
           </Button>
@@ -457,7 +429,7 @@ export default function ShippingProfileForm({
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Default Profile</FormLabel>
+                <FormLabel className="text-base">Default Option</FormLabel>
                 <div className="text-sm text-muted-foreground">
                   This will be the default shipping option for your products
                 </div>
@@ -473,7 +445,7 @@ export default function ShippingProfileForm({
         />
 
         <Button type="submit" className="w-full">
-          {initialData ? "Update Profile" : "Create Profile"}
+          {initialData ? "Update Option" : "Create Option"}
         </Button>
       </form>
     </Form>

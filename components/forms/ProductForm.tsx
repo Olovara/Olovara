@@ -213,7 +213,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productFile: initialData?.productFile || null,
       currency: initialData?.currency || sellerPreferences.preferredCurrency,
       isTestProduct: initialData?.isTestProduct || false,
-      shippingProfileId: initialData?.shippingProfileId || null,
+      shippingOptionId: initialData?.shippingOptionId || null,
       taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
       taxCode: initialData?.taxCode || "",
       taxExempt: initialData?.taxExempt || false,
@@ -247,11 +247,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const { setValue } = form;
 
-  // Ensure shippingProfileId is set if it's missing
+  // Ensure shippingOptionId is set if it's missing
   useEffect(() => {
-    const currentValue = form.getValues("shippingProfileId");
+    const currentValue = form.getValues("shippingOptionId");
     if (currentValue === undefined) {
-      form.setValue("shippingProfileId", null);
+      form.setValue("shippingOptionId", null);
     }
   }, [form]);
 
@@ -262,7 +262,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     if (Object.keys(formState.errors).length > 0) {
       console.log("Form errors:", formState.errors);
       console.log("Current form values:", form.getValues());
-      console.log("shippingProfileId value:", form.getValues("shippingProfileId"));
+      console.log("shippingOptionId value:", form.getValues("shippingOptionId"));
     }
   }, [formState.errors, form]);
 
@@ -579,9 +579,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
               
               {/* Basic Information Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Basic Information
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Essential product details that customers will see first</p>
@@ -601,9 +601,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
               {/* Media Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Media & Visuals
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Images and files that showcase your product</p>
@@ -629,7 +629,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
               {/* Inventory & Options Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Inventory & Options
@@ -648,9 +648,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
               {/* Shipping & Dimensions Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Shipping & Dimensions
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Shipping costs, dimensions, and handling information</p>
@@ -662,9 +662,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
               {/* Story & Details Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Story & Details
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Tell customers about your product and how it&apos;s made</p>
@@ -676,9 +676,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
               {/* Promotions & Scheduling Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-pink-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Promotions & Scheduling
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Discounts, sales, and product drops</p>
@@ -696,9 +696,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
               
               {/* SEO & Marketing Section - Full Width */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     SEO & Marketing
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">Optimize your product for search and social media</p>
@@ -724,9 +724,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
               {/* GPSR Compliance Section - Only show if GPSR compliance is required */}
               {isGPSRRequired && !form.watch("isDigital") ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Product Safety & Compliance
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">Ensure your product meets safety standards and regulatory requirements</p>
@@ -749,9 +749,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
               ) : !form.watch("isDigital") ? (
                 // Show message when GPSR compliance is not required (for physical products)
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Product Safety & Compliance
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">GPSR compliance not required for your shipping destinations</p>
@@ -766,7 +766,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
               ) : (
                 // Show message for digital products
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Digital Product

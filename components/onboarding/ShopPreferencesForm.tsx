@@ -31,6 +31,7 @@ import {
 
 import { saveShopPreferences } from "@/actions/onboardingActions";
 import { toast } from "sonner";
+import { StepIndicator } from "@/components/onboarding/StepIndicator";
 
 // Define available countries with their currencies
 const countries = [
@@ -132,6 +133,11 @@ export default function ShopPreferencesForm() {
 
   return (
     <div className="space-y-8">
+      {/* Step Indicator */}
+      <div className="w-full max-w-4xl mx-auto">
+        <StepIndicator currentStep="shop-preferences" className="mb-8" />
+      </div>
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
