@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Download } from "lucide-react";
 
 interface ShopQRCodeProps {
@@ -51,37 +50,32 @@ export default function ShopQRCode({ shopNameSlug }: ShopQRCodeProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Shop QR Code</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center gap-4">
-        {isLoading ? (
-          <div className="w-[300px] h-[300px] flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+    <div className="flex flex-col items-center gap-4">
+      {isLoading ? (
+        <div className="w-[300px] h-[300px] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        </div>
+      ) : (
+        <>
+          <div className="relative w-[300px] h-[300px]">
+            <Image
+              src={qrCode}
+              alt="Shop QR Code"
+              fill
+              sizes="300px"
+              priority
+              className="object-contain"
+            />
           </div>
-        ) : (
-          <>
-            <div className="relative w-[300px] h-[300px]">
-              <Image
-                src={qrCode}
-                alt="Shop QR Code"
-                fill
-                sizes="300px"
-                priority
-                className="object-contain"
-              />
-            </div>
-            <Button
-              onClick={handleDownload}
-              className="flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download QR Code
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          <Button
+            onClick={handleDownload}
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download QR Code
+          </Button>
+        </>
+      )}
+    </div>
   );
 } 

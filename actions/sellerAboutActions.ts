@@ -40,6 +40,7 @@ export async function updateSellerAbout(data: {
   shopTagLine?: string;
   shopDescription: string;
   shopAnnouncement?: string;
+  behindTheHands?: string;
   sellerImage?: string;
   shopBannerImage?: string;
   shopLogoImage?: string;
@@ -90,6 +91,7 @@ export async function updateSellerAbout(data: {
         shopTagLine: data.shopTagLine,
         shopDescription: data.shopDescription,
         shopAnnouncement: data.shopAnnouncement,
+        behindTheHands: data.behindTheHands,
         sellerImage: data.sellerImage,
         shopBannerImage: data.shopBannerImage,
         shopLogoImage: data.shopLogoImage,
@@ -128,6 +130,7 @@ export const getSellerAbout = async () => {
         shopTagLine: true,
         shopDescription: true,
         shopAnnouncement: true,
+        behindTheHands: true,
         sellerImage: true,
         shopBannerImage: true,
         shopLogoImage: true,

@@ -240,6 +240,7 @@ model Seller {
   shopTagLine            String?
   shopDescription        String?
   shopAnnouncement       String? // Shop announcement/status message
+  behindTheHands         String? // Personal story about the seller and how they got started
   sellerImage            String? // URL to seller profile image
   shopBannerImage        String? // URL to shop banner image
   shopLogoImage          String? // URL to shop logo image

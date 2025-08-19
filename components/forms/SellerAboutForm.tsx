@@ -17,7 +17,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { SellerAboutSchema } from "@/schemas/SellerAboutSchema";
-import { updateSellerAbout, getSellerAbout } from "@/actions/sellerAboutActions";
+import {
+  updateSellerAbout,
+  getSellerAbout,
+} from "@/actions/sellerAboutActions";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -35,11 +38,11 @@ const SellerAboutForm = () => {
   const [success, setSuccess] = useState<string>("");
   const [isPending, setIsPending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Add state to track temporary uploads
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
-  
+
   // Add a ref to track if form was submitted successfully
   const formSubmittedRef = useRef(false);
 
@@ -50,6 +53,7 @@ const SellerAboutForm = () => {
       shopTagLine: "",
       shopDescription: "",
       shopAnnouncement: "",
+      behindTheHands: "",
       sellerImage: undefined,
       shopBannerImage: undefined,
       shopLogoImage: undefined,
@@ -69,6 +73,7 @@ const SellerAboutForm = () => {
             shopDescription: result.data.shopDescription || "",
             shopTagLine: result.data.shopTagLine || undefined,
             shopAnnouncement: result.data.shopAnnouncement || undefined,
+            behindTheHands: result.data.behindTheHands || undefined,
             sellerImage: result.data.sellerImage || undefined,
             shopBannerImage: result.data.shopBannerImage || undefined,
             shopLogoImage: result.data.shopLogoImage || undefined,
@@ -92,10 +97,10 @@ const SellerAboutForm = () => {
       try {
         // For about form cleanup, we don't have a product ID, so pass empty string
         const result = await cleanupTempUploads("", tempImages);
-        console.log('[DEBUG] About form cleanup result:', result);
+        console.log("[DEBUG] About form cleanup result:", result);
         setTempImages([]); // Clear the temp images after cleanup
       } catch (error) {
-        console.error('Error cleaning up temporary images:', error);
+        console.error("Error cleaning up temporary images:", error);
       }
     }
   }, [tempImages]);
@@ -117,9 +122,9 @@ const SellerAboutForm = () => {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [form.formState.isDirty, tempImages]);
 
@@ -140,25 +145,32 @@ const SellerAboutForm = () => {
 
       // Set the flag to indicate successful submission
       formSubmittedRef.current = true;
-      
+
       // Clean up temporary uploads after successful submission
       if (tempImages.length > 0) {
-        console.log('[DEBUG] About form submitted successfully, cleaning up temporary uploads');
+        console.log(
+          "[DEBUG] About form submitted successfully, cleaning up temporary uploads"
+        );
         const cleanupResult = await cleanupTempUploads("", tempImages);
-        console.log('[DEBUG] Cleanup result:', cleanupResult);
-        
+        console.log("[DEBUG] Cleanup result:", cleanupResult);
+
         if (!cleanupResult.success) {
-          console.error('[ERROR] Cleanup failed:', cleanupResult.error);
+          console.error("[ERROR] Cleanup failed:", cleanupResult.error);
         }
-        
+
         // Clear temp images after cleanup
         setTempImages([]);
       }
 
-      toast.success(result.message || "Successfully saved your shop information.");
+      toast.success(
+        result.message || "Successfully saved your shop information."
+      );
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save shop information";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to save shop information";
       toast.error(errorMessage);
     } finally {
       setIsPending(false);
@@ -170,7 +182,9 @@ const SellerAboutForm = () => {
     if (currentImage) {
       // If it's a temporary image, remove it from temp tracking
       if (tempImages.includes(currentImage)) {
-        const updatedTempImages = tempImages.filter(img => img !== currentImage);
+        const updatedTempImages = tempImages.filter(
+          (img) => img !== currentImage
+        );
         setTempImages(updatedTempImages);
       }
     }
@@ -178,10 +192,13 @@ const SellerAboutForm = () => {
   };
 
   // Helper function to handle image upload success
-  const handleImageUploadSuccess = (field: keyof z.infer<typeof SellerAboutSchema>, fileUrl: string) => {
+  const handleImageUploadSuccess = (
+    field: keyof z.infer<typeof SellerAboutSchema>,
+    fileUrl: string
+  ) => {
     form.setValue(field, fileUrl);
     // Track as temporary upload
-    setTempImages(prev => [...prev, fileUrl]);
+    setTempImages((prev) => [...prev, fileUrl]);
     setTempUploadsCreated(true);
     toast.success("Image uploaded successfully!");
   };
@@ -196,12 +213,14 @@ const SellerAboutForm = () => {
           Tell customers about your shop and upload images to make it stand out
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="flex flex-col gap-y-6">
         {/* Debug form errors */}
         {Object.keys(form.formState.errors).length > 0 && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-            <h4 className="text-sm font-medium text-red-800 mb-2">Form Validation Errors:</h4>
+            <h4 className="text-sm font-medium text-red-800 mb-2">
+              Form Validation Errors:
+            </h4>
             <ul className="text-sm text-red-700 space-y-1">
               {Object.entries(form.formState.errors).map(([field, error]) => (
                 <li key={field}>
@@ -211,7 +230,7 @@ const SellerAboutForm = () => {
             </ul>
           </div>
         )}
-        
+
         {/* Shop Name */}
         <div className="flex flex-col gap-y-2">
           <Label>Shop Name *</Label>
@@ -266,6 +285,20 @@ const SellerAboutForm = () => {
           </p>
         </div>
 
+        {/* Behind the Hands */}
+        <div className="flex flex-col gap-y-2">
+          <Label>Behind the Hands</Label>
+          <Textarea
+            placeholder="Share your personal story - how you got started, what you love about crafting, your journey, and what makes your work special"
+            {...form.register("behindTheHands")}
+            disabled={isPending}
+            rows={4}
+          />
+          <p className="text-xs text-muted-foreground">
+            This personal touch helps customers connect with you and your story
+          </p>
+        </div>
+
         {/* Email Address (Read-only) */}
         <div className="flex flex-col gap-y-2">
           <Label>Email Address</Label>
@@ -284,7 +317,7 @@ const SellerAboutForm = () => {
         {/* Image Uploads */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Shop Images</h3>
-          
+
           {/* Seller Image */}
           <div className="flex flex-col gap-y-2">
             <Label>Seller Profile Image</Label>
@@ -293,9 +326,9 @@ const SellerAboutForm = () => {
                 const sellerImage = form.watch("sellerImage");
                 return sellerImage ? (
                   <div className="relative">
-                    <Image 
-                      src={sellerImage} 
-                      alt="Seller profile" 
+                    <Image
+                      src={sellerImage}
+                      alt="Seller profile"
                       width={80}
                       height={80}
                       className="w-20 h-20 rounded-full object-cover"
@@ -316,9 +349,9 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
-              
+
               <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
+                <UploadButton<typeof ourFileRouter, "singleImageUploader">
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
@@ -348,9 +381,9 @@ const SellerAboutForm = () => {
                 const shopBannerImage = form.watch("shopBannerImage");
                 return shopBannerImage ? (
                   <div className="relative">
-                    <Image 
-                      src={shopBannerImage} 
-                      alt="Shop banner" 
+                    <Image
+                      src={shopBannerImage}
+                      alt="Shop banner"
                       width={128}
                       height={80}
                       className="w-32 h-20 rounded object-cover"
@@ -371,9 +404,9 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
-              
+
               <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
+                <UploadButton<typeof ourFileRouter, "singleImageUploader">
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
@@ -403,9 +436,9 @@ const SellerAboutForm = () => {
                 const shopLogoImage = form.watch("shopLogoImage");
                 return shopLogoImage ? (
                   <div className="relative">
-                    <Image 
-                      src={shopLogoImage} 
-                      alt="Shop logo" 
+                    <Image
+                      src={shopLogoImage}
+                      alt="Shop logo"
                       width={64}
                       height={64}
                       className="w-16 h-16 rounded object-cover"
@@ -426,9 +459,9 @@ const SellerAboutForm = () => {
                   </div>
                 );
               })()}
-              
+
               <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, 'singleImageUploader'>
+                <UploadButton<typeof ourFileRouter, "singleImageUploader">
                   endpoint="singleImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res && res[0]) {
@@ -457,4 +490,4 @@ const SellerAboutForm = () => {
   );
 };
 
-export default SellerAboutForm; 
+export default SellerAboutForm;

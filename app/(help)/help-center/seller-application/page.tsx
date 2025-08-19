@@ -43,60 +43,26 @@ const applicationSteps = [
       "Provide your business information",
       "Describe your handmade products",
       "Share your crafting experience",
-      "Explain your business goals"
+      "Explain your business goals",
+      "Optionally share your social media or online presence"
     ],
     tips: [
       "Be detailed and honest in your responses",
       "Include specific examples of your work",
       "Demonstrate your passion for handmade crafts",
-      "Show understanding of Yarnnu's handmade-only policy"
+      "Show understanding of Yarnnu's handmade-only policy",
+      "Don't worry if you don't have an online presence yet"
     ],
     estimatedTime: "15-20 minutes"
   },
   {
     step: 3,
-    title: "Upload Required Documents",
-    description: "Submit necessary documentation for verification",
-    details: [
-      "Government-issued photo ID",
-      "Proof of address (utility bill, bank statement)",
-      "Business registration (if applicable)",
-      "Tax identification information"
-    ],
-    tips: [
-      "Ensure documents are clear and legible",
-      "Documents must be current (within 3 months)",
-      "Black out sensitive information not required",
-      "Use high-quality scans or photos"
-    ],
-    estimatedTime: "10 minutes"
-  },
-  {
-    step: 4,
-    title: "Product Portfolio Review",
-    description: "Showcase your handmade products for review",
-    details: [
-      "Upload 5-10 high-quality product photos",
-      "Include work-in-progress shots",
-      "Show your workspace and tools",
-      "Provide product descriptions"
-    ],
-    tips: [
-      "Use natural lighting for best photo quality",
-      "Show the handmade nature of your work",
-      "Include close-ups of craftsmanship details",
-      "Demonstrate variety in your product range"
-    ],
-    estimatedTime: "30 minutes"
-  },
-  {
-    step: 5,
     title: "Application Review",
     description: "Our team reviews your application thoroughly",
     details: [
-      "Verification of submitted documents",
-      "Review of product portfolio",
+      "Verification of submitted information",
       "Assessment of handmade compliance",
+      "Review of business potential",
     ],
     tips: [
       "Review process typically takes 1-2 business days",
@@ -107,22 +73,41 @@ const applicationSteps = [
     estimatedTime: "1-2 business days"
   },
   {
-    step: 6,
-    title: "Approval & Onboarding",
-    description: "Complete final setup steps after approval",
+    step: 4,
+    title: "Start Onboarding Process",
+    description: "Begin setting up your shop immediately after submission",
     details: [
-      "Receive approval notification",
       "Complete Stripe Connect setup",
       "Set up your shop profile",
-      "Create your first product listing"
+      "Create your first product listings",
+      "Configure payment and shipping settings"
     ],
     tips: [
+      "You can start onboarding right after submitting your application",
       "Follow the onboarding checklist carefully",
       "Set up payment processing immediately",
       "Customize your shop to reflect your brand",
       "Start with a few high-quality products"
     ],
     estimatedTime: "1-2 hours"
+  },
+  {
+    step: 5,
+    title: "Approval & Go Live",
+    description: "Get final approval and start selling",
+    details: [
+      "Receive approval notification",
+      "Your shop goes live immediately",
+      "Start receiving orders",
+      "Begin your selling journey"
+    ],
+    tips: [
+      "Your shop will be live as soon as you're approved",
+      "Make sure all your products are ready to ship",
+      "Respond quickly to customer inquiries",
+      "Maintain high quality standards"
+    ],
+    estimatedTime: "Immediate"
   }
 ]
 
@@ -163,7 +148,7 @@ const commonReasons = [
   {
     reason: "Incomplete Application",
     description: "Missing required information or documents",
-    solution: "Double-check all fields and ensure all documents are uploaded"
+    solution: "Double-check all fields and ensure all required information is provided"
   },
   {
     reason: "Non-Handmade Products",
@@ -171,14 +156,9 @@ const commonReasons = [
     solution: "Ensure all products are genuinely handmade by you"
   },
   {
-    reason: "Poor Quality Photos",
-    description: "Product photos don't clearly show handmade nature",
-    solution: "Take clear, well-lit photos that showcase your craftsmanship"
-  },
-  {
-    reason: "Insufficient Documentation",
-    description: "Missing or unclear verification documents",
-    solution: "Provide clear, current documents as specified"
+    reason: "Insufficient Information",
+    description: "Application lacks detail about crafting process or products",
+    solution: "Provide detailed descriptions of your crafting process and product types"
   },
   {
     reason: "Policy Violations",
@@ -212,8 +192,8 @@ export default function SellerApplicationPage() {
       <Alert className="border-purple-200 bg-purple-50">
         <Info className="h-4 w-4 text-purple-600" />
         <AlertDescription className="text-purple-800">
-          <strong>Application Timeline:</strong> The complete process typically takes 1-2 business days from submission to approval. 
-          Make sure you have all required documents ready before starting.
+          <strong>Application Timeline:</strong> You can start setting up your shop immediately after submitting your application. 
+          Our review process typically takes 1-2 business days, but you don&apos;t need to wait for approval to begin onboarding.
         </AlertDescription>
       </Alert>
 
@@ -260,7 +240,9 @@ export default function SellerApplicationPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">What you&apos;ll do:</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      {step.step === 3 ? "What we'll do:" : "What you'll do:"}
+                    </h4>
                     <ul className="space-y-1">
                       {step.details.map((detail, detailIndex) => (
                         <li key={detailIndex} className="flex items-start space-x-2 text-sm text-gray-600">
@@ -319,7 +301,7 @@ export default function SellerApplicationPage() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Ready to Apply?</h2>
         <p className="text-gray-600 mb-4">
           Now that you understand the process, you&apos;re ready to start your seller application. 
-          Make sure you have all required documents and photos ready before beginning.
+          You can begin setting up your shop immediately after submitting your application!
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3">
