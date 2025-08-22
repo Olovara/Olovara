@@ -7,8 +7,12 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Dashboard for managing your account",
+  title: "Dashboard | Yarnnu - Manage Your Account",
+  description: "Access your Yarnnu dashboard to manage your account, shop, products, and business settings.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function DashboardLayout({

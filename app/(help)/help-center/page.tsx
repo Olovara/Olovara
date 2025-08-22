@@ -1,259 +1,265 @@
-import { Metadata } from "next";
-import Link from "next/link";
-import {
-  Search,
-  BookOpen,
-  Store,
-  CreditCard,
-  Truck,
-  MessageSquare,
-  TrendingUp,
-  Shield,
-  ArrowRight,
-  Star,
-} from "lucide-react";
+import { db } from "@/lib/db";
+import { ContentBlockRenderer } from "@/components/blog";
+import { ContentBlock } from "@/components/blog/types/BlockTypes";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { BookOpen, Search, HelpCircle, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Help Center | Yarnnu",
-  description:
-    "Get help with selling on Yarnnu. Find guides, tutorials, and support for sellers.",
-};
+interface HelpCenterPageProps {
+  searchParams: {
+    category?: string;
+    search?: string;
+  };
+}
 
-const featuredGuides = [
-  {
-    title: "Seller Application Process",
-    description:
-      "Complete step-by-step guide to applying as a seller on Yarnnu",
-    href: "/help-center/seller-application",
-    icon: BookOpen,
-    featured: true,
-  },
-  {
-    title: "Setting Up Your Shop",
-    description: "Learn how to create and customize your shop profile",
-    href: "/help-center/shop-setup",
-    icon: Store,
-    featured: true,
-  },
-  {
-    title: "Stripe Connect Setup",
-    description: "Secure payment processing setup for your shop",
-    href: "/help-center/stripe-setup",
-    icon: CreditCard,
-    featured: true,
-  },
-  {
-    title: "Creating Your First Product",
-    description: "Step-by-step guide to listing your first handmade item",
-    href: "/help-center/create-product",
-    icon: Store,
-    featured: false,
-  },
-  {
-    title: "Shipping Profiles",
-    description: "Set up shipping options and rates for your products",
-    href: "/help-center/shipping-profiles",
-    icon: Truck,
-    featured: false,
-  },
-  {
-    title: "Handmade Guidelines",
-    description: "Understanding what qualifies as handmade on Yarnnu",
-    href: "/help-center/handmade-guidelines",
-    icon: Shield,
-    featured: false,
-  },
-];
+export async function generateMetadata({
+  searchParams,
+}: HelpCenterPageProps): Promise<Metadata> {
+  const category = searchParams.category;
+  const search = searchParams.search;
 
-const quickLinks = [
-  {
-    title: "Getting Started",
-    description: "New seller onboarding",
-    href: "/help-center/seller-application",
-    icon: BookOpen,
-    color: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "Shop Management",
-    description: "Products, policies, customization",
-    href: "/help-center/shop-setup",
-    icon: Store,
-    color: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "Payments & Finances",
-    description: "Stripe setup, fees, taxes",
-    href: "/help-center/stripe-setup",
-    icon: CreditCard,
-    color: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "Shipping & Fulfillment",
-    description: "Shipping profiles, packaging, orders",
-    href: "/help-center/shipping-profiles",
-    icon: Truck,
-    color: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "Customer Service",
-    description: "Messaging, inquiries, returns",
-    href: "/help-center/messaging",
-    icon: MessageSquare,
-    color: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "Growth & Marketing",
-    description: "SEO, promotions, analytics",
-    href: "/help-center/seo",
-    icon: TrendingUp,
-    color: "bg-purple-100 text-purple-600",
-  },
-];
+  // Build canonical URL
+  const canonicalParams = new URLSearchParams();
+  if (category) canonicalParams.set("category", category);
+  if (search) canonicalParams.set("search", search);
 
-export default function HelpCenterPage() {
+  const canonicalUrl = canonicalParams.toString()
+    ? `/help-center?${canonicalParams.toString()}`
+    : "/help-center";
+
+  // Generate dynamic title and description based on filters
+  let title = "Help Center | Yarnnu - Get Support for Our Handmade Marketplace";
+  let description =
+    "Get help with selling on Yarnnu. Find guides, tutorials, and support for sellers. Learn how to set up your shop, manage products, handle shipping, and grow your handmade business.";
+
+  if (search) {
+    title = `Help Search: "${search}" | Yarnnu Help Center`;
+    description = `Search results for "${search}" in our help center. Find answers to your questions about selling on Yarnnu.`;
+  } else if (category) {
+    const categoryLabel =
+      category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, " ");
+    title = `${categoryLabel} Help | Yarnnu Help Center`;
+    description = `Browse ${categoryLabel.toLowerCase()} help articles and guides for Yarnnu sellers. Get expert advice and support.`;
+  }
+
+  return {
+    title,
+    description,
+    keywords: [
+      "Yarnnu help",
+      "seller support",
+      "handmade marketplace help",
+      "artisan business support",
+      "shop setup guide",
+      "selling tips",
+      "marketplace tutorials",
+      "seller resources",
+      "handmade business help",
+      "artisan platform support",
+      ...(category ? [`${category} help`, `${category} guide`] : []),
+      ...(search ? [`${search} help`, `${search} support`] : []),
+    ],
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: canonicalUrl,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: canonicalUrl,
+    },
+  };
+}
+
+export default async function HelpCenterPage({
+  searchParams,
+}: HelpCenterPageProps) {
+  // Fetch help articles
+  const helpArticles = await db.blogPost.findMany({
+    where: {
+      contentType: "HELP_ARTICLE",
+      status: "PUBLISHED",
+      isPrivate: false,
+      ...(searchParams.category && {
+        catSlug: searchParams.category,
+      }),
+      ...(searchParams.search && {
+        OR: [
+          { title: { contains: searchParams.search, mode: "insensitive" } },
+          {
+            description: { contains: searchParams.search, mode: "insensitive" },
+          },
+        ],
+      }),
+    },
+    include: {
+      cat: true,
+    },
+    orderBy: {
+      publishedAt: "desc",
+    },
+  });
+
+  // Fetch categories for help articles
+  const categories = await db.blogCategory.findMany({
+    where: {
+      isActive: true,
+      posts: {
+        some: {
+          contentType: "HELP_ARTICLE",
+          status: "PUBLISHED",
+          isPrivate: false,
+        },
+      },
+    },
+    orderBy: {
+      order: "asc",
+    },
+  });
+
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-gray-900">
-          How can we help you?
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Everything you need to know about selling on Yarnnu. From getting
-          started to growing your business.
-        </p>
-
-        {/* Search Bar */}
-        <div className="max-w-md mx-auto relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search help articles..."
-            className="pl-10 pr-4 py-3"
-          />
+    <div className="container mx-auto px-4 py-8">
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="p-3 bg-purple-100 text-purple-600 rounded-full">
+              <HelpCircle className="h-8 w-8" />
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900">Help Center</h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Find answers to your questions and learn how to make the most of
+            Yarnnu.
+          </p>
         </div>
-      </div>
 
-      {/* Quick Links */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold text-gray-900">Quick Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="group block p-6 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
-            >
-              <div className="flex items-start space-x-4">
-                <div className={`p-2 rounded-lg ${link.color}`}>
-                  <link.icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                    {link.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {link.description}
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
-              </div>
+        {/* Search and Categories */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex gap-2">
+            {categories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/help-center?category=${category.slug}`}
+              >
+                <Badge
+                  variant={
+                    searchParams.category === category.slug
+                      ? "default"
+                      : "outline"
+                  }
+                  className="cursor-pointer hover:bg-purple-50"
+                >
+                  {category.title}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Link href="/help-center/shipping-options">
+              <Button variant="outline" size="sm">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Shipping Guide
+              </Button>
             </Link>
+            <Link href="/help-center/shop-setup">
+              <Button variant="outline" size="sm">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Shop Setup
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Help Articles Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {helpArticles.map((article) => (
+            <Card
+              key={article.id}
+              className="hover:shadow-lg transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary" className="text-xs">
+                    {article.cat.title}
+                  </Badge>
+                  <span className="text-xs text-gray-500">
+                    {article.views} views
+                  </span>
+                </div>
+                <CardTitle className="text-lg">{article.title}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {article.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href={`/help-center/${article.slug}`}>
+                  <Button variant="ghost" size="sm" className="w-full">
+                    Read Article
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
-      </div>
 
-      {/* Featured Guides */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Featured Guides
-          </h2>
-          <Link
-            href="/help-center"
-            className="text-purple-600 hover:text-purple-700 text-sm font-medium"
-          >
-            View all guides →
-          </Link>
-        </div>
+        {/* Empty State */}
+        {helpArticles.length === 0 && (
+          <div className="text-center py-12">
+            <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Search className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">
+              No help articles found
+            </h3>
+            <p className="text-gray-600">
+              {searchParams.search || searchParams.category
+                ? "Try adjusting your search or browse all categories."
+                : "Help articles will appear here once they're published."}
+            </p>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {featuredGuides
-            .filter((guide) => guide.featured)
-            .map((guide) => (
-              <Link
-                key={guide.href}
-                href={guide.href}
-                className="group block p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start space-x-4">
-                  <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
-                    <guide.icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      <span className="text-xs font-medium text-purple-600">
-                        Featured
-                      </span>
-                    </div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                      {guide.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {guide.description}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
-                </div>
+        {/* Featured Help Content */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-8 text-white">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-semibold">Need More Help?</h2>
+            <p className="text-purple-100 max-w-2xl mx-auto">
+              Can&apos;t find what you&apos;re looking for? Our support team is
+              here to help you succeed.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Link href="/contact">
+                <Button variant="secondary" size="lg">
+                  Contact Support
+                </Button>
               </Link>
-            ))}
-        </div>
-      </div>
-
-      {/* Popular Topics */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold text-gray-900">Popular Topics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featuredGuides
-            .filter((guide) => !guide.featured)
-            .map((guide) => (
-              <Link
-                key={guide.href}
-                href={guide.href}
-                className="group block p-4 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
-                    <guide.icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 group-hover:text-purple-600 transition-colors">
-                      {guide.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {guide.description}
-                    </p>
-                  </div>
-                </div>
+              <Link href="/seller-application">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="text-white border-white hover:bg-white hover:text-purple-600"
+                >
+                  Become a Seller
+                </Button>
               </Link>
-            ))}
-        </div>
-      </div>
-
-      {/* Contact Support */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-6 text-white">
-        <div className="text-center space-y-4">
-          <h3 className="text-xl font-semibold">Still need help?</h3>
-          <p className="text-purple-100">
-            Can&apos;t find what you&apos;re looking for? Our support team is
-            here to help.
-          </p>
-          <div className="flex justify-center">
-            <Button variant="secondary" size="lg">
-              Contact Support
-            </Button>
+            </div>
           </div>
         </div>
       </div>

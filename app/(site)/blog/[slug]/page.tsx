@@ -9,7 +9,10 @@ import Link from "next/link";
 import Image from "next/image";
 import "react-quill/dist/quill.snow.css";
 import BlogComments from "@/components/blog/BlogComments";
+import { ContentBlockRenderer } from "@/components/blog";
+import { ContentBlock } from "@/components/blog/types/BlockTypes";
 import { decryptData } from "@/lib/encryption";
+import { Metadata } from "next";
 
 interface BlogPostPageProps {
   params: {
@@ -28,6 +31,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       title: true,
       description: true,
       content: true,
+      contentBlocks: true,
+      contentType: true,
       img: true,
       status: true,
       isPrivate: true,
@@ -181,6 +186,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           />
         </div>
 
+        {/* Structured Content Blocks */}
+        {post.contentBlocks &&
+          Array.isArray(post.contentBlocks) &&
+          post.contentBlocks.length > 0 && (
+            <div className="space-y-8">
+              <ContentBlockRenderer
+                blocks={post.contentBlocks as unknown as ContentBlock[]}
+                className="space-y-6"
+              />
+            </div>
+          )}
+
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div className="space-y-4">
@@ -192,7 +209,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag) => (
+              {post.tags.map((tag: string) => (
                 <Badge key={tag} variant="outline">
                   {tag}
                 </Badge>
@@ -211,7 +228,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {post.keywords.map((keyword) => (
+              {post.keywords.map((keyword: string) => (
                 <Badge key={keyword} variant="secondary" className="text-xs">
                   {keyword}
                 </Badge>
@@ -227,26 +244,38 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   );
 }
 
-// Generate metadata for SEO
-export async function generateMetadata({ params }: BlogPostPageProps) {
+export async function generateMetadata({
+  params,
+}: BlogPostPageProps): Promise<Metadata> {
   const { slug } = params;
 
+  // Fetch the blog post for metadata
   const post = await db.blogPost.findUnique({
     where: { slug },
     select: {
       title: true,
       description: true,
+      content: true,
+      img: true,
       status: true,
       isPrivate: true,
+      publishedAt: true,
+      tags: true,
+      keywords: true,
+      // SEO fields
       metaTitle: true,
       metaDescription: true,
-      keywords: true,
-      tags: true,
-      ogImage: true,
+      canonicalUrl: true,
+      // OpenGraph fields
       ogTitle: true,
       ogDescription: true,
-      createdAt: true,
-      publishedAt: true,
+      ogImage: true,
+      cat: {
+        select: {
+          title: true,
+          slug: true,
+        },
+      },
       user: {
         select: {
           encryptedFirstName: true,
@@ -259,11 +288,12 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
 
   if (!post || post.status !== "PUBLISHED" || post.isPrivate) {
     return {
-      title: "Post Not Found",
+      title: "Blog Post Not Found | Yarnnu",
+      description: "The requested blog post could not be found.",
     };
   }
 
-  // Helper function to get author name
+  // Get author name
   const getAuthorName = () => {
     if (
       post.user?.encryptedFirstName &&
@@ -280,44 +310,69 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
     return "Anonymous";
   };
 
-  // Combine keywords and tags for better SEO
-  const allKeywords = [...(post.keywords || []), ...(post.tags || [])].filter(
-    Boolean
-  );
+  const authorName = getAuthorName();
+
+  // Use custom SEO fields if available, fallback to generated ones
+  const seoTitle =
+    post.metaTitle || `${post.title} | Handmade Crafts Blog | Yarnnu`;
+  const seoDescription =
+    post.metaDescription ||
+    post.description
+      .replace(/<[^>]*>/g, "") // Remove HTML tags
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .substring(0, 160); // Limit to 160 characters
+
+  // Generate comprehensive keywords from all available sources
+  const keywords = [
+    ...(post.keywords || []),
+    ...(post.tags || []),
+    post.cat.title,
+    "handmade crafts",
+    "artisan blog",
+    "handmade business",
+    "craft tutorials",
+    "handmade marketplace",
+    "artisan tips",
+    authorName !== "Anonymous" ? `by ${authorName}` : null,
+  ].filter(Boolean);
+
+  // Use custom OpenGraph fields if available, fallback to SEO fields
+  const ogTitle = post.ogTitle || post.metaTitle || post.title;
+  const ogDescription =
+    post.ogDescription || post.metaDescription || seoDescription;
+  const ogImage = post.ogImage || post.img;
 
   return {
-    title: post.metaTitle || post.title,
-    description: post.metaDescription || post.description,
-    keywords: allKeywords.length > 0 ? allKeywords.join(", ") : undefined,
+    title: seoTitle,
+    description: seoDescription,
+    keywords: keywords.join(", "),
+    authors: [{ name: authorName }],
     openGraph: {
-      title: post.ogTitle || post.metaTitle || post.title,
-      description:
-        post.ogDescription || post.metaDescription || post.description,
-      images: post.ogImage ? [post.ogImage] : [],
+      title: ogTitle,
+      description: ogDescription,
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
-      modifiedTime: post.createdAt ? post.createdAt.toISOString() : undefined,
-      authors: getAuthorName() !== "Anonymous" ? [getAuthorName()] : [],
+      authors: [authorName],
       tags: post.tags || [],
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 1200,
+              height: 630,
+              alt: post.title,
+            },
+          ]
+        : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: post.ogTitle || post.metaTitle || post.title,
-      description:
-        post.ogDescription || post.metaDescription || post.description,
-      images: post.ogImage ? [post.ogImage] : [],
+      title: ogTitle,
+      description: ogDescription,
+      images: ogImage ? [ogImage] : undefined,
     },
-    // Additional SEO metadata
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-video-preview": -1,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-      },
+    alternates: {
+      canonical: post.canonicalUrl || `/blog/${slug}`,
     },
   };
 }

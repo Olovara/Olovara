@@ -788,6 +788,8 @@ model BlogPost {
   title       String
   description String
   content     Json // Rich text content
+  contentBlocks Json? // Structured content blocks (cards, steps, alerts, tables, etc.)
+  contentType String        @default("BLOG") // BLOG, HELP_ARTICLE
   excerpt     String? // Short summary for previews
   img         String? // Featured image
   views       Int           @default(0)

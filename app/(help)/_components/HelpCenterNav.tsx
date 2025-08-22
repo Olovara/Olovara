@@ -50,7 +50,7 @@ const helpCategories = [
     title: "Shipping & Fulfillment",
     icon: Truck,
     items: [
-      { title: "Shipping Profiles", href: "/help-center/shipping-profiles" },
+      { title: "Shipping Options", href: "/help-center/shipping-options" },
       { title: "Packaging Guidelines", href: "/help-center/packaging" },
       { title: "Order Fulfillment", href: "/help-center/order-fulfillment" },
       { title: "International Shipping", href: "/help-center/international-shipping" },

@@ -123,7 +123,7 @@ const SellerApplicationForm = () => {
             <CardHeader className="space-y-4">
               <CardTitle className="text-3xl font-bold">Seller Application</CardTitle>
               <CardDescription className="text-lg">
-              We&apos;re proud to showcase only authentic handmade products your application helps us understand your work, your story, and how we can help your brand grow. Whether you&apos;re just starting or already selling worldwide, Yarnnu is your platform to shine.
+              We&apos;re proud to showcase only authentic handmade products. Your application helps us understand your work, your story, and how we can help your brand grow. Whether you&apos;re just starting or already selling worldwide, Yarnnu is your platform to shine.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-y-8">

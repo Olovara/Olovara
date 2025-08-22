@@ -3,6 +3,7 @@ import { BlogCard } from "./_components/blog-card";
 import { CategoryFilter } from "./_components/category-filter";
 import { BlogActions } from "./_components/blog-actions";
 import { decryptData } from "@/lib/encryption";
+import { Metadata } from "next";
 
 interface BlogPageProps {
   searchParams: {
@@ -45,6 +46,7 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
     where: {
       status: "PUBLISHED",
       isPrivate: false, // Only show public posts
+      contentType: "BLOG", // Only show blog posts, not help articles
       ...(searchParams.category && {
         catSlug: searchParams.category,
       }),
@@ -127,34 +129,53 @@ const BlogPage = async ({ searchParams }: BlogPageProps) => {
 
 export default BlogPage;
 
-// Generate metadata for the blog page
-export async function generateMetadata({ searchParams }: BlogPageProps) {
+export async function generateMetadata({ searchParams }: BlogPageProps): Promise<Metadata> {
   const category = searchParams.category;
+  
+  // Build canonical URL
+  const canonicalUrl = category 
+    ? `/blog?category=${encodeURIComponent(category)}`
+    : "/blog";
 
-  const title = category
-    ? `Blog - ${category.charAt(0).toUpperCase() + category.slice(1)} Category`
-    : "Blog - Handmade Crafts, Selling Tips & Marketplace Updates";
-
-  const description = category
-    ? `Explore ${category} articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.`
-    : "Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates.";
+  // Generate dynamic title and description based on category filter
+  let title = "Blog - Handmade Crafts, Selling Tips & Marketplace Updates | Yarnnu";
+  let description = "Discover expert articles, guides, and insights about handmade crafts, selling tips, and marketplace updates. Learn from experienced artisans and grow your handmade business.";
+  
+  if (category) {
+    const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+    title = `${categoryLabel} Articles | Handmade Crafts Blog | Yarnnu`;
+    description = `Browse ${categoryLabel.toLowerCase()} articles and guides for handmade crafts and selling tips. Expert advice from experienced artisans on Yarnnu.`;
+  }
 
   return {
     title,
     description,
+    keywords: [
+      "handmade crafts blog",
+      "selling tips",
+      "artisan business",
+      "handmade marketplace updates",
+      "craft tutorials",
+      "artisan guides",
+      "handmade business tips",
+      "craft selling advice",
+      "artisan marketing",
+      "handmade product tips",
+      ...(category ? [`${category} articles`, `${category} guides`] : [])
+    ],
     openGraph: {
       title,
       description,
       type: "website",
+      url: canonicalUrl,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
     },
-    robots: {
-      index: true,
-      follow: true,
+    alternates: {
+      canonical: canonicalUrl,
     },
   };
 }
