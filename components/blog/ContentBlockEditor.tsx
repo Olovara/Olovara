@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { RichTextEditor } from "./rich-text/RichTextEditor";
 import {
   Select,
   SelectContent,
@@ -916,6 +917,8 @@ export function ContentBlockEditor({ block, onChange }: ContentBlockEditorProps)
       return renderFeatureGridBlock();
     case "requirements":
       return renderRequirementsBlock();
+    case "rich-text":
+      return <RichTextEditor block={block as any} onChange={onChange} />;
     default:
       return <div>Unknown block type: {block.type}</div>;
   }

@@ -6,6 +6,7 @@ import { InfoAlert } from "./alerts/InfoAlert";
 import { DataTable } from "./tables/DataTable";
 import { Requirements } from "./requirements/Requirements";
 import { FeatureGrid } from "./feature-grid/FeatureGrid";
+import { RichTextBlock } from "./rich-text/RichTextBlock";
 
 interface ContentBlockRendererProps {
   blocks: ContentBlock[];
@@ -38,6 +39,9 @@ export function ContentBlockRenderer({
 
       case "feature-grid":
         return <FeatureGrid key={blockId} block={block as any} />;
+
+      case "rich-text":
+        return <RichTextBlock key={blockId} block={block as any} />;
 
       // Add more block types here as we create them
       case "two-column":

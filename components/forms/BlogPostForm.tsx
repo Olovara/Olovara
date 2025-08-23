@@ -115,7 +115,7 @@ export default function BlogPostForm({
       e.preventDefault();
       return;
     }
-    
+
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/html", index.toString());
@@ -124,7 +124,7 @@ export default function BlogPostForm({
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    
+
     // Update drop zone indicator
     if (draggedIndex !== null && draggedIndex !== index) {
       setDropZoneIndex(index);
@@ -145,25 +145,29 @@ export default function BlogPostForm({
     setDropZoneIndex(null);
   };
 
-  // Calculate word count and read time
-  const calculateReadTime = (content: string) => {
-    // Remove HTML tags and get plain text
-    const plainText = content.replace(/<[^>]*>/g, "");
+  // Calculate word count and read time from content blocks
+  const calculateReadTime = () => {
+    let totalWordCount = 0;
 
-    // Split by whitespace and filter out empty strings
-    const words = plainText
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0);
-    const wordCount = words.length;
+    // Count words from content blocks
+    contentBlocks.forEach((block) => {
+      if (block.type === "rich-text") {
+        const plainText = (block as any).content.replace(/<[^>]*>/g, "");
+        const words = plainText
+          .trim()
+          .split(/\s+/)
+          .filter((word: string) => word.length > 0);
+        totalWordCount += words.length;
+      }
+    });
 
     // Calculate read time (250 words per minute)
-    const readTimeMinutes = Math.ceil(wordCount / 250);
+    const readTimeMinutes = Math.ceil(totalWordCount / 250);
 
-    return { wordCount, readTimeMinutes };
+    return { wordCount: totalWordCount, readTimeMinutes };
   };
 
-  const { wordCount, readTimeMinutes } = calculateReadTime(content);
+  const { wordCount, readTimeMinutes } = calculateReadTime();
 
   // Fetch categories
   useEffect(() => {
@@ -266,8 +270,13 @@ export default function BlogPostForm({
   ) => {
     e.preventDefault();
 
-    if (!title.trim() || !description.trim() || !content.trim() || !category) {
+    if (!title.trim() || !description.trim() || !category) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (contentBlocks.length === 0) {
+      toast.error("Please add at least one content block");
       return;
     }
 
@@ -275,7 +284,7 @@ export default function BlogPostForm({
       ...initialData,
       title: title.trim(),
       description: description.trim(),
-      content: content.trim(),
+      content: "", // Keep for backward compatibility but not used
       contentBlocks,
       contentType,
       catSlug: category,
@@ -376,25 +385,10 @@ export default function BlogPostForm({
           </Select>
         </div>
 
-        {/* Content */}
-        <div className="space-y-2">
-          <Label>Content</Label>
-          <QuillEditor
-            value={content}
-            onChange={setContent}
-            placeholder="Write your blog post content..."
-          />
-          {/* Word count and read time display */}
-          <div className="flex justify-between items-center text-sm text-muted-foreground mt-2">
-            <span>{wordCount} words</span>
-            <span>~{readTimeMinutes} min read</span>
-          </div>
-        </div>
-
         {/* Content Blocks */}
         <div className="space-y-4">
           <div className="space-y-3">
-            <Label>Content Blocks (Optional)</Label>
+            <Label>Content Blocks</Label>
             <div className="flex flex-wrap gap-2">
               {BLOCK_CONFIGS.map((config) => (
                 <Button
@@ -412,80 +406,86 @@ export default function BlogPostForm({
             </div>
           </div>
 
-                     {contentBlocks.length > 0 && (
-             <div className="space-y-4">
-               {contentBlocks.map((block, index) => (
-                 <div key={block.id}>
-                   {/* Drop Zone Indicator */}
-                   {dropZoneIndex === index && draggedIndex !== null && draggedIndex !== index && (
-                     <div className="h-2 bg-purple-500 rounded-full mb-2 animate-pulse" />
-                   )}
-                   
-                   <Card 
-                     className={`relative transition-all duration-300 ease-in-out ${
-                       draggedIndex === index 
-                         ? 'opacity-50 scale-95 rotate-2 shadow-lg' 
-                         : draggedIndex !== null && draggedIndex !== index
-                         ? 'transform translate-y-0'
-                         : ''
-                     }`}
-                     style={{
-                       transform: draggedIndex !== null && draggedIndex !== index && dropZoneIndex === index
-                         ? 'translateY(8px)'
-                         : draggedIndex !== null && draggedIndex !== index && dropZoneIndex !== null && dropZoneIndex < index
-                         ? 'translateY(-8px)'
-                         : 'translateY(0)'
-                     }}
-                     draggable={true}
-                     onDragStart={(e) => handleDragStart(e, index)}
-                     onDragOver={(e) => handleDragOver(e, index)}
-                     onDrop={(e) => handleDrop(e, index)}
-                     onDragEnd={handleDragEnd}
-                   >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                                             <CardTitle className="text-sm flex items-center gap-2">
-                         <div
-                           className="cursor-grab active:cursor-grabbing"
-                           onMouseDown={() => setIsGripPressed(index)}
-                           onMouseUp={() => setIsGripPressed(null)}
-                           onMouseLeave={() => setIsGripPressed(null)}
-                         >
-                           <GripVertical 
-                             className="w-4 h-4 text-muted-foreground" 
-                           />
-                         </div>
-                         {BLOCK_CONFIGS.find((c) => c.type === block.type)
-                           ?.label || block.type}
-                       </CardTitle>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContentBlock(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ContentBlockEditor
-                      block={block}
-                      onChange={(updatedBlock) =>
-                        updateContentBlock(index, updatedBlock)
-                      }
-                    />
-                                       </CardContent>
-                   </Card>
-                 </div>
-               ))}
-             </div>
-           )}
+          {contentBlocks.length > 0 && (
+            <div className="space-y-4">
+              {contentBlocks.map((block, index) => (
+                <div key={block.id}>
+                  {/* Drop Zone Indicator */}
+                  {dropZoneIndex === index &&
+                    draggedIndex !== null &&
+                    draggedIndex !== index && (
+                      <div className="h-2 bg-purple-500 rounded-full mb-2 animate-pulse" />
+                    )}
+
+                  <Card
+                    className={`relative transition-all duration-300 ease-in-out ${
+                      draggedIndex === index
+                        ? "opacity-50 scale-95 rotate-2 shadow-lg"
+                        : draggedIndex !== null && draggedIndex !== index
+                          ? "transform translate-y-0"
+                          : ""
+                    }`}
+                    style={{
+                      transform:
+                        draggedIndex !== null &&
+                        draggedIndex !== index &&
+                        dropZoneIndex === index
+                          ? "translateY(8px)"
+                          : draggedIndex !== null &&
+                              draggedIndex !== index &&
+                              dropZoneIndex !== null &&
+                              dropZoneIndex < index
+                            ? "translateY(-8px)"
+                            : "translateY(0)",
+                    }}
+                    draggable={true}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <div
+                            className="cursor-grab active:cursor-grabbing"
+                            onMouseDown={() => setIsGripPressed(index)}
+                            onMouseUp={() => setIsGripPressed(null)}
+                            onMouseLeave={() => setIsGripPressed(null)}
+                          >
+                            <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          {BLOCK_CONFIGS.find((c) => c.type === block.type)
+                            ?.label || block.type}
+                        </CardTitle>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContentBlock(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ContentBlockEditor
+                        block={block}
+                        onChange={(updatedBlock) =>
+                          updateContentBlock(index, updatedBlock)
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
 
           <p className="text-xs text-muted-foreground">
-            Content blocks allow you to add structured content like cards,
-            steps, alerts, and tables to your post.
+            Add content blocks to create your post. Start with a &quot;Rich
+            Text&quot; block for your main content.
           </p>
         </div>
 
@@ -678,7 +678,7 @@ export default function BlogPostForm({
               <BlogPostPreview
                 title={title}
                 description={description}
-                content={content}
+                content=""
                 contentBlocks={contentBlocks}
                 readTime={readTimeMinutes}
                 isDraft={true}

@@ -8,6 +8,7 @@ export { InfoAlert } from "./alerts/InfoAlert";
 export { DataTable } from "./tables/DataTable";
 export { Requirements } from "./requirements/Requirements";
 export { FeatureGrid } from "./feature-grid/FeatureGrid";
+export { RichTextBlock } from "./rich-text/RichTextBlock";
 export { ContentBlockRenderer } from "./ContentBlockRenderer";
 export { ContentBlockEditor } from "./ContentBlockEditor";
 export { BlogPostPreview } from "./BlogPostPreview";
@@ -120,6 +121,17 @@ export const BLOCK_CONFIGS = [
       ],
       columns: "2",
       variant: "cards",
+    },
+  },
+  {
+    type: "rich-text",
+    label: "Rich Text",
+    description: "Add formatted text content with titles and rich formatting",
+    icon: "FileText",
+    defaultData: {
+      type: "rich-text",
+      title: "Content Section",
+      content: "<p>Write your content here...</p>",
     },
   },
 ] as const;

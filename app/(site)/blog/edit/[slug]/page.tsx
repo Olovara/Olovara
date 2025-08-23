@@ -12,6 +12,8 @@ interface BlogPost {
   title: string;
   description: string;
   content: string;
+  contentBlocks?: any[];
+  contentType: "BLOG" | "HELP_ARTICLE";
   catSlug: string;
   status: "DRAFT" | "PUBLISHED";
   isPrivate: boolean;
@@ -19,6 +21,8 @@ interface BlogPost {
   keywords: string[];
   readTime: number | null;
   img?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
 }
 
 export default function EditBlogPost() {

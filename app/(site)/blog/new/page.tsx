@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 import BlogPostForm from "@/components/forms/BlogPostForm";
 
-
 interface BlogPost {
   id?: string;
   title: string;
@@ -23,15 +22,26 @@ interface BlogPost {
 
 export default function NewBlogPost() {
   const router = useRouter();
-  const { permissions, loading: permissionsLoading, hasPermission } = useCurrentPermissions();
+  const {
+    permissions,
+    loading: permissionsLoading,
+    hasPermission,
+  } = useCurrentPermissions();
   const [isSaving, setIsSaving] = useState(false);
 
   // Check if user has WRITE_BLOG permission
-  const hasWriteBlogPermission = hasPermission('WRITE_BLOG');
+  const hasWriteBlogPermission = hasPermission("WRITE_BLOG");
 
-  const handleSubmit = async (formData: BlogPost, status: "DRAFT" | "PUBLISHED") => {
+  const handleSubmit = async (
+    formData: BlogPost,
+    status: "DRAFT" | "PUBLISHED"
+  ) => {
     setIsSaving(true);
-    const toastId = toast.loading(status === "PUBLISHED" ? "Publishing blog post..." : "Creating blog post...");
+    const toastId = toast.loading(
+      status === "PUBLISHED"
+        ? "Publishing blog post..."
+        : "Creating blog post..."
+    );
 
     try {
       const response = await fetch("/api/blog/posts", {
@@ -49,15 +59,17 @@ export default function NewBlogPost() {
 
       const data = await response.json();
       toast.success(
-        status === "PUBLISHED" 
-          ? "Blog post published successfully!" 
-          : "Blog post created successfully!", 
+        status === "PUBLISHED"
+          ? "Blog post published successfully!"
+          : "Blog post created successfully!",
         { id: toastId }
       );
       router.push(`/blog/${data.slug}`);
     } catch (error) {
       console.error("Error creating blog post:", error);
-      toast.error("Failed to create blog post. Please try again.", { id: toastId });
+      toast.error("Failed to create blog post. Please try again.", {
+        id: toastId,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -82,7 +94,7 @@ export default function NewBlogPost() {
     <div className="w-full px-4 sm:px-6 md:px-8">
       <div className="max-w-[1400px] mx-auto">
         <h1 className="text-2xl font-bold mb-6">Create New Blog Post</h1>
-        
+
         <BlogPostForm
           onSubmit={handleSubmit}
           isSubmitting={isSaving}
@@ -91,4 +103,4 @@ export default function NewBlogPost() {
       </div>
     </div>
   );
-} 
+}

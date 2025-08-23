@@ -105,6 +105,13 @@ export interface RequirementsBlock extends BaseBlock {
   variant: "cards" | "list";
 }
 
+// Rich text block types
+export interface RichTextBlock extends BaseBlock {
+  type: "rich-text";
+  title?: string;
+  content: string;
+}
+
 // Union type for all block types
 export type ContentBlock =
   | CardBlock
@@ -114,7 +121,8 @@ export type ContentBlock =
   | FeatureGridBlock
   | TwoColumnBlock
   | ComparisonTableBlock
-  | RequirementsBlock;
+  | RequirementsBlock
+  | RichTextBlock;
 
 // Block configuration for the editor
 export interface BlockConfig {

@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -25,6 +25,8 @@ export async function GET(
         title: true,
         description: true,
         content: true,
+        contentBlocks: true,
+        contentType: true,
         catSlug: true,
         status: true,
         isPrivate: true,
@@ -68,7 +70,7 @@ export async function PUT(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -78,7 +80,21 @@ export async function PUT(
 
     const { slug } = params;
     const body = await request.json();
-    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
+    const {
+      title,
+      description,
+      content,
+      contentBlocks,
+      contentType,
+      catSlug,
+      status,
+      isPrivate,
+      tags,
+      keywords,
+      readTime,
+      metaTitle,
+      metaDescription,
+    } = body;
 
     // First, get the blog post to check ownership
     const existingPost = await db.blogPost.findUnique({
@@ -106,15 +122,15 @@ export async function PUT(
     if (title) {
       newSlug = title
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-      
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
       // Check if new slug already exists (excluding current post)
       if (newSlug !== slug) {
         const slugExists = await db.blogPost.findUnique({
           where: { slug: newSlug },
         });
-        
+
         if (slugExists) {
           return NextResponse.json(
             { error: "A blog post with this title already exists" },
@@ -131,6 +147,8 @@ export async function PUT(
         title,
         description,
         content,
+        contentBlocks: contentBlocks || [],
+        contentType: contentType || "BLOG",
         slug: newSlug,
         status,
         isPrivate,
@@ -159,7 +177,7 @@ export async function DELETE(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -202,4 +220,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

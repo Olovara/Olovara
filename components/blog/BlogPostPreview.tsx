@@ -1,4 +1,5 @@
 import React from "react";
+import "react-quill/dist/quill.snow.css";
 import Image from "next/image";
 import { ContentBlockRenderer } from "./ContentBlockRenderer";
 import { ContentBlock } from "./types/BlockTypes";
