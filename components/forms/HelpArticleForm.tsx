@@ -71,17 +71,15 @@ export default function HelpArticleForm({
   const [category, setCategory] = useState(initialData?.catSlug || "");
   const [categories, setCategories] = useState<HelpCategory[]>([]);
   const [isPrivate, setIsPrivate] = useState(initialData?.isPrivate || false);
-  const [targetAudience, setTargetAudience] = useState<"BUYERS" | "SELLERS" | "BOTH">(
-    initialData?.targetAudience || "BOTH"
-  );
+  const [targetAudience, setTargetAudience] = useState<
+    "BUYERS" | "SELLERS" | "BOTH"
+  >(initialData?.targetAudience || "BOTH");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Tags and keywords state
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
-  const [keywords, setKeywords] = useState<string[]>(
-    initialData?.keywords || []
-  );
+  const [keywords, setKeywords] = useState<string[]>(initialData?.keywords || []);
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
 
@@ -190,45 +188,59 @@ export default function HelpArticleForm({
 
   // Tag management
   const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
+    if (tagInput.trim() !== "" && !tags.includes(tagInput.trim())) {
+      const updatedTags = [...tags, tagInput.trim()];
+      setTags(updatedTags);
       setTagInput("");
     }
   };
 
+  // Remove tag
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
+    const updatedTags = tags.filter((tag) => tag !== tagToRemove);
+    setTags(updatedTags);
   };
 
+  // Add keyword
   const addKeyword = () => {
-    if (keywordInput.trim() && !keywords.includes(keywordInput.trim())) {
-      setKeywords([...keywords, keywordInput.trim()]);
+    if (keywordInput.trim() !== "" && !keywords.includes(keywordInput.trim())) {
+      const updatedKeywords = [...keywords, keywordInput.trim()];
+      setKeywords(updatedKeywords);
       setKeywordInput("");
     }
   };
 
+  // Remove keyword
   const removeKeyword = (keywordToRemove: string) => {
-    setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
+    const updatedKeywords = keywords.filter(
+      (keyword) => keyword !== keywordToRemove
+    );
+    setKeywords(updatedKeywords);
   };
 
   // Calculate word count and read time from content blocks
-  const calculateWordCount = () => {
-    let totalWords = 0;
+  const calculateReadTime = () => {
+    let totalWordCount = 0;
+
+    // Count words from content blocks
     contentBlocks.forEach((block) => {
-      if (block.type === "rich-text" && block.content) {
-        // Strip HTML tags and count words
-        const textContent = block.content.replace(/<[^>]*>/g, " ");
-        const words = textContent.trim().split(/\s+/).filter(Boolean);
-        totalWords += words.length;
+      if (block.type === "rich-text") {
+        const plainText = (block as any).content.replace(/<[^>]*>/g, "");
+        const words = plainText
+          .trim()
+          .split(/\s+/)
+          .filter((word: string) => word.length > 0);
+        totalWordCount += words.length;
       }
     });
-    return totalWords;
+
+    // Calculate read time (250 words per minute)
+    const readTimeMinutes = Math.ceil(totalWordCount / 250);
+
+    return { wordCount: totalWordCount, readTimeMinutes };
   };
 
-  const calculateReadTime = () => {
-    const wordCount = calculateWordCount();
-    return Math.ceil(wordCount / 200); // Average reading speed: 200 words per minute
-  };
+  const { wordCount, readTimeMinutes } = calculateReadTime();
 
   // Form submission
   const handleSubmit = async (status: "DRAFT" | "PUBLISHED") => {
@@ -266,7 +278,7 @@ export default function HelpArticleForm({
         targetAudience,
         tags,
         keywords,
-        readTime: calculateReadTime(),
+        readTime: readTimeMinutes,
         img: img || null,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
@@ -291,129 +303,132 @@ export default function HelpArticleForm({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Basic Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter article title..."
-            />
-          </div>
+    <div
+      className={`${showPreview ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : ""}`}
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit("DRAFT");
+        }}
+        className="space-y-6"
+      >
+        {/* Title */}
+        <div className="space-y-2">
+          <Label htmlFor="title">Title</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter article title"
+            required
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter article description..."
-            />
-          </div>
+        {/* Description */}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter article description"
+            required
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.slug} value={cat.slug}>
-                    {cat.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Category */}
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Select value={category} onValueChange={setCategory} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.slug}>
+                  {cat.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="img">Featured Image URL</Label>
-            <Input
-              id="img"
-              value={img}
-              onChange={(e) => setImg(e.target.value)}
-              placeholder="Enter image URL..."
-            />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Target Audience */}
+        <div className="space-y-2">
+          <Label htmlFor="targetAudience">Target Audience</Label>
+          <Select
+            value={targetAudience}
+            onValueChange={(value: "BUYERS" | "SELLERS" | "BOTH") =>
+              setTargetAudience(value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select target audience" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BUYERS">Buyers Only</SelectItem>
+              <SelectItem value="SELLERS">Sellers Only</SelectItem>
+              <SelectItem value="BOTH">Both Buyers & Sellers</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Choose who this help article is intended for
+          </p>
+        </div>
 
-      {/* Content Blocks */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Content</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showPreview ? "Hide Preview" : "Show Preview"}
-              </Button>
+        {/* Content Blocks */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label>Content Blocks</Label>
+            <div className="flex flex-wrap gap-2">
+              {BLOCK_CONFIGS.map((config) => (
+                <Button
+                  key={config.type}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addContentBlock(config.type)}
+                  className="text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  {config.label}
+                </Button>
+              ))}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {showPreview ? (
-            <BlogPostPreview
-              title={title}
-              description={description}
-              content=""
-              contentBlocks={contentBlocks}
-              readTime={calculateReadTime()}
-            />
-          ) : (
-            <div className="space-y-4">
-              {/* Add Content Block */}
-              <div className="flex flex-wrap gap-2">
-                {BLOCK_CONFIGS.map((config) => (
-                  <Button
-                    key={config.type}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addContentBlock(config.type)}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {config.label}
-                  </Button>
-                ))}
-              </div>
 
-              {/* Content Blocks */}
+          {contentBlocks.length > 0 && (
+            <div className="space-y-4">
               {contentBlocks.map((block, index) => (
                 <div key={block.id}>
                   {/* Drop Zone Indicator */}
-                  {dropZoneIndex === index && draggedIndex !== null && draggedIndex !== index && (
-                    <div className="h-2 bg-purple-500 rounded-full mb-2 animate-pulse" />
-                  )}
+                  {dropZoneIndex === index &&
+                    draggedIndex !== null &&
+                    draggedIndex !== index && (
+                      <div className="h-2 bg-purple-500 rounded-full mb-2 animate-pulse" />
+                    )}
 
                   <Card
                     className={`relative transition-all duration-300 ease-in-out ${
                       draggedIndex === index
-                        ? 'opacity-50 scale-95 rotate-2 shadow-lg'
+                        ? "opacity-50 scale-95 rotate-2 shadow-lg"
                         : draggedIndex !== null && draggedIndex !== index
-                        ? 'transform translate-y-0'
-                        : ''
+                          ? "transform translate-y-0"
+                          : ""
                     }`}
                     style={{
-                      transform: draggedIndex !== null && draggedIndex !== index && dropZoneIndex === index
-                        ? 'translateY(8px)'
-                        : draggedIndex !== null && draggedIndex !== index && dropZoneIndex !== null && dropZoneIndex < index
-                        ? 'translateY(-8px)'
-                        : 'translateY(0)'
+                      transform:
+                        draggedIndex !== null &&
+                        draggedIndex !== index &&
+                        dropZoneIndex === index
+                          ? "translateY(8px)"
+                          : draggedIndex !== null &&
+                              draggedIndex !== index &&
+                              dropZoneIndex !== null &&
+                              dropZoneIndex < index
+                            ? "translateY(-8px)"
+                            : "translateY(0)",
                     }}
                     draggable={true}
                     onDragStart={(e) => handleDragStart(e, index)}
@@ -430,9 +445,7 @@ export default function HelpArticleForm({
                             onMouseUp={() => setIsGripPressed(null)}
                             onMouseLeave={() => setIsGripPressed(null)}
                           >
-                            <GripVertical
-                              className="w-4 h-4 text-muted-foreground"
-                            />
+                            <GripVertical className="w-4 h-4 text-muted-foreground" />
                           </div>
                           {BLOCK_CONFIGS.find((c) => c.type === block.type)
                             ?.label || block.type}
@@ -451,181 +464,213 @@ export default function HelpArticleForm({
                     <CardContent>
                       <ContentBlockEditor
                         block={block}
-                        onChange={(updatedBlock) => updateContentBlock(index, updatedBlock)}
+                        onChange={(updatedBlock) =>
+                          updateContentBlock(index, updatedBlock)
+                        }
                       />
                     </CardContent>
                   </Card>
                 </div>
               ))}
-
-              {contentBlocks.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No content blocks yet. Add one to get started!</p>
-                </div>
-              )}
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* SEO Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>SEO Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Add content blocks to create your help article. Start with a
+            &quot;Rich Text&quot; block for your main content.
+          </p>
+        </div>
+
+        {/* Tags */}
+        <div className="space-y-2">
+          <Label>Tags</Label>
+          <div className="flex space-x-2">
+            <Input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder="Enter a tag..."
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+            />
+            <Button onClick={addTag} type="button" disabled={!tagInput.trim()}>
+              Add
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map((tag) => (
+              <div
+                key={tag}
+                className="flex items-center px-2 py-1 text-sm bg-gray-100 rounded-full"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  aria-label={`Remove tag ${tag}`}
+                  className="ml-2 text-red-500 hover:text-red-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tags help categorize your help article and improve discoverability.
+          </p>
+        </div>
+
+        {/* Keywords */}
+        <div className="space-y-2">
+          <Label>SEO Keywords</Label>
+          <div className="flex space-x-2">
+            <Input
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              placeholder="Enter a keyword..."
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addKeyword();
+                }
+              }}
+            />
+            <Button
+              onClick={addKeyword}
+              type="button"
+              disabled={!keywordInput.trim()}
+            >
+              Add
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {keywords.map((keyword) => (
+              <div
+                key={keyword}
+                className="flex items-center px-2 py-1 text-sm bg-blue-100 rounded-full"
+              >
+                {keyword}
+                <button
+                  type="button"
+                  onClick={() => removeKeyword(keyword)}
+                  aria-label={`Remove keyword ${keyword}`}
+                  className="ml-2 text-red-500 hover:text-red-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Keywords help with SEO and search engine optimization.
+          </p>
+        </div>
+
+        {/* SEO Fields */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">SEO Settings</h3>
+
+          {/* Meta Title */}
           <div className="space-y-2">
-            <Label htmlFor="metaTitle">Meta Title</Label>
+            <Label htmlFor="metaTitle">Meta Title (Optional)</Label>
             <Input
               id="metaTitle"
               value={metaTitle}
               onChange={(e) => setMetaTitle(e.target.value)}
-              placeholder="Custom SEO title (optional)"
+              placeholder="Custom SEO title (leave empty to use article title)"
             />
+            <p className="text-xs text-muted-foreground">
+              Custom title for search engines. If left empty, the article title
+              will be used.
+            </p>
           </div>
 
+          {/* Meta Description */}
           <div className="space-y-2">
-            <Label htmlFor="metaDescription">Meta Description</Label>
+            <Label htmlFor="metaDescription">Meta Description (Optional)</Label>
             <Input
               id="metaDescription"
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
-              placeholder="Custom meta description (optional)"
+              placeholder="Custom SEO description (leave empty to use article description)"
             />
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                placeholder="Add a tag..."
-              />
-              <Button type="button" onClick={addTag} size="sm">
-                Add
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {tags.map((tag) => (
-                <div
-                  key={tag}
-                  className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-sm"
-                >
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Keywords */}
-          <div className="space-y-2">
-            <Label>Keywords</Label>
-            <div className="flex gap-2">
-              <Input
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addKeyword())}
-                placeholder="Add a keyword..."
-              />
-              <Button type="button" onClick={addKeyword} size="sm">
-                Add
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {keywords.map((keyword) => (
-                <div
-                  key={keyword}
-                  className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-sm"
-                >
-                  <span>{keyword}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeKeyword(keyword)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="targetAudience">Target Audience</Label>
-            <Select value={targetAudience} onValueChange={(value: "BUYERS" | "SELLERS" | "BOTH") => setTargetAudience(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select target audience" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="BUYERS">Buyers Only</SelectItem>
-                <SelectItem value="SELLERS">Sellers Only</SelectItem>
-                <SelectItem value="BOTH">Both Buyers & Sellers</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              Choose who this help article is intended for
+            <p className="text-xs text-muted-foreground">
+              Custom description for search engines. If left empty, the article
+              description will be used.
             </p>
           </div>
+        </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Private Article</Label>
-              <p className="text-sm text-muted-foreground">
-                Only visible to you and admins
+        {/* Private Toggle */}
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="private"
+            checked={isPrivate}
+            onCheckedChange={setIsPrivate}
+          />
+          <Label htmlFor="private">Make this article private</Label>
+        </div>
+
+        {/* Submit Buttons */}
+        <div className="flex gap-4">
+          <Button type="submit" disabled={isSubmitting} variant="outline">
+            {isSubmitting ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => handleSubmit("PUBLISHED")}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {isSubmitting ? "Publishing..." : "Publish Article"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowPreview(!showPreview)}
+            className="ml-auto"
+          >
+            {showPreview ? (
+              <>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Hide Preview
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4 mr-2" />
+                Show Preview
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+
+      {/* Preview Panel */}
+      {showPreview && (
+        <div className="border-l border-gray-200 pl-6">
+          <div className="sticky top-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Preview</h3>
+              <p className="text-sm text-gray-600">
+                See how your help article will look when published
               </p>
             </div>
-            <Switch
-              checked={isPrivate}
-              onCheckedChange={setIsPrivate}
-            />
+            <div className="bg-white rounded-lg border border-gray-200 p-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+              <BlogPostPreview
+                title={title}
+                description={description}
+                content=""
+                contentBlocks={contentBlocks}
+                readTime={readTimeMinutes}
+                isDraft={true}
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Submit Buttons */}
-      <div className="flex gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => handleSubmit("DRAFT")}
-          disabled={isSubmitting}
-        >
-          Save as Draft
-        </Button>
-        <Button
-          type="button"
-          onClick={() => handleSubmit("PUBLISHED")}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Publishing..." : "Publish Article"}
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

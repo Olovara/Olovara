@@ -15,8 +15,6 @@ export const createHelpCategorySchema = z.object({
     .nullable()
     .transform((val) => val?.trim() || null),
 
-  img: z.string().url("Invalid image URL").optional().nullable(),
-
   parentSlug: z.string().optional().nullable(),
 
   order: z.number().default(0),

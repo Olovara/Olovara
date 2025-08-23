@@ -80,7 +80,7 @@ export async function PUT(
       );
     }
 
-    const { title, description, img, order, parentSlug, isActive } = validation.data;
+    const { title, description, order, parentSlug, isActive } = validation.data;
 
     // Check if category exists
     const existingCategory = await db.helpCategory.findUnique({
@@ -121,7 +121,6 @@ export async function PUT(
       data: {
         title,
         description: description || "",
-        img: img || null,
         order: order || 0,
         slug: newSlug,
         parentSlug: parentSlug || null,

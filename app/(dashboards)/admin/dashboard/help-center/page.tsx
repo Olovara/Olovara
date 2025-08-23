@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -32,7 +33,6 @@ import {
   TrendingUp,
   Filter,
 } from "lucide-react";
-import HelpArticleForm from "@/components/forms/HelpArticleForm";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -103,6 +103,7 @@ interface HelpCategory {
 }
 
 export default function HelpCenterDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("articles");
   const [articles, setArticles] = useState<HelpArticleDisplay[]>([]);
   const [categories, setCategories] = useState<HelpCategory[]>([]);
@@ -111,11 +112,7 @@ export default function HelpCenterDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [audienceFilter, setAudienceFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [showArticleForm, setShowArticleForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<HelpArticle | null>(
-    null
-  );
   const [editingCategory, setEditingCategory] = useState<HelpCategory | null>(
     null
   );
@@ -177,35 +174,7 @@ export default function HelpCenterDashboard() {
     }
   }, [fetchArticles, loading]);
 
-  // Handle article form submission
-  const handleArticleSubmit = async (data: any) => {
-    try {
-      const url = editingArticle
-        ? `/api/help/articles/${editingArticle.slug}`
-        : "/api/help/articles";
 
-      const method = editingArticle ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error("Failed to save article");
-
-      toast.success(
-        `Article ${editingArticle ? "updated" : "created"} successfully`
-      );
-
-      setShowArticleForm(false);
-      setEditingArticle(null);
-      fetchArticles();
-    } catch (error) {
-      console.error("Error saving article:", error);
-      toast.error("Failed to save article");
-    }
-  };
 
   // Handle category form submission
   const handleCategorySubmit = async (data: any) => {
@@ -344,29 +313,10 @@ export default function HelpCenterDashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Dialog open={showArticleForm} onOpenChange={setShowArticleForm}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditingArticle(null)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Article
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingArticle ? "Edit Article" : "Create New Article"}
-                </DialogTitle>
-              </DialogHeader>
-              <HelpArticleForm
-                initialData={editingArticle}
-                onSubmit={handleArticleSubmit}
-                onCancel={() => {
-                  setShowArticleForm(false);
-                  setEditingArticle(null);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => router.push("/admin/dashboard/help-center/create")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Article
+          </Button>
 
           <Dialog open={showCategoryForm} onOpenChange={setShowCategoryForm}>
             <DialogTrigger asChild>
@@ -564,7 +514,7 @@ export default function HelpCenterDashboard() {
                       Get started by creating your first help article.
                     </p>
                     <div className="mt-6">
-                      <Button onClick={() => setShowArticleForm(true)}>
+                      <Button onClick={() => router.push("/admin/dashboard/help-center/create")}>
                         <Plus className="mr-2 h-4 w-4" />
                         New Article
                       </Button>
@@ -618,73 +568,7 @@ export default function HelpCenterDashboard() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={async () => {
-                                try {
-                                  // Fetch full article details for editing
-                                  const response = await fetch(
-                                    `/api/help/articles/${article.slug}`
-                                  );
-                                  if (response.ok) {
-                                    const fullArticle = await response.json();
-                                    const editableArticle: HelpArticle = {
-                                      id: article.id,
-                                      slug: article.slug,
-                                      title: article.title,
-                                      description: article.description,
-                                      content: fullArticle.content || "",
-                                      catSlug:
-                                        fullArticle.catSlug || article.cat.slug,
-                                      status: article.status,
-                                      isPrivate: fullArticle.isPrivate || false,
-                                      tags: fullArticle.tags || [],
-                                      keywords: fullArticle.keywords || [],
-                                      readTime: article.readTime,
-                                      targetAudience: article.targetAudience,
-                                    };
-                                    setEditingArticle(editableArticle);
-                                  } else {
-                                    // Fallback if API call fails
-                                    const editableArticle: HelpArticle = {
-                                      id: article.id,
-                                      slug: article.slug,
-                                      title: article.title,
-                                      description: article.description,
-                                      content: "",
-                                      catSlug: article.cat.slug,
-                                      status: article.status,
-                                      isPrivate: false,
-                                      tags: [],
-                                      keywords: [],
-                                      readTime: article.readTime,
-                                      targetAudience: article.targetAudience,
-                                    };
-                                    setEditingArticle(editableArticle);
-                                  }
-                                  setShowArticleForm(true);
-                                } catch (error) {
-                                  console.error(
-                                    "Error fetching article details:",
-                                    error
-                                  );
-                                  // Fallback if fetch fails
-                                  const editableArticle: HelpArticle = {
-                                    id: article.id,
-                                    slug: article.slug,
-                                    title: article.title,
-                                    description: article.description,
-                                    content: "",
-                                    catSlug: article.cat.slug,
-                                    status: article.status,
-                                    isPrivate: false,
-                                    tags: [],
-                                    keywords: [],
-                                    readTime: article.readTime,
-                                    targetAudience: article.targetAudience,
-                                  };
-                                  setEditingArticle(editableArticle);
-                                  setShowArticleForm(true);
-                                }
-                              }}
+                              onClick={() => router.push(`/admin/dashboard/help-center/edit/${article.slug}`)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>

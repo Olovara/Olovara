@@ -180,8 +180,6 @@ export const createHelpArticleSchema = z.object({
   targetAudience: z.enum(["BUYERS", "SELLERS", "BOTH"]).default("BOTH"),
 
   // Optional fields
-  img: z.string().url("Invalid image URL").optional().nullable(),
-
   readTime: z
     .number()
     .min(1, "Read time must be at least 1 minute")

@@ -75,10 +75,10 @@ export default function ReportsPage() {
 
   // Filters
   const [filters, setFilters] = useState({
-    status: "",
-    category: "",
-    severity: "",
-    reportType: "",
+    status: "all",
+    category: "all",
+    severity: "all",
+    reportType: "all",
   });
 
   const fetchReports = useCallback(async () => {
@@ -87,7 +87,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value)),
+        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value && value !== "all")),
       });
 
       const response = await fetch(`/api/reports?${params}`);
@@ -217,7 +217,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
@@ -237,7 +237,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
                   <SelectItem value="INAPPROPRIATE_CONTENT">Inappropriate Content</SelectItem>
                   <SelectItem value="COPYRIGHT_INFRINGEMENT">Copyright Infringement</SelectItem>
                   <SelectItem value="MISLEADING_INFORMATION">Misleading Information</SelectItem>
@@ -260,7 +260,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="All severities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All severities</SelectItem>
+                  <SelectItem value="all">All severities</SelectItem>
                   <SelectItem value="LOW">Low</SelectItem>
                   <SelectItem value="MEDIUM">Medium</SelectItem>
                   <SelectItem value="HIGH">High</SelectItem>
@@ -279,7 +279,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="SELLER">Seller</SelectItem>
                   <SelectItem value="PRODUCT">Product</SelectItem>
                 </SelectContent>

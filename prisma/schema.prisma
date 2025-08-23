@@ -876,7 +876,6 @@ model HelpArticle {
   description String
   contentBlocks Json? // Structured content blocks (cards, steps, alerts, tables, etc.)
   excerpt     String? // Short summary for previews
-  img         String? // Featured image
   views       Int           @default(0)
   readTime    Int? // Estimated reading time in minutes
   status      String        @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
@@ -917,7 +916,6 @@ model HelpCategory {
   slug        String         @unique
   title       String
   description String? // Category description for SEO
-  img         String?
   articles    HelpArticle[]
   parentSlug  String? // For nested categories
   parent      HelpCategory?  @relation("HelpCategoryToHelpCategory", fields: [parentSlug], references: [slug], onDelete: NoAction, onUpdate: NoAction)

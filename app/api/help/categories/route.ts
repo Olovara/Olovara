@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
         slug: true,
         title: true,
         description: true,
-        img: true,
         order: true,
         isActive: true,
         _count: {
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, img, order, parentSlug, isActive } = validation.data;
+    const { title, description, order, parentSlug, isActive } = validation.data;
 
     // Generate slug from title
     const slug = title
@@ -120,7 +119,6 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         description: description || "",
-        img: img || null,
         order: order || 0,
         slug,
         parentSlug: parentSlug || null,
