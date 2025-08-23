@@ -32,7 +32,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       description: true,
       content: true,
       contentBlocks: true,
-      contentType: true,
       img: true,
       status: true,
       isPrivate: true,

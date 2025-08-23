@@ -143,6 +143,7 @@ model User {
   sentMessages          Message[]              @relation("MessageSender")
   blogPosts             BlogPost[]
   blogComments          BlogComment[]
+  helpArticles          HelpArticle[]
   customOrderSubmissions CustomOrderSubmission[]
   abandonedCarts        AbandonedCart[]
   fraudDetectionEvents  FraudDetectionEvent[]
@@ -789,7 +790,6 @@ model BlogPost {
   description String
   content     Json // Rich text content
   contentBlocks Json? // Structured content blocks (cards, steps, alerts, tables, etc.)
-  contentType String        @default("BLOG") // BLOG, HELP_ARTICLE
   excerpt     String? // Short summary for previews
   img         String? // Featured image
   views       Int           @default(0)
@@ -857,6 +857,71 @@ model BlogCategory {
   parentSlug  String? // For nested categories
   parent      BlogCategory?  @relation("CategoryToCategory", fields: [parentSlug], references: [slug], onDelete: NoAction, onUpdate: NoAction)
   children    BlogCategory[] @relation("CategoryToCategory")
+  order       Int            @default(0) // For custom ordering
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([parentSlug])
+  @@index([order])
+}
+
+model HelpArticle {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  publishedAt DateTime? // When the article was published
+  slug        String        @unique
+  title       String
+  description String
+  contentBlocks Json? // Structured content blocks (cards, steps, alerts, tables, etc.)
+  excerpt     String? // Short summary for previews
+  img         String? // Featured image
+  views       Int           @default(0)
+  readTime    Int? // Estimated reading time in minutes
+  status      String        @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  catSlug     String
+  cat         HelpCategory  @relation(fields: [catSlug], references: [slug])
+  userEmail   String
+  user        User          @relation(fields: [userEmail], references: [email])
+
+  // SEO fields
+  metaTitle       String? // Custom SEO title
+  metaDescription String? // Custom meta description
+  keywords        String[] // SEO keywords
+  canonicalUrl    String? // Canonical URL for duplicate content
+  ogImage         String? // Open Graph image for social sharing
+  ogTitle         String? // Open Graph title
+  ogDescription   String? // Open Graph description
+
+  // Schema.org structured data
+  authorUrl    String? // Author's profile URL
+  dateModified DateTime? // Last modification date for structured data
+
+  // Additional metadata
+  tags          String[] // Help article tags
+  featured      Boolean  @default(false)
+  isPrivate     Boolean  @default(false)
+  order         Int      @default(0) // For custom ordering within category
+  targetAudience String  @default("BOTH") // BUYERS, SELLERS, BOTH
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([tags])
+  @@index([catSlug])
+  @@index([order])
+}
+
+model HelpCategory {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  slug        String         @unique
+  title       String
+  description String? // Category description for SEO
+  img         String?
+  articles    HelpArticle[]
+  parentSlug  String? // For nested categories
+  parent      HelpCategory?  @relation("HelpCategoryToHelpCategory", fields: [parentSlug], references: [slug], onDelete: NoAction, onUpdate: NoAction)
+  children    HelpCategory[] @relation("HelpCategoryToHelpCategory")
   order       Int            @default(0) // For custom ordering
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())

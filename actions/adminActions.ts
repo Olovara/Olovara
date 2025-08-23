@@ -125,13 +125,11 @@ export async function getAllSellers() {
     const applicationsWithDecryptedBirthdate = applications.map(app => {
       let birthdate = "N/A";
       try {
-        if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
-          birthdate = decryptBirthdate({
-            encryptedBirthdate: app.encryptedBirthdate,
-            birthdateIV: app.birthdateIV,
-            birthdateSalt: app.birthdateSalt,
-          });
-        }
+        birthdate = decryptBirthdate({
+          encryptedBirthdate: app.encryptedBirthdate,
+          birthdateIV: app.birthdateIV,
+          birthdateSalt: app.birthdateSalt,
+        });
       } catch (error) {
         console.error("Error decrypting birthdate for application:", app.id, error);
         birthdate = "Error decrypting";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Content block schemas for structured content
+// Content block schemas for structured content (reused from BlogPostSchema)
 const cardBlockSchema = z.object({
   id: z.string(),
   type: z.literal("card"),
@@ -38,7 +38,7 @@ const alertBlockSchema = z.object({
   id: z.string(),
   type: z.literal("alert"),
   order: z.number(),
-  variant: z.enum(["info", "warning", "success", "error"]),
+  variant: z.enum(["info", "warning", "success", "error", "note"]),
   title: z.string().optional(),
   content: z.string().min(1, "Content is required"),
   icon: z.string().optional(),
@@ -102,29 +102,37 @@ const comparisonTableBlockSchema = z.object({
       z.object({
         feature: z.string().min(1, "Feature name is required"),
         values: z.array(z.string()).min(1, "At least one value is required"),
+        highlight: z.boolean().optional(),
       })
     )
     .min(1, "At least one row is required"),
-  highlightColumn: z.number().optional(),
+  variant: z.enum(["simple", "detailed"]).optional(),
 });
 
 const requirementsBlockSchema = z.object({
   id: z.string(),
   type: z.literal("requirements"),
   order: z.number(),
-  title: z.string().min(1, "Title is required"),
+  title: z.string().optional(),
   description: z.string().optional(),
   requirements: z
     .array(
       z.object({
         title: z.string().min(1, "Requirement title is required"),
         description: z.string().min(1, "Requirement description is required"),
-        icon: z.string().min(1, "Icon is required"),
+        isRequired: z.boolean().default(true),
+        category: z.enum(["Technical", "Business", "Legal", "Other"]).optional(),
       })
     )
     .min(1, "At least one requirement is required"),
-  columns: z.enum(["1", "2", "3"]),
-  variant: z.enum(["cards", "list"]),
+  variant: z.enum(["simple", "detailed"]).optional(),
+});
+
+const richTextBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal("rich-text"),
+  order: z.number(),
+  content: z.string().min(1, "Content is required"),
 });
 
 // Union type for all content blocks
@@ -137,10 +145,11 @@ const contentBlockSchema = z.discriminatedUnion("type", [
   twoColumnBlockSchema,
   comparisonTableBlockSchema,
   requirementsBlockSchema,
+  richTextBlockSchema,
 ]);
 
-// Schema for creating a new blog post
-export const createBlogPostSchema = z.object({
+// Main help article schema
+export const createHelpArticleSchema = z.object({
   title: z
     .string()
     .min(1, "Title is required")
@@ -166,6 +175,9 @@ export const createBlogPostSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
 
   isPrivate: z.boolean().default(false),
+
+  // Target audience field (specific to help articles)
+  targetAudience: z.enum(["BUYERS", "SELLERS", "BOTH"]).default("BOTH"),
 
   // Optional fields
   img: z.string().url("Invalid image URL").optional().nullable(),
@@ -223,25 +235,26 @@ export const createBlogPostSchema = z.object({
 
   featured: z.boolean().default(false),
 
-  allowComments: z.boolean().default(true),
+  order: z.number().default(0),
 });
 
-// Schema for updating an existing blog post
-export const updateBlogPostSchema = createBlogPostSchema.partial();
+// Schema for updating an existing help article
+export const updateHelpArticleSchema = createHelpArticleSchema.partial();
 
-// Schema for blog post query parameters
-export const blogPostQuerySchema = z.object({
+// Schema for help article query parameters
+export const helpArticleQuerySchema = z.object({
   category: z.string().optional(),
   status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
   featured: z.boolean().optional(),
+  targetAudience: z.enum(["BUYERS", "SELLERS", "BOTH"]).optional(),
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(50).default(10),
   search: z.string().optional(),
-  sortBy: z.enum(["publishedAt", "views", "title"]).default("publishedAt"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  sortBy: z.enum(["publishedAt", "views", "title", "order", "createdAt"]).default("order"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
 // Type inference
-export type CreateBlogPostInput = z.infer<typeof createBlogPostSchema>;
-export type UpdateBlogPostInput = z.infer<typeof updateBlogPostSchema>;
-export type BlogPostQueryInput = z.infer<typeof blogPostQuerySchema>;
+export type CreateHelpArticleInput = z.infer<typeof createHelpArticleSchema>;
+export type UpdateHelpArticleInput = z.infer<typeof updateHelpArticleSchema>;
+export type HelpArticleQueryInput = z.infer<typeof helpArticleQuerySchema>;

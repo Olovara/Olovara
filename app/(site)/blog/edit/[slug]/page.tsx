@@ -13,7 +13,6 @@ interface BlogPost {
   description: string;
   content: string;
   contentBlocks?: any[];
-  contentType: "BLOG" | "HELP_ARTICLE";
   catSlug: string;
   status: "DRAFT" | "PUBLISHED";
   isPrivate: boolean;

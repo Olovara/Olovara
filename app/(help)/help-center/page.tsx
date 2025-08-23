@@ -1,6 +1,4 @@
 import { db } from "@/lib/db";
-import { ContentBlockRenderer } from "@/components/blog";
-import { ContentBlock } from "@/components/blog/types/BlockTypes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,9 +87,8 @@ export default async function HelpCenterPage({
   searchParams,
 }: HelpCenterPageProps) {
   // Fetch help articles
-  const helpArticles = await db.blogPost.findMany({
+  const helpArticles = await db.helpArticle.findMany({
     where: {
-      contentType: "HELP_ARTICLE",
       status: "PUBLISHED",
       isPrivate: false,
       ...(searchParams.category && {
@@ -109,18 +106,18 @@ export default async function HelpCenterPage({
     include: {
       cat: true,
     },
-    orderBy: {
-      publishedAt: "desc",
-    },
+    orderBy: [
+      { order: "asc" },
+      { publishedAt: "desc" },
+    ],
   });
 
   // Fetch categories for help articles
-  const categories = await db.blogCategory.findMany({
+  const categories = await db.helpCategory.findMany({
     where: {
       isActive: true,
-      posts: {
+      articles: {
         some: {
-          contentType: "HELP_ARTICLE",
           status: "PUBLISHED",
           isPrivate: false,
         },

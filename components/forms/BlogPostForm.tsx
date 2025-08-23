@@ -51,7 +51,6 @@ interface BlogPost {
   description: string;
   content: string;
   contentBlocks?: ContentBlock[];
-  contentType: "BLOG" | "HELP_ARTICLE";
   catSlug: string;
   status: "DRAFT" | "PUBLISHED";
   isPrivate: boolean;
@@ -83,9 +82,6 @@ export default function BlogPostForm({
   const [content, setContent] = useState(initialData?.content || "");
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(
     initialData?.contentBlocks || []
-  );
-  const [contentType, setContentType] = useState<"BLOG" | "HELP_ARTICLE">(
-    initialData?.contentType || "BLOG"
   );
   const [category, setCategory] = useState(initialData?.catSlug || "");
   const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -286,7 +282,6 @@ export default function BlogPostForm({
       description: description.trim(),
       content: "", // Keep for backward compatibility but not used
       contentBlocks,
-      contentType,
       catSlug: category,
       status: initialData?.status || "DRAFT",
       isPrivate,
@@ -342,30 +337,6 @@ export default function BlogPostForm({
             placeholder="Enter post description"
             required
           />
-        </div>
-
-        {/* Content Type */}
-        <div className="space-y-2">
-          <Label htmlFor="contentType">Content Type</Label>
-          <Select
-            value={contentType}
-            onValueChange={(value: "BLOG" | "HELP_ARTICLE") =>
-              setContentType(value)
-            }
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select content type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BLOG">Blog Post</SelectItem>
-              <SelectItem value="HELP_ARTICLE">Help Article</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Blog posts appear in your blog, while help articles appear in the
-            help center.
-          </p>
         </div>
 
         {/* Category */}

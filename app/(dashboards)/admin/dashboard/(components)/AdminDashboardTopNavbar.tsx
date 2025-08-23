@@ -9,7 +9,23 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send, MessageSquare, FileText, Shield, TrendingUp, Flag } from "lucide-react";
+import {
+  HomeIcon,
+  Mail,
+  Settings,
+  FileQuestion,
+  User,
+  Package,
+  ShoppingCart,
+  BarChart3,
+  Send,
+  MessageSquare,
+  FileText,
+  Shield,
+  TrendingUp,
+  Flag,
+  HelpCircle,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
@@ -143,6 +159,14 @@ export default async function AdminDashboardTopNavbar({
                   </Button>
                 </Link>
               </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/help-center">
+                  <Button variant="outline" className="w-full">
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Help Center
+                  </Button>
+                </Link>
+              </DialogClose>
               <Separator className="my-3" />
               <DialogClose asChild>
                 <Link href="/admin/dashboard/settings">
@@ -157,7 +181,9 @@ export default async function AdminDashboardTopNavbar({
         </Dialog>
 
         {/* Right Side - UserNav */}
-        <div className="ml-auto"> {/* Push UserNav to the right */}
+        <div className="ml-auto">
+          {" "}
+          {/* Push UserNav to the right */}
           {userInfo ? <UserNav userInfo={userInfo} /> : <p>Loading...</p>}
         </div>
       </header>
