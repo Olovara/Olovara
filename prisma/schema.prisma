@@ -152,6 +152,7 @@ model User {
   productInteractions   ProductInteraction[]
   userSessions          UserSession[]
   reportsSubmitted      Report[]        @relation("ReportReporter")
+  followers             Follow[]        @relation("UserFollowers") // Sellers this user is following
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -323,6 +324,10 @@ model Seller {
   ogTitle         String? // Open Graph title for social sharing
   ogDescription   String? // Open Graph description for social sharing
   ogImage         String? // Open Graph image for social sharing
+
+  // Follow System
+  followerCount   Int      @default(0) // Denormalized follower count for performance
+  followers       Follow[] @relation("SellerFollowers") // Users following this seller
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1596,6 +1601,23 @@ model Report {
   @@index([status])
   @@index([createdAt])
   @@index([reportType, targetId]) // For finding all reports for a specific seller/product
+}
+
+// Follow System Model
+model Follow {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  followerId String   @db.ObjectId   // The user doing the following
+  sellerId   String   @db.ObjectId   // The seller being followed
+  createdAt  DateTime @default(now())
+
+  // Relations
+  follower User   @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  seller   Seller @relation("SellerFollowers", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, sellerId]) // Prevent duplicate follows
+  @@index([sellerId])              // Fast lookup for seller's followers
+  @@index([followerId])            // Fast lookup for a user's following
+  @@index([createdAt])             // For chronological ordering
 }
 
 

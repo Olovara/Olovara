@@ -2,15 +2,30 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, Package, PackageOpen, CreditCard, Star, FileText, TrendingUp, User, Share2 } from "lucide-react";
+import {
+  HomeIcon,
+  Mail,
+  Settings,
+  Package,
+  PackageOpen,
+  CreditCard,
+  Star,
+  FileText,
+  TrendingUp,
+  User,
+  Share2,
+  Heart,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
+import { useHasFollowedSellers } from "@/hooks/use-has-followed-sellers";
 
 export default function SellerDashboardSideNavbar() {
   const pathname = usePathname();
   const { hasPermission } = useCurrentPermissions();
-  const hasBlogPermission = hasPermission('WRITE_BLOG');
+  const hasBlogPermission = hasPermission("WRITE_BLOG");
+  const { hasFollowedSellers } = useHasFollowedSellers();
 
   return (
     <div className="lg:block border-r hidden h-full">
@@ -142,6 +157,23 @@ export default function SellerDashboardSideNavbar() {
               </div>
               Messages
             </Link>
+            {hasFollowedSellers && (
+              <Link
+                className={clsx(
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                  {
+                    "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                      pathname === "/seller/dashboard/followed-sellers",
+                  }
+                )}
+                href="/seller/dashboard/followed-sellers"
+              >
+                <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                  <Heart className="h-3 w-3" />
+                </div>
+                Followed Sellers
+              </Link>
+            )}
             <Link
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
@@ -157,7 +189,7 @@ export default function SellerDashboardSideNavbar() {
               </div>
               Referrals
             </Link>
-            
+
             {hasBlogPermission && (
               <Link
                 className={clsx(
@@ -175,7 +207,7 @@ export default function SellerDashboardSideNavbar() {
                 Blog
               </Link>
             )}
-            
+
             <Link
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",

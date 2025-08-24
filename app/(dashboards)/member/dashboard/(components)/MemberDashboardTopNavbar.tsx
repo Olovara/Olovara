@@ -11,7 +11,15 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, PackageOpen, Star, FileText } from "lucide-react";
+import {
+  HomeIcon,
+  Mail,
+  Settings,
+  PackageOpen,
+  Star,
+  FileText,
+  Heart,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function MemberDashboardTopNavbar({
@@ -63,6 +71,14 @@ export default function MemberDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <Mail className="mr-2 h-4 w-4" />
                     Messages
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/member/dashboard/followed-sellers">
+                  <Button variant="outline" className="w-full">
+                    <Heart className="mr-2 h-4 w-4" />
+                    Followed Sellers
                   </Button>
                 </Link>
               </DialogClose>

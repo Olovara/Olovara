@@ -4,10 +4,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import ProductCard from "./ProductCard";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
-import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
+import {
+  createProductFilterWhereClause,
+  getProductFilterConfig,
+} from "@/lib/product-filtering";
+import { getFollowedSellersFeed } from "@/actions/followActions";
 
 interface iAppProps {
-  category: "newest" | "ACCESORIES" | "random";
+  category: "newest" | "ACCESORIES" | "random" | "followed";
 }
 
 // Type for the database query result
@@ -131,7 +135,9 @@ async function getData({ category }: iAppProps) {
     // Get user's country code for location-based filtering
     const userCountryCode = await getUserCountryCode();
     // Get centralized filter configuration
-    const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
+    const filterConfig = await getProductFilterConfig(
+      userCountryCode || undefined
+    );
 
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
@@ -141,14 +147,17 @@ async function getData({ category }: iAppProps) {
       random: {
         where: {},
         skip: async () => {
-          const productWhere = await createProductFilterWhereClause({}, filterConfig);
+          const productWhere = await createProductFilterWhereClause(
+            {},
+            filterConfig
+          );
           const totalProducts = await db.product.count({ where: productWhere });
           return Math.floor(Math.random() * Math.max(0, totalProducts - 4));
         },
         take: 4,
         orderBy: undefined,
         title: "Featured Products",
-        link: "/products"
+        link: "/products?sortBy=relevant",
       },
       ACCESORIES: {
         where: { primaryCategory: "ACCESORIES" },
@@ -156,7 +165,15 @@ async function getData({ category }: iAppProps) {
         take: 5,
         orderBy: undefined,
         title: "Accessories",
-        link: "/products/accessories"
+        link: "/products?category=ACCESORIES&sortBy=relevant",
+      },
+      followed: {
+        where: {},
+        skip: 0,
+        take: 4,
+        orderBy: undefined,
+        title: "From Your Followed Sellers",
+        link: "/products?followedSellers=true&sortBy=relevant",
       },
       newest: {
         where: { createdAt: { gte: fiveDaysAgo } },
@@ -164,8 +181,8 @@ async function getData({ category }: iAppProps) {
         take: 4,
         orderBy: { createdAt: "desc" as const },
         title: "Newest Products",
-        link: "/products"
-      }
+        link: "/products?sortBy=newest",
+      },
     } as const;
 
     const config = categoryConfigs[category];
@@ -174,11 +191,30 @@ async function getData({ category }: iAppProps) {
       return { data: [], title: "Not Found", link: "#" }; // This line will never be reached
     }
 
+    // Special handling for followed category
+    if (category === "followed") {
+      try {
+        const followedProducts = await getFollowedSellersFeed(config.take);
+        return {
+          data: followedProducts,
+          title: config.title,
+          link: config.link,
+        };
+      } catch (error) {
+        console.error("Error fetching followed sellers data:", error);
+        return { data: [], title: config.title, link: config.link };
+      }
+    }
+
     // Build the where clause
-    const productWhere = await createProductFilterWhereClause(config.where, filterConfig);
-    
+    const productWhere = await createProductFilterWhereClause(
+      config.where,
+      filterConfig
+    );
+
     // Get skip value (handle async skip for random category)
-    const skip = typeof config.skip === 'function' ? await config.skip() : config.skip;
+    const skip =
+      typeof config.skip === "function" ? await config.skip() : config.skip;
 
     // Fetch products with common configuration
     const data = await db.product.findMany({
@@ -189,12 +225,11 @@ async function getData({ category }: iAppProps) {
       orderBy: config.orderBy,
     });
 
-    return { 
-      data, 
-      title: config.title, 
-      link: config.link 
+    return {
+      data,
+      title: config.title,
+      link: config.link,
     };
-
   } catch (error) {
     console.error("Error fetching data:", error);
     return { data: [], title: "Error", link: "#" };
@@ -234,39 +269,41 @@ export async function LoadRows({ category }: iAppProps) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-        {(data.data as ProductWithSeller[]).map((product, index) => (
+        {(data.data as any[]).map((product, index) => (
           <ProductCard
             key={product.id}
             product={{
               id: product.id,
               name: product.name,
-              status: product.status,
-              isDigital: product.isDigital,
-              discount: product.discount,
+              status: product.status || "ACTIVE",
+              isDigital: product.isDigital || false,
+              discount: product.discount || null,
               price: product.price,
-              currency: product.currency,
+              currency: product.currency || "USD",
               images: product.images,
-              primaryCategory: product.primaryCategory,
+              primaryCategory: product.primaryCategory || "",
               secondaryCategory: product.secondaryCategory || undefined,
               tertiaryCategory: product.tertiaryCategory || undefined,
-              stock: product.stock,
-              dropDate: product.dropDate,
-              dropTime: product.dropTime,
-              onSale: product.onSale,
-              saleStartDate: product.saleStartDate,
-              saleEndDate: product.saleEndDate,
-              saleStartTime: product.saleStartTime,
-              saleEndTime: product.saleEndTime,
-              seller: product.seller ? {
-                shopName: product.seller.shopName,
-                shopNameSlug: product.seller.shopNameSlug,
-                isWomanOwned: product.seller.isWomanOwned,
-                isMinorityOwned: product.seller.isMinorityOwned,
-                isLGBTQOwned: product.seller.isLGBTQOwned,
-                isVeteranOwned: product.seller.isVeteranOwned,
-                isSustainable: product.seller.isSustainable,
-                isCharitable: product.seller.isCharitable
-              } : null
+              stock: product.stock || 1,
+              dropDate: product.dropDate || null,
+              dropTime: product.dropTime || null,
+              onSale: product.onSale || false,
+              saleStartDate: product.saleStartDate || null,
+              saleEndDate: product.saleEndDate || null,
+              saleStartTime: product.saleStartTime || null,
+              saleEndTime: product.saleEndTime || null,
+              seller: product.seller
+                ? {
+                    shopName: product.seller.shopName,
+                    shopNameSlug: product.seller.shopNameSlug,
+                    isWomanOwned: product.seller.isWomanOwned || false,
+                    isMinorityOwned: product.seller.isMinorityOwned || false,
+                    isLGBTQOwned: product.seller.isLGBTQOwned || false,
+                    isVeteranOwned: product.seller.isVeteranOwned || false,
+                    isSustainable: product.seller.isSustainable || false,
+                    isCharitable: product.seller.isCharitable || false,
+                  }
+                : null,
             }}
             index={index}
           />

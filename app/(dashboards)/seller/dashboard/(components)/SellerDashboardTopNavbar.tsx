@@ -1,16 +1,37 @@
 import { ReactNode } from "react";
-import { SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogClose } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, Mail, Settings, Package, PackageOpen, CreditCard, Star, TrendingUp, FileText, Share2 } from "lucide-react";
+import {
+  HomeIcon,
+  Mail,
+  Settings,
+  Package,
+  PackageOpen,
+  CreditCard,
+  Star,
+  TrendingUp,
+  FileText,
+  Share2,
+  Heart,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
 import { getUserInfoForNav } from "@/actions/userActions";
 
-export default async function SellerDashboardTopNavbar({ children }: { children: ReactNode }) {
+export default async function SellerDashboardTopNavbar({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const session = await auth(); // Fetch user session
   const userInfo = session?.user ? await getUserInfoForNav() : null;
 
@@ -95,6 +116,14 @@ export default async function SellerDashboardTopNavbar({ children }: { children:
                 </Link>
               </DialogClose>
               <DialogClose asChild>
+                <Link href="/seller/dashboard/followed-sellers">
+                  <Button variant="outline" className="w-full">
+                    <Heart className="mr-2 h-4 w-4" />
+                    Followed Sellers
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
                 <Link href="/seller/dashboard/referrals">
                   <Button variant="outline" className="w-full">
                     <Share2 className="mr-2 h-4 w-4" />
@@ -124,7 +153,9 @@ export default async function SellerDashboardTopNavbar({ children }: { children:
         </Dialog>
 
         {/* Right Side - UserNav */}
-        <div className="ml-auto"> {/* Push UserNav to the right */}
+        <div className="ml-auto">
+          {" "}
+          {/* Push UserNav to the right */}
           {userInfo ? <UserNav userInfo={userInfo} /> : <p>Loading...</p>}
         </div>
       </header>

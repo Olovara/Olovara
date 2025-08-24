@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { getPriceRange } from "@/actions/getPriceRange";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 const values = [
   {
@@ -47,6 +48,7 @@ export function ProductFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
   const [currentPriceRange, setCurrentPriceRange] = useState([0, 1000]);
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
@@ -123,6 +125,17 @@ export function ProductFilters() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sortBy", value);
     params.set("page", "1"); // Reset to first page when changing sort
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleFollowedSellersChange = (checked: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set("followedSellers", "true");
+    } else {
+      params.delete("followedSellers");
+    }
+    params.set("page", "1"); // Reset to first page when changing filters
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -204,7 +217,8 @@ export function ProductFilters() {
 
   const selectedCategories = searchParams.get("category")?.split(",") || [];
   const selectedValues = searchParams.get("values")?.split(",") || [];
-  const sortBy = searchParams.get("sortBy") || "newest";
+  const sortBy = searchParams.get("sortBy") || "relevant";
+  const followedSellers = searchParams.get("followedSellers") === "true";
 
   return (
     <div className="space-y-6">
@@ -219,6 +233,7 @@ export function ProductFilters() {
             <SelectValue placeholder="Select sort option" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="relevant">Most Relevant</SelectItem>
             <SelectItem value="newest">Newest</SelectItem>
             <SelectItem value="price-asc">Price: Low to High</SelectItem>
             <SelectItem value="price-desc">Price: High to Low</SelectItem>
@@ -350,6 +365,25 @@ export function ProductFilters() {
           </div>
         </div>
       </div>
+
+      <Separator />
+
+      {/* Followed Sellers Filter - Only show if user is logged in */}
+      {session?.user && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Followed Sellers</h3>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="followedSellers"
+                checked={followedSellers}
+                onCheckedChange={handleFollowedSellersChange}
+              />
+              <Label htmlFor="followedSellers">Show only products from followed sellers</Label>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Separator />
 

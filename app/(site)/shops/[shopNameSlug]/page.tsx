@@ -7,6 +7,7 @@ import ProductCard from "@/components/ProductCard";
 import ShopPolicies from "@/components/shop/ShopPolicies";
 import ExcludedCountries from "@/components/shop/ExcludedCountries";
 import ReportButton from "@/components/ReportButton";
+import FollowButton from "@/components/FollowButton";
 import { MapPin } from "lucide-react";
 import {
   FacebookIcon,
@@ -55,6 +56,7 @@ async function getShopData(
       shopLogoImage: true,
       sellerImage: true,
       totalSales: true,
+      followerCount: true,
       acceptsCustom: true,
       processingTime: true,
       returnsPolicy: true,
@@ -395,6 +397,8 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   <span>{seller.products.length} products</span>
                   <span>•</span>
                   <span>{seller.totalSales} sales</span>
+                  <span>•</span>
+                  <span>{seller.followerCount} followers</span>
                   {seller.acceptsCustom && (
                     <>
                       <span>•</span>
@@ -408,6 +412,14 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
               {/* Contact & Custom Order Buttons */}
               <div className="flex-shrink-0 flex items-center gap-2">
+                <FollowButton
+                  sellerId={seller.id}
+                  sellerName={seller.shopName}
+                  showCount={true}
+                  initialFollowerCount={seller.followerCount}
+                  variant="outline"
+                  size="sm"
+                />
                 <ContactSellerButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
@@ -483,6 +495,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm text-gray-600">
                         Total Sales: {seller.totalSales}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Followers: {seller.followerCount}
                       </p>
                       {seller.acceptsCustom && (
                         <p className="text-sm text-green-600 mt-2">
