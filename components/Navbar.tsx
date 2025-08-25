@@ -8,6 +8,7 @@ import { getUserInfoForNav } from "@/actions/userActions";
 import LoginButton from "./auth/login-button";
 import { SearchBar } from "./SearchBar";
 import { ProtectedLink } from "./shared/ProtectedLink";
+import { WishlistFlyout } from "./wishlist/WishlistFlyout";
 
 export async function Navbar() {
   const session = await auth();
@@ -31,12 +32,17 @@ export async function Navbar() {
 
         {/* Right Side - Buttons and Mobile Menu */}
         <div className="flex items-center gap-x-2">
+          {/* Wishlist Button - Only show for authenticated users */}
+          {userInfo && (
+            <WishlistFlyout userRole={userInfo.role} />
+          )}
+
           {/* Become a Seller Button - Only show for non-sellers */}
           {userInfo?.role !== "SELLER" && (
             <div className="hidden md:block">
               <ProtectedLink href="/seller-application">
                 <Button variant="outline" className="text-black">
-                  Become a Seller
+                  Start Selling
                 </Button>
               </ProtectedLink>
             </div>

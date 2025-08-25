@@ -74,7 +74,7 @@ export default function SellPage() {
                   className="text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700 apply-button"
                   style={applyButtonStyles}
                 >
-                  Apply Now - Only 50 Spots
+                  Join Now - Only 50 Spots
                 </Button>
                 <Link
                   href="#benefits"
@@ -443,7 +443,7 @@ export default function SellPage() {
                 className="text-lg px-8 py-4 bg-white text-purple-600 hover:bg-gray-100 apply-button"
                 style={applyButtonStyles}
               >
-                Apply Now - Only 50 Spots
+                Join Now - Only 50 Spots
               </Button>
               <Link
                 href="/contact"
@@ -558,7 +558,7 @@ export default function SellPage() {
               className="text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700 apply-button"
               style={applyButtonStyles}
             >
-              Apply Now - Founding Seller Spots Are Limited
+              Join Now - Founding Seller Spots Are Limited
             </Button>
           </div>
         </section>

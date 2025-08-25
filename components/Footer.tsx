@@ -76,6 +76,14 @@ const Footer = () => {
                         Browse Shops
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/sell"
+                        className="text-sm text-muted-foreground hover:text-gray-600"
+                      >
+                        Sell on Yarnnu
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 
@@ -180,7 +188,7 @@ const Footer = () => {
                 {/* Newsletter Subscription and Social Links */}
                 <div className="text-center sm:text-left">
                   <NewsletterSubscriptionForm variant="compact" />
-                  
+
                   {/* Social Media Links */}
                   <div className="mt-6">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">
@@ -244,7 +252,8 @@ const Footer = () => {
             </Link>
           </div>
         </div>
-        <div className="hidden md:block w-[180px]"></div> {/* Spacer to balance the layout */}
+        <div className="hidden md:block w-[180px]"></div>{" "}
+        {/* Spacer to balance the layout */}
       </div>
     </footer>
   );

@@ -153,6 +153,9 @@ model User {
   userSessions          UserSession[]
   reportsSubmitted      Report[]        @relation("ReportReporter")
   followers             Follow[]        @relation("UserFollowers") // Sellers this user is following
+  wishlists             Wishlist[]
+  wishlistItems         WishlistItem[] @relation("UserWishlistItems")
+  purchasedItems        WishlistItem[] @relation("WishlistPurchaser")
 
   //Tracability and fraud detection
   signupIP          String? // IP at signup
@@ -489,6 +492,7 @@ model Product {
   discountEndTime       String? // Time component for discount end
   reviews               Review[]
   productInteractions   ProductInteraction[]
+  wishlistItems         WishlistItem[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   seller                Seller?          @relation(fields: [userId], references: [userId])
@@ -1618,6 +1622,77 @@ model Follow {
   @@index([sellerId])              // Fast lookup for seller's followers
   @@index([followerId])            // Fast lookup for a user's following
   @@index([createdAt])             // For chronological ordering
+}
+
+model Wishlist {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String         @db.ObjectId
+  name            String
+  description     String?
+  coverImage      String?        // Auto-generated from first item if blank
+  slug            String         @unique // For clean URLs like yarnnu.com/w/xmas2025-abc123
+  privacy         WishlistPrivacy @default(PRIVATE)
+  allowPurchases  Boolean        @default(false) // Can others buy directly from this wishlist?
+  hideOnPurchase  Boolean        @default(false) // Hide items when purchased (surprise mode)
+  isDefault       Boolean        @default(false) // Is this the user's default wishlist?
+  
+  // Relationships
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           WishlistItem[]
+  analytics       WishlistAnalytics?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([privacy])
+}
+
+model WishlistItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  wishlistId  String    @db.ObjectId
+  productId   String    @db.ObjectId
+  userId      String    @db.ObjectId // User who owns the wishlist
+  purchased   Boolean   @default(false)
+  purchasedBy String?   @db.ObjectId // Who purchased it (if allowPurchases = true)
+  purchasedAt DateTime?
+  notes       String?   // Personal notes about this item
+  
+  // Relationships
+  wishlist    Wishlist  @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  purchaser   User?     @relation("WishlistPurchaser", fields: [purchasedBy], references: [id])
+  user        User      @relation("UserWishlistItems", fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([wishlistId, productId]) // Prevent duplicate items in same wishlist
+  @@index([wishlistId])
+  @@index([productId])
+  @@index([purchased])
+}
+
+model WishlistAnalytics {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  wishlistId            String   @unique @db.ObjectId
+  totalViews            Int      @default(0)
+  uniqueVisitors        Int      @default(0)
+  sharesGenerated       Int      @default(0) // QR codes generated, links shared
+  socialShares          Json     @default("{}") // Track which platforms: {facebook: 5, twitter: 3, etc}
+  lastViewedAt          DateTime?
+  
+  // Relationships
+  wishlist              Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+enum WishlistPrivacy {
+  PRIVATE        // Only owner can see
+  PUBLIC         // Searchable, shows in profile
+  SHAREABLE      // Only accessible via link/QR
 }
 
 

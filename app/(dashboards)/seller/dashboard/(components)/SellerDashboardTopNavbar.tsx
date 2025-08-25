@@ -21,11 +21,13 @@ import {
   FileText,
   Share2,
   Heart,
+  Bookmark,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
 import { getUserInfoForNav } from "@/actions/userActions";
+import { WishlistFlyout } from "@/components/wishlist/WishlistFlyout";
 
 export default async function SellerDashboardTopNavbar({
   children,
@@ -124,6 +126,14 @@ export default async function SellerDashboardTopNavbar({
                 </Link>
               </DialogClose>
               <DialogClose asChild>
+                <Link href="/seller/dashboard/wishlists">
+                  <Button variant="outline" className="w-full">
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    My Wishlists
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
                 <Link href="/seller/dashboard/referrals">
                   <Button variant="outline" className="w-full">
                     <Share2 className="mr-2 h-4 w-4" />
@@ -152,10 +162,12 @@ export default async function SellerDashboardTopNavbar({
           </SheetContent>
         </Dialog>
 
-        {/* Right Side - UserNav */}
-        <div className="ml-auto">
-          {" "}
-          {/* Push UserNav to the right */}
+        {/* Right Side - Wishlist Button and UserNav */}
+        <div className="ml-auto flex items-center gap-x-2">
+          {/* Wishlist Button */}
+          {userInfo && <WishlistFlyout userRole={userInfo.role} />}
+          
+          {/* UserNav */}
           {userInfo ? <UserNav userInfo={userInfo} /> : <p>Loading...</p>}
         </div>
       </header>

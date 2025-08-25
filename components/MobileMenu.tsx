@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Menu as MenuIcon, Search as SearchIcon, ChevronRight, ArrowLeft } from "lucide-react";
+import { Menu as MenuIcon, Search as SearchIcon, ChevronRight, ArrowLeft, Heart, Bookmark } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
@@ -217,6 +217,25 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
             >
               Shop Now
             </Link>
+
+            {/* User-specific actions */}
+            {userInfo && (
+              <div className="space-y-2">
+                {/* Wishlist Link */}
+                <Link
+                  href="/dashboard/wishlists"
+                  className={cn(
+                    location === "/dashboard/wishlists"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-gray-100 hover:bg-gray-200",
+                    "flex items-center gap-3 px-4 py-3 font-medium rounded-lg transition-colors"
+                  )}
+                >
+                  <Bookmark className="w-5 h-5" />
+                  My Wishlists
+                </Link>
+              </div>
+            )}
 
             {/* Become a Seller Button - Only show for non-sellers */}
             {userInfo?.role !== "SELLER" && (
