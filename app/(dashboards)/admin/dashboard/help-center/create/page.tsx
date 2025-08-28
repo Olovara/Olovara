@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
 import HelpArticleForm from "@/components/forms/HelpArticleForm";
 
 export default function CreateHelpArticlePage() {
@@ -26,6 +23,11 @@ export default function CreateHelpArticlePage() {
 
       if (!response.ok) {
         const error = await response.json();
+        if (error.details) {
+          // Show detailed validation errors
+          const errorMessages = error.details.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+          throw new Error(`Validation errors: ${errorMessages}`);
+        }
         throw new Error(error.error || "Failed to create article");
       }
 
@@ -46,16 +48,7 @@ export default function CreateHelpArticlePage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/admin/dashboard/help-center")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Help Center
-        </Button>
-        <Separator orientation="vertical" className="h-6" />
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">Create Help Article</h1>
       </div>
 

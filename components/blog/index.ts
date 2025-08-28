@@ -111,16 +111,17 @@ export const BLOCK_CONFIGS = [
         {
           title: "Age Requirement",
           description: "Must be 18 years or older",
-          icon: "Shield",
+          isRequired: true,
+          category: "Legal",
         },
         {
           title: "Valid Documentation",
           description: "Government ID and proof of address required",
-          icon: "FileText",
+          isRequired: true,
+          category: "Legal",
         },
       ],
-      columns: "2",
-      variant: "cards",
+      variant: "simple",
     },
   },
   {
@@ -130,7 +131,6 @@ export const BLOCK_CONFIGS = [
     icon: "FileText",
     defaultData: {
       type: "rich-text",
-      title: "Content Section",
       content: "<p>Write your content here...</p>",
     },
   },

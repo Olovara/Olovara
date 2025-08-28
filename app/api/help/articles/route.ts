@@ -118,9 +118,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Debug logging
+    console.log("Received help article data:", JSON.stringify(body, null, 2));
+    
     // Validate request body
     const validation = createHelpArticleSchema.safeParse(body);
     if (!validation.success) {
+      console.error("Validation errors:", validation.error.errors);
       return NextResponse.json(
         { error: "Invalid request data", details: validation.error.errors },
         { status: 400 }

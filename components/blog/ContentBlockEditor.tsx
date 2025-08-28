@@ -52,7 +52,7 @@ export function ContentBlockEditor({ block, onChange }: ContentBlockEditorProps)
     updateBlock({ [field]: newArray });
   };
 
-  const updateRequirement = (index: number, field: string, value: string) => {
+  const updateRequirement = (index: number, field: string, value: string | boolean) => {
     const currentRequirements = (block as any).requirements || [];
     const newRequirements = [...currentRequirements];
     newRequirements[index] = { ...newRequirements[index], [field]: value };
@@ -64,7 +64,8 @@ export function ContentBlockEditor({ block, onChange }: ContentBlockEditorProps)
     const newRequirement = {
       title: "New Requirement",
       description: "Requirement description",
-      icon: "CheckCircle",
+      isRequired: true,
+      category: "Technical",
     };
     updateBlock({ requirements: [...currentRequirements, newRequirement] });
   };
@@ -825,15 +826,15 @@ export function ContentBlockEditor({ block, onChange }: ContentBlockEditorProps)
         <div className="space-y-2">
           <Label>Variant</Label>
           <Select
-            value={(block as any).variant || "cards"}
+            value={(block as any).variant || "simple"}
             onValueChange={(value) => updateBlock({ variant: value })}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="cards">Cards</SelectItem>
-              <SelectItem value="list">List</SelectItem>
+              <SelectItem value="simple">Simple</SelectItem>
+              <SelectItem value="detailed">Detailed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -865,29 +866,40 @@ export function ContentBlockEditor({ block, onChange }: ContentBlockEditorProps)
                 onChange={(e) => updateRequirement(index, "description", e.target.value)}
                 placeholder="Requirement description"
               />
-              <Select
-                value={req.icon || "CheckCircle"}
-                onValueChange={(value) => updateRequirement(index, "icon", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      {renderIcon(req.icon || "CheckCircle")}
-                      <span>{req.icon || "CheckCircle"}</span>
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {AVAILABLE_ICONS.map((icon) => (
-                    <SelectItem key={icon} value={icon}>
-                      <div className="flex items-center gap-2">
-                        {renderIcon(icon)}
-                        <span>{icon}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Required</Label>
+                  <Select
+                    value={req.isRequired ? "true" : "false"}
+                    onValueChange={(value) => updateRequirement(index, "isRequired", value === "true")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Category</Label>
+                  <Select
+                    value={req.category || "Technical"}
+                    onValueChange={(value) => updateRequirement(index, "category", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Technical">Technical</SelectItem>
+                      <SelectItem value="Business">Business</SelectItem>
+                      <SelectItem value="Legal">Legal</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         ))}

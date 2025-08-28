@@ -60,13 +60,43 @@ export default function HelpArticleForm({
   onSubmit,
   onCancel,
 }: HelpArticleFormProps) {
+  // Clean up old content block structures
+  const cleanupContentBlocks = (blocks: ContentBlock[]): ContentBlock[] => {
+    return blocks.map(block => {
+      if (block.type === "requirements") {
+        // Fix old requirements structure
+        const requirements = (block as any).requirements?.map((req: any) => {
+          if (req.icon && !req.isRequired) {
+            return {
+              title: req.title,
+              description: req.description,
+              isRequired: true,
+              category: "Technical",
+            };
+          }
+          return req;
+        }) || [];
+        
+        // Fix old variant
+        const variant = (block as any).variant === "cards" ? "simple" : (block as any).variant || "simple";
+        
+        return {
+          ...block,
+          requirements,
+          variant,
+        };
+      }
+      return block;
+    });
+  };
+
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(
     initialData?.description || ""
   );
   const [content, setContent] = useState(initialData?.content || "");
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(
-    initialData?.contentBlocks || []
+    cleanupContentBlocks(initialData?.contentBlocks || [])
   );
   const [category, setCategory] = useState(initialData?.catSlug || "");
   const [categories, setCategories] = useState<HelpCategory[]>([]);
@@ -175,7 +205,7 @@ export default function HelpArticleForm({
 
   const updateContentBlock = (index: number, updatedBlock: ContentBlock) => {
     const newBlocks = [...contentBlocks];
-    newBlocks[index] = updatedBlock;
+    newBlocks[index] = cleanupContentBlocks([updatedBlock])[0];
     setContentBlocks(newBlocks);
   };
 
@@ -234,8 +264,8 @@ export default function HelpArticleForm({
       }
     });
 
-    // Calculate read time (250 words per minute)
-    const readTimeMinutes = Math.ceil(totalWordCount / 250);
+    // Calculate read time (250 words per minute) - minimum 1 minute
+    const readTimeMinutes = Math.max(1, Math.ceil(totalWordCount / 250));
 
     return { wordCount: totalWordCount, readTimeMinutes };
   };
