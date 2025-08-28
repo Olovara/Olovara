@@ -22,6 +22,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { WishlistItemCard } from "./WishlistItemCard";
 import { CreateWishlistModal } from "./CreateWishlistModal";
+import {
+  useWishlistSync,
+  useWishlistTotalItems,
+  useWishlistItems,
+} from "@/hooks/useWishlistSync";
 
 interface Wishlist {
   id: string;
@@ -42,6 +47,11 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
+  // Use the sync system for total items count and wishlist items
+  const totalItems = useWishlistTotalItems();
+  const wishlistItemIds = useWishlistItems();
+  const { setWishlistItems, setTotalItems } = useWishlistSync();
+
   // Fetch wishlist data
   useEffect(() => {
     const fetchWishlists = async () => {
@@ -49,6 +59,23 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
         const result = await getUserWishlists();
         if (result.success && result.wishlists) {
           setWishlists(result.wishlists);
+
+          // Update the global sync state
+          const allProductIds: string[] = [];
+          let totalCount = 0;
+
+          result.wishlists.forEach((wishlist: any) => {
+            if (wishlist.items) {
+              wishlist.items.forEach((item: any) => {
+                allProductIds.push(item.productId);
+                totalCount++;
+              });
+            }
+          });
+
+          setWishlistItems(allProductIds);
+          setTotalItems(totalCount);
+
           // Set the default wishlist as selected
           const defaultWishlist = result.wishlists.find((w) => w.isDefault);
           if (defaultWishlist) {
@@ -66,7 +93,7 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
     };
 
     fetchWishlists();
-  }, []);
+  }, [setWishlistItems, setTotalItems]);
 
   const selectedWishlist = wishlists.find((w) => w.id === selectedWishlistId);
 
@@ -76,9 +103,40 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
       const result = await getUserWishlists();
       if (result.success && result.wishlists) {
         setWishlists(result.wishlists);
+
+        // Update the global sync state
+        const allProductIds: string[] = [];
+        let totalCount = 0;
+
+        result.wishlists.forEach((wishlist: any) => {
+          if (wishlist.items) {
+            wishlist.items.forEach((item: any) => {
+              allProductIds.push(item.productId);
+              totalCount++;
+            });
+          }
+        });
+
+        setWishlistItems(allProductIds);
+        setTotalItems(totalCount);
       }
     } catch (error) {
       console.error("Error refreshing wishlists:", error);
+    }
+  };
+
+  // Refresh only local wishlists state (for flyout display)
+  const refreshLocalWishlists = async () => {
+    try {
+      // Small delay to ensure database has been updated
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const result = await getUserWishlists();
+      if (result.success && result.wishlists) {
+        setWishlists(result.wishlists);
+      }
+    } catch (error) {
+      console.error("Error refreshing local wishlists:", error);
     }
   };
 
@@ -88,6 +146,23 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
     const updatedResult = await getUserWishlists();
     if (updatedResult.success && updatedResult.wishlists) {
       setWishlists(updatedResult.wishlists);
+
+      // Update the global sync state
+      const allProductIds: string[] = [];
+      let totalCount = 0;
+
+      updatedResult.wishlists.forEach((wishlist: any) => {
+        if (wishlist.items) {
+          wishlist.items.forEach((item: any) => {
+            allProductIds.push(item.productId);
+            totalCount++;
+          });
+        }
+      });
+
+      setWishlistItems(allProductIds);
+      setTotalItems(totalCount);
+
       // Set the newly created wishlist as selected
       const newWishlist =
         updatedResult.wishlists[updatedResult.wishlists.length - 1];
@@ -107,9 +182,24 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
     router.push(dashboardPath);
   };
 
-  const totalItems = wishlists.reduce((acc, wishlist) => {
-    return acc + (wishlist.items?.length || 0);
-  }, 0);
+  // Get the current wishlist items with product data
+  const getCurrentWishlistItems = () => {
+    if (!selectedWishlist) return [];
+
+    // Return all items from the selected wishlist - don't filter by global state
+    // The global state is for the count and heart states, but the flyout should show
+    // the actual wishlist items from the database
+    return selectedWishlist.items || [];
+  };
+
+  const currentItems = getCurrentWishlistItems();
+
+  // Refresh wishlists when the flyout opens
+  useEffect(() => {
+    if (isOpen) {
+      refreshLocalWishlists();
+    }
+  }, [isOpen]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -205,7 +295,7 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
               </h4>
               {selectedWishlist && (
                 <Badge variant="secondary" className="text-xs">
-                  {selectedWishlist.items?.length || 0} items
+                  {currentItems.length} items
                 </Badge>
               )}
             </div>
@@ -216,9 +306,8 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900" />
                 </div>
-              ) : selectedWishlist?.items &&
-                selectedWishlist.items.length > 0 ? (
-                selectedWishlist.items.map((item) => (
+              ) : currentItems.length > 0 ? (
+                currentItems.map((item) => (
                   <WishlistItemCard
                     key={item.id}
                     item={item}

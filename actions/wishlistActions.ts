@@ -497,3 +497,97 @@ export async function getWishlistAnalyticsForProduct(productId: string) {
     return { success: false, error: "Failed to get analytics" };
   }
 }
+
+// Toggle product in default wishlist (add if not present, remove if present)
+export async function toggleWishlistItem(data: {
+  productId: string;
+}) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get or create default wishlist
+    let defaultWishlist = await db.wishlist.findFirst({
+      where: {
+        userId: session.user.id,
+        isDefault: true,
+      },
+    });
+
+    if (!defaultWishlist) {
+      // Create default wishlist if none exists
+      defaultWishlist = await db.wishlist.create({
+        data: {
+          userId: session.user.id,
+          name: "Default",
+          slug: `default-${nanoid(6)}`,
+          isDefault: true,
+        },
+      });
+
+      // Create analytics record
+      await db.wishlistAnalytics.create({
+        data: {
+          wishlistId: defaultWishlist.id,
+        },
+      });
+    }
+
+    // Check if product is already in wishlist
+    const existingItem = await db.wishlistItem.findUnique({
+      where: {
+        wishlistId_productId: {
+          wishlistId: defaultWishlist.id,
+          productId: data.productId,
+        },
+      },
+    });
+
+    if (existingItem) {
+      // Remove from wishlist
+      await db.wishlistItem.delete({
+        where: {
+          wishlistId_productId: {
+            wishlistId: defaultWishlist.id,
+            productId: data.productId,
+          },
+        },
+      });
+
+      // Update product analytics (decrement wishlist count)
+      await updateProductWishlistCount(data.productId, -1);
+
+      revalidatePath("/dashboard");
+      revalidatePath(`/product/${data.productId}`);
+      return { success: true, action: "removed" };
+    } else {
+      // Add to wishlist
+      const wishlistItem = await db.wishlistItem.create({
+        data: {
+          wishlistId: defaultWishlist.id,
+          productId: data.productId,
+          userId: session.user.id,
+        },
+        include: {
+          product: {
+            include: {
+              seller: true,
+            },
+          },
+        },
+      });
+
+      // Update product analytics (increment wishlist count)
+      await updateProductWishlistCount(data.productId);
+
+      revalidatePath("/dashboard");
+      revalidatePath(`/product/${data.productId}`);
+      return { success: true, action: "added", wishlistItem };
+    }
+  } catch (error) {
+    console.error("Error toggling wishlist item:", error);
+    return { success: false, error: "Failed to update wishlist" };
+  }
+}

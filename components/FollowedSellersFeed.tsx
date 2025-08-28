@@ -10,6 +10,11 @@ import { getFollowedSellersFeed } from "@/actions/followActions";
 import { useCurrency } from "@/hooks/useCurrency";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  toggleWishlistItem,
+  getUserWishlists,
+} from "@/actions/wishlistActions";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -39,7 +44,15 @@ export default function FollowedSellersFeed({
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
-  const [formattedPrices, setFormattedPrices] = useState<Record<string, string>>({});
+  const [formattedPrices, setFormattedPrices] = useState<
+    Record<string, string>
+  >({});
+  const [wishlistLoadingStates, setWishlistLoadingStates] = useState<
+    Record<string, boolean>
+  >({});
+  const [wishlistStates, setWishlistStates] = useState<Record<string, boolean>>(
+    {}
+  );
   const { formatPrice } = useCurrency();
 
   useEffect(() => {
@@ -68,10 +81,13 @@ export default function FollowedSellersFeed({
       });
 
       const results = await Promise.all(pricePromises);
-      const priceMap = results.reduce((acc, { id, price }) => {
-        acc[id] = price;
-        return acc;
-      }, {} as Record<string, string>);
+      const priceMap = results.reduce(
+        (acc, { id, price }) => {
+          acc[id] = price;
+          return acc;
+        },
+        {} as Record<string, string>
+      );
 
       setFormattedPrices(priceMap);
     };
@@ -80,6 +96,68 @@ export default function FollowedSellersFeed({
       formatPrices();
     }
   }, [products, formatPrice]);
+
+  // Check wishlist status for all products
+  useEffect(() => {
+    const checkWishlistStatuses = async () => {
+      try {
+        const result = await getUserWishlists();
+        if (result.success && result.wishlists) {
+          const newWishlistStates: Record<string, boolean> = {};
+
+          products.forEach((product) => {
+            const isInAnyWishlist = result.wishlists.some((wishlist: any) =>
+              wishlist.items.some((item: any) => item.productId === product.id)
+            );
+            newWishlistStates[product.id] = isInAnyWishlist;
+          });
+
+          setWishlistStates(newWishlistStates);
+        }
+      } catch (error) {
+        console.error("Error checking wishlist statuses:", error);
+      }
+    };
+
+    if (products.length > 0) {
+      checkWishlistStatuses();
+    }
+  }, [products]);
+
+  // Handle adding/removing from wishlist
+  const handleAddToWishlist = async (
+    e: React.MouseEvent,
+    productId: string
+  ) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Prevent event bubbling
+
+    setWishlistLoadingStates((prev) => ({ ...prev, [productId]: true }));
+
+    try {
+      const result = await toggleWishlistItem({
+        productId,
+      });
+
+      if (result.success) {
+        setWishlistStates((prev) => ({
+          ...prev,
+          [productId]: result.action === "added",
+        }));
+        toast.success(
+          result.action === "added"
+            ? "Added to wishlist!"
+            : "Removed from wishlist!"
+        );
+      } else {
+        toast.error(result.error || "Failed to update wishlist");
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setWishlistLoadingStates((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -138,7 +216,7 @@ export default function FollowedSellersFeed({
         {products.map((product) => (
           <Card
             key={product.id}
-            className="overflow-hidden hover:shadow-lg transition-shadow"
+            className="overflow-hidden hover:shadow-lg transition-shadow group"
           >
             <Link href={`/product/${product.id}`}>
               <div className="relative h-48 bg-gray-100">
@@ -158,6 +236,23 @@ export default function FollowedSellersFeed({
                 <Badge className="absolute top-2 left-2 bg-black/70 text-white">
                   New
                 </Badge>
+
+                {/* Wishlist Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleAddToWishlist(e, product.id)}
+                  disabled={wishlistLoadingStates[product.id]}
+                  className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                >
+                  <Heart
+                    className={`h-4 w-4 transition-colors ${
+                      wishlistStates[product.id]
+                        ? "fill-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-purple-600"
+                    }`}
+                  />
+                </Button>
               </div>
             </Link>
 
@@ -194,14 +289,14 @@ export default function FollowedSellersFeed({
                 </h3>
               </Link>
 
-                             <div className="flex items-center justify-between">
-                 <span className="font-semibold text-lg">
-                   {formattedPrices[product.id] || "..."}
-                 </span>
-                 <span className="text-xs text-gray-500">
-                   {formatDate(product.createdAt)}
-                 </span>
-               </div>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-lg">
+                  {formattedPrices[product.id] || "..."}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {formatDate(product.createdAt)}
+                </span>
+              </div>
             </CardContent>
           </Card>
         ))}

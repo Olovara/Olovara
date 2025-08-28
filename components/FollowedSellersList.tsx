@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getFollowedSellers } from "@/actions/followActions";
 import {
   Card,
@@ -11,9 +11,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Heart, Package, Users, ExternalLink } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Heart, Package, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
+import { toast } from "sonner";
 
 interface FollowedSellersListProps {
   showEmptyState?: boolean;
@@ -32,6 +35,8 @@ export default function FollowedSellersList({
 }: FollowedSellersListProps) {
   const [followedSellers, setFollowedSellers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [wishlistLoadingStates, setWishlistLoadingStates] = useState<Record<string, boolean>>({});
+  const [wishlistStates, setWishlistStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const loadFollowedSellers = async () => {
@@ -48,6 +53,62 @@ export default function FollowedSellersList({
 
     loadFollowedSellers();
   }, []);
+
+  // Check wishlist status for all products
+  useEffect(() => {
+    const checkWishlistStatuses = async () => {
+      try {
+        const result = await getUserWishlists();
+        if (result.success && result.wishlists) {
+          const newWishlistStates: Record<string, boolean> = {};
+          
+          // Check all products from all sellers
+          followedSellers.forEach((seller) => {
+            if (seller.products) {
+              seller.products.forEach((product: any) => {
+                const isInAnyWishlist = result.wishlists.some((wishlist: any) =>
+                  wishlist.items.some((item: any) => item.productId === product.id)
+                );
+                newWishlistStates[product.id] = isInAnyWishlist;
+              });
+            }
+          });
+          
+          setWishlistStates(newWishlistStates);
+        }
+      } catch (error) {
+        console.error("Error checking wishlist statuses:", error);
+      }
+    };
+
+    if (followedSellers.length > 0) {
+      checkWishlistStatuses();
+    }
+  }, [followedSellers]);
+
+  // Handle adding/removing from wishlist
+  const handleAddToWishlist = async (e: React.MouseEvent, productId: string) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Prevent event bubbling
+    
+    setWishlistLoadingStates(prev => ({ ...prev, [productId]: true }));
+    try {
+      const result = await toggleWishlistItem({
+        productId,
+      });
+      
+      if (result.success) {
+        setWishlistStates(prev => ({ ...prev, [productId]: result.action === "added" }));
+        toast.success(result.action === "added" ? "Added to wishlist!" : "Removed from wishlist!");
+      } else {
+        toast.error(result.error || "Failed to update wishlist");
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setWishlistLoadingStates(prev => ({ ...prev, [productId]: false }));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -147,34 +208,51 @@ export default function FollowedSellersList({
                 <h4 className="font-semibold mb-4">Recent Products</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {seller.products.map((product: any) => (
-                    <Link
-                      key={product.id}
-                      href={`/product/${product.id}`}
-                      className="group block"
-                    >
-                      <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
-                        {product.images && product.images.length > 0 ? (
-                          <Image
-                            src={product.images[0]}
-                            alt={product.name}
-                            fill
-                            className="object-cover transition-transform group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <Package className="h-8 w-8 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
+                    <div key={product.id} className="group block">
+                      <Link href={`/product/${product.id}`}>
+                        <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                          {product.images && product.images.length > 0 ? (
+                            <Image
+                              src={product.images[0]}
+                              alt={product.name}
+                              fill
+                              className="object-cover transition-transform group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <Package className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          
+                          {/* Wishlist Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleAddToWishlist(e, product.id)}
+                            disabled={wishlistLoadingStates[product.id]}
+                            className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                          >
+                            <Heart 
+                              className={`h-4 w-4 transition-colors ${
+                                wishlistStates[product.id] 
+                                  ? "fill-purple-600 text-purple-600" 
+                                  : "text-gray-600 hover:text-purple-600"
+                              }`} 
+                            />
+                          </Button>
+                        </div>
+                      </Link>
                       <div className="mt-2">
-                        <h5 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                          {product.name}
-                        </h5>
+                        <Link href={`/product/${product.id}`}>
+                          <h5 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                            {product.name}
+                          </h5>
+                        </Link>
                         <p className="text-sm font-semibold text-primary">
                           ${(product.price / 100).toFixed(2)}
                         </p>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
                 {seller.totalProducts > 3 && (

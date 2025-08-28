@@ -8,6 +8,11 @@ import { CategoriesMap } from "@/data/categories";
 import ImageSlider from "./ImageSlider";
 import { CountdownTimer } from "./CountdownTimer";
 import { useCurrency } from "@/hooks/useCurrency";
+import { Heart } from "lucide-react";
+import { Button } from "./ui/button";
+import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
+import { toast } from "sonner";
+import { useIsInWishlist, useWishlistLoading, useWishlistSync } from "@/hooks/useWishlistSync";
 
 interface SimplifiedProduct {
   name: string;
@@ -54,6 +59,11 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const [convertedDiscountedPrice, setConvertedDiscountedPrice] =
     useState<string>("");
   const { formatPrice } = useCurrency();
+
+  // Use the sync system for wishlist state
+  const isInWishlist = useIsInWishlist(product?.id || "");
+  const isWishlistLoading = useWishlistLoading(product?.id || "");
+  const { addToWishlist, removeFromWishlist, setLoadingState } = useWishlistSync();
 
   // Check if sale is currently active
   const isOnSale = (() => {
@@ -129,6 +139,86 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     }
   }, [product?.dropDate, product?.dropTime]);
 
+  // Check if product is in wishlist on component mount
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!product) return;
+      
+      try {
+        const result = await getUserWishlists();
+        if (result.success && result.wishlists) {
+          const isInAnyWishlist = result.wishlists.some((wishlist: any) =>
+            wishlist.items.some((item: any) => item.productId === product.id)
+          );
+          
+          // Only update if the state is different from current
+          if (isInAnyWishlist !== isInWishlist) {
+            if (isInAnyWishlist) {
+              addToWishlist(product.id);
+            } else {
+              removeFromWishlist(product.id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking wishlist status:", error);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [product, addToWishlist, removeFromWishlist, isInWishlist]);
+
+  // Handle adding/removing from wishlist
+  const handleAddToWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Prevent event bubbling
+    
+    if (!product) {
+      toast.error("Product not available");
+      return;
+    }
+    
+    // Prevent multiple clicks
+    if (isWishlistLoading) return;
+    
+    // Optimistic update
+    if (isInWishlist) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product.id);
+    }
+    
+    setLoadingState(product.id, true);
+    
+    try {
+      const result = await toggleWishlistItem({
+        productId: product.id,
+      });
+      
+      if (result.success) {
+        toast.success(result.action === "added" ? "Added to wishlist!" : "Removed from wishlist!");
+      } else {
+        // Revert optimistic update on error
+        if (result.action === "added") {
+          removeFromWishlist(product.id);
+        } else {
+          addToWishlist(product.id);
+        }
+        toast.error(result.error || "Failed to update wishlist");
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      if (isInWishlist) {
+        addToWishlist(product.id);
+      } else {
+        removeFromWishlist(product.id);
+      }
+      toast.error("Something went wrong");
+    } finally {
+      setLoadingState(product.id, false);
+    }
+  };
+
   if (!product || !isVisible) return <ProductPlaceholder />;
 
   const primaryCategories = CategoriesMap.PRIMARY;
@@ -173,6 +263,23 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
           {isLoading && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
+          
+          {/* Wishlist Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleAddToWishlist}
+            disabled={isWishlistLoading}
+            className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover/main:opacity-100 transition-opacity duration-200 z-10"
+          >
+            <Heart 
+              className={`h-4 w-4 transition-colors ${
+                isInWishlist 
+                  ? "fill-purple-600 text-purple-600" 
+                  : "text-gray-600 hover:text-purple-600"
+              }`} 
+            />
+          </Button>
         </div>
 
         {/* Product Name - First */}

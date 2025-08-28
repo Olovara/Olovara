@@ -34,6 +34,7 @@ export const SecondaryCategories = [
   { id: "FURNITURE", name: "Furniture", primaryCategoryId: "HOME" },
   { id: "GARDEN", name: "Garden & Outdoor", primaryCategoryId: "HOME" },
   { id: "PAINTINGS", name: "Paintings", primaryCategoryId: "ART" },
+  { id: "PRINTS", name: "Prints", primaryCategoryId: "ART" },
   { id: "PHOTOGRAPHY", name: "Photography", primaryCategoryId: "ART" },
   { id: "SCULPTURES", name: "Sculptures", primaryCategoryId: "ART" },
   { id: "COLLECTIBLES", name: "Collectibles", primaryCategoryId: "ART" },
@@ -114,6 +115,13 @@ export const TertiaryCategories = [
   { id: "ANIMALS", name: "Animals", secondaryCategoryId: "STUFFED" },
   { id: "DOLLS", name: "Dolls", secondaryCategoryId: "STUFFED" },
   { id: "PLUSHIES", name: "Plushies", secondaryCategoryId: "STUFFED" },
+
+  // Art - Prints
+  { id: "WOODANDLINOCUT", name: "Wood and Linocut", secondaryCategoryId: "PRINTS" },
+
+  // Art - Painting
+  { id: "ACRYLIC", name: "Acrylic", secondaryCategoryId: "PAINTINGS" },
+  { id: "OIL", name: "Oil", secondaryCategoryId: "PAINTINGS" },
 ] as const;
 
 // Extract IDs for strict typing
@@ -124,7 +132,7 @@ type SecondaryCategoryID = (typeof SecondaryCategories)[number]["id"];
  * Map Secondary Categories to Primary Categories
  */
 export const CategoryMapping: Record<PrimaryCategoryID, SecondaryCategoryID[]> = {
-  ART: ["PAINTINGS", "PHOTOGRAPHY", "SCULPTURES", "COLLECTIBLES"],
+  ART: ["PAINTINGS", "PRINTS", "PHOTOGRAPHY", "SCULPTURES", "COLLECTIBLES"],
   BATH: ["SOAP", "SKIN", "SPA", "COSMETICS", "HAIR"],
   BOOKS: ["COMICS", "AUDIO"],
   CLOTHING: ["TOPS", "BOTTOMS", "DRESSES", "ACCESSORIES", "WOMENS", "MENS", "UNISEX", "CHILD", "BAGS"],
@@ -151,6 +159,8 @@ export const TertiaryCategoryMapping: Record<string, string[]> = {
   DECOR: ["WALL_ART", "CANDLES", "VASES", "THROW_PILLOWS", "RUGS"],
   SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS"],
   STUFFED: ["TEDDY_BEARS", "ANIMALS", "DOLLS", "PLUSHIES"],
+  PRINTS: ["WOODANDLINOCUT"],
+  PAINTINGS: ["ACRYLIC", "OIL"],
 };
 
 /**
