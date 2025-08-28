@@ -121,7 +121,9 @@ const requirementsBlockSchema = z.object({
         title: z.string().min(1, "Requirement title is required"),
         description: z.string().min(1, "Requirement description is required"),
         isRequired: z.boolean().default(true),
-        category: z.enum(["Technical", "Business", "Legal", "Other"]).optional(),
+        category: z
+          .enum(["Technical", "Business", "Legal", "Other"])
+          .optional(),
       })
     )
     .min(1, "At least one requirement is required"),
@@ -160,11 +162,6 @@ export const createHelpArticleSchema = z.object({
     .string()
     .min(1, "Description is required")
     .max(500, "Description must be less than 500 characters")
-    .transform((val) => val.trim()),
-
-  content: z
-    .string()
-    .min(1, "Content is required")
     .transform((val) => val.trim()),
 
   // Structured content blocks
@@ -248,7 +245,9 @@ export const helpArticleQuerySchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(50).default(10),
   search: z.string().optional(),
-  sortBy: z.enum(["publishedAt", "views", "title", "order", "createdAt"]).default("order"),
+  sortBy: z
+    .enum(["publishedAt", "views", "title", "order", "createdAt"])
+    .default("order"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 

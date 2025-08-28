@@ -111,6 +111,42 @@ export const ourFileRouter = {
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
+
+  dmcaDocumentUpload: f({ 
+    "application/pdf": { maxFileSize: "8MB", maxFileCount: 1 },
+    "application/msword": { maxFileSize: "8MB", maxFileCount: 1 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "8MB", maxFileCount: 1 },
+    "image/jpeg": { maxFileSize: "8MB", maxFileCount: 1 },
+    "image/png": { maxFileSize: "8MB", maxFileCount: 1 }
+  })
+    .middleware(async ({ req }) => {
+      // For DMCA documents, we don't require authentication since it's a public form
+      return { userId: "dmca-public" };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      // This code RUNS ON YOUR SERVER after upload
+      console.log("DMCA document upload complete");
+      console.log("file url", file.ufsUrl);
+
+      // Record the upload in the TemporaryUpload table
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.ufsUrl,
+            userId: metadata.userId,
+            // productId will be null until associated with a product
+          },
+        });
+        console.log("DMCA document upload recorded:", file.key);
+      } catch (error) {
+        console.error("Failed to record DMCA document upload:", error);
+        throw new UploadThingError("Failed to record upload");
+      }
+
+      // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

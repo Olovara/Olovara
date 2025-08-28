@@ -566,6 +566,32 @@ model ContactUs {
   createdAt DateTime @default(now())
 }
 
+model DMCAComplaint {
+  id                    String @id @default(auto()) @map("_id") @db.ObjectId
+  
+  // Basic Information
+  name                  String
+  email                 String
+  phoneNumber           String?
+  
+  // Product Information
+  productLink           String
+  infringingStatement   String
+  
+  // Legal Agreement
+  legalAgreement        Boolean
+  
+  // File Upload
+  copyrightDocumentUrl  String?
+  
+  // Status tracking
+  status               String @default("PENDING") // PENDING, REVIEWING, RESOLVED, REJECTED
+  adminNotes           String?
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
 model Order {
   id                       String        @id @default(auto()) @map("_id") @db.ObjectId
   userId                   String

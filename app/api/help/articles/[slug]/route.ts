@@ -81,7 +81,6 @@ export async function PUT(
     const {
       title,
       description,
-      content,
       contentBlocks,
       catSlug,
       status,

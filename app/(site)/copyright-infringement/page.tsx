@@ -5,6 +5,7 @@ import "react-quill/dist/quill.snow.css";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import DMCAForm from "@/components/forms/DMCAForm";
 
 // Dynamically import QuillEditor with SSR disabled
 const QuillEditor = dynamic(
@@ -13,7 +14,9 @@ const QuillEditor = dynamic(
     ssr: false,
     loading: () => (
       <div className="h-[200px] flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading editor...</div>
+        <div className="animate-pulse text-muted-foreground">
+          Loading editor...
+        </div>
       </div>
     ),
   }
@@ -25,6 +28,7 @@ export default function CopyrightInfringement() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDMCAForm, setShowDMCAForm] = useState(false);
 
   const fetchPolicy = useCallback(async () => {
     try {
@@ -47,7 +51,7 @@ export default function CopyrightInfringement() {
       const roleRes = await fetch("/api/auth/get-role");
       if (roleRes.ok) {
         const roleData = await roleRes.json();
-        setIsAdmin(roleData.permissions?.includes('MANAGE_CONTENT'));
+        setIsAdmin(roleData.permissions?.includes("MANAGE_CONTENT"));
       }
     } catch (error) {
       // If there's an error (like not logged in), just keep isAdmin as false
@@ -75,8 +79,8 @@ export default function CopyrightInfringement() {
     const toastId = toast.loading("Saving policy...");
 
     try {
-      const htmlToSave = content || '';
-      const textToSave = htmlToSave.replace(/<[^>]*>?/gm, '');
+      const htmlToSave = content || "";
+      const textToSave = htmlToSave.replace(/<[^>]*>?/gm, "");
 
       const response = await fetch("/api/copyright-infringement", {
         method: "POST",
@@ -84,8 +88,8 @@ export default function CopyrightInfringement() {
         body: JSON.stringify({
           content: {
             html: htmlToSave,
-            text: textToSave
-          }
+            text: textToSave,
+          },
         }),
       });
 
@@ -132,14 +136,49 @@ export default function CopyrightInfringement() {
           />
         </div>
 
+        {/* DMCA Complaint Section */}
+        <div className="mt-8 border-t pt-8">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Report Copyright Infringement
+            </h2>
+            <p className="text-gray-600 mb-4">
+              If you believe your copyrighted work has been used without
+              authorization, you can submit a DMCA takedown notice using the
+              form below.
+            </p>
+            {!showDMCAForm && (
+              <button
+                onClick={() => setShowDMCAForm(true)}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Submit DMCA Complaint
+              </button>
+            )}
+          </div>
+
+          {showDMCAForm && (
+            <div className="mt-6">
+              <DMCAForm />
+              <div className="text-center mt-4">
+                <button
+                  onClick={() => setShowDMCAForm(false)}
+                  className="text-gray-500 hover:text-gray-700 underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Show editor and save button only for admin */}
         {isAdmin && (
           <div className="mt-6 sm:mt-8 border-t pt-6 sm:pt-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4">Edit Policy</h2>
-            <QuillEditor
-              value={content}
-              onChange={setContent}
-            />
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">
+              Edit Policy
+            </h2>
+            <QuillEditor value={content} onChange={setContent} />
             <button
               className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleSave}

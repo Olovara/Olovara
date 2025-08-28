@@ -270,7 +270,6 @@ export default function HelpArticleForm({
       const articleData = {
         title: title.trim(),
         description: description.trim(),
-        content: content,
         contentBlocks,
         catSlug: category,
         status,
@@ -279,7 +278,6 @@ export default function HelpArticleForm({
         tags,
         keywords,
         readTime: readTimeMinutes,
-        img: img || null,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
         order: initialData?.order || 0,
