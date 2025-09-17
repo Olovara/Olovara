@@ -61,6 +61,7 @@ export async function PUT(
             additionalItem: rate.additionalItem,
             serviceLevel: rate.serviceLevel,
             isFreeShipping: rate.isFreeShipping,
+            countryRates: rate.countryRates || [],
           })),
         },
       },
@@ -104,4 +105,4 @@ export async function DELETE(
     console.error("[SHIPPING_PROFILES_DELETE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
-} 
+}

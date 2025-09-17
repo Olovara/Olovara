@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
@@ -22,11 +22,14 @@ export async function POST(request: NextRequest) {
     // Get the seller profile
     const seller = await db.seller.findUnique({
       where: { userId: session.user.id },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!seller) {
-      return NextResponse.json({ error: "Seller profile not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Seller profile not found" },
+        { status: 404 }
+      );
     }
 
     // Create shipping profile with rates
@@ -45,27 +48,30 @@ export async function POST(request: NextRequest) {
             additionalItem: rate.additionalItem,
             serviceLevel: rate.serviceLevel,
             isFreeShipping: rate.isFreeShipping || false,
-          }))
-        }
+            countryRates: rate.countryRates || [],
+          })),
+        },
       },
       include: {
-        rates: true
-      }
+        rates: true,
+      },
     });
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's shipping option has been created in the database
-    console.log("Shipping option created successfully for user:", session.user.id);
+    console.log(
+      "Shipping option created successfully for user:",
+      session.user.id
+    );
 
     return NextResponse.json({
       success: true,
-      shippingOption
+      shippingOption,
     });
-
   } catch (error) {
-          console.error("Error creating shipping option:", error);
-      return NextResponse.json(
-        { error: "Failed to create shipping option" },
+    console.error("Error creating shipping option:", error);
+    return NextResponse.json(
+      { error: "Failed to create shipping option" },
       { status: 500 }
     );
   }
@@ -92,4 +98,4 @@ export async function GET(req: Request) {
     console.error("[SHIPPING_PROFILES_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
-} 
+}

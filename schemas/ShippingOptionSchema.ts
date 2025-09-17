@@ -10,7 +10,8 @@ const createMonetarySchema = (fieldName: string) => {
       if (typeof val === "number") return val;
       return 0;
     },
-    z.number()
+    z
+      .number()
       .min(0.01, `${fieldName} must be at least $0.01`)
       .refine((val) => Number.isFinite(val), {
         message: `${fieldName} must be a valid number`,
@@ -18,44 +19,62 @@ const createMonetarySchema = (fieldName: string) => {
   );
 };
 
-export const ShippingRateSchema = z.object({
-  id: z.string(),
-  zone: z.enum(SHIPPING_ZONES.map(z => z.id) as [string, ...string[]], {
-    required_error: "Please select a shipping zone",
-  }),
-  isInternational: z.boolean().default(false),
-  price: createMonetarySchema("price"),
-  currency: z.enum(SUPPORTED_CURRENCIES.map(c => c.code) as [string, ...string[]], {
-    required_error: "Please select a currency",
-  }).default("USD"),
-  estimatedDays: z.preprocess(
-    (val) => {
-      if (typeof val === "string") return parseInt(val);
-      if (typeof val === "number") return val;
-      return 0;
-    },
-    z.number()
-      .int()
-      .min(1, "Estimated days must be at least 1")
-      .max(90, "Estimated days cannot exceed 90")
-  ),
-  additionalItem: z.preprocess(
-    (val) => {
+// Schema for individual country rates within a zone
+export const CountryRateSchema = z
+  .object({
+    countryCode: z.string().min(1, "Country code is required"),
+    price: createMonetarySchema("price"),
+    currency: z
+      .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
+        required_error: "Please select a currency",
+      })
+      .default("USD"),
+  })
+  .transform((data) => ({
+    ...data,
+    price: Math.round(data.price * 100), // Convert to cents
+  }));
+
+export const ShippingRateSchema = z
+  .object({
+    id: z.string(),
+    zone: z.enum(SHIPPING_ZONES.map((z) => z.id) as [string, ...string[]], {
+      required_error: "Please select a shipping zone",
+    }),
+    isInternational: z.boolean().default(false),
+    price: createMonetarySchema("price"),
+    currency: z
+      .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
+        required_error: "Please select a currency",
+      })
+      .default("USD"),
+    estimatedDays: z.preprocess(
+      (val) => {
+        if (typeof val === "string") return parseInt(val);
+        if (typeof val === "number") return val;
+        return 0;
+      },
+      z
+        .number()
+        .int()
+        .min(1, "Estimated days must be at least 1")
+        .max(90, "Estimated days cannot exceed 90")
+    ),
+    additionalItem: z.preprocess((val) => {
       if (typeof val === "string") return parseFloat(val);
       if (typeof val === "number") return val;
       return null;
-    },
-    z.number()
-      .min(0, "Additional item cost must be at least $0")
-      .nullable()
-  ),
-
-  isFreeShipping: z.boolean().default(false),
-}).transform((data) => ({
-  ...data,
-  price: Math.round(data.price * 100), // Convert to cents
-  additionalItem: data.additionalItem ? Math.round(data.additionalItem * 100) : null,
-}));
+    }, z.number().min(0, "Additional item cost must be at least $0").nullable()),
+    isFreeShipping: z.boolean().default(false),
+    countryRates: z.array(CountryRateSchema).default([]), // Array of country-specific rates
+  })
+  .transform((data) => ({
+    ...data,
+    price: Math.round(data.price * 100), // Convert to cents
+    additionalItem: data.additionalItem
+      ? Math.round(data.additionalItem * 100)
+      : null,
+  }));
 
 export const ShippingOptionSchema = z.object({
   name: z.string().min(1, {

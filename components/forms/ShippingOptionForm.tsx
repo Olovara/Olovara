@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { ShippingOptionSchema, type ShippingOptionFormValues } from "@/schemas/ShippingOptionSchema";
+import {
+  ShippingOptionSchema,
+  type ShippingOptionFormValues,
+} from "@/schemas/ShippingOptionSchema";
 import {
   Select,
   SelectContent,
@@ -28,7 +31,13 @@ import { SHIPPING_ZONES } from "@/data/shipping";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { getCountryByCode } from "@/data/countries";
+import { getCountryByCode, SUPPORTED_COUNTRIES } from "@/data/countries";
+
+interface CountryRate {
+  countryCode: string;
+  price: number;
+  currency: string;
+}
 
 interface ShippingRate {
   id: string;
@@ -38,6 +47,7 @@ interface ShippingRate {
   estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
+  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -83,11 +93,18 @@ export default function ShippingOptionForm({
       name: initialData?.name || "",
       isDefault: initialData?.isDefault || false,
       countryOfOrigin: initialData?.countryOfOrigin || sellerCountry,
-      rates: initialData?.rates.map(rate => ({
-        ...rate,
-        price: rate.price / 100, // Convert cents to dollars for display
-        additionalItem: rate.additionalItem ? rate.additionalItem / 100 : null,
-      })) || [],
+      rates:
+        initialData?.rates.map((rate) => ({
+          ...rate,
+          price: rate.price / 100, // Convert cents to dollars for display
+          additionalItem: rate.additionalItem
+            ? rate.additionalItem / 100
+            : null,
+          countryRates: (rate.countryRates || []).map((countryRate: any) => ({
+            ...countryRate,
+            price: countryRate.price / 100, // Convert cents to dollars for display
+          })),
+        })) || [],
     },
   });
 
@@ -105,7 +122,7 @@ export default function ShippingOptionForm({
 
   async function onSubmit(values: ShippingOptionFormValues) {
     try {
-              const response = await fetch("/api/shipping-options", {
+      const response = await fetch("/api/shipping-options", {
         method: initialData ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,6 +130,17 @@ export default function ShippingOptionForm({
         body: JSON.stringify({
           id: initialData?.id,
           ...values,
+          rates: values.rates.map((rate) => ({
+            ...rate,
+            price: Math.round(rate.price * 100), // Convert to cents
+            additionalItem: rate.additionalItem
+              ? Math.round(rate.additionalItem * 100)
+              : null,
+            countryRates: rate.countryRates.map((countryRate) => ({
+              ...countryRate,
+              price: Math.round(countryRate.price * 100), // Convert to cents
+            })),
+          })),
         }),
       });
 
@@ -125,7 +153,7 @@ export default function ShippingOptionForm({
           ? "Shipping option updated successfully"
           : "Shipping option created successfully"
       );
-      
+
       // If this is a new profile creation, refresh the page to get updated session data TODO: The same modification here as seller form
       if (!initialData) {
         setTimeout(() => {
@@ -164,14 +192,15 @@ export default function ShippingOptionForm({
             <FormItem>
               <FormLabel>Country of Origin</FormLabel>
               <FormControl>
-                <Input 
-                  {...field} 
-                  disabled 
+                <Input
+                  {...field}
+                  disabled
                   value={getCountryByCode(field.value)?.name || field.value}
                 />
               </FormControl>
               <p className="text-sm text-muted-foreground">
-                This is set to your business address country and cannot be changed
+                This is set to your business address country and cannot be
+                changed
               </p>
               <FormMessage />
             </FormItem>
@@ -183,15 +212,22 @@ export default function ShippingOptionForm({
 
           {fields.map((field, index) => {
             const rate = form.watch(`rates.${index}`);
-            const currencyInfo = SUPPORTED_CURRENCIES.find(c => c.code === rate.currency) || SUPPORTED_CURRENCIES[0];
+            const currencyInfo =
+              SUPPORTED_CURRENCIES.find((c) => c.code === rate.currency) ||
+              SUPPORTED_CURRENCIES[0];
 
             return (
               <Card key={field.id}>
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-medium">
-                      {SHIPPING_ZONES.find(z => z.id === rate.zone)?.name}
-                    </h4>
+                    <div>
+                      <h4 className="font-medium">
+                        {SHIPPING_ZONES.find((z) => z.id === rate.zone)?.name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Zone rate for all countries in this region
+                      </p>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -237,9 +273,12 @@ export default function ShippingOptionForm({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">International Shipping</FormLabel>
+                            <FormLabel className="text-base">
+                              International Shipping
+                            </FormLabel>
                             <div className="text-sm text-muted-foreground">
-                              Enable this if this rate applies to international shipping within this zone
+                              Enable this if this rate applies to international
+                              shipping within this zone
                             </div>
                           </div>
                           <FormControl>
@@ -258,7 +297,9 @@ export default function ShippingOptionForm({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Free Shipping</FormLabel>
+                            <FormLabel className="text-base">
+                              Free Shipping
+                            </FormLabel>
                             <div className="text-sm text-muted-foreground">
                               Offer free shipping for this zone
                             </div>
@@ -293,7 +334,10 @@ export default function ShippingOptionForm({
                                   </FormControl>
                                   <SelectContent>
                                     {SUPPORTED_CURRENCIES.map((currency) => (
-                                      <SelectItem key={currency.code} value={currency.code}>
+                                      <SelectItem
+                                        key={currency.code}
+                                        value={currency.code}
+                                      >
                                         {currency.code} - {currency.name}
                                       </SelectItem>
                                     ))}
@@ -317,17 +361,25 @@ export default function ShippingOptionForm({
                                     </span>
                                     <Input
                                       type="number"
-                                      step={1 / Math.pow(10, currencyInfo.decimals)}
-                                      min={1 / Math.pow(10, currencyInfo.decimals)}
+                                      step={
+                                        1 / Math.pow(10, currencyInfo.decimals)
+                                      }
+                                      min={
+                                        1 / Math.pow(10, currencyInfo.decimals)
+                                      }
                                       placeholder="0.00"
                                       className="pl-8"
                                       {...field}
-                                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseFloat(e.target.value)
+                                        )
+                                      }
                                     />
                                   </div>
                                 </FormControl>
                                 <p className="text-sm text-muted-foreground">
-                                  {currencyInfo.decimals === 0 
+                                  {currencyInfo.decimals === 0
                                     ? "Enter whole numbers only (no decimal places)"
                                     : `Enter price with up to ${currencyInfo.decimals} decimal places`}
                                 </p>
@@ -350,16 +402,23 @@ export default function ShippingOptionForm({
                                   </span>
                                   <Input
                                     type="number"
-                                    step={1 / Math.pow(10, currencyInfo.decimals)}
+                                    step={
+                                      1 / Math.pow(10, currencyInfo.decimals)
+                                    }
                                     min={0}
                                     placeholder="0.00"
                                     className="pl-8"
                                     {...field}
                                     onChange={(e) => {
-                                      const value = e.target.value === "" ? null : parseFloat(e.target.value);
+                                      const value =
+                                        e.target.value === ""
+                                          ? null
+                                          : parseFloat(e.target.value);
                                       field.onChange(value);
                                     }}
-                                    value={field.value === null ? "" : field.value}
+                                    value={
+                                      field.value === null ? "" : field.value
+                                    }
                                   />
                                 </div>
                               </FormControl>
@@ -370,8 +429,6 @@ export default function ShippingOptionForm({
                             </FormItem>
                           )}
                         />
-
-
                       </>
                     )}
 
@@ -388,7 +445,9 @@ export default function ShippingOptionForm({
                               max={90}
                               placeholder="1-90 days"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              onChange={(e) =>
+                                field.onChange(parseInt(e.target.value))
+                              }
                             />
                           </FormControl>
                           <p className="text-sm text-muted-foreground">
@@ -398,26 +457,240 @@ export default function ShippingOptionForm({
                         </FormItem>
                       )}
                     />
+
+                    {/* Country-Specific Rates Section */}
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="flex justify-between items-center">
+                        <h5 className="font-medium text-sm">
+                          Country-Specific Rates
+                        </h5>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const currentCountryRates =
+                              form.getValues(`rates.${index}.countryRates`) ||
+                              [];
+                            form.setValue(`rates.${index}.countryRates`, [
+                              ...currentCountryRates,
+                              {
+                                countryCode: "",
+                                price: 0,
+                                currency: rate.currency, // Default to the zone's currency (seller's preferred)
+                              },
+                            ]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Country Rate
+                        </Button>
+                      </div>
+
+                      {rate.countryRates && rate.countryRates.length > 0 && (
+                        <div className="space-y-3">
+                          {rate.countryRates.map(
+                            (countryRate, countryIndex) => (
+                              <div
+                                key={countryIndex}
+                                className="flex gap-3 items-end p-3 border rounded-lg bg-muted/30"
+                              >
+                                <div className="flex-1">
+                                  <FormField
+                                    control={form.control}
+                                    name={`rates.${index}.countryRates.${countryIndex}.countryCode`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">
+                                          Country
+                                        </FormLabel>
+                                        <Select
+                                          onValueChange={field.onChange}
+                                          value={field.value}
+                                        >
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select country" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            {SUPPORTED_COUNTRIES.filter(
+                                              (country) =>
+                                                country.zone === rate.zone
+                                            )
+                                              .filter(
+                                                (country) =>
+                                                  !rate.countryRates?.some(
+                                                    (cr) =>
+                                                      cr.countryCode ===
+                                                        country.code &&
+                                                      rate.countryRates.indexOf(
+                                                        cr
+                                                      ) !== countryIndex
+                                                  )
+                                              )
+                                              .map((country) => (
+                                                <SelectItem
+                                                  key={country.code}
+                                                  value={country.code}
+                                                >
+                                                  {country.name}
+                                                </SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                <div className="flex-1">
+                                  <FormField
+                                    control={form.control}
+                                    name={`rates.${index}.countryRates.${countryIndex}.price`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">
+                                          Price
+                                        </FormLabel>
+                                        <FormControl>
+                                          <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                                              {SUPPORTED_CURRENCIES.find(
+                                                (c) =>
+                                                  c.code ===
+                                                  rate.countryRates[
+                                                    countryIndex
+                                                  ]?.currency
+                                              )?.symbol || "$"}
+                                            </span>
+                                            <Input
+                                              type="number"
+                                              step={
+                                                1 /
+                                                Math.pow(
+                                                  10,
+                                                  currencyInfo.decimals
+                                                )
+                                              }
+                                              min={
+                                                1 /
+                                                Math.pow(
+                                                  10,
+                                                  currencyInfo.decimals
+                                                )
+                                              }
+                                              placeholder="0.00"
+                                              className="pl-8"
+                                              {...field}
+                                              onChange={(e) =>
+                                                field.onChange(
+                                                  parseFloat(e.target.value)
+                                                )
+                                              }
+                                            />
+                                          </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                <div className="flex-1">
+                                  <FormField
+                                    control={form.control}
+                                    name={`rates.${index}.countryRates.${countryIndex}.currency`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">
+                                          Currency
+                                        </FormLabel>
+                                        <Select
+                                          onValueChange={field.onChange}
+                                          value={field.value}
+                                        >
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Currency" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            {SUPPORTED_CURRENCIES.map(
+                                              (currency) => (
+                                                <SelectItem
+                                                  key={currency.code}
+                                                  value={currency.code}
+                                                >
+                                                  {currency.code}
+                                                </SelectItem>
+                                              )
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const currentCountryRates =
+                                      form.getValues(
+                                        `rates.${index}.countryRates`
+                                      ) || [];
+                                    const newCountryRates =
+                                      currentCountryRates.filter(
+                                        (_, i) => i !== countryIndex
+                                      );
+                                    form.setValue(
+                                      `rates.${index}.countryRates`,
+                                      newCountryRates
+                                    );
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        Add specific rates for countries that need different
+                        pricing (e.g., higher tariffs). Countries without
+                        specific rates will use the zone rate above.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
 
-                     <Button
-             type="button"
-             variant="outline"
-             onClick={() => append({
-               id: crypto.randomUUID(),
-               zone: SHIPPING_ZONES[0].id,
-               isInternational: false,
-               price: 0,
-               currency: "USD",
-               estimatedDays: 1,
-               additionalItem: null,
-               isFreeShipping: false,
-             })}
-           >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              append({
+                id: crypto.randomUUID(),
+                zone: SHIPPING_ZONES[0].id,
+                isInternational: false,
+                price: 0,
+                currency: "USD",
+                estimatedDays: 1,
+                additionalItem: null,
+                isFreeShipping: false,
+                countryRates: [],
+              })
+            }
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Rate
           </Button>

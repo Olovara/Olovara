@@ -991,6 +991,7 @@ model ShippingRate {
   additionalItem  Int? // Optional: charge extra per item
   serviceLevel    String? // Optional: e.g., "STANDARD", "EXPRESS"
   isFreeShipping  Boolean @default(false)
+  countryRates    Json? // Array of country-specific rates: [{countryCode: "US", price: 2500, currency: "USD"}]
 
   shippingOption ShippingOption @relation(fields: [profileId], references: [id], onDelete: Cascade)
 

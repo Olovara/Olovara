@@ -15,6 +15,12 @@ import { toast } from "sonner";
 import ShippingOptionModal from "./ShippingOptionModal";
 import EditShippingOptionModal from "./EditShippingOptionModal";
 
+interface CountryRate {
+  countryCode: string;
+  price: number;
+  currency: string;
+}
+
 interface ShippingRate {
   id: string;
   zone: string;
@@ -24,6 +30,7 @@ interface ShippingRate {
   estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
+  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -119,7 +126,9 @@ export default function ShippingOptionsTable({
                                   rate.additionalItem > 0 && (
                                     <span className="ml-2 text-xs text-muted-foreground">
                                       (+$
-                                      {(rate.additionalItem / 100).toFixed(2)}{" "}
+                                      {(rate.additionalItem / 100).toFixed(
+                                        2
+                                      )}{" "}
                                       per extra item)
                                     </span>
                                   )}

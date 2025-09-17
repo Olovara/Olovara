@@ -1,6 +1,12 @@
 import { getCountryByCode } from "@/data/countries";
 import { SHIPPING_ZONES } from "@/data/shipping";
 
+export interface CountryRate {
+  countryCode: string;
+  price: number;
+  currency: string;
+}
+
 export interface ShippingCalculation {
   zone: string;
   isInternational: boolean;
@@ -10,6 +16,7 @@ export interface ShippingCalculation {
   additionalItem?: number | null;
   serviceLevel?: string | null;
   isFreeShipping: boolean;
+  countryRates?: CountryRate[]; // Array of country-specific rates
 }
 
 /**
@@ -41,9 +48,9 @@ export function determineShippingZone(
 
   // Different countries = international shipping (even within same zone)
   // This is the key fix: GB to DE should be international, not domestic
-  return { 
-    zone: destinationCountryData.zone, 
-    isInternational: true 
+  return {
+    zone: destinationCountryData.zone,
+    isInternational: true,
   };
 }
 
@@ -62,28 +69,49 @@ export function calculateShippingCost(
   quantity: number = 1
 ): ShippingCalculation | null {
   // Determine the appropriate zone and international status
-  const { zone, isInternational } = determineShippingZone(originCountry, destinationCountry);
-
-  // Find matching shipping rate
-  const matchingRate = shippingRates.find(rate => 
-    rate.zone === zone && rate.isInternational === isInternational
+  const { zone, isInternational } = determineShippingZone(
+    originCountry,
+    destinationCountry
   );
 
-  if (!matchingRate) {
+  // Find the zone rate
+  const zoneRate = shippingRates.find(
+    (rate) => rate.zone === zone && rate.isInternational === isInternational
+  );
+
+  if (!zoneRate) {
     return null;
   }
 
+  // Check if there's a country-specific rate for this destination
+  let finalPrice = zoneRate.price;
+  let finalCurrency = zoneRate.currency;
+
+  if (zoneRate.countryRates && zoneRate.countryRates.length > 0) {
+    const countryRate = zoneRate.countryRates.find(
+      (countryRate) => countryRate.countryCode === destinationCountry
+    );
+
+    if (countryRate) {
+      // Use country-specific rate
+      finalPrice = countryRate.price;
+      finalCurrency = countryRate.currency;
+    }
+    // If no country-specific rate found, use zone rate (already set above)
+  }
+
   // Calculate total shipping cost including additional items
-  const basePrice = matchingRate.price;
-  const additionalItemCost = matchingRate.additionalItem && quantity > 1 
-    ? matchingRate.additionalItem * (quantity - 1) 
-    : 0;
-  
-  const totalPrice = basePrice + additionalItemCost;
+  const additionalItemCost =
+    zoneRate.additionalItem && quantity > 1
+      ? zoneRate.additionalItem * (quantity - 1)
+      : 0;
+
+  const totalPrice = finalPrice + additionalItemCost;
 
   return {
-    ...matchingRate,
+    ...zoneRate,
     price: totalPrice,
+    currency: finalCurrency,
   };
 }
 
@@ -99,21 +127,24 @@ export function getBestShippingRate(
   originCountry: string,
   destinationCountry: string
 ): ShippingCalculation | null {
-  const { zone, isInternational } = determineShippingZone(originCountry, destinationCountry);
+  const { zone, isInternational } = determineShippingZone(
+    originCountry,
+    destinationCountry
+  );
 
-  // First try to find exact match
-  let rate = shippingRates.find(r => 
-    r.zone === zone && r.isInternational === isInternational
+  // Find the zone rate
+  let rate = shippingRates.find(
+    (r) => r.zone === zone && r.isInternational === isInternational
   );
 
   // If no exact match, try to find any rate for the zone
   if (!rate) {
-    rate = shippingRates.find(r => r.zone === zone);
+    rate = shippingRates.find((r) => r.zone === zone);
   }
 
   // If still no match, try to find any international rate
   if (!rate && isInternational) {
-    rate = shippingRates.find(r => r.isInternational);
+    rate = shippingRates.find((r) => r.isInternational);
   }
 
   // Last resort: find any rate
@@ -136,5 +167,8 @@ export function isShippingAvailable(
   originCountry: string,
   destinationCountry: string
 ): boolean {
-  return getBestShippingRate(shippingRates, originCountry, destinationCountry) !== null;
-} 
+  return (
+    getBestShippingRate(shippingRates, originCountry, destinationCountry) !==
+    null
+  );
+}

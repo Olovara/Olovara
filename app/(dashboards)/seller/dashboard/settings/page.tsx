@@ -48,6 +48,7 @@ export default async function SellerSettings() {
               additionalItem: true,
               serviceLevel: true,
               isFreeShipping: true,
+              countryRates: true,
             },
           },
         },

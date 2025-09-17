@@ -9,6 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import ShippingOptionForm from "@/components/forms/ShippingOptionForm";
 
+interface CountryRate {
+  countryCode: string;
+  price: number;
+  currency: string;
+}
+
 interface ShippingRate {
   id: string;
   zone: string;
@@ -18,6 +24,7 @@ interface ShippingRate {
   estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
+  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -46,13 +53,10 @@ export default function EditShippingOptionModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-                  <DialogTitle>Edit Shipping Option</DialogTitle>
-      </DialogHeader>
-      <ShippingOptionForm
-        initialData={option}
-        onSuccess={onClose}
-      />
+          <DialogTitle>Edit Shipping Option</DialogTitle>
+        </DialogHeader>
+        <ShippingOptionForm initialData={option} onSuccess={onClose} />
       </DialogContent>
     </Dialog>
   );
-} 
+}
