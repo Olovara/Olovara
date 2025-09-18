@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Jost } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -14,7 +14,7 @@ import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
-const inter = Inter({ subsets: ["latin"] });
+const jost = Jost({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -117,7 +117,7 @@ export default async function RootLayout({
       <body
         className={cn(
           "relative min-h-screen bg-background font-sans antialiased",
-          inter.className
+          jost.className
         )}
       >
         <PostHogProvider>

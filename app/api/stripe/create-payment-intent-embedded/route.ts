@@ -74,7 +74,8 @@ export async function POST(req: Request) {
                     estimatedDays: true,
                     additionalItem: true,
                     serviceLevel: true,
-                    isFreeShipping: true
+                    isFreeShipping: true,
+                    countryRates: true
                   }
                 }
               }
@@ -120,7 +121,10 @@ export async function POST(req: Request) {
       // Calculate shipping cost based on origin and destination
       const defaultOption = product.seller.shippingOptions[0];
       const shippingCalculation = calculateShippingCost(
-        defaultOption.rates,
+        defaultOption.rates.map(rate => ({
+          ...rate,
+          countryRates: (rate.countryRates as any) || []
+        })),
         sellerOriginCountry,
         userCountry,
         parseInt(quantity.toString())
@@ -301,8 +305,9 @@ export async function POST(req: Request) {
       product.seller?.commissionDiscountExpiresAt || null
     );
     
-    // Calculate platform fee only on the product price (not including shipping/handling or discounts)
-    const platformFeeInCents = Math.round(totalProductPriceInCents * (commissionRate / 100));
+    // Calculate platform fee on the total order amount (product + shipping + handling, before discounts)
+    const totalOrderAmountBeforeDiscount = totalProductPriceInCents + (finalShippingAndHandlingInCents * parsedQuantity);
+    const platformFeeInCents = Math.round(totalOrderAmountBeforeDiscount * (commissionRate / 100));
 
     // Create or get customer with address information if provided
     let customerId: string | undefined;

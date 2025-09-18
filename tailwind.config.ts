@@ -18,6 +18,10 @@ export default withUt({
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Jost', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

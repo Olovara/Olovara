@@ -21,7 +21,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("relative flex flex-col min-h-screen", inter.className)}>
+    <div className={cn("relative flex flex-col min-h-screen font-inter", inter.className)}>
       <main className="flex-grow">{children}</main>
       <Toaster position="top-center" richColors />
     </div>
