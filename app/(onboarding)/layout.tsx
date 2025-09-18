@@ -1,5 +1,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { Jost } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const jost = Jost({ subsets: ["latin"] });
 
 export default async function OnboardingLayout({
   children,
@@ -13,7 +17,7 @@ export default async function OnboardingLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+    <div className={cn("min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50", jost.className)}>
       <div className="container mx-auto px-4 py-8">
         {children}
       </div>

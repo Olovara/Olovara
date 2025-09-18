@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Jost } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -14,17 +13,16 @@ import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
-const jost = Jost({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: {
     default: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
-    template: "%s | Yarnnu"
+    template: "%s | Yarnnu",
   },
-  description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more. Support independent creators and find one-of-a-kind treasures.",
+  description:
+    "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more. Support independent creators and find one-of-a-kind treasures.",
   keywords: [
     "handmade marketplace",
-    "artisan products", 
+    "artisan products",
     "crochet patterns",
     "handmade jewelry",
     "unique gifts",
@@ -32,7 +30,7 @@ export const metadata: Metadata = {
     "artisan marketplace",
     "handmade crafts",
     "support small business",
-    "handmade accessories"
+    "handmade accessories",
   ],
   authors: [{ name: "Yarnnu Team" }],
   creator: "Yarnnu",
@@ -42,7 +40,9 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com"
+  ),
   alternates: {
     canonical: "/",
   },
@@ -52,7 +52,8 @@ export const metadata: Metadata = {
     url: process.env.NEXT_PUBLIC_APP_URL,
     siteName: "Yarnnu",
     title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
-    description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
+    description:
+      "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: [
       {
         url: "/og-image.jpg",
@@ -67,7 +68,8 @@ export const metadata: Metadata = {
     site: "@yarnnu",
     creator: "@yarnnu",
     title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
-    description: "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
+    description:
+      "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: ["/og-image.jpg"],
   },
   robots: {
@@ -88,8 +90,6 @@ export const metadata: Metadata = {
   category: "e-commerce",
   classification: "Handmade Marketplace",
 };
-
-
 
 export default async function RootLayout({
   children,
@@ -116,8 +116,7 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          "relative min-h-screen bg-background font-sans antialiased",
-          jost.className
+          "relative min-h-screen bg-background font-sans antialiased"
         )}
       >
         <PostHogProvider>

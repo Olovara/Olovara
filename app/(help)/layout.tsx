@@ -1,7 +1,11 @@
 import { Metadata } from "next";
+import { Jost } from "next/font/google";
+import { cn } from "@/lib/utils";
 import { HelpCenterNav } from "./_components/HelpCenterNav";
 import { HelpCenterNavbar } from "./_components/HelpCenterNavbar";
 import { HelpCenterFooter } from "./_components/HelpCenterFooter";
+
+const jost = Jost({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Help Center | Yarnnu",
@@ -15,7 +19,7 @@ export default function HelpLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className={cn("min-h-screen bg-gray-50 flex flex-col", jost.className)}>
       {/* Navbar */}
       <HelpCenterNavbar />
 
