@@ -116,7 +116,7 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          "relative min-h-screen bg-background font-sans antialiased"
+          "relative min-h-screen bg-background antialiased"
         )}
       >
         <PostHogProvider>

@@ -19,7 +19,8 @@ export default withUt({
     },
     extend: {
       fontFamily: {
-        sans: ['Jost', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['ui-sans-serif', 'system-ui', 'sans-serif'], // Default system fonts
+        jost: ['Jost', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {

@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
-import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,7 +20,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("relative flex flex-col min-h-screen font-inter", inter.className)}>
+    <div className={`relative flex flex-col min-h-screen ${inter.className}`}>
       <main className="flex-grow">{children}</main>
       <Toaster position="top-center" richColors />
     </div>

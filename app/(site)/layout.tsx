@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Jost } from "next/font/google";
 import "../globals.css";
 import { Navbar } from "@/components/Navbar";
-import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import { Toaster } from "sonner";
 
@@ -47,7 +46,7 @@ export default function SiteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("relative flex flex-col min-h-screen", jost.className)}>
+    <div className={`relative flex flex-col min-h-screen ${jost.className}`}>
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />

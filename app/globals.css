@@ -70,10 +70,10 @@
 
 @layer base {
   * {
-    @apply border-border font-sans; /* Ensure all elements use the font */
+    @apply border-border; /* Remove font-sans to allow layout-specific fonts */
   }
   body {
-    @apply bg-background text-foreground font-sans; /* Reinforce it in body */
+    @apply bg-background text-foreground; /* Remove font-sans to allow layout-specific fonts */
   }
 }
 

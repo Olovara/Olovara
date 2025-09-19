@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { Jost } from "next/font/google";
-import { cn } from "@/lib/utils";
 import { HelpCenterNav } from "./_components/HelpCenterNav";
 import { HelpCenterNavbar } from "./_components/HelpCenterNavbar";
 import { HelpCenterFooter } from "./_components/HelpCenterFooter";
@@ -19,7 +18,7 @@ export default function HelpLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("min-h-screen bg-gray-50 flex flex-col", jost.className)}>
+    <div className={`min-h-screen bg-gray-50 flex flex-col ${jost.className}`}>
       {/* Navbar */}
       <HelpCenterNavbar />
 
