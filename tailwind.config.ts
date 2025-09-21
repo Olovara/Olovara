@@ -22,6 +22,7 @@ export default withUt({
         sans: ['ui-sans-serif', 'system-ui', 'sans-serif'], // Default system fonts
         jost: ['Jost', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'noto-serif-display': ['Noto Serif Display', 'ui-serif', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",

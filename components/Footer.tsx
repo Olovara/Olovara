@@ -17,7 +17,7 @@ const Footer = () => {
           <>
             {/* Brand Name */}
             <div className="pb-8 pt-16 flex justify-center">
-              <p className="text-lg font-semibold text-gray-900">Yarnnu</p>
+              <p className="text-lg font-semibold text-gray-900">YARNNU</p>
             </div>
 
             {/* Become a Seller Section */}
@@ -29,7 +29,7 @@ const Footer = () => {
                 />
               </div>
               <div className="relative text-center mx-auto max-w-sm">
-                <h3 className="font-semibold text-gray-900">Become a seller</h3>
+                <h3 className="font-semibold text-gray-900">BECOME A SELLER</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   If you&apos;d like to sell high-quality handmade products, you
                   can do so in minutes.{" "}
@@ -48,40 +48,40 @@ const Footer = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 text-center sm:text-left">
                 {/* Marketplace Links */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Marketplace
+                  <h4 className="text-xs font-semibold text-gray-900">
+                    MARKETPLACE
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
                       <Link
                         href="/products"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Browse Products
+                        BROWSE PRODUCTS
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/categories"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Categories
+                        CATEGORIES
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/shops"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Browse Shops
+                        BROWSE SHOPS
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/sell"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Sell on Yarnnu
+                        SELL ON YARNNU
                       </Link>
                     </li>
                   </ul>
@@ -89,48 +89,48 @@ const Footer = () => {
 
                 {/* Support Links */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Support
+                  <h4 className="text-xs font-semibold text-gray-900">
+                    SUPPORT
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
                       <Link
                         href="/pricing-calculator"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Pricing Calculator
+                        PRICING CALCULATOR
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/contact"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Contact Us
+                        CCONTACT US
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/buyer-and-returns-policy"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Buyer and Returns Policy
+                        BUYER AND RETURNS POLICY
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/prohibited-items"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Prohibited Items Policy
+                        PROHIBITED ITEMS POLICY
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/copyright-infringement"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Copyright Infringement
+                        COPYRIGHT INFRINGMENT
                       </Link>
                     </li>
                   </ul>
@@ -138,48 +138,48 @@ const Footer = () => {
 
                 {/* Company Links */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Company
+                  <h4 className="text-xs font-semibold text-gray-900">
+                    COMPANY
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
                       <Link
                         href="/about"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        About Us
+                        ABOUT US
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/feedback"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Customer Feedback
+                        CUSTOMER FEEDBACK
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/suggestions"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Suggestions
+                        SUGGESTIONS
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/blog"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Blog
+                        BLOG
                       </Link>
                     </li>
                     <li>
                       <Link
                         href="/help-center"
-                        className="text-sm text-muted-foreground hover:text-gray-600"
+                        className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        Help Center
+                        HELP CENTER
                       </Link>
                     </li>
                   </ul>
@@ -192,7 +192,7 @@ const Footer = () => {
                   {/* Social Media Links */}
                   <div className="mt-6">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                      Follow Us
+                      FOLLOW US
                     </h4>
                     <div className="flex justify-center sm:justify-start space-x-3">
                       <a
@@ -228,27 +228,27 @@ const Footer = () => {
           <LocationModal />
         </div>
         <div className="flex-1 flex flex-col items-center">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} All Rights Reserved
+          <p className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} ALL RIGHTS RESERVED
           </p>
           <div className="mt-4 flex justify-center space-x-8">
             <Link
               href="/terms-of-service"
-              className="text-sm text-muted-foreground hover:text-gray-600"
+              className="text-xs text-muted-foreground hover:text-gray-600"
             >
-              Terms
+              TERMS
             </Link>
             <Link
               href="/privacy-policy"
-              className="text-sm text-muted-foreground hover:text-gray-600"
+              className="text-xs text-muted-foreground hover:text-gray-600"
             >
-              Privacy Policy
+              PRIVACY POLICY
             </Link>
             <Link
               href="/handmade-guidelines"
-              className="text-sm text-muted-foreground hover:text-gray-600"
+              className="text-xs text-muted-foreground hover:text-gray-600"
             >
-              Handmade Guidelines
+              HANDMADE GUIDELINES
             </Link>
           </div>
         </div>

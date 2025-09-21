@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Jost, Noto_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -12,6 +13,10 @@ import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurve
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
+import { FONTS } from "@/lib/fonts";
+
+const jost = Jost({ subsets: ["latin"] });
+const notoSerifDisplay = Noto_Serif_Display({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -116,7 +121,10 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          "relative min-h-screen bg-background antialiased"
+          "relative min-h-screen bg-background antialiased",
+          FONTS.MAIN,
+          jost.className,
+          notoSerifDisplay.className
         )}
       >
         <PostHogProvider>

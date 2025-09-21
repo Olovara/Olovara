@@ -3,6 +3,8 @@ import { ShopByValues } from "@/components/ShopByValues";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
+import { FONTS } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 
 import { Metadata } from "next";
 
@@ -43,7 +45,10 @@ export default function Home() {
   return (
     <section className="max-w-7xl mx-auto px-4 md:px-8 mb-24">
       <div className="py-20 mx-auto text-center flex flex-col items-center max-w-3xl">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+      <h1 
+          className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
+          style={{ fontFamily: 'Noto Serif Display, ui-serif, serif' }}
+        >
           Your marketplace for high-quality{" "}
           <span className="text-purple-600">handcrafted goods</span>.
         </h1>
@@ -53,7 +58,7 @@ export default function Home() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <Link href="/products" className={buttonVariants()}>
-            Shop Now
+            SHOP NOW
           </Link>
         </div>
       </div>

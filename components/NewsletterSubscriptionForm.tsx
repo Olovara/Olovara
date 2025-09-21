@@ -69,7 +69,7 @@ export default function NewsletterSubscriptionForm({
       <div className={`space-y-3 ${className}`}>
         <div>
           <h4 className="text-sm font-semibold text-gray-900">
-            Stay Updated
+            STAY UPDATED
           </h4>
           <p className="text-xs text-muted-foreground mt-1">
             Get the latest updates and exclusive offers
