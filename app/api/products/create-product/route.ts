@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     const {
       name,
       sku,
+      shortDescription,
       price,
       description,
       status,

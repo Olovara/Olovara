@@ -128,6 +128,7 @@ const FirstProductSchema = z.object({
     .string()
     .min(10, "Description must be at least 10 characters")
     .max(1000, "Description must be 1000 characters or less"),
+  shortDescription: z.string(),
   price: z.number().positive("Price must be greater than 0"),
   materials: z.string().optional(),
   dimensions: z.string().optional(),
@@ -449,6 +450,7 @@ export const createFirstProduct = async (
       data: {
         userId: session.user.id,
         name: validatedData.name,
+        shortDescription: validatedData.shortDescription,
         description: {
           text: validatedData.description,
           materials: validatedData.materials || "",

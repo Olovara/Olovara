@@ -6,6 +6,32 @@ import { LocationModal } from "./LocationModal";
 import NewsletterSubscriptionForm from "./NewsletterSubscriptionForm";
 import { PinterestIcon, RedditIcon } from "./ui/social-icon";
 
+// Animated Footer Link Component
+const AnimatedFooterLink = ({
+  href,
+  children,
+  className = "",
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  return (
+    <Link href={href} className={`group relative inline-block ${className}`}>
+      <span className="relative z-10">{children}</span>
+      <span
+        className="absolute bottom-0 left-0 w-0 h-px bg-gray-600 transition-[width] duration-200 ease-out group-hover:w-full"
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transition = "width 200ms ease-out";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transition = "width 400ms ease-out";
+        }}
+      ></span>
+    </Link>
+  );
+};
+
 const Footer = () => {
   const pathname = usePathname();
   const pathsToMinimize = ["/verify-email", "/sign-up", "/sign-in"];
@@ -53,36 +79,36 @@ const Footer = () => {
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/products"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         BROWSE PRODUCTS
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/categories"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         CATEGORIES
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/shops"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         BROWSE SHOPS
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/sell"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         SELL ON YARNNU
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                   </ul>
                 </div>
@@ -94,44 +120,44 @@ const Footer = () => {
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/pricing-calculator"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         PRICING CALCULATOR
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/contact"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
-                        CCONTACT US
-                      </Link>
+                        CONTACT US
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/buyer-and-returns-policy"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         BUYER AND RETURNS POLICY
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/prohibited-items"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         PROHIBITED ITEMS POLICY
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/copyright-infringement"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         COPYRIGHT INFRINGMENT
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                   </ul>
                 </div>
@@ -143,44 +169,44 @@ const Footer = () => {
                   </h4>
                   <ul className="mt-3 space-y-2">
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/about"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         ABOUT US
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/feedback"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         CUSTOMER FEEDBACK
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/suggestions"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         SUGGESTIONS
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/blog"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         BLOG
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                     <li>
-                      <Link
+                      <AnimatedFooterLink
                         href="/help-center"
                         className="text-xs text-muted-foreground hover:text-gray-600"
                       >
                         HELP CENTER
-                      </Link>
+                      </AnimatedFooterLink>
                     </li>
                   </ul>
                 </div>

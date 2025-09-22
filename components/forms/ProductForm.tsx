@@ -183,6 +183,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
+      shortDescription: initialData?.shortDescription || "Enter a brief description of your product",
       price: initialData?.price ? initialData.price / 100 : 0,
       description: initialData?.description || { html: "", text: "" },
       images: initialData?.images || [],

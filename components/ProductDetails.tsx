@@ -7,6 +7,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import ProductActions from "@/components/ProductPageActions";
 import { ProductStructuredData } from "@/components/ProductStructuredData";
 import GPSRComplianceDisplay from "@/components/product/GPSRComplianceDisplay";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -22,6 +24,7 @@ interface ProductDetailsProps {
   data: {
     id: string;
     name: string;
+    shortDescription: string;
     images: string[];
     price: number;
     currency: string;
@@ -49,6 +52,11 @@ interface ProductDetailsProps {
     inStockProcessingTime: number | null;
     howItsMade: string | null;
     tags: string[];
+    materialTags: string[];
+    primaryCategory: string;
+    secondaryCategory: string;
+    tertiaryCategory: string | null;
+    sku: string | null;
     NSFW: boolean;
     // GPSR compliance fields
     safetyWarnings?: string | null;
@@ -198,13 +206,13 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           <ImageSlider urls={data.images} />
         </div>
 
-        <div className="col-span-1 flex flex-col justify-center space-y-6">
-          <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
+        <div className="col-span-1 flex flex-col justify-start space-y-3">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl uppercase">
             {data.name}
           </h1>
           {data.seller?.shopName && (
-            <p className="text-gray-700 text-sm">
-              Made by:&nbsp;
+            <p className="text-gray-700 text-sm -mt-1">
+              Handmade by:&nbsp;
               <Link
                 href={`/shops/${data.seller.shopNameSlug}`}
                 className="font-medium text-purple-600 hover:underline"
@@ -213,6 +221,9 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
               </Link>
             </p>
           )}
+          <div className="text-gray-700 text-medium">
+            <p className="whitespace-pre-line">{data.shortDescription}</p>
+          </div>
           {!data.isDigital && data.stock > 0 && data.inStockProcessingTime && (
             <div>
               <p className="text-sm text-gray-500">
@@ -279,6 +290,9 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             discount={data.discount}
           />
 
+          {/* Collapsible Product Details Section */}
+          <CollapsibleProductDetails data={data} />
+
           {/* How It's Made Section */}
           {data.howItsMade && (
             <div className="mt-4">
@@ -305,24 +319,6 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             NSFW={Boolean(data.NSFW)}
           />
         </div>
-
-        {/* Shipping and Dimensions */}
-        {!data.isDigital && (
-          <div className="p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">Product Details</h3>
-            {data.itemWeight && (
-              <p className="text-gray-600">
-                Weight: {data.itemWeight} {data.itemWeightUnit}
-              </p>
-            )}
-            {(data.itemLength || data.itemWidth || data.itemHeight) && (
-              <p className="text-gray-600">
-                Dimensions: {data.itemLength || 0} × {data.itemWidth || 0} ×{" "}
-                {data.itemHeight || 0} {data.itemDimensionUnit}
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       {/* GPSR Compliance Information - Only for physical products */}
@@ -366,5 +362,94 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
       {/* Add structured data for SEO */}
       <ProductStructuredData product={data} />
     </section>
+  );
+}
+
+// Collapsible Product Details Component
+function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data'] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mt-4 border-t pt-4">
+      <Button
+        variant="ghost"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+      >
+        <span>PRODUCT DETAILS</span>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </Button>
+      
+      {isOpen && (
+        <div className="mt-4 text-sm">
+          <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            {/* Product Information */}
+            <span className="font-bold text-gray-600">Product ID</span>
+            <span className="text-gray-800">{data.id}</span>
+            
+            {data.sku && (
+              <>
+                <span className="font-bold text-gray-600">SKU</span>
+                <span className="text-gray-800">{data.sku}</span>
+              </>
+            )}
+
+            {/* Categories */}
+            <span className="font-bold text-gray-600">Categories</span>
+            <span className="text-gray-800">
+              {data.primaryCategory} {data.secondaryCategory && `> ${data.secondaryCategory}`} {data.tertiaryCategory && `> ${data.tertiaryCategory}`}
+            </span>
+
+            {/* Physical Product Details */}
+            {!data.isDigital && (
+              <>
+                {/* Weight */}
+                {data.itemWeight && (
+                  <>
+                    <span className="font-bold text-gray-600">Weight</span>
+                    <span className="text-gray-800">{data.itemWeight} {data.itemWeightUnit}</span>
+                  </>
+                )}
+
+                {/* Dimensions */}
+                {(data.itemLength || data.itemWidth || data.itemHeight) && (
+                  <>
+                    <span className="font-bold text-gray-600">Dimensions</span>
+                    <span className="text-gray-800">
+                      {data.itemLength || 0}{data.itemDimensionUnit} × {data.itemWidth || 0}{data.itemDimensionUnit} × {data.itemHeight || 0}{data.itemDimensionUnit}
+                    </span>
+                  </>
+                )}
+
+                {/* Stock */}
+                <span className="font-bold text-gray-600">Stock</span>
+                <span className="text-gray-800">{data.stock} available</span>
+              </>
+            )}
+
+            {/* Digital Product Details */}
+            {data.isDigital && (
+              <>
+                <span className="font-bold text-gray-600">Type</span>
+                <span className="text-gray-800">Digital Download</span>
+              </>
+            )}
+
+            {/* Processing Time */}
+            {data.inStockProcessingTime && (
+              <>
+                <span className="font-bold text-gray-600">Processing Time</span>
+                <span className="text-gray-800">{data.inStockProcessingTime} days</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="mt-4 border-b"></div>
+    </div>
   );
 }

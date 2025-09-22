@@ -44,6 +44,7 @@ const baseProductSchema = z.object({
     message: "Please enter your product's name, required.",
   }),
   sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
+  shortDescription: z.string(), // Short description with bullet points for product overview
   description: descriptionJsonSchema,
   options: z
     .array(

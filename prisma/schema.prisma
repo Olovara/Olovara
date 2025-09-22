@@ -445,6 +445,7 @@ model Product {
   userId                String
   name                  String
   sku                   String?          // Stock Keeping Unit - optional, auto-generated if not provided
+  shortDescription      String          // Short description with bullet points for product overview
   description           Json
   price                 Int
   currency              String           @default("USD") // Store the currency code (e.g., USD, EUR, GBP)

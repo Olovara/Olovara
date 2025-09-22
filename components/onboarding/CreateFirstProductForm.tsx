@@ -41,6 +41,7 @@ import { ProductFileSection } from "@/components/product/productFile";
 const FirstProductSchema = z.object({
   name: z.string().min(1, "Product name is required").max(100),
   sku: z.string().optional(),
+  shortDescription: z.string(),
   description: z.object({
     html: z.string(),
     text: z.string(),
@@ -155,6 +156,7 @@ export default function CreateFirstProductForm() {
     defaultValues: {
       name: "",
       sku: "",
+      shortDescription: "Enter a brief description of your product",
       description: { html: "", text: "" },
       options: null,
       price: 0,
@@ -225,6 +227,7 @@ export default function CreateFirstProductForm() {
         name: data.name.trim(),
         category: data.primaryCategory, // Keep using category for backward compatibility
         description: data.description.text || data.description.html || "",
+        shortDescription: data.shortDescription || "",
         price: data.price,
         materials: materialTags.join(", "),
         dimensions: "",

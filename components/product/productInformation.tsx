@@ -236,6 +236,24 @@ export const ProductInfoSection = ({
         )}
       />
 
+      {/* Short Description */}
+      <FormField
+        control={control}
+        name="shortDescription"
+        render={({ field }) => (
+          <div className="flex flex-col gap-y-2">
+            <Label>Short Description *</Label>
+            <Input
+              placeholder="Brief bullet points about your product"
+              {...register("shortDescription", { required: "Short description is required" })}
+            />
+            <p className="text-xs text-muted-foreground">
+              A short description with key features or bullet points that will appear under your shop name on the product page.
+            </p>
+          </div>
+        )}
+      />
+
       {/* Product Description */}
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
