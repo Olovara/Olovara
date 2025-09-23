@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useCurrency } from "@/hooks/useCurrency";
 import ProductActions from "@/components/ProductPageActions";
 import { ProductStructuredData } from "@/components/ProductStructuredData";
 import GPSRComplianceDisplay from "@/components/product/GPSRComplianceDisplay";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Dynamically import the ImageSlider component
@@ -71,6 +72,7 @@ interface ProductDetailsProps {
       shopName: string;
       shopNameSlug: string;
       userId: string;
+      behindTheHands: string | null;
     } | null;
     dropDate: Date | null;
     dropTime: string | null;
@@ -99,6 +101,17 @@ interface ProductDetailsProps {
       country: string;
       postalCode: string;
     } | null;
+    reviews: {
+      id: string;
+      rating: number;
+      comment: string | null;
+      createdAt: Date;
+      reviewer: {
+        id: string;
+        username: string | null;
+        image: string | null;
+      };
+    }[];
   };
 }
 
@@ -201,12 +214,94 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   return (
     <section className="mx-auto px-4 lg:mt-10 max-w-7xl lg:px-8">
       {/* Product Image and Name Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="col-span-1 lg:col-span-2 w-full h-full bg-gray-100 rounded-lg overflow-hidden">
-          <ImageSlider urls={data.images} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="col-span-1 lg:col-span-2">
+          <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
+            <ImageSlider urls={data.images} />
+          </div>
+          
+          {/* Product Description Section */}
+          <div className="mt-8">
+            <h3 className="font-medium text-gray-700 mb-4">PRODUCT DESCRIPTION</h3>
+            <div className="text-gray-800">
+              <ProtectedProductDescription
+                content={data.description}
+                NSFW={Boolean(data.NSFW)}
+              />
+            </div>
+          </div>
+
+          {/* Reviews Section */}
+          <div className="mt-8">
+            <h3 className="font-medium text-gray-700 mb-4">
+              REVIEWS {data.reviews && data.reviews.length > 0 ? `(${data.reviews.length})` : "(0)"}
+            </h3>
+            {data.reviews && data.reviews.length > 0 ? (
+              <div className="space-y-6">
+                {data.reviews.map((review) => (
+                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        {review.reviewer.image ? (
+                          <Image
+                            src={review.reviewer.image}
+                            alt={review.reviewer.username || "Reviewer"}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-gray-600 text-sm font-medium">
+                              {review.reviewer.username?.charAt(0) || "?"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <p className="text-sm font-medium text-gray-900">
+                            {review.reviewer.username || "Anonymous"}
+                          </p>
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`h-4 w-4 ${
+                                  star <= review.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {review.comment}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <Star className="h-12 w-12 mx-auto" />
+                </div>
+                <p className="text-gray-500 text-sm">No reviews yet</p>
+                <p className="text-gray-400 text-xs mt-1">Be the first to review this product!</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="col-span-1 flex flex-col justify-start space-y-3">
+        <div className="col-span-1 flex flex-col space-y-3">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl uppercase">
             {data.name}
           </h1>
@@ -293,33 +388,18 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           {/* Collapsible Product Details Section */}
           <CollapsibleProductDetails data={data} />
 
-          {/* How It's Made Section */}
-          {data.howItsMade && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold">How It&apos;s Made</h3>
-              <p className="text-gray-600">{data.howItsMade}</p>
-            </div>
-          )}
+          {/* Collapsible Shipping Notes Section */}
+          {data.shippingNotes && <CollapsibleShippingNotes data={data} />}
 
-          {/* Shipping Notes Section */}
-          {data.shippingNotes && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold">Shipping Notes</h3>
-              <p className="text-gray-600">{data.shippingNotes}</p>
-            </div>
-          )}
+          {/* Collapsible How It's Made Section */}
+          {data.howItsMade && <CollapsibleHowItsMade data={data} />}
+
+          {/* Collapsible Behind the Hands Section */}
+          {data.seller?.behindTheHands && <CollapsibleBehindTheHands data={data} />}
+
         </div>
       </div>
 
-      {/* Additional Info Section */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="text-gray-700">
-          <ProtectedProductDescription
-            content={data.description}
-            NSFW={Boolean(data.NSFW)}
-          />
-        </div>
-      </div>
 
       {/* GPSR Compliance Information - Only for physical products */}
       {!data.isDigital && (
@@ -449,7 +529,97 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
           </div>
         </div>
       )}
-      <div className="mt-4 border-b"></div>
     </div>
   );
 }
+
+// Collapsible Shipping Notes Component
+function CollapsibleShippingNotes({ data }: { data: ProductDetailsProps['data'] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-4">
+      <Button
+        variant="ghost"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+      >
+        <span>SHIPPING NOTES</span>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </Button>
+      
+      {isOpen && (
+        <div className="mt-4 text-sm">
+          <div className="text-gray-800 leading-relaxed">
+            {data.shippingNotes}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Collapsible How It's Made Component
+function CollapsibleHowItsMade({ data }: { data: ProductDetailsProps['data'] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-4">
+      <Button
+        variant="ghost"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+      >
+        <span>HOW IT&apos;S MADE</span>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </Button>
+      
+      {isOpen && (
+        <div className="mt-4 text-sm">
+          <div className="text-gray-800 leading-relaxed">
+            {data.howItsMade}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Collapsible Behind the Hands Component
+function CollapsibleBehindTheHands({ data }: { data: ProductDetailsProps['data'] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-4">
+      <Button
+        variant="ghost"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+      >
+        <span>BEHIND THE HANDS</span>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </Button>
+      
+      {isOpen && (
+        <div className="mt-4 text-sm">
+          <div className="text-gray-800 leading-relaxed">
+            {data.seller?.behindTheHands}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

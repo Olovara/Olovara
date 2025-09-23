@@ -103,11 +103,34 @@ async function getData(id: string) {
             shopName: true,
             shopNameSlug: true,
             userId: true,
+            behindTheHands: true,
           },
         },
         dropDate: true,
         dropTime: true,
         batchNumber: true,
+        reviews: {
+          where: {
+            status: "PUBLISHED",
+            type: "PRODUCT"
+          },
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            reviewer: {
+              select: {
+                id: true,
+                username: true,
+                image: true,
+              }
+            }
+          },
+          orderBy: {
+            createdAt: "desc"
+          }
+        },
       },
     });
 

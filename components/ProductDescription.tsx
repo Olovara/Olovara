@@ -56,8 +56,7 @@ export function ProductDescriptionComponent({ content }: ProductDescriptionProps
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Product Description</h2>
-      <div className="prose prose-sm sm:prose-base">
+      <div className="prose prose-sm sm:prose-base [&_.ql-editor]:font-['Jost',sans-serif] [&_.ql-editor]:text-gray-800">
         <div ref={editorRef} />
       </div>
     </div>
