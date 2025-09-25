@@ -362,6 +362,18 @@ export async function approveApplication(applicationId: string) {
 
     const { userId } = sellerApplication;
 
+    // Get the seller ID from the userId
+    const seller = await db.seller.findUnique({
+      where: { userId },
+      select: { id: true }
+    });
+
+    if (!seller) {
+      throw new Error("Seller record not found for user.");
+    }
+
+    const sellerId = seller.id;
+
     // Update application and seller in a transaction to ensure consistency
     await db.$transaction(async (tx) => {
       // Approve the seller application
@@ -421,7 +433,7 @@ export async function approveApplication(applicationId: string) {
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
     // Mark application_approved step as completed
-    await updateOnboardingStep(sellerApplication.id, "application_approved", true);
+    await updateOnboardingStep(sellerId, "application_approved", true);
 
     console.log(`Seller application approved for user ${userId}. User role and permissions updated.`);
 
