@@ -22,12 +22,16 @@ import {
   Share2,
   Heart,
   Bookmark,
+  Crown,
+  Globe,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
 import { getUserInfoForNav } from "@/actions/userActions";
 import { WishlistFlyout } from "@/components/wishlist/WishlistFlyout";
+import { getSellerSubscription } from "@/lib/subscription-helpers";
+import { getSellerByUserId } from "@/lib/queries";
 
 export default async function SellerDashboardTopNavbar({
   children,
@@ -36,6 +40,22 @@ export default async function SellerDashboardTopNavbar({
 }) {
   const session = await auth(); // Fetch user session
   const userInfo = session?.user ? await getUserInfoForNav() : null;
+  
+  // Check if seller has website builder access (Studio plan)
+  let hasWebsiteBuilderAccess = false;
+  if (session?.user?.id) {
+    try {
+      const seller = await getSellerByUserId(session.user.id);
+      if (seller) {
+        const subscription = await getSellerSubscription(seller.id);
+        hasWebsiteBuilderAccess = subscription.plan.websiteBuilder === true;
+      }
+    } catch (error) {
+      console.error('Error checking website builder access:', error);
+      // If there's an error, don't show website builder
+      hasWebsiteBuilderAccess = false;
+    }
+  }
 
   return (
     <div className="flex flex-col">
@@ -69,6 +89,24 @@ export default async function SellerDashboardTopNavbar({
                   </Button>
                 </Link>
               </DialogClose>
+              <DialogClose asChild>
+                <Link href="/seller/dashboard/plans">
+                  <Button variant="outline" className="w-full">
+                    <Crown className="mr-2 h-4 w-4" />
+                    Plans
+                  </Button>
+                </Link>
+              </DialogClose>
+              {hasWebsiteBuilderAccess && (
+                <DialogClose asChild>
+                  <Link href="/seller/dashboard/website-builder">
+                    <Button variant="outline" className="w-full">
+                      <Globe className="mr-2 h-4 w-4" />
+                      Website Builder
+                    </Button>
+                  </Link>
+                </DialogClose>
+              )}
               <DialogClose asChild>
                 <Link href="/seller/dashboard/products">
                   <Button variant="outline" className="w-full">

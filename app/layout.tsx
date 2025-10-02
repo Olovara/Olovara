@@ -14,6 +14,7 @@ import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { FONTS } from "@/lib/fonts";
+import ModalProvider from "@/providers/modal-provider";
 
 const jost = Jost({ subsets: ["latin"] });
 const notoSerifDisplay = Noto_Serif_Display({ subsets: ["latin"] });
@@ -134,11 +135,13 @@ export default async function RootLayout({
                 <OnboardingSurveyProvider>
                   <AnalyticsProvider>
                     <SocketProvider>
-                      <main className="relative flex min-h-screen flex-col">
-                        {children}
-                      </main>
-                      <PostHogPageview />
-                      <WebsiteStructuredData pageType="home" />
+                      <ModalProvider>
+                        <main className="relative flex min-h-screen flex-col">
+                          {children}
+                        </main>
+                        <PostHogPageview />
+                        <WebsiteStructuredData pageType="home" />
+                      </ModalProvider>
                     </SocketProvider>
                   </AnalyticsProvider>
                 </OnboardingSurveyProvider>

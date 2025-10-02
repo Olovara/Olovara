@@ -124,6 +124,28 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         },
       });
 
+      // Get the STARTER plan (free plan)
+      const starterPlan = await tx.subscriptionPlan.findUnique({
+        where: { name: 'STARTER' }
+      });
+
+      if (!starterPlan) {
+        throw new Error('STARTER subscription plan not found. Please seed subscription plans first.');
+      }
+
+      // Create subscription record for the new seller with STARTER plan
+      await tx.sellerSubscription.create({
+        data: {
+          sellerId: seller.id,
+          planId: starterPlan.id,
+          status: 'ACTIVE',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now (free plan)
+          // No stripeSubscriptionId for free plan
+          // No trialEndsAt for free plan
+        }
+      });
+
       // Update user role to SELLER
       await tx.user.update({
         where: { id: userId },

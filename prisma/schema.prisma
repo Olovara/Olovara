@@ -332,6 +332,10 @@ model Seller {
   followerCount   Int      @default(0) // Denormalized follower count for performance
   followers       Follow[] @relation("SellerFollowers") // Users following this seller
 
+  // Website Builder
+  website         Website?
+  subscription    SellerSubscription?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1721,6 +1725,118 @@ enum WishlistPrivacy {
   PRIVATE        // Only owner can see
   PUBLIC         // Searchable, shows in profile
   SHAREABLE      // Only accessible via link/QR
+}
+
+// Website Builder Models
+model Website {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId      String       @unique
+  seller        Seller       @relation(fields: [sellerId], references: [id])
+  name          String
+  description   String?
+  published     Boolean      @default(false)
+  subDomainName String?      @unique // For subdomain like seller.yarnnu.com
+  customDomain  String?      @unique // Custom domain if available
+  favicon       String?      // Favicon URL
+  websiteSlug   String?      @unique // URL slug for the website
+  theme         String?      // Selected theme/template
+  settings      Json?        // Custom settings, colors, fonts, etc.
+  seoTitle      String?      // SEO title
+  seoDescription String?     // SEO description
+  ogImage       String?      // Open Graph image
+  
+  pages         WebsitePage[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([published])
+}
+
+model WebsitePage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  websiteId    String
+  website      Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  name         String
+  pathName     String   @default("") // URL path for the page
+  content      String?  // JSON string of page content (EditorElement[])
+  order        Int      @default(0) // Page order in navigation
+  isHomepage   Boolean  @default(false)
+  isPublished  Boolean  @default(false)
+  visits       Int      @default(0) // Page visit counter
+  previewImage String?  // Preview image for the page
+  
+  // SEO fields
+  seoTitle       String?
+  seoDescription String?
+  ogImage        String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([websiteId, pathName])
+  @@index([websiteId])
+  @@index([isPublished])
+  @@index([order])
+}
+
+// Subscription Plans for Yarnnu (Starter, Maker, Studio)
+model SubscriptionPlan {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String   @unique // "STARTER", "MAKER", "STUDIO"
+  displayName     String   // "Starter", "Maker", "Studio"
+  price           Int      // Monthly price in cents
+  currency        String   @default("USD")
+  features        Json     // Array of features included
+  customDomain    Boolean  @default(false)
+  analytics       Boolean  @default(false)
+  prioritySupport Boolean  @default(false)
+  websiteBuilder  Boolean  @default(false) // Only Studio plan has this
+  stripePriceId   String?  // Stripe price ID
+  isActive        Boolean  @default(true)
+  
+  subscriptions   SellerSubscription[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Seller Subscriptions
+model SellerSubscription {
+  id                    String            @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId              String            @unique
+  seller                Seller            @relation(fields: [sellerId], references: [id])
+  planId                String
+  plan                  SubscriptionPlan  @relation(fields: [planId], references: [id])
+  status                String            @default("ACTIVE") // ACTIVE, CANCELLED, PAST_DUE, TRIALING
+  stripeSubscriptionId  String?           @unique
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  trialEndsAt           DateTime?
+  cancelAtPeriodEnd     Boolean           @default(false)
+  
+  // Website Builder specific (only available in Studio plan)
+  customDomain          String?
+  websiteSlug           String?           @unique // For subdomain like seller.yarnnu.com
+  
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  @@index([status])
+}
+
+// Website Builder Templates
+model WebsiteTemplate {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  description   String
+  category      String   // "MINIMAL", "MODERN", "VINTAGE", "CREATIVE"
+  previewImage  String
+  content       Json     // Template structure (EditorElement[])
+  isActive      Boolean  @default(true)
+  isPremium     Boolean  @default(false)
+  price         Int?     // Price in cents if premium
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 

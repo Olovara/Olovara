@@ -41,6 +41,16 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'via.placeholder.com', // Placeholder images
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com', // Unsplash images
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'example.com', // Add other domains as needed
         pathname: '/**',
       },
