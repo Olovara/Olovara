@@ -45,12 +45,19 @@ const baseProductSchema = z.object({
   }),
   sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
   shortDescription: z.string(), // Short description with bullet points for product overview
+  shortDescriptionBullets: z.array(z.string()).max(5, "Maximum 5 bullet points allowed").default([]), // Array of bullet points for short description
   description: descriptionJsonSchema,
   options: z
     .array(
       z.object({
-        name: z.string().min(1, "Option name is required"),
-        value: z.string().min(1, "Option value is required"),
+        label: z.string().min(1, "Option label is required"),
+        values: z.array(
+          z.object({
+            name: z.string().min(1, "Option value name is required"),
+            price: z.number().min(0, "Price must be non-negative"), // Price in cents
+            stock: z.number().int().min(0, "Stock must be non-negative").default(0),
+          })
+        ).min(1, "At least one option value is required"),
       })
     )
     .nullable()

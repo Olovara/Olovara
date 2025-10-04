@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
 import { generateUniqueSKU } from "@/lib/sku-generator";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
+import { generateBatchNumber } from "@/lib/batchNumber";
 
 // 60 seconds timeout
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       name,
       sku,
       shortDescription,
+      shortDescriptionBullets = [],
       price,
       description,
       status,
@@ -169,12 +171,14 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       name: name.trim(),
       sku: finalSku,
+      shortDescription: shortDescription || "",
+      shortDescriptionBullets: shortDescriptionBullets || [],
       description: description || { html: "", text: "" },
-      price: Math.round(price * 100), // Convert to cents
+      price, // Price is already converted to cents by ProductSchema
       currency,
       status: isDraft ? "DRAFT" : status,
-      shippingCost: Math.round(shippingCost * 100),
-      handlingFee: Math.round(handlingFee * 100),
+      shippingCost, // Already converted to cents by ProductSchema
+      handlingFee, // Already converted to cents by ProductSchema
       itemWeight,
       itemWeightUnit: "lbs",
       itemLength,
@@ -203,7 +207,7 @@ export async function POST(req: NextRequest) {
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
       dropTime,
-      discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
+      discountEndDate: discountEndDate && discountEndDate !== null ? new Date(discountEndDate) : undefined,
       discountEndTime: data.discountEndTime,
       metaTitle,
       metaDescription,
@@ -256,6 +260,21 @@ export async function POST(req: NextRequest) {
     });
 
     console.log("[PRODUCT CREATED] Product ID:", product.id);
+
+    // --- Step 5: Generate batch number for physical products ---
+    if (!validatedData.isDigital) {
+      try {
+        const batchNumber = await generateBatchNumber(product.id);
+        await db.product.update({
+          where: { id: product.id },
+          data: { batchNumber }
+        });
+        console.log("[BATCH NUMBER] Generated:", batchNumber);
+      } catch (error) {
+        console.error("[BATCH NUMBER] Error generating batch number:", error);
+        // Don't fail the entire request if batch number generation fails
+      }
+    }
 
     return new Response(
       JSON.stringify({

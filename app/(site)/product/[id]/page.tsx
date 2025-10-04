@@ -24,7 +24,118 @@ interface ProductPageProps {
   };
 }
 
-async function getData(id: string) {
+// Type for the Prisma query result
+type PrismaProductResult = {
+  id: string;
+  userId: string;
+  name: string;
+  shortDescription: string;
+  shortDescriptionBullets?: string[];
+  options?: {
+    label: string;
+    values: {
+      name: string;
+      price?: number;
+      stock: number;
+    }[];
+  }[];
+  images: string[];
+  price: number;
+  currency: string;
+  discount: number | null;
+  onSale: boolean;
+  saleStartDate: Date | null;
+  saleEndDate: Date | null;
+  saleStartTime: string | null;
+  saleEndTime: string | null;
+  description: any;
+  status: string;
+  isDigital: boolean;
+  stock: number;
+  productFile: string | null;
+  handlingFee: number | null;
+  shippingCost: number | null;
+  itemWeight: number | null;
+  itemWeightUnit: string | null;
+  itemLength: number | null;
+  itemWidth: number | null;
+  itemHeight: number | null;
+  itemDimensionUnit: string | null;
+  shippingNotes: string | null;
+  freeShipping: boolean;
+  inStockProcessingTime: number | null;
+  howItsMade: string | null;
+  tags: string[];
+  materialTags: string[];
+  primaryCategory: string;
+  secondaryCategory: string;
+  tertiaryCategory: string | null;
+  sku: string | null;
+  NSFW: boolean;
+  safetyWarnings?: string | null;
+  materialsComposition?: string | null;
+  safeUseInstructions?: string | null;
+  ageRestriction?: string | null;
+  chokingHazard?: boolean;
+  smallPartsWarning?: boolean;
+  chemicalWarnings?: string | null;
+  careInstructions?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  keywords?: string[];
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImage?: string | null;
+  seller: {
+    shopName: string;
+    shopNameSlug: string;
+    userId: string;
+    behindTheHands: string | null;
+  } | null;
+  dropDate: Date | null;
+  dropTime: string | null;
+  batchNumber?: string | null;
+  reviews: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: Date;
+    reviewer: {
+      id: string;
+      username: string | null;
+      image: string | null;
+    };
+  }[];
+};
+
+// Final ProductData type that includes the additional fields
+type ProductData = PrismaProductResult & {
+  responsiblePerson?: {
+    name: string;
+    email: string;
+    phone: string;
+    companyName: string;
+    vatNumber?: string;
+    address: {
+      street: string;
+      street2?: string;
+      city: string;
+      state?: string;
+      postalCode: string;
+      country: string;
+    };
+  } | null;
+  businessAddress?: {
+    street: string;
+    street2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    country: string;
+  } | null;
+};
+
+async function getData(id: string): Promise<ProductData | null> {
   try {
     // Validate that the ID is a valid ObjectID before querying
     if (!ObjectId.isValid(id)) {
@@ -49,6 +160,8 @@ async function getData(id: string) {
         userId: true,
         name: true,
         shortDescription: true,
+        shortDescriptionBullets: true,
+        options: true,
         images: true,
         price: true,
         currency: true,
@@ -112,7 +225,7 @@ async function getData(id: string) {
         reviews: {
           where: {
             status: "PUBLISHED",
-            type: "PRODUCT"
+            type: "PRODUCT",
           },
           select: {
             id: true,
@@ -124,12 +237,12 @@ async function getData(id: string) {
                 id: true,
                 username: true,
                 image: true,
-              }
-            }
+              },
+            },
           },
           orderBy: {
-            createdAt: "desc"
-          }
+            createdAt: "desc",
+          },
         },
       },
     });
@@ -258,11 +371,13 @@ async function getData(id: string) {
       }
     }
 
+    // The product object from Prisma includes seller and reviews from the select clause above
+    // TypeScript can't infer this properly, so we use the safe unknown conversion
     return {
       ...product,
       responsiblePerson: responsiblePersonData,
       businessAddress: businessAddressData,
-    };
+    } as unknown as ProductData;
   } catch (error) {
     console.error("Error fetching product:", error);
     return null;

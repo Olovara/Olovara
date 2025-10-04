@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { UTApi } from "uploadthing/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
-import { generateBatchNumber, hasGPSRFieldsChanged, hasStockIncreased } from "@/lib/batchNumber";
+import {
+  generateBatchNumber,
+  hasGPSRFieldsChanged,
+  hasStockIncreased,
+} from "@/lib/batchNumber";
 
 const utapi = new UTApi();
 
@@ -35,7 +39,76 @@ export async function GET(
 
     const product = await db.product.findUnique({
       where: { id: params.productId },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        sku: true,
+        description: true,
+        shortDescription: true,
+        shortDescriptionBullets: true,
+        price: true,
+        currency: true,
+        status: true,
+        images: true,
+        isDigital: true,
+        stock: true,
+        productFile: true,
+        numberSold: true,
+        primaryCategory: true,
+        secondaryCategory: true,
+        tertiaryCategory: true,
+        tags: true,
+        materialTags: true,
+        options: true, // Explicitly include options field
+        onSale: true,
+        freeShipping: true,
+        NSFW: true,
+        isTestProduct: true,
+        productDrop: true,
+        dropDate: true,
+        dropTime: true,
+        batchNumber: true,
+        shippingCost: true,
+        handlingFee: true,
+        itemWeight: true,
+        itemWeightUnit: true,
+        itemLength: true,
+        itemWidth: true,
+        itemHeight: true,
+        itemDimensionUnit: true,
+        shippingNotes: true,
+        inStockProcessingTime: true,
+        outStockLeadTime: true,
+        shippingOptionId: true,
+        taxCategory: true,
+        taxCode: true,
+        taxExempt: true,
+        discount: true, // This is the correct field name, not discountPercentage
+        saleStartDate: true,
+        saleEndDate: true,
+        saleStartTime: true,
+        saleEndTime: true,
+        originalPrice: true,
+        discountEndDate: true,
+        discountEndTime: true,
+        howItsMade: true,
+        safetyWarnings: true,
+        materialsComposition: true,
+        safeUseInstructions: true,
+        ageRestriction: true,
+        chokingHazard: true,
+        smallPartsWarning: true,
+        chemicalWarnings: true,
+        careInstructions: true,
+        metaTitle: true,
+        metaDescription: true,
+        keywords: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImage: true,
+        createdAt: true,
+        updatedAt: true,
         seller: {
           select: {
             id: true,
@@ -57,7 +130,10 @@ export async function GET(
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { productId: string } }) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: { productId: string } }
+) {
   try {
     const session = await auth();
 
@@ -69,7 +145,7 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     }
 
     const data = await req.json();
-    console.log('[API INPUT] Received update data:', data);
+    console.log("[API INPUT] Received update data:", data);
 
     const { productId } = params;
     const updateData = data;
@@ -82,15 +158,22 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     }
 
     // Check if this is a sale-only update
-    const isSaleUpdate = Object.keys(data).every(key => 
-      ['onSale', 'discount', 'saleStartDate', 'saleEndDate', 'saleStartTime', 'saleEndTime'].includes(key)
+    const isSaleUpdate = Object.keys(data).every((key) =>
+      [
+        "onSale",
+        "discount",
+        "saleStartDate",
+        "saleEndDate",
+        "saleStartTime",
+        "saleEndTime",
+      ].includes(key)
     );
 
     if (isSaleUpdate) {
       // Handle sale-only updates
       try {
         const validatedData = updateProductSaleSchema.parse(data);
-        
+
         // Get the product to check ownership
         const product = await db.product.findUnique({
           where: { id: productId, userId: session.user.id },
@@ -98,14 +181,17 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
 
         if (!product) {
           return new Response(
-            JSON.stringify({ success: false, error: "Product not found or not owned by user" }),
+            JSON.stringify({
+              success: false,
+              error: "Product not found or not owned by user",
+            }),
             { status: 404 }
           );
         }
 
         // Prepare update data
         const saleUpdateData: any = { ...validatedData };
-        
+
         // Convert date strings to Date objects if provided
         if (validatedData.saleStartDate) {
           saleUpdateData.saleStartDate = new Date(validatedData.saleStartDate);
@@ -136,7 +222,11 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       } catch (error) {
         if (error instanceof z.ZodError) {
           return new Response(
-            JSON.stringify({ success: false, error: "Invalid sale data", details: error.errors }),
+            JSON.stringify({
+              success: false,
+              error: "Invalid sale data",
+              details: error.errors,
+            }),
             { status: 400 }
           );
         }
@@ -144,11 +234,11 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       }
     }
 
-    // --- Step 1: Fetch CURRENT product state BEFORE update --- 
+    // --- Step 1: Fetch CURRENT product state BEFORE update ---
     const currentProduct = await db.product.findUnique({
       where: { id: productId, userId: session.user.id }, // Also verify ownership here
-      select: { 
-        images: true, 
+      select: {
+        images: true,
         productFile: true,
         stock: true,
         isDigital: true,
@@ -159,44 +249,47 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
         chokingHazard: true,
         smallPartsWarning: true,
         chemicalWarnings: true,
-        careInstructions: true
-      }
+        careInstructions: true,
+      },
     });
 
     if (!currentProduct) {
       return new Response(
-        JSON.stringify({ success: false, error: "Product not found or not owned by user" }),
+        JSON.stringify({
+          success: false,
+          error: "Product not found or not owned by user",
+        }),
         { status: 404 }
       );
     }
 
     // --- Step 1.5: Check if batch number needs to be updated ---
     let shouldUpdateBatchNumber = false;
-    
+
     // Check if stock has increased (for physical products only)
     if (!currentProduct.isDigital && updateData.stock !== undefined) {
       if (hasStockIncreased(currentProduct.stock, updateData.stock)) {
         shouldUpdateBatchNumber = true;
-        console.log('[API] Stock increased, will update batch number');
+        console.log("[API] Stock increased, will update batch number");
       }
     }
-    
+
     // Check if GPSR fields have changed (for physical products only)
     if (!currentProduct.isDigital) {
       if (hasGPSRFieldsChanged(currentProduct, updateData)) {
         shouldUpdateBatchNumber = true;
-        console.log('[API] GPSR fields changed, will update batch number');
+        console.log("[API] GPSR fields changed, will update batch number");
       }
     }
-    
+
     // Generate new batch number if needed
     let newBatchNumber: string | undefined;
     if (shouldUpdateBatchNumber) {
       newBatchNumber = await generateBatchNumber(productId);
-      console.log('[API] Generated new batch number:', newBatchNumber);
+      console.log("[API] Generated new batch number:", newBatchNumber);
     }
 
-    // --- Step 2: Handle Image Deletion --- 
+    // --- Step 2: Handle Image Deletion ---
     if (updateData.images && Array.isArray(updateData.images)) {
       const removedImages = currentProduct.images.filter(
         (img: string) => !updateData.images.includes(img)
@@ -204,18 +297,23 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
 
       if (removedImages.length > 0) {
         try {
-          const removedFileKeys = removedImages.map(url => url.substring(url.lastIndexOf('/') + 1));
+          const removedFileKeys = removedImages.map((url) =>
+            url.substring(url.lastIndexOf("/") + 1)
+          );
           await utapi.deleteFiles(removedFileKeys);
-          
+
           // Delete the TemporaryUpload records for removed images
           await db.temporaryUpload.deleteMany({
             where: {
               fileUrl: { in: removedImages },
-              userId: session.user.id
-            }
+              userId: session.user.id,
+            },
           });
         } catch (deleteError) {
-          console.error("[ERROR] Failed to delete files from UploadThing:", deleteError);
+          console.error(
+            "[ERROR] Failed to delete files from UploadThing:",
+            deleteError
+          );
         }
       }
     }
@@ -224,25 +322,33 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     if (updateData.productFile !== currentProduct.productFile) {
       if (currentProduct.productFile) {
         try {
-          const removedFileKey = currentProduct.productFile.substring(currentProduct.productFile.lastIndexOf('/') + 1);
+          const removedFileKey = currentProduct.productFile.substring(
+            currentProduct.productFile.lastIndexOf("/") + 1
+          );
           await utapi.deleteFiles([removedFileKey]);
-          
+
           // Delete the TemporaryUpload record for the removed productFile
           await db.temporaryUpload.deleteMany({
             where: {
               fileUrl: currentProduct.productFile,
-              userId: session.user.id
-            }
+              userId: session.user.id,
+            },
           });
         } catch (deleteError) {
-          console.error("[ERROR] Failed to delete productFile from UploadThing:", deleteError);
+          console.error(
+            "[ERROR] Failed to delete productFile from UploadThing:",
+            deleteError
+          );
         }
       }
     }
 
     // --- Step 3: Update the product ---
-    console.log('[API] About to update product with data:', JSON.stringify(updateData, null, 2));
-    
+    console.log(
+      "[API] About to update product with data:",
+      JSON.stringify(updateData, null, 2)
+    );
+
     // Split the update into smaller chunks to avoid MongoDB Atlas pipeline limit
     // Group fields by category to reduce pipeline length
     const basicFields = {
@@ -262,6 +368,7 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       tertiaryCategory: updateData.tertiaryCategory,
       tags: updateData.tags,
       materialTags: updateData.materialTags,
+      options: updateData.options, // Add options field
       onSale: updateData.onSale,
       freeShipping: updateData.freeShipping,
       NSFW: updateData.NSFW,
@@ -271,7 +378,7 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       dropTime: updateData.dropTime,
       batchNumber: newBatchNumber, // Add batch number if generated
     };
-    
+
     const shippingFields = {
       shippingCost: updateData.shippingCost,
       handlingFee: updateData.handlingFee,
@@ -286,13 +393,13 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       outStockLeadTime: updateData.outStockLeadTime,
       shippingOptionId: updateData.shippingOptionId,
     };
-    
+
     const taxFields = {
       taxCategory: updateData.taxCategory,
       taxCode: updateData.taxCode,
       taxExempt: updateData.taxExempt,
     };
-    
+
     const seoFields = {
       metaTitle: updateData.metaTitle,
       metaDescription: updateData.metaDescription,
@@ -301,7 +408,7 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       ogDescription: updateData.ogDescription,
       ogImage: updateData.ogImage,
     };
-    
+
     const gpsrFields = {
       safetyWarnings: updateData.safetyWarnings,
       materialsComposition: updateData.materialsComposition,
@@ -312,16 +419,17 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       chemicalWarnings: updateData.chemicalWarnings,
       careInstructions: updateData.careInstructions,
     };
-    
+
     const otherFields = {
       howItsMade: updateData.howItsMade,
     };
-    
+
     // Filter out undefined values from each group
-    const filterUndefined = (obj: any) => Object.fromEntries(
-      Object.entries(obj).filter(([_, value]) => value !== undefined)
-    );
-    
+    const filterUndefined = (obj: any) =>
+      Object.fromEntries(
+        Object.entries(obj).filter(([_, value]) => value !== undefined)
+      );
+
     const updateGroups = [
       filterUndefined(basicFields),
       filterUndefined(shippingFields),
@@ -329,51 +437,65 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
       filterUndefined(seoFields),
       filterUndefined(gpsrFields),
       filterUndefined(otherFields),
-    ].filter(group => Object.keys(group).length > 0);
-    
-    console.log('[API] Update groups:', updateGroups.map(group => ({
-      fields: Object.keys(group),
-      count: Object.keys(group).length
-    })));
-    
+    ].filter((group) => Object.keys(group).length > 0);
+
+    console.log(
+      "[API] Update groups:",
+      updateGroups.map((group) => ({
+        fields: Object.keys(group),
+        count: Object.keys(group).length,
+      }))
+    );
+
     let updatedProduct: any;
     try {
       // Perform multiple smaller updates to avoid MongoDB Atlas pipeline limit
-      console.log('[API] Performing chunked updates to avoid pipeline limit...');
-      
+      console.log(
+        "[API] Performing chunked updates to avoid pipeline limit..."
+      );
+
       // Update in chunks of max 40 fields to stay well under the 50 limit
       const MAX_FIELDS_PER_UPDATE = 40;
-      
+
       // Combine all groups and split into chunks
       const allFields = Object.assign({}, ...updateGroups);
       const fieldEntries = Object.entries(allFields);
       const chunks = [];
-      
+
       for (let i = 0; i < fieldEntries.length; i += MAX_FIELDS_PER_UPDATE) {
-        chunks.push(Object.fromEntries(fieldEntries.slice(i, i + MAX_FIELDS_PER_UPDATE)));
+        chunks.push(
+          Object.fromEntries(fieldEntries.slice(i, i + MAX_FIELDS_PER_UPDATE))
+        );
       }
-      
-      console.log('[API] Split into', chunks.length, 'chunks:', chunks.map(chunk => ({
-        fields: Object.keys(chunk),
-        count: Object.keys(chunk).length
-      })));
-      
+
+      console.log(
+        "[API] Split into",
+        chunks.length,
+        "chunks:",
+        chunks.map((chunk) => ({
+          fields: Object.keys(chunk),
+          count: Object.keys(chunk).length,
+        }))
+      );
+
       // Perform updates sequentially
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        console.log(`[API] Updating chunk ${i + 1}/${chunks.length} with ${Object.keys(chunk).length} fields`);
-        
+        console.log(
+          `[API] Updating chunk ${i + 1}/${chunks.length} with ${Object.keys(chunk).length} fields`
+        );
+
         updatedProduct = await db.product.update({
           where: { id: productId },
           data: chunk,
         });
-        
+
         console.log(`[API] Chunk ${i + 1} updated successfully`);
       }
-      
-      console.log('[API] All chunks updated successfully:', updatedProduct.id);
+
+      console.log("[API] All chunks updated successfully:", updatedProduct.id);
     } catch (dbError) {
-      console.error('[API] Database update error:', dbError);
+      console.error("[API] Database update error:", dbError);
       throw dbError;
     }
 
@@ -383,14 +505,17 @@ export async function PATCH(req: Request, { params }: { params: { productId: str
     );
   } catch (error) {
     console.error("[PRODUCT_PATCH] Error details:", error);
-    console.error("[PRODUCT_PATCH] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    console.error(
+      "[PRODUCT_PATCH] Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
     return new Response(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         error: "Internal server error",
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : "Unknown error",
       }),
       { status: 500 }
     );
   }
-} 
+}

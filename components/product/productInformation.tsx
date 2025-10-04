@@ -50,6 +50,8 @@ type ProductInfoSectionProps = {
   setTags: (tags: string[]) => void;
   materialTags: string[];
   setMaterialTags: (tags: string[]) => void;
+  shortDescriptionBullets: string[];
+  setShortDescriptionBullets: (bullets: string[]) => void;
 };
 
 export const ProductInfoSection = ({
@@ -60,6 +62,8 @@ export const ProductInfoSection = ({
   setTags,
   materialTags,
   setMaterialTags,
+  shortDescriptionBullets,
+  setShortDescriptionBullets,
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = form;
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
@@ -91,6 +95,7 @@ export const ProductInfoSection = ({
 
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
+  const [bulletInput, setBulletInput] = useState("");
 
   // Watch the primary and secondary category values
   const selectedPrimaryCategory = watch("primaryCategory");
@@ -144,6 +149,23 @@ export const ProductInfoSection = ({
     );
     setMaterialTags(updatedMaterialTags);
     setValue("materialTags", updatedMaterialTags);
+  };
+
+  // Add bullet point
+  const addBulletPoint = () => {
+    if (bulletInput.trim() !== "" && !shortDescriptionBullets.includes(bulletInput.trim()) && shortDescriptionBullets.length < 5) {
+      const updatedBullets = [...shortDescriptionBullets, bulletInput.trim()];
+      setShortDescriptionBullets(updatedBullets);
+      setValue("shortDescriptionBullets", updatedBullets);
+      setBulletInput("");
+    }
+  };
+
+  // Remove bullet point
+  const removeBulletPoint = (bulletToRemove: string) => {
+    const updatedBullets = shortDescriptionBullets.filter((bullet) => bullet !== bulletToRemove);
+    setShortDescriptionBullets(updatedBullets);
+    setValue("shortDescriptionBullets", updatedBullets);
   };
 
   return (
@@ -244,15 +266,65 @@ export const ProductInfoSection = ({
           <div className="flex flex-col gap-y-2">
             <Label>Short Description *</Label>
             <Input
-              placeholder="Brief bullet points about your product"
+              placeholder="Brief description about your product"
               {...register("shortDescription", { required: "Short description is required" })}
             />
             <p className="text-xs text-muted-foreground">
-              A short description with key features or bullet points that will appear under your shop name on the product page.
+              A short description that will appear under your shop name on the product page.
             </p>
           </div>
         )}
       />
+
+      {/* Short Description Bullet Points */}
+      <div className="flex flex-col gap-y-2">
+        <Label>Bullet Points (Optional)</Label>
+        <div className="flex space-x-2">
+          <Input
+            value={bulletInput}
+            onChange={(e) => setBulletInput(e.target.value)}
+            placeholder="Enter a bullet point..."
+            disabled={shortDescriptionBullets.length >= 5}
+          />
+          <Button 
+            onClick={addBulletPoint} 
+            type="button" 
+            disabled={!bulletInput.trim() || shortDescriptionBullets.length >= 5}
+            variant="outline"
+          >
+            Add
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Add up to 5 bullet points to highlight key features. These will appear below the short description on the product page.
+        </p>
+        {shortDescriptionBullets.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Current bullet points:</p>
+            <div className="space-y-1">
+              {shortDescriptionBullets.map((bullet, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-md border"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-500 text-sm">•</span>
+                    <span className="text-sm text-gray-800">{bullet}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeBulletPoint(bullet)}
+                    aria-label={`Remove bullet point: ${bullet}`}
+                    className="text-red-500 hover:text-red-700 p-1"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Product Description */}
       <div className="space-y-2">

@@ -8,6 +8,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import ProductActions from "@/components/ProductPageActions";
 import { ProductStructuredData } from "@/components/ProductStructuredData";
 import GPSRComplianceDisplay from "@/components/product/GPSRComplianceDisplay";
+import ProductOptionSelector from "@/components/ProductOptionSelector";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,15 @@ interface ProductDetailsProps {
     id: string;
     name: string;
     shortDescription: string;
+    shortDescriptionBullets?: string[];
+    options?: {
+      label: string;
+      values: {
+        name: string;
+        price?: number;
+        stock: number;
+      }[];
+    }[];
     images: string[];
     price: number;
     currency: string;
@@ -121,8 +131,16 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   const [convertedShippingCost, setConvertedShippingCost] =
     useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [optionAdjustedPrice, setOptionAdjustedPrice] = useState(data.price);
 
   const { formatPrice } = useCurrency();
+
+  // Handle option selection changes
+  const handleOptionSelectionChange = (options: Record<string, string>, totalPrice: number) => {
+    setSelectedOptions(options);
+    setOptionAdjustedPrice(totalPrice);
+  };
 
   // Update current time every minute for countdown
   useEffect(() => {
@@ -134,30 +152,38 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   }, []);
 
   useEffect(() => {
-    // Convert regular price
-    formatPrice(data.price, true).then(setConvertedPrice).catch(console.error);
+    const updatePrices = async () => {
+      try {
+        // Convert regular price
+        const regularPrice = await formatPrice(data.price, true);
+        setConvertedPrice(regularPrice);
 
-    // Calculate and convert final price (with discount if applicable)
-    const finalPrice = data.discount
-      ? data.price - (data.price * data.discount) / 100
-      : data.price;
+        // Calculate and convert final price (with discount if applicable)
+        const finalPrice = data.discount
+          ? optionAdjustedPrice - (optionAdjustedPrice * data.discount) / 100
+          : optionAdjustedPrice;
 
-    formatPrice(finalPrice, true)
-      .then(setConvertedFinalPrice)
-      .catch(console.error);
+        const finalPriceFormatted = await formatPrice(finalPrice, true);
+        setConvertedFinalPrice(finalPriceFormatted);
 
-    // Convert shipping cost if it exists
-    if (data.shippingCost || data.handlingFee) {
-      const totalShipping = (data.shippingCost || 0) + (data.handlingFee || 0);
-      formatPrice(totalShipping, true)
-        .then(setConvertedShippingCost)
-        .catch(console.error);
-    }
+        // Convert shipping cost if it exists
+        if (data.shippingCost || data.handlingFee) {
+          const totalShipping = (data.shippingCost || 0) + (data.handlingFee || 0);
+          const shippingFormatted = await formatPrice(totalShipping, true);
+          setConvertedShippingCost(shippingFormatted);
+        }
+      } catch (error) {
+        console.error('Error updating prices:', error);
+      }
+    };
+
+    updatePrices();
   }, [
     data.price,
     data.discount,
     data.shippingCost,
     data.handlingFee,
+    optionAdjustedPrice,
     formatPrice,
   ]);
 
@@ -318,6 +344,16 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           )}
           <div className="text-gray-700 text-medium">
             <p className="whitespace-pre-line">{data.shortDescription}</p>
+            {data.shortDescriptionBullets && data.shortDescriptionBullets.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {data.shortDescriptionBullets.map((bullet, index) => (
+                  <li key={index} className="flex items-start space-x-2">
+                    <span className="text-gray-500 mt-1">•</span>
+                    <span className="text-sm">{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           {!data.isDigital && data.stock > 0 && data.inStockProcessingTime && (
             <div>
@@ -369,6 +405,17 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                 : "Out of Stock"}
             </p>
           )}
+          {/* Product Options */}
+          {data.options && data.options.length > 0 && (
+            <ProductOptionSelector
+              options={data.options}
+              basePrice={data.price}
+              baseStock={data.stock}
+              currency={data.currency}
+              onSelectionChange={handleOptionSelectionChange}
+            />
+          )}
+
           {/* Quantity Selector & Buy Now Button */}
           <ProductActions
             productId={data.id}
@@ -377,7 +424,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             dropDate={data.dropDate}
             dropTime={data.dropTime}
             isDigital={data.isDigital}
-            price={data.price}
+            price={optionAdjustedPrice}
             shippingCost={data.shippingCost || 0}
             handlingFee={data.handlingFee || 0}
             sellerId={data.seller?.shopName ? data.seller.shopName : undefined}
@@ -491,7 +538,7 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
                 {data.itemWeight && (
                   <>
                     <span className="font-bold text-gray-600">Weight</span>
-                    <span className="text-gray-800">{data.itemWeight} {data.itemWeightUnit}</span>
+                    <span className="text-gray-800">{data.itemWeight.toFixed(2)} {data.itemWeightUnit}</span>
                   </>
                 )}
 

@@ -49,8 +49,14 @@ const FirstProductSchema = z.object({
   options: z
     .array(
       z.object({
-        name: z.string().min(1, "Option name is required"),
-        value: z.string().min(1, "Option value is required"),
+        label: z.string().min(1, "Option label is required"),
+        values: z.array(
+          z.object({
+            name: z.string().min(1, "Option value name is required"),
+            price: z.number().min(0, "Price must be non-negative"),
+            stock: z.number().int().min(0, "Stock must be non-negative").default(0),
+          })
+        ).min(1, "At least one option value is required"),
       })
     )
     .nullable()
@@ -132,7 +138,7 @@ type FirstProductFormValues = z.infer<typeof FirstProductSchema>;
 // This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
-  values: { name: string; stock: number }[];
+  values: { name: string; price?: number; stock: number }[];
 };
 
 export default function CreateFirstProductForm() {
@@ -144,6 +150,7 @@ export default function CreateFirstProductForm() {
   const [description, setDescription] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [materialTags, setMaterialTags] = useState<string[]>([]);
+  const [shortDescriptionBullets, setShortDescriptionBullets] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -228,6 +235,7 @@ export default function CreateFirstProductForm() {
         category: data.primaryCategory, // Keep using category for backward compatibility
         description: data.description.text || data.description.html || "",
         shortDescription: data.shortDescription || "",
+        shortDescriptionBullets: shortDescriptionBullets,
         price: data.price,
         materials: materialTags.join(", "),
         dimensions: "",
@@ -317,6 +325,8 @@ export default function CreateFirstProductForm() {
                     setTags={setTags}
                     materialTags={materialTags}
                     setMaterialTags={setMaterialTags}
+                    shortDescriptionBullets={shortDescriptionBullets}
+                    setShortDescriptionBullets={setShortDescriptionBullets}
                   />
                 </div>
               </div>

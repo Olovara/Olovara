@@ -206,7 +206,10 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       min="0"
                       placeholder="Enter weight"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
                     />
                   </FormControl>
                   <Select
@@ -243,7 +246,10 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       min="0"
                       placeholder="Enter length"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
                     />
                   </FormControl>
                   <Select
@@ -280,7 +286,10 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       min="0"
                       placeholder="Enter width"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
                     />
                   </FormControl>
                   <Select
@@ -317,7 +326,10 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       min="0"
                       placeholder="Enter height"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
                     />
                   </FormControl>
                   <Select

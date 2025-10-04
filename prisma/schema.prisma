@@ -450,17 +450,18 @@ model Product {
   name                  String
   sku                   String?          // Stock Keeping Unit - optional, auto-generated if not provided
   shortDescription      String          // Short description with bullet points for product overview
+  shortDescriptionBullets String[]      @default([]) // Array of bullet points for short description (max 5)
   description           Json
   price                 Int
   currency              String           @default("USD") // Store the currency code (e.g., USD, EUR, GBP)
   status                String           @default("HIDDEN")
   shippingCost          Int? // Only required if product is physical
   handlingFee           Int?
-  itemWeight            Int?
+  itemWeight            Float?
   itemWeightUnit        String           @default("lbs") // Store the weight unit (kg/lbs)
-  itemLength            Int?
-  itemWidth             Int?
-  itemHeight            Int?
+  itemLength            Float?
+  itemWidth             Float?
+  itemHeight            Float?
   itemDimensionUnit     String           @default("in") // Store the dimension unit (cm/inches)
   shippingNotes         String?
   freeShipping          Boolean          @default(false)
@@ -476,7 +477,7 @@ model Product {
   tertiaryCategory      String? // Optional tertiary category
   tags                  String[]
   materialTags          String[]
-  options               Json?
+  options               Json? // Array of option groups with values containing price and stock
   inStockProcessingTime Int?
   outStockLeadTime      Int?
   howItsMade            String?

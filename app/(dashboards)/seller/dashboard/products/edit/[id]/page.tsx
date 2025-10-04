@@ -42,41 +42,44 @@ export default function EditProductPage() {
         // Transform the product data to match the expected format
         const transformedProduct: ProductFormValues = {
           ...data,
-          description: typeof data.description === 'string' 
-            ? { html: data.description, text: data.description.replace(/<[^>]*>?/gm, '') }
-            : data.description.ops 
-              ? { 
-                  html: data.description.ops.map((op: { insert: string }) => op.insert).join(''),
-                  text: data.description.ops.map((op: { insert: string }) => op.insert).join('').replace(/<[^>]*>?/gm, '')
+          description:
+            typeof data.description === "string"
+              ? {
+                  html: data.description,
+                  text: data.description.replace(/<[^>]*>?/gm, ""),
                 }
-              : data.description || { html: '', text: '' },
+              : data.description.ops
+                ? {
+                    html: data.description.ops
+                      .map((op: { insert: string }) => op.insert)
+                      .join(""),
+                    text: data.description.ops
+                      .map((op: { insert: string }) => op.insert)
+                      .join("")
+                      .replace(/<[^>]*>?/gm, ""),
+                  }
+                : data.description || { html: "", text: "" },
           shippingCost: data.shippingCost || 0,
           handlingFee: data.handlingFee || 0,
           itemWeight: data.itemWeight || 0,
           itemLength: data.itemLength || 0,
           itemWidth: data.itemWidth || 0,
           itemHeight: data.itemHeight || 0,
-          shippingNotes: data.shippingNotes || '',
+          shippingNotes: data.shippingNotes || "",
           stock: data.stock ?? null,
           discount: data.discount || 0,
           numberSold: data.numberSold || 0,
           inStockProcessingTime: data.inStockProcessingTime || 0,
           outStockLeadTime: data.outStockLeadTime || 0,
-          howItsMade: data.howItsMade || '',
+          howItsMade: data.howItsMade || "",
           tags: data.tags || [],
           materialTags: data.materialTags || [],
-          options: Array.isArray(data.options)
-            ? data.options
-                .map((opt: unknown) =>
-                  typeof opt === "object" && opt !== null && "name" in opt && "value" in opt
-              ? { name: String(opt.name), value: String(opt.value) }
-              : null
-          )
-                .filter((opt: ProductOption | null): opt is ProductOption => opt !== null)
-      : [],
+          options: data.options || null, // Pass options directly without transformation
           dropDate: data.dropDate ? new Date(data.dropDate) : null,
-          discountEndDate: data.discountEndDate ? new Date(data.discountEndDate) : undefined,
-  };
+          discountEndDate: data.discountEndDate
+            ? new Date(data.discountEndDate)
+            : undefined,
+        };
 
         setProduct(transformedProduct);
       } catch (error) {
@@ -91,21 +94,33 @@ export default function EditProductPage() {
   }, [params.id]);
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[50vh]">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        Loading...
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="flex items-center justify-center min-h-[50vh] text-red-500">{error}</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] text-red-500">
+        {error}
+      </div>
+    );
   }
 
   if (!product) {
-    return <div className="flex items-center justify-center min-h-[50vh]">Product not found</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        Product not found
+      </div>
+    );
   }
 
   return (
     <div className="w-full">
-      <ProductDraftStatus 
-        product={product} 
+      <ProductDraftStatus
+        product={product}
         onActivate={() => {
           // This will be handled by the ProductForm component
           window.location.reload();

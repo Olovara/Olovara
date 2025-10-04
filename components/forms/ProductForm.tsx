@@ -7,13 +7,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
-import { 
-  SUPPORTED_CURRENCIES, 
-  SUPPORTED_WEIGHT_UNITS, 
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_WEIGHT_UNITS,
   SUPPORTED_DIMENSION_UNITS,
   CurrencyCode,
   WeightUnit,
-  DimensionUnit 
+  DimensionUnit,
 } from "@/data/units";
 import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { Submitbutton } from "../SubmitButtons";
@@ -52,30 +52,29 @@ type ProductFormProps = {
 // This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
-  values: { name: string; stock: number }[];
+  values: { name: string; price?: number; stock: number }[];
 };
 
 // This is the type defined in the schema
 type SchemaOption = {
-  name: string;
-  value: string;
+  label: string;
+  values: { name: string; price?: number; stock: number }[];
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
-  console.log('[DEBUG] ProductForm - Initial data:', initialData);
-  
+  console.log("[DEBUG] ProductForm - Initial data:", initialData);
+
   const [description, setDescription] = useState<string>(
     initialData?.description?.html || ""
   );
-  const [tags, setTags] = useState<string[]>(
-    initialData?.tags || []
-  );
+  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [materialTags, setMaterialTags] = useState<string[]>(
     initialData?.materialTags || []
   );
-  const [images, setImages] = useState<string[]>(
-    initialData?.images || []
-  );
+  const [shortDescriptionBullets, setShortDescriptionBullets] = useState<
+    string[]
+  >(initialData?.shortDescriptionBullets || []);
+  const [images, setImages] = useState<string[]>(initialData?.images || []);
   // SEO state
   const [metaTitle, setMetaTitle] = useState<string>(
     initialData?.metaTitle || ""
@@ -86,63 +85,75 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [keywords, setKeywords] = useState<string[]>(
     initialData?.keywords || []
   );
-  const [ogTitle, setOgTitle] = useState<string>(
-    initialData?.ogTitle || ""
-  );
+  const [ogTitle, setOgTitle] = useState<string>(initialData?.ogTitle || "");
   const [ogDescription, setOgDescription] = useState<string>(
     initialData?.ogDescription || ""
   );
-  const [ogImage, setOgImage] = useState<string>(
-    initialData?.ogImage || ""
-  );
+  const [ogImage, setOgImage] = useState<string>(initialData?.ogImage || "");
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
   const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
   const [isGPSRRequired, setIsGPSRRequired] = useState(false);
-  
+
   // Add a ref to track if form was submitted successfully
   const formSubmittedRef = useRef(false);
-  
+
   // Update images state when initialData changes
   useEffect(() => {
     if (initialData?.images && Array.isArray(initialData.images)) {
-      console.log('[DEBUG] Updating images state with initialData.images:', initialData.images);
+      console.log(
+        "[DEBUG] Updating images state with initialData.images:",
+        initialData.images
+      );
       setImages(initialData.images);
     }
   }, [initialData]);
-  
+
   // Convert schema options to dropdown options format
-  const convertOptions = (schemaOptions: SchemaOption[] | null | undefined): DropdownOption[] => {
+  const convertOptions = (
+    schemaOptions: SchemaOption[] | null | undefined
+  ): DropdownOption[] => {
     if (!schemaOptions) return [];
-    
-    // Group options by name
-    const groupedOptions = schemaOptions.reduce((acc, option) => {
-      if (!acc[option.name]) {
-        acc[option.name] = [];
-      }
-      acc[option.name].push({ name: option.value, stock: 0 });
-      return acc;
-    }, {} as Record<string, { name: string; stock: number }[]>);
-    
-    // Convert to DropdownOption format
-    return Object.entries(groupedOptions).map(([label, values]) => ({
-      label,
-      values
+
+    // The new format is already compatible, just need to handle price conversion from cents
+    return schemaOptions.map((option) => ({
+      label: option.label,
+      values: option.values.map((value) => ({
+        name: value.name,
+        price: value.price ? value.price / 100 : undefined, // Convert from cents to currency units
+        stock: value.stock || 0,
+      })),
     }));
   };
-  
+
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(
     convertOptions(initialData?.options as SchemaOption[] | null | undefined)
   );
+
+  // Update dropdown options when initialData changes
+  useEffect(() => {
+    if (initialData?.options) {
+      const convertedOptions = convertOptions(
+        initialData.options as SchemaOption[]
+      );
+      console.log(
+        "[DEBUG] Updating dropdown options from initialData:",
+        convertedOptions
+      );
+      setDropdownOptions(convertedOptions);
+    }
+  }, [initialData]);
   const isClient = useIsClient();
   const router = useRouter();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
   const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
-  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
+  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(
+    null
+  );
   const [isPending, startTransition] = useTransition();
   const [sellerPreferences, setSellerPreferences] = useState({
     preferredCurrency: "USD" as CurrencyCode,
@@ -160,7 +171,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         if (result.data) {
           const excluded = result.data.excludedCountries || [];
           setExcludedCountries(excluded);
-          
+
           // Determine if GPSR compliance is required
           const gpsrRequired = isGPSRComplianceRequired(excluded);
           setIsGPSRRequired(gpsrRequired);
@@ -175,27 +186,35 @@ export function ProductForm({ initialData }: ProductFormProps) {
     fetchExcludedCountries();
   }, []);
 
-
-
   const form = useForm<z.infer<typeof ProductSchema>>({
-    resolver: zodResolver(initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema),
+    resolver: zodResolver(
+      initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema
+    ),
     mode: "onSubmit",
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
-      shortDescription: initialData?.shortDescription || "Enter a brief description of your product",
+      shortDescription:
+        initialData?.shortDescription ||
+        "Enter a brief description of your product",
+      shortDescriptionBullets: initialData?.shortDescriptionBullets || [],
       price: initialData?.price ? initialData.price / 100 : 0,
       description: initialData?.description || { html: "", text: "" },
       images: initialData?.images || [],
       freeShipping: initialData?.freeShipping || false,
       handlingFee: initialData?.handlingFee ? initialData.handlingFee / 100 : 0,
-      shippingCost: initialData?.shippingCost ? initialData.shippingCost / 100 : 0,
+      shippingCost: initialData?.shippingCost
+        ? initialData.shippingCost / 100
+        : 0,
       itemWeight: initialData?.itemWeight || 0,
-      itemWeightUnit: initialData?.itemWeightUnit || sellerPreferences.preferredWeightUnit,
+      itemWeightUnit:
+        initialData?.itemWeightUnit || sellerPreferences.preferredWeightUnit,
       itemLength: initialData?.itemLength || 0,
       itemWidth: initialData?.itemWidth || 0,
       itemHeight: initialData?.itemHeight || 0,
-      itemDimensionUnit: initialData?.itemDimensionUnit || sellerPreferences.preferredDimensionUnit,
+      itemDimensionUnit:
+        initialData?.itemDimensionUnit ||
+        sellerPreferences.preferredDimensionUnit,
       shippingNotes: initialData?.shippingNotes || "",
       status: initialData?.status || "HIDDEN",
       isDigital: initialData?.isDigital || false,
@@ -234,14 +253,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
       smallPartsWarning: initialData?.smallPartsWarning || false,
       chemicalWarnings: initialData?.chemicalWarnings || "",
       careInstructions: initialData?.careInstructions || "",
-    }
+      // Options field
+      options: initialData?.options || null,
+    },
   });
 
   // Add this console log to verify form initialization
   console.log("Form initialized with:", form);
   console.log("Form default values:", form.getValues());
-  
-
 
   const formState = form.formState;
   console.log("Form state:", formState);
@@ -256,28 +275,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
     }
   }, [form]);
 
-
-
   // Add this useEffect to monitor form errors
   useEffect(() => {
     if (Object.keys(formState.errors).length > 0) {
       console.log("Form errors:", formState.errors);
       console.log("Current form values:", form.getValues());
-      console.log("shippingOptionId value:", form.getValues("shippingOptionId"));
+      console.log(
+        "shippingOptionId value:",
+        form.getValues("shippingOptionId")
+      );
     }
   }, [formState.errors, form]);
 
   // Add this useEffect to sync images with form state
   useEffect(() => {
-    console.log('[DEBUG] ProductForm - Current images state:', images);
-    setValue('images', images);
+    console.log("[DEBUG] ProductForm - Current images state:", images);
+    setValue("images", images);
   }, [images, setValue]);
 
   // Ensure shipping cost is 0 when free shipping is enabled
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'freeShipping' && value.freeShipping) {
-        setValue('shippingCost', 0);
+      if (name === "freeShipping" && value.freeShipping) {
+        setValue("shippingCost", 0);
       }
     });
     return () => subscription.unsubscribe();
@@ -287,9 +307,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   useEffect(() => {
     if (description) {
       // Update the form value with the proper structure
-      form.setValue('description', {
+      form.setValue("description", {
         html: description,
-        text: description.replace(/<[^>]*>?/gm, '')
+        text: description.replace(/<[^>]*>?/gm, ""),
       });
     }
   }, [description, form]);
@@ -297,7 +317,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   // Update the form watch for description
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'description' && value.description) {
+      if (name === "description" && value.description) {
         // Only update if the description has changed
         if (value.description.html !== description) {
           setDescription(value.description.html || ""); // Add fallback for undefined
@@ -313,10 +333,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
       try {
         // For component unmount cleanup, we don't have a product ID yet
         const result = await cleanupTempUploads("", tempImages);
-        console.log('[DEBUG] Cleanup result:', result);
+        console.log("[DEBUG] Cleanup result:", result);
         setTempImages([]); // Clear the temp images after cleanup
       } catch (error) {
-        console.error('Error cleaning up temporary images:', error);
+        console.error("Error cleaning up temporary images:", error);
       }
     }
   }, [tempImages]);
@@ -337,9 +357,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [form.formState.isDirty, tempImages]);
 
@@ -352,6 +372,20 @@ export function ProductForm({ initialData }: ProductFormProps) {
     void checkApproval();
   }, []);
 
+  // Convert dropdown options back to schema format
+  const convertDropdownOptionsToSchema = (
+    dropdownOptions: DropdownOption[]
+  ): SchemaOption[] => {
+    return dropdownOptions.map((option) => ({
+      label: option.label,
+      values: option.values.map((value) => ({
+        name: value.name,
+        price: value.price ? Math.round(value.price * 100) : undefined, // Convert to cents
+        stock: value.stock || 0,
+      })),
+    }));
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
     console.log("[DEBUG] onSubmit function called!");
     try {
@@ -361,30 +395,37 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // Validate GPSR compliance if required
       if (isGPSRRequired) {
         const requiredGPSRFields = [
-          'safetyWarnings',
-          'materialsComposition', 
-          'safeUseInstructions'
+          "safetyWarnings",
+          "materialsComposition",
+          "safeUseInstructions",
         ];
-        
-        const missingFields = requiredGPSRFields.filter(field => {
+
+        const missingFields = requiredGPSRFields.filter((field) => {
           const value = data[field as keyof typeof data];
-          return !value || (typeof value === 'string' && value.trim() === '');
+          return !value || (typeof value === "string" && value.trim() === "");
         });
-        
+
         if (missingFields.length > 0) {
-          toast.error(`GPSR compliance required: Please fill in ${missingFields.join(', ')}`);
+          toast.error(
+            `GPSR compliance required: Please fill in ${missingFields.join(", ")}`
+          );
           setIsLoading(false);
           return;
         }
       }
 
       // Determine if this should be saved as a draft
-      const isDraft = initialData?.status === "DRAFT" || data.status === "DRAFT";
-      
+      const isDraft =
+        initialData?.status === "DRAFT" || data.status === "DRAFT";
+
       // The schema already handles the conversion to cents
       const formData = {
         ...data,
         status: isDraft ? "DRAFT" : data.status,
+        options:
+          dropdownOptions.length > 0
+            ? convertDropdownOptionsToSchema(dropdownOptions)
+            : null,
         // Remove these conversions since they're handled by the schema
         // price: Math.round(data.price * 100),
         // shippingCost: Math.round(data.shippingCost * 100),
@@ -393,20 +434,27 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
       console.log("[DEBUG] Form data after conversion:", formData);
 
-      const response = await fetch(initialData ? `/api/products/${initialData.id}` : "/api/products/create-product", {
-        method: initialData ? "PATCH" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        initialData
+          ? `/api/products/${initialData.id}`
+          : "/api/products/create-product",
+        {
+          method: initialData ? "PATCH" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const responseData = await response.json();
 
       if (!response.ok) {
         // Handle onboarding incomplete error
         if (responseData.onboardingIncomplete) {
-          toast.error("Please complete your seller onboarding before activating products");
+          toast.error(
+            "Please complete your seller onboarding before activating products"
+          );
           return;
         }
         throw new Error(responseData.error || "Failed to save product");
@@ -414,39 +462,46 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
       // After successful product creation/update, call the cleanup server action
       if (responseData.product && responseData.product.id) {
-        console.log('[DEBUG] Product created/updated successfully, cleaning up temporary uploads');
-        
+        console.log(
+          "[DEBUG] Product created/updated successfully, cleaning up temporary uploads"
+        );
+
         // Set the flag to indicate successful submission
         formSubmittedRef.current = true;
-        
+
         // Prepare the URLs for cleanup
         const urlsToCleanup = [...images];
         if (data.productFile) {
           urlsToCleanup.push(data.productFile);
         }
-        
+
         // Call the cleanup server action with the product ID
-        const cleanupResult = await cleanupTempUploads(responseData.product.id, urlsToCleanup);
-        console.log('[DEBUG] Cleanup result:', cleanupResult);
-        
+        const cleanupResult = await cleanupTempUploads(
+          responseData.product.id,
+          urlsToCleanup
+        );
+        console.log("[DEBUG] Cleanup result:", cleanupResult);
+
         if (!cleanupResult.success) {
-          console.error('[ERROR] Cleanup failed:', cleanupResult.error);
+          console.error("[ERROR] Cleanup failed:", cleanupResult.error);
         }
       }
 
       // Show appropriate success message
       if (responseData.isDraft) {
-        toast.success("Product draft saved successfully! Complete all required fields to make it active.");
+        toast.success(
+          "Product draft saved successfully! Complete all required fields to make it active."
+        );
       } else {
         toast.success(initialData ? "Product updated" : "Product created");
       }
-      
+
       // Only navigate if the update was successful
       router.replace("/seller/dashboard/products");
       router.refresh();
       setTempImages([]); // Clear temp images after successful submission
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error("Form submission error:", error);
       toast.error("Something went wrong");
     } finally {
       setIsLoading(false);
@@ -455,10 +510,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!initialData?.id) return;
-    
+
     try {
       setIsLoading(true);
-      
+
       const response = await fetch("/api/products/update-status", {
         method: "PUT",
         headers: {
@@ -474,20 +529,26 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
       if (!response.ok) {
         if (responseData.onboardingIncomplete) {
-          toast.error("Please complete your seller onboarding before activating products");
+          toast.error(
+            "Please complete your seller onboarding before activating products"
+          );
           return;
         }
         if (responseData.missingFields) {
-          toast.error(`Please complete these required fields: ${responseData.missingFields.join(", ")}`);
+          toast.error(
+            `Please complete these required fields: ${responseData.missingFields.join(", ")}`
+          );
           return;
         }
-        throw new Error(responseData.error || "Failed to update product status");
+        throw new Error(
+          responseData.error || "Failed to update product status"
+        );
       }
 
       toast.success(responseData.message);
       router.refresh();
     } catch (error) {
-      console.error('Status update error:', error);
+      console.error("Status update error:", error);
       toast.error("Failed to update product status");
     } finally {
       setIsLoading(false);
@@ -548,9 +609,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
   if (!isSellerApproved) {
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Application Pending</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Application Pending
+        </h2>
         <p className="text-gray-600 text-center max-w-md">
-          Your seller application is still pending approval. You can set up your shop profile, but you won&apos;t be able to create products until your application is approved.
+          Your seller application is still pending approval. You can set up your
+          shop profile, but you won&apos;t be able to create products until your
+          application is approved.
         </p>
       </div>
     );
@@ -565,19 +630,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
             {initialData ? "Edit Product" : "Create New Product"}
           </h1>
           <p className="text-gray-600">
-            {initialData 
-              ? "Update your product information and settings" 
-              : "Fill out the information below to create your product listing"
-            }
+            {initialData
+              ? "Update your product information and settings"
+              : "Fill out the information below to create your product listing"}
           </p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            
             {/* Grid Layout for Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
               {/* Basic Information Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
@@ -585,7 +647,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Basic Information
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Essential product details that customers will see first</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Essential product details that customers will see first
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductInfoSection
@@ -596,6 +660,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     setTags={setTags}
                     materialTags={materialTags}
                     setMaterialTags={setMaterialTags}
+                    shortDescriptionBullets={shortDescriptionBullets}
+                    setShortDescriptionBullets={setShortDescriptionBullets}
                   />
                 </div>
               </div>
@@ -607,7 +673,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Media & Visuals
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Images and files that showcase your product</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Images and files that showcase your product
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductPhotosSection
@@ -618,10 +686,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     form={form}
                     setTempUploadsCreated={setTempUploadsCreated}
                   />
-                  
-                  <ProductFileSection 
-                    form={form} 
-                    tempFiles={tempFiles} 
+
+                  <ProductFileSection
+                    form={form}
+                    tempFiles={tempFiles}
                     setTempFiles={setTempFiles}
                     setTempUploadsCreated={setTempUploadsCreated}
                   />
@@ -635,11 +703,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Inventory & Options
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Stock levels, variants, and product options</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Stock levels, variants, and product options
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductInventorySection form={form} />
-                  
+
                   <ProductOptionsSection
                     dropdownOptions={dropdownOptions}
                     setDropdownOptions={setDropdownOptions}
@@ -654,10 +724,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Shipping & Dimensions
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Shipping costs, dimensions, and handling information</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Shipping costs, dimensions, and handling information
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
-                  <ProductShippingSection form={form} freeShipping={freeShipping} />
+                  <ProductShippingSection
+                    form={form}
+                    freeShipping={freeShipping}
+                  />
                 </div>
               </div>
 
@@ -668,7 +743,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Story & Details
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Tell customers about your product and how it&apos;s made</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tell customers about your product and how it&apos;s made
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductHowItsMadeSection form={form} />
@@ -682,19 +759,19 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     Promotions & Scheduling
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Discounts, sales, and product drops</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Discounts, sales, and product drops
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductDiscountSection form={form} />
                   <ProductDropSection form={form} />
                 </div>
               </div>
-
             </div>
 
             {/* Full Width Sections */}
             <div className="space-y-8">
-              
               {/* SEO & Marketing Section - Full Width */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
@@ -702,7 +779,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     SEO & Marketing
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Optimize your product for search and social media</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Optimize your product for search and social media
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductSEOSection
@@ -730,19 +809,30 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Product Safety & Compliance
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">Ensure your product meets safety standards and regulatory requirements</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Ensure your product meets safety standards and regulatory
+                      requirements
+                    </p>
                   </div>
                   <div className="p-6">
                     <GPSRComplianceForm
                       safetyWarnings={form.watch("safetyWarnings") || ""}
-                      materialsComposition={form.watch("materialsComposition") || ""}
-                      safeUseInstructions={form.watch("safeUseInstructions") || ""}
+                      materialsComposition={
+                        form.watch("materialsComposition") || ""
+                      }
+                      safeUseInstructions={
+                        form.watch("safeUseInstructions") || ""
+                      }
                       ageRestriction={form.watch("ageRestriction") || ""}
                       chokingHazard={form.watch("chokingHazard") || false}
-                      smallPartsWarning={form.watch("smallPartsWarning") || false}
+                      smallPartsWarning={
+                        form.watch("smallPartsWarning") || false
+                      }
                       chemicalWarnings={form.watch("chemicalWarnings") || ""}
                       careInstructions={form.watch("careInstructions") || ""}
-                      onChange={(field, value) => form.setValue(field as any, value)}
+                      onChange={(field, value) =>
+                        form.setValue(field as any, value)
+                      }
                       isRequired={true} // Now required since we only show when GPSR compliance is needed
                     />
                   </div>
@@ -755,12 +845,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Product Safety & Compliance
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">GPSR compliance not required for your shipping destinations</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      GPSR compliance not required for your shipping
+                      destinations
+                    </p>
                   </div>
                   <div className="p-6">
                     <div className="text-sm text-gray-600">
-                      <p>Since you have excluded all EU/EEA countries and Northern Ireland from your shipping destinations, GPSR (General Product Safety Regulation) compliance fields are not required.</p>
-                      <p className="mt-2">If you later decide to ship to EU/EEA countries or Northern Ireland, you can update your shipping exclusions in your seller settings, and these fields will become available.</p>
+                      <p>
+                        Since you have excluded all EU/EEA countries and
+                        Northern Ireland from your shipping destinations, GPSR
+                        (General Product Safety Regulation) compliance fields
+                        are not required.
+                      </p>
+                      <p className="mt-2">
+                        If you later decide to ship to EU/EEA countries or
+                        Northern Ireland, you can update your shipping
+                        exclusions in your seller settings, and these fields
+                        will become available.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -772,24 +875,36 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       Digital Product
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">GPSR compliance not required for digital products</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      GPSR compliance not required for digital products
+                    </p>
                   </div>
                   <div className="p-6">
                     <div className="text-sm text-gray-600">
-                      <p>GPSR (General Product Safety Regulation) compliance fields are not required for digital products since they don&apos;t pose physical safety risks.</p>
+                      <p>
+                        GPSR (General Product Safety Regulation) compliance
+                        fields are not required for digital products since they
+                        don&apos;t pose physical safety risks.
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* GPSR Warning Section - Show when GPSR is required but fields are empty */}
-              {isGPSRRequired && !form.watch("isDigital") && (
+              {isGPSRRequired &&
+                !form.watch("isDigital") &&
                 (() => {
                   const safetyWarnings = form.watch("safetyWarnings") || "";
-                  const materialsComposition = form.watch("materialsComposition") || "";
-                  const safeUseInstructions = form.watch("safeUseInstructions") || "";
-                  const hasGPSRData = safetyWarnings.trim() || materialsComposition.trim() || safeUseInstructions.trim();
-                  
+                  const materialsComposition =
+                    form.watch("materialsComposition") || "";
+                  const safeUseInstructions =
+                    form.watch("safeUseInstructions") || "";
+                  const hasGPSRData =
+                    safetyWarnings.trim() ||
+                    materialsComposition.trim() ||
+                    safeUseInstructions.trim();
+
                   if (!hasGPSRData) {
                     return (
                       <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
@@ -798,14 +913,27 @@ export function ProductForm({ initialData }: ProductFormProps) {
                             <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                             EU Compliance Required
                           </h2>
-                          <p className="text-sm text-orange-700 mt-1">Complete GPSR information to sell in EU/EEA countries</p>
+                          <p className="text-sm text-orange-700 mt-1">
+                            Complete GPSR information to sell in EU/EEA
+                            countries
+                          </p>
                         </div>
                         <div className="p-6">
                           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5">
-                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                <svg
+                                  className="w-5 h-5 text-orange-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                  />
                                 </svg>
                               </div>
                               <div className="flex-1">
@@ -813,10 +941,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
                                   GPSR Information Required
                                 </h3>
                                 <p className="text-sm text-orange-800 mb-3">
-                                  Since you ship to EU/EEA countries, you must provide product safety information to comply with the General Product Safety Regulation (GPSR). Your product cannot be activated for EU sales without this information.
+                                  Since you ship to EU/EEA countries, you must
+                                  provide product safety information to comply
+                                  with the General Product Safety Regulation
+                                  (GPSR). Your product cannot be activated for
+                                  EU sales without this information.
                                 </p>
                                 <div className="text-sm text-orange-800">
-                                  <p className="font-medium mb-1">Required fields:</p>
+                                  <p className="font-medium mb-1">
+                                    Required fields:
+                                  </p>
                                   <ul className="list-disc list-inside space-y-1">
                                     <li>Safety warnings</li>
                                     <li>Materials composition</li>
@@ -831,8 +965,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     );
                   }
                   return null;
-                })()
-              )}
+                })()}
 
               {/* Test Product Section - Full Width */}
               {canAccessTest && (
@@ -842,17 +975,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
                       Testing Options
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">Configure test environment settings</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Configure test environment settings
+                    </p>
                   </div>
                   <div className="p-6">
                     <div className="flex items-center space-x-3">
                       <Checkbox
                         id="isTestProduct"
                         checked={form.watch("isTestProduct") || false}
-                        onCheckedChange={(checked) => form.setValue("isTestProduct", checked as boolean)}
+                        onCheckedChange={(checked) =>
+                          form.setValue("isTestProduct", checked as boolean)
+                        }
                       />
                       <div>
-                        <Label htmlFor="isTestProduct" className="text-sm font-medium">
+                        <Label
+                          htmlFor="isTestProduct"
+                          className="text-sm font-medium"
+                        >
                           Mark as test product
                         </Label>
                         <p className="text-xs text-muted-foreground">
@@ -863,7 +1003,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   </div>
                 </div>
               )}
-
             </div>
 
             {/* Action Buttons */}
@@ -876,7 +1015,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 >
                   Cancel
                 </button>
-                
+
                 {initialData?.status === "DRAFT" && (
                   <button
                     type="button"
@@ -891,15 +1030,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       </>
                     ) : (
                       <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         Activate Product
                       </>
                     )}
                   </button>
                 )}
-                
+
                 {initialData?.status === "ACTIVE" && (
                   <button
                     type="button"
@@ -910,10 +1059,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     {isLoading ? "Hiding..." : "Hide Product"}
                   </button>
                 )}
-                
-                <Submitbutton 
-                  title={initialData ? "Update Product" : "Create Product"} 
-                  isPending={isLoading} 
+
+                <Submitbutton
+                  title={initialData ? "Update Product" : "Create Product"}
+                  isPending={isLoading}
                 />
               </div>
             </div>
