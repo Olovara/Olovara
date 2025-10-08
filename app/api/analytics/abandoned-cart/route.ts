@@ -222,4 +222,57 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Delete abandoned cart record (when checkout is completed)
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await auth();
+    const body = await req.json();
+    
+    const { sessionId, productId, userId } = body;
+
+    // Validate required fields - either sessionId or productId+userId
+    if (!productId || (!sessionId && !userId)) {
+      return NextResponse.json(
+        { error: "Missing required fields: productId and either sessionId or userId" },
+        { status: 400 }
+      );
+    }
+
+    // Build where clause based on available data
+    const whereClause: any = {
+      productId: productId,
+      recovered: false, // Only delete non-recovered carts
+    };
+
+    if (sessionId) {
+      whereClause.sessionId = sessionId;
+    }
+
+    if (userId) {
+      whereClause.userId = userId;
+    } else {
+      whereClause.userId = session?.user?.id || null; // Match user ID if logged in, null if guest
+    }
+
+    // Find and delete the abandoned cart record(s)
+    const deletedCart = await db.abandonedCart.deleteMany({
+      where: whereClause,
+    });
+
+    console.log(`✅ Deleted ${deletedCart.count} abandoned cart record(s) for product ${productId}`);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: deletedCart.count,
+    });
+
+  } catch (error) {
+    console.error("❌ Error deleting abandoned cart:", error);
+    return NextResponse.json(
+      { error: "Failed to delete abandoned cart record" },
+      { status: 500 }
+    );
+  }
 } 

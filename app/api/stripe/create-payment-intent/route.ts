@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { stripeCheckout, stripeSecret } from "@/lib/stripe";
+import { stripeSecret } from "@/lib/stripe";
 import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { calculateShippingCost } from "@/lib/shipping-calculator";
 import { decryptOrderData } from "@/lib/encryption";
 import { validateDiscountCode, calculateDiscount, calculateProductSaleDiscount } from "@/lib/discount-calculator";
 import { verifyRecaptcha } from "@/lib/recaptcha";
-import type { Stripe } from "stripe";
-
-interface ProductDescription {
-  html: string;
-  text: string;
-}
 
 export async function POST(req: Request) {
   try {
     const session = await auth();
     const body = await req.json();
-    const { productId, quantity, preferredCurrency, discountCode, shippingAddress, billingAddress, recaptchaToken } = body;
+    const { productId, quantity, preferredCurrency, discountCode, shippingAddress, billingAddress, recaptchaToken, abandonedCartSessionId } = body;
 
     if (!productId || !quantity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -102,44 +96,51 @@ export async function POST(req: Request) {
     let finalShippingCost = product.shippingCost || 0;
     let sellerOriginCountry = "";
     
-    // Get seller's country from their default address or shipping profile
-    if (product.seller?.addresses && product.seller.addresses.length > 0) {
-      // Decrypt the seller's country from their default address
-      const sellerAddress = product.seller.addresses[0];
-      sellerOriginCountry = decryptOrderData(
-        sellerAddress.encryptedCountry, 
-        sellerAddress.countryIV, 
-        sellerAddress.countrySalt
-      );
-    } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
-      // Fallback to shipping option country of origin
-      const defaultOption = product.seller.shippingOptions[0];
-      sellerOriginCountry = defaultOption.countryOfOrigin;
-    }
-    
-        // If still no country found, we can't calculate dynamic shipping
-    if (!sellerOriginCountry) {
-      console.warn(`No seller country found for product ${productId}, using static shipping cost`);
-    } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
-      // Get user's country from shipping address or fallback
-      const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
-      
-      // Calculate shipping cost based on origin and destination
-      const defaultOption = product.seller.shippingOptions[0];
-      const shippingCalculation = calculateShippingCost(
-        defaultOption.rates.map(rate => ({
-          ...rate,
-          countryRates: (rate.countryRates as any) || []
-        })),
-        sellerOriginCountry,
-        userCountry,
-        parseInt(quantity.toString())
-      );
-      
-      if (shippingCalculation) {
-        finalShippingCost = shippingCalculation.price;
-        console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry}`);
+    // Skip shipping calculation for digital products or if product has free shipping
+    if (!product.isDigital && finalShippingCost > 0) {
+      // Get seller's country from their default address or shipping profile
+      if (product.seller?.addresses && product.seller.addresses.length > 0) {
+        // Decrypt the seller's country from their default address
+        const sellerAddress = product.seller.addresses[0];
+        sellerOriginCountry = decryptOrderData(
+          sellerAddress.encryptedCountry, 
+          sellerAddress.countryIV, 
+          sellerAddress.countrySalt
+        );
+      } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
+        // Fallback to shipping option country of origin
+        const defaultOption = product.seller.shippingOptions[0];
+        sellerOriginCountry = defaultOption.countryOfOrigin;
       }
+      
+      // If still no country found, we can't calculate dynamic shipping
+      if (!sellerOriginCountry) {
+        console.warn(`No seller country found for product ${productId}, using static shipping cost`);
+      } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
+        // Get user's country from shipping address or fallback
+        const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
+        
+        // Calculate shipping cost based on origin and destination
+        const defaultOption = product.seller.shippingOptions[0];
+        const shippingCalculation = calculateShippingCost(
+          defaultOption.rates.map(rate => ({
+            ...rate,
+            countryRates: (rate.countryRates as any) || []
+          })),
+          sellerOriginCountry,
+          userCountry,
+          parseInt(quantity.toString())
+        );
+        
+        if (shippingCalculation) {
+          finalShippingCost = shippingCalculation.price;
+          console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry}`);
+        }
+      }
+    } else if (product.isDigital) {
+      console.log(`Digital product - no shipping cost needed`);
+    } else {
+      console.log(`Product has free shipping - no shipping cost needed`);
     }
 
     // Calculate product sale discount
@@ -270,14 +271,14 @@ export async function POST(req: Request) {
     let discountCodeId = null;
     let discountCodeUsed = null;
 
-    if (discountCode) {
-      const validationResult = await validateDiscountCode(
-        discountCode,
-        product.seller.id,
-        productId,
-        totalOrderAmountInCents,
-        session?.user?.id
-      );
+          if (discountCode) {
+        const validationResult = await validateDiscountCode(
+          discountCode,
+          product.seller.userId,
+          productId,
+          totalOrderAmountInCents,
+          session?.user?.id
+        );
 
       if (!validationResult.isValid) {
         return NextResponse.json({ 
@@ -312,121 +313,93 @@ export async function POST(req: Request) {
     );
     
     // Calculate platform fee on the total order amount (product + shipping + handling, before discounts)
-    const totalOrderAmountBeforeDiscount = totalProductPriceInCents + (finalShippingAndHandlingInCents * parsedQuantity);
+    const totalOrderAmountBeforeDiscount = totalProductPriceInCents + finalShippingAndHandlingInCents;
     const platformFeeInCents = Math.round(totalOrderAmountBeforeDiscount * (commissionRate / 100));
+    
+    console.log(`💰 Platform fee calculation:`);
+    console.log(`- Total order amount (before discount): ${totalOrderAmountBeforeDiscount} cents (${(totalOrderAmountBeforeDiscount / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`);
+    console.log(`- Commission rate: ${commissionRate}%`);
+    console.log(`- Platform fee: ${platformFeeInCents} cents (${(platformFeeInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`);
 
-    // Handle description in new JSON format
-    let productDescription = "No description available";
-    if (product.description) {
-      if (typeof product.description === 'string') {
-        try {
-          const parsed = JSON.parse(product.description) as unknown as ProductDescription;
-          productDescription = parsed.text || "No description available";
-        } catch {
-          productDescription = product.description.replace(/<[^>]*>?/gm, '');
+    // Create or get customer with address information if provided
+    let customerId: string | undefined;
+    
+    if (shippingAddress && billingAddress && session?.user?.email) {
+      try {
+        // Use the platform's Stripe instance for customer operations
+        const stripe = stripeSecret.instance;
+        
+        // Check if customer already exists
+        const existingCustomers = await stripe.customers.list({
+          email: session.user.email,
+          limit: 1,
+        });
+
+        if (existingCustomers.data.length > 0) {
+          // Update existing customer with new address information
+          const customer = await stripe.customers.update(existingCustomers.data[0].id, {
+            name: shippingAddress.name,
+            address: {
+              line1: shippingAddress.street,
+              city: shippingAddress.city,
+              state: shippingAddress.state,
+              postal_code: shippingAddress.postal,
+              country: shippingAddress.country,
+            },
+            shipping: {
+              name: shippingAddress.name,
+              address: {
+                line1: shippingAddress.street,
+                city: shippingAddress.city,
+                state: shippingAddress.state,
+                postal_code: shippingAddress.postal,
+                country: shippingAddress.country,
+              },
+            },
+          });
+          customerId = customer.id;
+        } else {
+          // Create new customer with address information
+          const customer = await stripe.customers.create({
+            email: session.user.email,
+            name: shippingAddress.name,
+            address: {
+              line1: shippingAddress.street,
+              city: shippingAddress.city,
+              state: shippingAddress.state,
+              postal_code: shippingAddress.postal,
+              country: shippingAddress.country,
+            },
+            shipping: {
+              name: shippingAddress.name,
+              address: {
+                line1: shippingAddress.street,
+                city: shippingAddress.city,
+                state: shippingAddress.state,
+                postal_code: shippingAddress.postal,
+                country: shippingAddress.country,
+              },
+            },
+          });
+          customerId = customer.id;
         }
-      } else if (typeof product.description === 'object') {
-        const desc = product.description as unknown as ProductDescription;
-        productDescription = desc.text || "No description available";
+        
+        console.log('Customer created/updated successfully:', customerId);
+      } catch (error) {
+        console.error('Error creating/updating customer:', error);
+        // Continue without customer pre-filling if there's an error
       }
     }
 
-    // Create line items for Stripe checkout
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-
-    // Add product line item
-    lineItems.push({
-      price_data: {
-        currency: checkoutCurrency,
-        product_data: {
-          name: product.name,
-          description: productDescription,
-          tax_code: product.taxCode || undefined,
-          metadata: {
-            tax_category: product.taxCategory || 'PHYSICAL_GOODS',
-            tax_exempt: product.taxExempt ? 'true' : 'false'
-          }
-        },
-        unit_amount: finalProductPriceInCents,
-        tax_behavior: product.taxExempt ? 'exclusive' : 'inclusive',
-      },
-      quantity: parsedQuantity,
-    });
-
-    // Add shipping & handling line item
-    if (finalShippingAndHandlingInCents > 0) {
-      lineItems.push({
-        price_data: {
-          currency: checkoutCurrency,
-          product_data: {
-            name: 'Shipping & Handling',
-            description: 'Shipping and handling fees for your order',
-            tax_code: 'txcd_92010001', // Standard shipping tax code
-          },
-          unit_amount: finalShippingAndHandlingInCents,
-          tax_behavior: 'inclusive',
-        },
-        quantity: 1,
-      });
-    }
-
-    // Add discount line item if applicable
-    if (discountAmount > 0) {
-      lineItems.push({
-        price_data: {
-          currency: checkoutCurrency,
-          product_data: {
-            name: `Discount: ${discountCodeUsed}`,
-            description: 'Applied discount',
-          },
-          unit_amount: -discountAmount, // Negative amount for discount
-          tax_behavior: 'inclusive',
-        },
-        quantity: 1,
-      });
-    }
-
-    // Create a checkout session
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: lineItems,
-      automatic_tax: {
-        enabled: true,
-        liability: {
-          type: 'self',
-        },
-      },
-      tax_id_collection: {
+    // Create payment intent with application fee
+    const paymentIntent = await stripeSecret.instance.paymentIntents.create({
+      amount: finalOrderAmountInCents,
+      currency: checkoutCurrency,
+      customer: customerId,
+      automatic_payment_methods: {
         enabled: true,
       },
-      // Pre-fill customer details if provided
-      ...(shippingAddress && billingAddress ? {
-        customer_details: {
-          name: shippingAddress.name,
-          email: session?.user?.email || undefined,
-          address: {
-            line1: shippingAddress.street,
-            city: shippingAddress.city,
-            state: shippingAddress.state,
-            postal_code: shippingAddress.postal,
-            country: shippingAddress.country,
-          },
-        },
-        // Don't collect shipping address since we already have it
-        shipping_address_collection: undefined,
-        // Set billing address collection to auto if billing address is same as shipping
-        billing_address_collection: billingAddress && shippingAddress && 
-          JSON.stringify(billingAddress) === JSON.stringify(shippingAddress) ? 'auto' : 'required',
-      } : {
-        // Only collect shipping address if not provided from checkout page
-        shipping_address_collection: {
-          allowed_countries: ['US', 'CA', 'GB', 'AU', 'JP', 'IN', 'SG', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'IE', 'NZ'],
-        },
-        billing_address_collection: 'required',
-      }),
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/${productId}`,
+      // Note: We handle fees and transfers manually in the webhook for better control
       metadata: {
         productId,
         quantity: parsedQuantity.toString(),
@@ -440,6 +413,7 @@ export async function POST(req: Request) {
         taxCategory: product.taxCategory,
         taxExempt: product.taxExempt.toString(),
         isDigital: product.isDigital.toString(),
+        abandonedCartSessionId: abandonedCartSessionId || '', // Store abandoned cart session ID
         requiresAuth: requiresAuth.toString(),
         orderValue: totalOrderValue.toString(),
         sellerOriginCountry: sellerOriginCountry,
@@ -453,31 +427,29 @@ export async function POST(req: Request) {
         finalOrderAmount: finalOrderAmountInCents.toString(),
         // Shipping address information
         shippingAddressProvided: shippingAddress ? 'true' : 'false',
+        shippingAddress: shippingAddress ? JSON.stringify({
+          name: shippingAddress.name,
+          street: shippingAddress.street,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postal: shippingAddress.postal,
+          country: shippingAddress.country,
+        }) : '',
         // Billing address information
         billingAddressProvided: billingAddress ? 'true' : 'false',
         billingAddressSameAsShipping: billingAddress && shippingAddress && 
           JSON.stringify(billingAddress) === JSON.stringify(shippingAddress) ? 'true' : 'false',
       },
-      payment_intent_data: {
-        transfer_data: {
-          destination: product.seller.connectedAccountId,
-        },
-      },
-      // Add currency display settings
+    });
+
+    return NextResponse.json({ 
+      clientSecret: paymentIntent.client_secret,
+      customerId: customerId,
+      amount: finalOrderAmountInCents,
       currency: checkoutCurrency,
-      locale: 'auto', // Let Stripe detect the user's locale
-      payment_method_options: {
-        card: {
-          request_three_d_secure: 'automatic',
-        },
-      },
-    };
-
-    const checkoutSession = await stripeCheckout.instance.checkout.sessions.create(sessionParams);
-
-    return NextResponse.json({ url: checkoutSession.url });
+    });
   } catch (error: any) {
-    console.error("[CHECKOUT_SESSION_ERROR]", error);
+    console.error("[PAYMENT_INTENT_ERROR]", error);
     return NextResponse.json({ 
       error: error.message || "Internal Error",
       details: error.stack

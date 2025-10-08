@@ -617,6 +617,7 @@ model Order {
   productPrice             Float
   shippingCost             Float
   stripeFee                Float         @default(0)
+  platformFee              Float         @default(0) // Platform/marketplace fee collected
   taxAmount                Float         @default(0) // Total tax amount collected
   taxJurisdiction          String? // Country/State where tax was collected
   taxRate                  Float? // Tax rate applied (e.g., 0.08 for 8%)

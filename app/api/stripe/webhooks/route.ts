@@ -78,7 +78,9 @@ function calculateHoldPeriod(accountAgeInDays: number, seller: any): number {
 }
 
 export async function POST(req: Request) {
-  console.log("🔔 Webhook received");
+  console.log("🔔 Webhook received at /api/stripe/webhooks");
+  console.log("🔍 Request URL:", req.url);
+  console.log("🔍 Request method:", req.method);
   
   try {
     // Get the raw body as text
@@ -208,6 +210,7 @@ export async function POST(req: Request) {
             productPrice: parseInt(session.metadata.productPrice || "0"),
             shippingCost: parseInt(session.metadata.shippingAndHandling || "0"),
             stripeFee: 0, // Placeholder
+            platformFee: parseInt(session.metadata.platformFee || "0"), // Store platform fee from metadata
             isDigital: product.isDigital || false,
             status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
             paymentStatus: PaymentStatus.PAID,
@@ -240,6 +243,7 @@ export async function POST(req: Request) {
 
           const order = await db.order.create({ data: preliminaryOrderData });
           console.log(`✅ Created preliminary order: ${order.id}`);
+          console.log(`💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${session.currency?.toUpperCase() || 'USD'})`);
 
           // Create discount usage record if discount code was used
           if (discountCodeId && discountAmount > 0) {
@@ -343,10 +347,11 @@ export async function POST(req: Request) {
           });
 
           // Calculate amount to transfer (ensure at least 1 cent)
+          // The total amount is what the customer paid, we need to deduct our platform fee and Stripe's fee
           const amountToSeller = Math.max(1,
             totalAmountInCents
+            - platformFeeInCents  // Platform fee in cents
             - stripeFee           // Stripe fee in cents
-            - platformFeeInCents  // Your fee in cents
           );
 
           console.log(`💰 Transfer calculation (in ${product.currency.toUpperCase()}):`);
@@ -625,6 +630,507 @@ export async function POST(req: Request) {
 
           return NextResponse.json({ received: true });
         }
+        case "payment_intent.succeeded": {
+          const paymentIntent = event.data.object as Stripe.PaymentIntent;
+          console.log(`✅ Processing payment_intent.succeeded: ${paymentIntent.id}`);
+
+          if (!paymentIntent.metadata) {
+            console.error("❌ Payment intent completed without metadata");
+            throw new Error("Metadata missing from payment intent");
+          }
+
+          // Fetch product details using metadata
+          const product = await db.product.findUnique({
+            where: { id: paymentIntent.metadata.productId },
+            include: { 
+              seller: {
+                include: {
+                  user: true
+                }
+              }
+            },
+          });
+
+          if (!product || !product.seller?.connectedAccountId) {
+            console.error("❌ Product, Seller or Seller Connection not found for payment intent:", paymentIntent.id);
+            throw new Error("Product/Seller details missing or incomplete");
+          }
+
+          // Create preliminary order
+          // For payment intents, we need to get the customer email from the customer object
+          let buyerEmail = paymentIntent.receipt_email || "";
+          let buyerName = paymentIntent.metadata.buyerName || "";
+          
+          // If no receipt email, try to get it from the customer
+          if (!buyerEmail && paymentIntent.customer) {
+            try {
+              const customer = await stripeSecret.instance.customers.retrieve(paymentIntent.customer as string);
+              if (customer && !customer.deleted) {
+                buyerEmail = customer.email || "";
+                buyerName = customer.name || buyerName;
+              }
+            } catch (error) {
+              console.error("❌ Error retrieving customer:", error);
+            }
+          }
+          
+          // Use shipping address from metadata if provided
+          let shippingAddress = null;
+          if (paymentIntent.metadata.shippingAddressProvided === 'true') {
+            // Shipping address was collected on our checkout page and stored in metadata
+            if (paymentIntent.metadata.shippingAddress) {
+              try {
+                const addressData = JSON.parse(paymentIntent.metadata.shippingAddress);
+                shippingAddress = JSON.stringify({
+                  line1: addressData.street || "",
+                  city: addressData.city || "",
+                  state: addressData.state || "",
+                  postal_code: addressData.postal || "",
+                  country: addressData.country || "",
+                });
+              } catch (error) {
+                console.error("❌ Error parsing shipping address from metadata:", error);
+                shippingAddress = JSON.stringify({
+                  line1: "Address collected on checkout page",
+                  city: "",
+                  state: "",
+                  postal_code: "",
+                  country: "",
+                });
+              }
+            } else {
+              // Fallback to placeholder if no address in metadata
+              shippingAddress = JSON.stringify({
+                line1: "Address collected on checkout page",
+                city: "",
+                state: "",
+                postal_code: "",
+                country: "",
+              });
+            }
+          }
+
+          const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV, salt: buyerEmailSalt } = encryptOrderData(buyerEmail);
+          const { encrypted: encryptedBuyerName, iv: buyerNameIV, salt: buyerNameSalt } = encryptOrderData(buyerName);
+          const { encrypted: encryptedShippingAddress, iv: shippingAddressIV, salt: shippingAddressSalt } = shippingAddress 
+            ? encryptOrderData(shippingAddress)
+            : { encrypted: "", iv: "", salt: "" };
+
+          // Get discount information from metadata
+          const discountCodeId = paymentIntent.metadata.discountCodeId;
+          const discountCodeUsed = paymentIntent.metadata.discountCodeUsed;
+          const discountAmount = parseInt(paymentIntent.metadata.discountAmount || "0");
+          const saleDiscount = parseInt(paymentIntent.metadata.saleDiscount || "0");
+          const finalOrderAmount = parseInt(paymentIntent.metadata.finalOrderAmount || "0");
+
+          const preliminaryOrderData = {
+            userId: paymentIntent.metadata.userId || "",
+            encryptedBuyerEmail,
+            buyerEmailIV,
+            buyerEmailSalt,
+            encryptedBuyerName,
+            buyerNameIV,
+            buyerNameSalt,
+            sellerId: paymentIntent.metadata.sellerId || "",
+            shopName: product.seller?.shopName || "",
+            productId: paymentIntent.metadata.productId || "",
+            productName: product.name,
+            quantity: parseInt(paymentIntent.metadata.quantity || "1"),
+            totalAmount: finalOrderAmount || (parseInt(paymentIntent.metadata.productPrice || "0") + parseInt(paymentIntent.metadata.shippingAndHandling || "0")),
+            productPrice: parseInt(paymentIntent.metadata.productPrice || "0"),
+            shippingCost: parseInt(paymentIntent.metadata.shippingAndHandling || "0"),
+            stripeFee: 0, // Placeholder
+            platformFee: parseInt(paymentIntent.metadata.platformFee || "0"), // Store platform fee from metadata
+            isDigital: product.isDigital || false,
+            status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
+            paymentStatus: PaymentStatus.PAID,
+            stripeSessionId: paymentIntent.id, // Use payment intent ID as session ID
+            stripeTransferId: null,
+            encryptedShippingAddress,
+            shippingAddressIV,
+            shippingAddressSalt,
+            discount: discountAmount > 0 ? JSON.stringify({
+              discountCodeId,
+              discountCodeUsed,
+              discountAmount,
+              saleDiscount,
+            }) : null,
+            discountCodeId: discountCodeId || null,
+            discountCodeAmount: discountAmount,
+            discountCodeUsed: discountCodeUsed || null,
+            completedAt: product.isDigital ? new Date() : null,
+            taxAmount: 0, // Payment intents don't have tax details
+            taxBreakdown: null,
+            taxExempt: paymentIntent.metadata.taxExempt === 'true',
+            taxCategory: paymentIntent.metadata.taxCategory || null,
+            taxCode: product.taxCode || null,
+            taxJurisdiction: null,
+            taxRate: null,
+            taxType: null,
+            batchNumber: product.batchNumber || null,
+          };
+
+          const order = await db.order.create({ data: preliminaryOrderData });
+          console.log(`✅ Created preliminary order: ${order.id}`);
+          console.log(`💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${paymentIntent.currency?.toUpperCase() || 'USD'})`);
+
+          // Create discount usage record if discount code was used
+          if (discountCodeId && discountAmount > 0) {
+            try {
+              await db.discountCodeUsage.create({
+                data: {
+                  discountCodeId,
+                  orderId: order.id,
+                  userId: paymentIntent.metadata.userId || 'guest',
+                  discountAmount,
+                },
+              });
+
+              // Update discount code usage count
+              await db.discountCode.update({
+                where: { id: discountCodeId },
+                data: {
+                  currentUses: {
+                    increment: 1,
+                  },
+                },
+              });
+
+              console.log(`✅ Created discount usage record for code: ${discountCodeUsed}`);
+            } catch (error) {
+              console.error("❌ Error creating discount usage record:", error);
+            }
+          }
+
+          // Since we removed automatic transfer, we need to create the transfer manually
+          // This ensures we transfer the correct amount after deducting both platform fee and Stripe fee
+          
+          // Get the Stripe fee from the balance transaction
+          let stripeFee = 0;
+          
+          try {
+            // Add a small delay to ensure balance transaction is available
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // First, try to get the charge from the payment intent
+            const charges = await stripeSecret.instance.charges.list({
+              payment_intent: paymentIntent.id,
+              limit: 1,
+            });
+
+            if (charges.data.length > 0) {
+              const charge = charges.data[0];
+              console.log(`💰 Found charge: ${charge.id}`);
+              
+              // Get the balance transaction from the charge
+              if (charge.balance_transaction) {
+                const balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(charge.balance_transaction as string);
+                stripeFee = balanceTransaction.fee;
+                console.log(`💰 Stripe fee from balance transaction: ${stripeFee} cents`);
+              } else {
+                console.warn(`⚠️ No balance_transaction found on charge ${charge.id}`);
+                // Try to get balance transaction by listing
+                const btList = await stripeSecret.instance.balanceTransactions.list({
+                  source: charge.id,
+                  limit: 1
+                });
+                
+                if (btList.data.length > 0) {
+                  const balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(btList.data[0].id);
+                  stripeFee = balanceTransaction.fee;
+                  console.log(`💰 Stripe fee from list fallback: ${stripeFee} cents`);
+                }
+              }
+            } else {
+              console.warn(`⚠️ No charges found for payment intent ${paymentIntent.id}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error retrieving Stripe fee:`, error);
+            // Use a default Stripe fee estimate if we can't retrieve it
+            // For a $20.99 transaction, Stripe typically charges around $0.63 (2.9% + 30¢)
+            stripeFee = Math.round(order.totalAmount * 0.029 + 30); // 2.9% + 30¢
+            console.log(`💰 Using estimated Stripe fee: ${stripeFee} cents`);
+          }
+
+          // Update order with fee information
+          await db.order.update({
+            where: { id: order.id },
+            data: { 
+              stripeFee: stripeFee, // Store Stripe fee in cents
+            },
+          });
+
+          // Calculate the correct amount to transfer to the seller
+          const totalAmountInCents = order.totalAmount;
+          const platformFeeInCents = parseInt(paymentIntent.metadata.platformFee || "0");
+          const amountToSeller = Math.max(1, totalAmountInCents - platformFeeInCents - stripeFee);
+
+          console.log(`💰 Transfer calculation:`);
+          console.log(`- Total amount: ${totalAmountInCents} cents`);
+          console.log(`- Platform fee: ${platformFeeInCents} cents`);
+          console.log(`- Stripe fee: ${stripeFee} cents`);
+          console.log(`- Amount to seller: ${amountToSeller} cents`);
+
+          // Create transfer to seller
+          try {
+            const transfer = await stripeSecret.instance.transfers.create({
+              amount: amountToSeller,
+              currency: paymentIntent.currency,
+              destination: product.seller.connectedAccountId,
+              transfer_group: paymentIntent.id,
+              metadata: {
+                orderId: order.id,
+                paymentIntentId: paymentIntent.id,
+                platformFee: platformFeeInCents.toString(),
+                stripeFee: stripeFee.toString(),
+                totalAmount: totalAmountInCents.toString(),
+              },
+            });
+
+            // Update order with transfer ID
+            await db.order.update({
+              where: { id: order.id },
+              data: { stripeTransferId: transfer.id }
+            });
+
+            console.log(`✅ Created transfer to seller: ${transfer.id} for ${amountToSeller} cents`);
+          } catch (transferError) {
+            console.error("❌ Error creating transfer:", transferError);
+            // Don't throw here, as the order is already created and emails sent
+          }
+
+          // Determine order status based on product type
+          let orderStatus: OrderStatus;
+          if (product.isDigital) {
+            orderStatus = OrderStatus.COMPLETED;
+          } else {
+            orderStatus = OrderStatus.PENDING;
+          }
+
+          // Update order with final status
+          await db.order.update({
+            where: { id: order.id },
+            data: {
+              status: orderStatus,
+              paymentStatus: PaymentStatus.PAID,
+              completedAt: product.isDigital ? new Date() : null,
+            },
+          });
+
+          // Send confirmation email to buyer
+          try {
+            const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
+            console.log(`📧 Buyer email: ${buyerEmail}`);
+            
+            if (!buyerEmail || buyerEmail.trim() === '') {
+              console.error("❌ Buyer email is empty, cannot send email");
+              throw new Error("Buyer email is empty");
+            }
+            
+            let shippingAddress = null;
+            if (order.encryptedShippingAddress) {
+              try {
+                const decryptedAddress = decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt);
+                shippingAddress = JSON.parse(decryptedAddress);
+              } catch (error) {
+                console.error("❌ Error parsing shipping address:", error);
+                shippingAddress = null;
+              }
+            }
+
+            // Send buyer email
+            const { data: buyerEmailData, error: buyerEmailError } = await resend.emails.send({
+              from: "Yarnnu <noreply@yarnnu.com>",
+              to: [buyerEmail],
+              subject: product.isDigital ? "Your digital product is ready!" : "Your order has been confirmed!",
+              react: ProductEmail({
+                link: product.isDigital && product.productFile ? product.productFile : undefined,
+                isDigital: product.isDigital,
+                orderDetails: {
+                  productName: product.name,
+                  orderId: order.id,
+                  batchNumber: order.batchNumber || undefined,
+                  shippingAddress: shippingAddress ? {
+                    street: shippingAddress.line1 || "",
+                    city: shippingAddress.city || "",
+                    state: shippingAddress.state || "",
+                    zipCode: shippingAddress.postal_code || "",
+                    country: shippingAddress.country || "",
+                  } : undefined,
+                },
+              }),
+            });
+
+            if (buyerEmailError) {
+              console.error("❌ Error sending buyer confirmation email:", buyerEmailError);
+            } else {
+              console.log("✅ Buyer confirmation email sent successfully");
+            }
+
+            // Send seller notification email
+            if (!product.seller.user.email) {
+              console.error("❌ Seller email not found");
+            } else {
+              const { data: sellerEmailData, error: sellerEmailError } = await resend.emails.send({
+                from: "Yarnnu <noreply@yarnnu.com>",
+                to: [product.seller.user.email],
+                subject: `New Sale Alert! Order #${order.id}`,
+                react: SellerOrderEmail({
+                  orderDetails: {
+                    productName: product.name,
+                    orderId: order.id,
+                    batchNumber: order.batchNumber || undefined,
+                    quantity: order.quantity,
+                    totalAmount: order.totalAmount,
+                    buyerName: decryptOrderData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt),
+                    shippingAddress: shippingAddress ? {
+                      street: shippingAddress.line1 || "",
+                      city: shippingAddress.city || "",
+                      state: shippingAddress.state || "",
+                      zipCode: shippingAddress.postal_code || "",
+                      country: shippingAddress.country || "",
+                    } : undefined,
+                  },
+                }),
+              });
+
+              if (sellerEmailError) {
+                console.error("❌ Error sending seller notification email:", sellerEmailError);
+              } else {
+                console.log("✅ Seller notification email sent successfully");
+              }
+            }
+          } catch (emailError) {
+            console.error("❌ Error sending emails:", emailError);
+          }
+
+          // Update product/seller stats
+          try {
+            await db.product.update({
+              where: { id: paymentIntent.metadata.productId },
+              data: {
+                numberSold: {
+                  increment: parseInt(paymentIntent.metadata.quantity || "1"),
+                },
+                ...(product.isDigital === false && {
+                  stock: {
+                    decrement: parseInt(paymentIntent.metadata.quantity || "1"),
+                  },
+                }),
+              },
+            });
+
+            await db.seller.update({
+              where: { id: product.seller.id },
+              data: {
+                totalSales: {
+                  increment: parseInt(paymentIntent.metadata.quantity || "1"),
+                },
+              },
+            });
+
+            // Create reviews for the order
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 14);
+
+            const seller = await db.seller.findUnique({
+              where: { id: product.seller.id },
+              select: { userId: true },
+            });
+
+            if (!seller) {
+              throw new Error("Seller not found");
+            }
+
+            // Create product review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: paymentIntent.metadata.userId,
+                reviewedId: seller.userId,
+                sellerId: product.seller.id,
+                productId: paymentIntent.metadata.productId,
+                type: "PRODUCT",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
+            // Create seller review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: paymentIntent.metadata.userId,
+                reviewedId: seller.userId,
+                sellerId: product.seller.id,
+                type: "SELLER",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
+            // Create buyer review
+            await db.review.create({
+              data: {
+                orderId: order.id,
+                reviewerId: seller.userId,
+                reviewedId: paymentIntent.metadata.userId,
+                sellerId: product.seller.id,
+                type: "BUYER",
+                status: "PENDING",
+                expiresAt,
+                rating: 0,
+              },
+            });
+
+            console.log(`✅ Updated product and seller stats for order ${order.id}`);
+          } catch (statsError) {
+            console.error("⚠️ Error updating product/seller stats:", statsError);
+          }
+
+          // Delete abandoned cart record since checkout was completed
+          try {
+            const abandonedCartSessionId = paymentIntent.metadata.abandonedCartSessionId;
+            
+            if (abandonedCartSessionId) {
+              // Use sessionId for precise deletion (preferred method)
+              const deletedCarts = await db.abandonedCart.deleteMany({
+                where: {
+                  sessionId: abandonedCartSessionId,
+                  productId: paymentIntent.metadata.productId,
+                  recovered: false, // Only delete non-recovered carts
+                },
+              });
+
+              if (deletedCarts.count > 0) {
+                console.log(`✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by sessionId)`);
+              } else {
+                console.log('ℹ️ No abandoned cart records found to delete (by sessionId)');
+              }
+            } else {
+              // Fallback: delete by userId + productId (less precise, but safer than before)
+              const deletedCarts = await db.abandonedCart.deleteMany({
+                where: {
+                  productId: paymentIntent.metadata.productId,
+                  userId: paymentIntent.metadata.userId || null, // Match user ID if logged in, null if guest
+                  recovered: false, // Only delete non-recovered carts
+                },
+              });
+
+              if (deletedCarts.count > 0) {
+                console.log(`✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by userId+productId fallback)`);
+              } else {
+                console.log('ℹ️ No abandoned cart records found to delete (by userId+productId fallback)');
+              }
+            }
+          } catch (deleteError) {
+            console.warn('⚠️ Error deleting abandoned cart record:', deleteError);
+          }
+
+          return NextResponse.json({ success: true, orderId: order.id });
+        }
         case "charge.succeeded": {
           // Just log this event
           const charge = event.data.object as Stripe.Charge;
@@ -633,22 +1139,16 @@ export async function POST(req: Request) {
         }
         case "transfer.created": {
           const transfer = event.data.object as Stripe.Transfer;
-          console.log(`💰 Transfer created: ${transfer.id}`);
+          console.log(`💰 Transfer created: ${transfer.id} for amount: ${transfer.amount}`);
           
-          // Update order status if this is a held transfer
+          // Since we're creating transfers manually, the order should already have the transfer ID
+          // This event is just for logging purposes now
           if (transfer.metadata?.orderId) {
-            try {
-              const order = await db.order.findUnique({
-                where: { id: transfer.metadata.orderId },
-                select: { id: true, status: true, isDigital: true }
-              });
-
-              if (order && order.status === ("HELD" as any)) {
-                console.log(`✅ Transfer created for held order: ${order.id}`);
-              }
-            } catch (error) {
-              console.error("❌ Error updating order for transfer created:", error);
-            }
+            console.log(`✅ Transfer ${transfer.id} for order ${transfer.metadata.orderId}`);
+            console.log(`💰 Transfer amount: ${transfer.amount} cents`);
+            console.log(`💰 Platform fee: ${transfer.metadata.platformFee} cents`);
+            console.log(`💰 Stripe fee: ${transfer.metadata.stripeFee} cents`);
+            console.log(`💰 Total amount: ${transfer.metadata.totalAmount} cents`);
           }
           
           return NextResponse.json({ received: true });
@@ -680,6 +1180,12 @@ export async function POST(req: Request) {
             }
           }
           
+          return NextResponse.json({ received: true });
+        }
+        case "application_fee.created": {
+          // We're not using application fees anymore, so just log this event
+          const applicationFee = event.data.object as Stripe.ApplicationFee;
+          console.log(`💰 Application fee created: ${applicationFee.id} for amount: ${applicationFee.amount} (not used in manual transfer mode)`);
           return NextResponse.json({ received: true });
         }
         case "charge.refunded": {

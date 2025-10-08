@@ -140,7 +140,8 @@ export default function CheckoutPage() {
     trackPaymentFormDisplayed,
     trackPaymentAttempt,
     trackPaymentProcessing,
-    isTracking
+    isTracking,
+    sessionId
   } = useAbandonedCart(cartData || {
     productId: '',
     productName: '',
@@ -305,7 +306,7 @@ export default function CheckoutPage() {
       
       completeStep('form_validated');
       
-      const response = await fetch("/api/stripe/create-payment-intent-embedded", {
+      const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -316,6 +317,7 @@ export default function CheckoutPage() {
           discountCode: appliedDiscountCode || undefined,
           shippingAddress: !product.isDigital ? shippingAddress : undefined,
           billingAddress: !product.isDigital ? (sameAsShipping ? shippingAddress : billingAddress) : undefined,
+          abandonedCartSessionId: sessionId, // Include abandoned cart session ID
           recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : token,
         }),
       });
