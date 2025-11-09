@@ -3,6 +3,43 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
 
+export async function GET(
+  req: Request,
+  { params }: { params: { optionId: string } }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Validate that the optionId is a valid ObjectID
+    if (!ObjectId.isValid(params.optionId)) {
+      return new NextResponse("Invalid option ID format", { status: 400 });
+    }
+
+    // Get the shipping option with rates
+    const shippingOption = await db.shippingOption.findUnique({
+      where: {
+        id: params.optionId,
+        sellerId: session.user.id,
+      },
+      include: {
+        rates: true,
+      },
+    });
+
+    if (!shippingOption) {
+      return new NextResponse("Shipping option not found", { status: 404 });
+    }
+
+    return NextResponse.json(shippingOption);
+  } catch (error) {
+    console.error("[SHIPPING_PROFILES_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
 export async function PUT(
   req: Request,
   { params }: { params: { optionId: string } }
@@ -55,6 +92,7 @@ export async function PUT(
         rates: {
           create: rates.map((rate: any) => ({
             zone: rate.zone,
+            isInternational: rate.isInternational || false,
             price: rate.price,
             currency: rate.currency,
             estimatedDays: rate.estimatedDays,

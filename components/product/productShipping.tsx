@@ -19,10 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SUPPORTED_WEIGHT_UNITS, SUPPORTED_DIMENSION_UNITS, WeightUnit, DimensionUnit } from "@/data/units";
+import {
+  SUPPORTED_WEIGHT_UNITS,
+  SUPPORTED_DIMENSION_UNITS,
+  WeightUnit,
+  DimensionUnit,
+} from "@/data/units";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/ProductSchema";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Truck } from "lucide-react";
 import ShippingOptionModal from "@/components/onboarding/ShippingOptionModal";
@@ -49,7 +54,10 @@ interface ProductShippingSectionProps {
   freeShipping: boolean;
 }
 
-export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSectionProps) => {
+export const ProductShippingSection = ({
+  form,
+  freeShipping,
+}: ProductShippingSectionProps) => {
   const { control, watch, setValue } = form;
   const isDigital = watch("isDigital");
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -57,30 +65,31 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch shipping options when component mounts
-  const fetchShippingOptions = async () => {
-    try {
-      const response = await fetch("/api/shipping-options");
-      if (!response.ok) throw new Error("Failed to fetch shipping options");
-      const data = await response.json();
-      setShippingOptions(data);
-    } catch (error) {
-      console.error("Error fetching shipping options:", error);
-    }
-  };
+  const fetchShippingOptions = useCallback(
+    async (newShippingOptionId?: string) => {
+      try {
+        const response = await fetch("/api/shipping-options");
+        if (!response.ok) throw new Error("Failed to fetch shipping options");
+        const data = await response.json();
+        setShippingOptions(data);
+
+        // Auto-select the newly created shipping option
+        if (newShippingOptionId && !selectedOptionId) {
+          setValue("shippingOptionId", newShippingOptionId);
+        }
+      } catch (error) {
+        console.error("Error fetching shipping options:", error);
+      }
+    },
+    [selectedOptionId, setValue]
+  );
 
   useEffect(() => {
     void fetchShippingOptions();
-  }, []);
+  }, [fetchShippingOptions]);
 
-  // Set default shipping option if none is selected
-  useEffect(() => {
-    if (shippingOptions.length > 0 && !selectedOptionId) {
-      const defaultOption = shippingOptions.find(option => option.isDefault);
-      if (defaultOption) {
-        setValue("shippingOptionId", defaultOption.id);
-      }
-    }
-  }, [shippingOptions, selectedOptionId, setValue]);
+  // Don't auto-select default shipping option - let user choose
+  // This ensures validation works correctly for required fields
 
   // Ensure shipping cost is 0 when free shipping is selected
   useEffect(() => {
@@ -115,15 +124,21 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
           <FormField
             control={control}
             name="shippingOptionId"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
                 <FormLabel>Shipping Option</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  value={field.value || ""}
+                  value={field.value || undefined}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger
+                      className={
+                        fieldState.error
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : ""
+                      }
+                    >
                       <SelectValue placeholder="Select a shipping option" />
                     </SelectTrigger>
                   </FormControl>
@@ -139,7 +154,7 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
               </FormItem>
             )}
           />
-          
+
           {shippingOptions.length === 0 && (
             <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Truck className="h-8 w-8 text-gray-400 mx-auto mb-2" />
@@ -147,7 +162,8 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                 No shipping options yet
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Create your first shipping option to set up delivery rates for your products.
+                Create your first shipping option to set up delivery rates for
+                your products.
               </p>
               <Button
                 type="button"
@@ -190,7 +206,7 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Product Dimensions</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={control}
@@ -207,13 +223,18 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       placeholder="Enter weight"
                       {...field}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        const value =
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value);
                         field.onChange(isNaN(value) ? 0 : value);
                       }}
                     />
                   </FormControl>
                   <Select
-                    onValueChange={(value) => setValue("itemWeightUnit", value as WeightUnit)}
+                    onValueChange={(value) =>
+                      setValue("itemWeightUnit", value as WeightUnit)
+                    }
                     defaultValue={watch("itemWeightUnit")}
                   >
                     <SelectTrigger className="w-[100px]">
@@ -247,13 +268,18 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       placeholder="Enter length"
                       {...field}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        const value =
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value);
                         field.onChange(isNaN(value) ? 0 : value);
                       }}
                     />
                   </FormControl>
                   <Select
-                    onValueChange={(value) => setValue("itemDimensionUnit", value as DimensionUnit)}
+                    onValueChange={(value) =>
+                      setValue("itemDimensionUnit", value as DimensionUnit)
+                    }
                     defaultValue={watch("itemDimensionUnit")}
                   >
                     <SelectTrigger className="w-[100px]">
@@ -287,13 +313,18 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       placeholder="Enter width"
                       {...field}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        const value =
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value);
                         field.onChange(isNaN(value) ? 0 : value);
                       }}
                     />
                   </FormControl>
                   <Select
-                    onValueChange={(value) => setValue("itemDimensionUnit", value as DimensionUnit)}
+                    onValueChange={(value) =>
+                      setValue("itemDimensionUnit", value as DimensionUnit)
+                    }
                     defaultValue={watch("itemDimensionUnit")}
                   >
                     <SelectTrigger className="w-[100px]">
@@ -327,13 +358,18 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                       placeholder="Enter height"
                       {...field}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        const value =
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value);
                         field.onChange(isNaN(value) ? 0 : value);
                       }}
                     />
                   </FormControl>
                   <Select
-                    onValueChange={(value) => setValue("itemDimensionUnit", value as DimensionUnit)}
+                    onValueChange={(value) =>
+                      setValue("itemDimensionUnit", value as DimensionUnit)
+                    }
                     defaultValue={watch("itemDimensionUnit")}
                   >
                     <SelectTrigger className="w-[100px]">
@@ -372,17 +408,25 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
 
       {/* GPSR Compliance Notice for EU Shipping */}
       {(() => {
-        const hasEUShipping = shippingOptions.some(option => 
-          option.rates.some(rate => rate.zone === "EUROPE")
+        const hasEUShipping = shippingOptions.some((option) =>
+          option.rates.some((rate) => rate.zone === "EUROPE")
         );
-        
+
         if (hasEUShipping) {
           return (
             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="flex-1">
@@ -390,7 +434,9 @@ export const ProductShippingSection = ({ form, freeShipping }: ProductShippingSe
                     Selling to EU buyers?
                   </h4>
                   <p className="mt-1 text-sm text-blue-700">
-                    You&apos;ll need to provide GPSR product safety details before your products can go live in those countries. You can still sell elsewhere without this step.
+                    You&apos;ll need to provide GPSR product safety details
+                    before your products can go live in those countries. You can
+                    still sell elsewhere without this step.
                   </p>
                 </div>
               </div>

@@ -24,12 +24,12 @@ import {
   Bookmark,
   Crown,
   Globe,
+  Truck,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
 import { auth } from "@/auth";
 import { getUserInfoForNav } from "@/actions/userActions";
-import { WishlistFlyout } from "@/components/wishlist/WishlistFlyout";
 import { getSellerSubscription } from "@/lib/subscription-helpers";
 import { getSellerByUserId } from "@/lib/queries";
 
@@ -40,7 +40,7 @@ export default async function SellerDashboardTopNavbar({
 }) {
   const session = await auth(); // Fetch user session
   const userInfo = session?.user ? await getUserInfoForNav() : null;
-  
+
   // Check if seller has website builder access (Studio plan)
   let hasWebsiteBuilderAccess = false;
   if (session?.user?.id) {
@@ -51,7 +51,7 @@ export default async function SellerDashboardTopNavbar({
         hasWebsiteBuilderAccess = subscription.plan.websiteBuilder === true;
       }
     } catch (error) {
-      console.error('Error checking website builder access:', error);
+      console.error("Error checking website builder access:", error);
       // If there's an error, don't show website builder
       hasWebsiteBuilderAccess = false;
     }
@@ -112,6 +112,14 @@ export default async function SellerDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <Package className="mr-2 h-4 w-4" />
                     Products
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/seller/dashboard/shipping">
+                  <Button variant="outline" className="w-full">
+                    <Truck className="mr-2 h-4 w-4" />
+                    Shipping
                   </Button>
                 </Link>
               </DialogClose>
@@ -202,9 +210,6 @@ export default async function SellerDashboardTopNavbar({
 
         {/* Right Side - Wishlist Button and UserNav */}
         <div className="ml-auto flex items-center gap-x-2">
-          {/* Wishlist Button */}
-          {userInfo && <WishlistFlyout userRole={userInfo.role} />}
-          
           {/* UserNav */}
           {userInfo ? <UserNav userInfo={userInfo} /> : <p>Loading...</p>}
         </div>

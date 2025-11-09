@@ -15,7 +15,7 @@ export default async function SellerSettings() {
     redirect("/login");
   }
 
-  // Get seller data to access shopNameSlug and shipping profiles
+  // Get seller data to access shopNameSlug
   const seller = await db.seller.findUnique({
     where: { userId: session.user.id },
     select: {
@@ -28,31 +28,6 @@ export default async function SellerSettings() {
       ogTitle: true,
       ogDescription: true,
       ogImage: true,
-      shippingOptions: {
-        select: {
-          id: true,
-          name: true,
-          isDefault: true,
-          countryOfOrigin: true,
-          sellerId: true,
-          createdAt: true,
-          updatedAt: true,
-          rates: {
-            select: {
-              id: true,
-              zone: true,
-              isInternational: true,
-              price: true,
-              currency: true,
-              estimatedDays: true,
-              additionalItem: true,
-              serviceLevel: true,
-              isFreeShipping: true,
-              countryRates: true,
-            },
-          },
-        },
-      },
     },
   });
 

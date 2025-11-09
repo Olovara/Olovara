@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -49,13 +50,21 @@ export default function EditShippingOptionModal({
   isOpen,
   onClose,
 }: EditShippingOptionModalProps) {
+  const router = useRouter();
+
+  const handleSuccess = () => {
+    onClose();
+    // Refresh the page to show the updated shipping option
+    router.refresh();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Shipping Option</DialogTitle>
         </DialogHeader>
-        <ShippingOptionForm initialData={option} onSuccess={onClose} />
+        <ShippingOptionForm initialData={option} onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );

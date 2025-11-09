@@ -402,7 +402,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   {seller.acceptsCustom && (
                     <>
                       <span>•</span>
-                      <span className="text-green-600 font-medium">
+                      <span className="text-purple-600 font-medium">
                         Accepts Custom Orders
                       </span>
                     </>

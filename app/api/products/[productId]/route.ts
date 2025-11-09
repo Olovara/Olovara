@@ -150,6 +150,39 @@ export async function PATCH(
     const { productId } = params;
     const updateData = data;
 
+    // Check seller approval if trying to set status to ACTIVE
+    if (updateData.status === "ACTIVE") {
+      const seller = await db.seller.findUnique({
+        where: { userId: session.user.id },
+        select: {
+          applicationAccepted: true,
+          isFullyActivated: true,
+        },
+      });
+
+      if (!seller?.applicationAccepted) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
+            approvalRequired: true,
+          }),
+          { status: 403 }
+        );
+      }
+
+      if (!seller.isFullyActivated) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "You must complete your seller onboarding before setting products to Active status.",
+            onboardingIncomplete: true,
+          }),
+          { status: 403 }
+        );
+      }
+    }
+
     if (!productId) {
       return new Response(
         JSON.stringify({ success: false, error: "Product ID is required" }),

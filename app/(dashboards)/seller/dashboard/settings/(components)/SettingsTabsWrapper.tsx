@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ShopQRCode from "@/components/ShopQRCode";
-import ShippingOptionsTable from "./ShippingOptionsTable";
 import ShopPoliciesForm from "@/components/forms/ShopPoliciesForm";
 import EnhancedCountryExclusionsForm from "@/components/forms/EnhancedCountryExclusionsForm";
 import SellerAboutForm from "@/components/forms/SellerAboutForm";
@@ -32,7 +31,6 @@ export default function SettingsTabsWrapper({
           "about",
           "info",
           "preferences",
-          "shipping",
           "policies",
           "exclusions",
           "qr",
@@ -70,9 +68,6 @@ export default function SettingsTabsWrapper({
             <TabsTrigger value="preferences" className="flex-shrink-0">
               Preferences
             </TabsTrigger>
-            <TabsTrigger value="shipping" className="flex-shrink-0">
-              Shipping
-            </TabsTrigger>
             <TabsTrigger value="policies" className="flex-shrink-0">
               Policies
             </TabsTrigger>
@@ -109,17 +104,6 @@ export default function SettingsTabsWrapper({
         <Card className="w-full max-w-none">
           <CardContent className="p-4 sm:p-6">
             <SellerPreferencesForm />
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="shipping" className="space-y-4">
-        <Card className="w-full max-w-none">
-          <CardHeader className="p-4 sm:p-6 pb-0">
-            <CardTitle>Shipping Options</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <ShippingOptionsTable options={seller?.shippingOptions || []} />
           </CardContent>
         </Card>
       </TabsContent>

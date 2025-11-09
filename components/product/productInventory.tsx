@@ -4,7 +4,7 @@ import * as React from "react";
 import { useWatch } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { useEffect } from "react";
 
 type ProductInventorySectionProps = {
@@ -34,7 +34,7 @@ export function ProductInventorySection({
           <FormField
             control={form.control}
             name="stock"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem className="flex flex-col gap-y-2">
                 <Label>Stock</Label>
                 <FormControl>
@@ -48,8 +48,14 @@ export function ProductInventorySection({
                         e.target.value ? parseInt(e.target.value, 10) : ""
                       )
                     }
+                    className={
+                      fieldState.error
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
                   />
                 </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />

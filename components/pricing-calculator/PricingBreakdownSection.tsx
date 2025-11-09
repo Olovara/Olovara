@@ -86,7 +86,9 @@ export default function PricingBreakdownSection({
           </p>
           <p className="flex justify-between">
             <span>Packaging:</span>
-            <span className="font-medium">${totalPackagingCost.toFixed(2)}</span>
+            <span className="font-medium">
+              ${totalPackagingCost.toFixed(2)}
+            </span>
           </p>
           <p className="flex justify-between">
             <span>Labor:</span>
@@ -119,7 +121,7 @@ export default function PricingBreakdownSection({
               <span>Selling Price:</span>
               <span>${sellingPrice.toFixed(2)}</span>
             </p>
-            <p className="flex justify-between text-lg font-bold text-green-600">
+            <p className="flex justify-between text-lg font-bold text-purple-600">
               <span>Profit:</span>
               <span>${profit.toFixed(2)}</span>
             </p>

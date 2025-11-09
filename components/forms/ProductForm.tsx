@@ -190,13 +190,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
     resolver: zodResolver(
       initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema
     ),
-    mode: "onSubmit",
+    mode: "onChange",
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
-      shortDescription:
-        initialData?.shortDescription ||
-        "Enter a brief description of your product",
+      shortDescription: initialData?.shortDescription || "",
       shortDescriptionBullets: initialData?.shortDescriptionBullets || [],
       price: initialData?.price ? initialData.price / 100 : 0,
       description: initialData?.description || { html: "", text: "" },
@@ -216,7 +214,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         initialData?.itemDimensionUnit ||
         sellerPreferences.preferredDimensionUnit,
       shippingNotes: initialData?.shippingNotes || "",
-      status: initialData?.status || "HIDDEN",
+      status: initialData?.status || "DRAFT",
       isDigital: initialData?.isDigital || false,
       primaryCategory: initialData?.primaryCategory || "",
       secondaryCategory: initialData?.secondaryCategory,
@@ -267,6 +265,155 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const { setValue } = form;
 
+  // Helper function to get errors for a specific card section
+  const getCardErrors = (fieldNames: string[]) => {
+    // Don't check for errors if status is DRAFT
+    if (isDraft) {
+      return [];
+    }
+    
+    const errors: string[] = [];
+    const formValues = form.getValues();
+    const freeShipping = formValues.freeShipping as boolean;
+    const isDigital = formValues.isDigital as boolean;
+    
+    fieldNames.forEach((fieldName) => {
+      const error =
+        formState.errors[fieldName as keyof typeof formState.errors];
+      const value = formValues[fieldName as keyof typeof formValues];
+      
+      // Skip shippingOptionId if free shipping is selected
+      if (fieldName === "shippingOptionId" && freeShipping) {
+        return;
+      }
+      
+      // Skip shipping fields if product is digital
+      if (fieldName === "shippingOptionId" && isDigital) {
+        return;
+      }
+      
+      // Special handling for description field (Quill editor)
+      if (fieldName === "description") {
+        // Check the actual description state, not just the form value
+        // This ensures we're checking the most up-to-date value
+        const currentDescription = description; // Use the state variable directly
+        
+        let isEmpty = false;
+        
+        if (!currentDescription || currentDescription.trim() === "") {
+          isEmpty = true;
+        } else {
+          // Strip HTML tags and check if there's actual text content
+          const plainText = currentDescription.replace(/<[^>]*>/g, "").trim();
+          
+          // Check if content is empty or only contains empty HTML tags
+          isEmpty = 
+            plainText === "" ||
+            currentDescription.trim() === "<p><br></p>" || 
+            currentDescription.trim() === "<p></p>" ||
+            currentDescription.trim() === "<br>" ||
+            currentDescription.trim() === "<br/>";
+        }
+        
+        if (error || isEmpty) {
+          errors.push(fieldName);
+        }
+        return;
+      }
+      
+      // Special handling for shippingOptionId - check if it's empty string or null
+      if (fieldName === "shippingOptionId") {
+        const isEmpty = 
+          value === undefined || 
+          value === null || 
+          value === "" || 
+          (typeof value === "string" && value.trim() === "");
+        if (error || isEmpty) {
+          errors.push(fieldName);
+        }
+        return;
+      }
+      
+      // Check if there's a validation error OR if the field is empty/null
+      // For select fields (primaryCategory, secondaryCategory), 
+      // empty string means not selected
+      // For numeric fields, 0 is a valid value, so we only check for undefined/null
+      const isEmpty = 
+        value === undefined || 
+        value === null || 
+        value === "" || 
+        (typeof value === "string" && value.trim() === "");
+      
+      if (error || isEmpty) {
+        errors.push(fieldName);
+      }
+    });
+    return errors;
+  };
+
+  // Get current status to determine if we should show validation errors
+  const currentStatus = form.watch("status");
+  const isDraft = currentStatus === "DRAFT";
+
+  // Clear errors on initial load if status is DRAFT
+  useEffect(() => {
+    if (currentStatus === "DRAFT") {
+      // Clear all form errors on initial load with DRAFT status
+      const fieldNames = Object.keys(form.formState.errors);
+      fieldNames.forEach((fieldName) => {
+        form.clearErrors(fieldName as any);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Re-validate form when status changes from DRAFT to non-DRAFT
+  // Clear errors when switching back to DRAFT
+  useEffect(() => {
+    if (currentStatus && currentStatus !== "DRAFT") {
+      // Trigger validation for non-draft status to show errors immediately
+      // Specifically trigger shippingOptionId validation if free shipping is not selected
+      const freeShippingValue = form.getValues("freeShipping");
+      const isDigitalValue = form.getValues("isDigital");
+      if (!freeShippingValue && !isDigitalValue) {
+        form.trigger("shippingOptionId");
+      }
+      form.trigger();
+    } else if (currentStatus === "DRAFT") {
+      // Clear all form errors when switching back to draft
+      const fieldNames = Object.keys(form.formState.errors);
+      fieldNames.forEach((fieldName) => {
+        form.clearErrors(fieldName as any);
+      });
+    }
+  }, [currentStatus, form]);
+
+  // Helper function to format status for display
+  const formatStatus = (status: string) => {
+    if (!status) return "Draft";
+    return status.charAt(0) + status.slice(1).toLowerCase();
+  };
+
+  // Define field groups for each card section
+  const basicInfoFields = [
+    "name",
+    "shortDescription",
+    "description",
+    "price",
+    "primaryCategory",
+    "secondaryCategory",
+  ];
+  const mediaFields = ["images"];
+  const inventoryFields = ["stock"];
+  const shippingFields = [
+    "shippingCost",
+    "itemWeight",
+    "itemLength",
+    "itemWidth",
+    "itemHeight",
+    "shippingOptionId",
+  ];
+
   // Ensure shippingOptionId is set if it's missing
   useEffect(() => {
     const currentValue = form.getValues("shippingOptionId");
@@ -305,14 +452,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Update the description handling useEffect
   useEffect(() => {
-    if (description) {
-      // Update the form value with the proper structure
-      form.setValue("description", {
-        html: description,
-        text: description.replace(/<[^>]*>?/gm, ""),
-      });
-    }
-  }, [description, form]);
+    // Always update the form value, even if description is empty
+    // Only validate if status is not DRAFT
+    const shouldValidate = !isDraft;
+    form.setValue("description", {
+      html: description || "",
+      text: description ? description.replace(/<[^>]*>?/gm, "") : "",
+    }, { shouldValidate });
+  }, [description, form, isDraft]);
 
   // Update the form watch for description
   useEffect(() => {
@@ -392,6 +539,47 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setIsLoading(true);
       console.log("[DEBUG] Submitting form with data:", data);
 
+      // Determine if this should be saved as a draft
+      const isDraft =
+        initialData?.status === "DRAFT" || data.status === "DRAFT";
+
+      // For non-draft products, validate all required fields
+      if (!isDraft) {
+        // If the form started as a draft, we need to validate against the full schema
+        // Otherwise, the form resolver will handle validation
+        if (initialData?.status === "DRAFT") {
+          // Validate against the full schema manually
+          const validationResult = ProductSchema.safeParse(data);
+          if (!validationResult.success) {
+            // Set errors manually to show them in the form
+            validationResult.error.errors.forEach((error) => {
+              const fieldName = error.path.join(
+                "."
+              ) as keyof typeof formState.errors;
+              form.setError(fieldName, {
+                type: "manual",
+                message: error.message,
+              });
+            });
+            toast.error(
+              "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
+            );
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          // Form already uses full schema, just trigger validation
+          const isValid = await form.trigger();
+          if (!isValid) {
+            toast.error(
+              "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
+            );
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
       // Validate GPSR compliance if required
       if (isGPSRRequired) {
         const requiredGPSRFields = [
@@ -413,10 +601,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
           return;
         }
       }
-
-      // Determine if this should be saved as a draft
-      const isDraft =
-        initialData?.status === "DRAFT" || data.status === "DRAFT";
 
       // The schema already handles the conversion to cents
       const formData = {
@@ -575,7 +759,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       itemWidth: 0,
       itemHeight: 0,
       shippingNotes: "",
-      status: "HIDDEN",
+      status: "DRAFT",
       isDigital: false,
       primaryCategory: "",
       secondaryCategory: "",
@@ -600,26 +784,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   });
 
   if (!isClient) return <Spinner />;
-
-  // Show loading state while checking approval
-  if (isSellerApproved === null) {
-    return <Spinner />;
-  }
-
-  if (!isSellerApproved) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">
-          Application Pending
-        </h2>
-        <p className="text-gray-600 text-center max-w-md">
-          Your seller application is still pending approval. You can set up your
-          shop profile, but you won&apos;t be able to create products until your
-          application is approved.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen py-8">
@@ -650,6 +814,26 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   <p className="text-sm text-gray-600 mt-1">
                     Essential product details that customers will see first
                   </p>
+                  {!isDraft && getCardErrors(basicInfoFields).length > 0 && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm font-medium text-red-800">
+                        Missing required fields:{" "}
+                        {getCardErrors(basicInfoFields)
+                          .map((field) => {
+                            const fieldLabels: Record<string, string> = {
+                              name: "Product Name",
+                              shortDescription: "Short Description",
+                              description: "Description",
+                              price: "Price",
+                              primaryCategory: "Primary Category",
+                              secondaryCategory: "Secondary Category",
+                            };
+                            return fieldLabels[field] || field;
+                          })
+                          .join(", ")}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductInfoSection
@@ -676,6 +860,21 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   <p className="text-sm text-gray-600 mt-1">
                     Images and files that showcase your product
                   </p>
+                  {!isDraft && getCardErrors(mediaFields).length > 0 && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm font-medium text-red-800">
+                        Missing required fields:{" "}
+                        {getCardErrors(mediaFields)
+                          .map((field) => {
+                            const fieldLabels: Record<string, string> = {
+                              images: "Product Images",
+                            };
+                            return fieldLabels[field] || field;
+                          })
+                          .join(", ")}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductPhotosSection
@@ -706,6 +905,23 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   <p className="text-sm text-gray-600 mt-1">
                     Stock levels, variants, and product options
                   </p>
+                  {!isDraft &&
+                    !form.watch("isDigital") &&
+                    getCardErrors(inventoryFields).length > 0 && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm font-medium text-red-800">
+                          Missing required fields:{" "}
+                          {getCardErrors(inventoryFields)
+                            .map((field) => {
+                              const fieldLabels: Record<string, string> = {
+                                stock: "Stock",
+                              };
+                              return fieldLabels[field] || field;
+                            })
+                            .join(", ")}
+                        </p>
+                      </div>
+                    )}
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductInventorySection form={form} />
@@ -727,6 +943,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   <p className="text-sm text-gray-600 mt-1">
                     Shipping costs, dimensions, and handling information
                   </p>
+                  {!isDraft &&
+                    !form.watch("isDigital") &&
+                    !form.watch("freeShipping") &&
+                    getCardErrors(shippingFields).length > 0 && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm font-medium text-red-800">
+                          Missing required fields:{" "}
+                          {getCardErrors(shippingFields)
+                            .map((field) => {
+                              const fieldLabels: Record<string, string> = {
+                                shippingCost: "Shipping Cost",
+                                shippingOptionId: "Shipping Option",
+                                itemWeight: "Item Weight",
+                                itemLength: "Item Length",
+                                itemWidth: "Item Width",
+                                itemHeight: "Item Height",
+                              };
+                              return fieldLabels[field] || field;
+                            })
+                            .join(", ")}
+                        </p>
+                      </div>
+                    )}
                 </div>
                 <div className="p-6 space-y-6">
                   <ProductShippingSection
@@ -744,7 +983,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     Story & Details
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Tell customers about your product and how it&apos;s made
+                    Optional Section. Tell customers about your product and how it&apos;s made
                   </p>
                 </div>
                 <div className="p-6 space-y-6">
@@ -760,7 +999,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     Promotions & Scheduling
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Discounts, sales, and product drops
+                    Optional section. Discounts, sales, and product drops
                   </p>
                 </div>
                 <div className="p-6 space-y-6">
@@ -780,7 +1019,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     SEO & Marketing
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Optimize your product for search and social media
+                    Optional Section. Optimize your product for search and social media
                   </p>
                 </div>
                 <div className="p-6 space-y-6">
@@ -1060,10 +1299,19 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   </button>
                 )}
 
-                <Submitbutton
-                  title={initialData ? "Update Product" : "Create Product"}
-                  isPending={isLoading}
-                />
+                <div className="flex flex-col items-center gap-2">
+                  <Submitbutton
+                    title={
+                      initialData
+                        ? `Update Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
+                        : `Create Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
+                    }
+                    isPending={isLoading}
+                  />
+                  <p className="text-xs text-gray-500 text-center">
+                    This will save all changes to your product
+                  </p>
+                </div>
               </div>
             </div>
           </form>

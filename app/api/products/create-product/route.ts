@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
         id: true,
         userId: true,
         isFullyActivated: true,
+        applicationAccepted: true,
       },
     });
 
@@ -112,8 +113,21 @@ export async function POST(req: NextRequest) {
     // Determine if this is a draft or active product
     const isDraft = status === "DRAFT";
     
-    // If trying to create an active product, check onboarding completion
+    // If trying to create an active product, check seller approval and onboarding completion
     if (!isDraft && status === "ACTIVE") {
+      // Check seller approval first
+      if (!seller.applicationAccepted) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
+            approvalRequired: true,
+          }),
+          { status: 403 }
+        );
+      }
+      
+      // Check onboarding completion
       if (!seller.isFullyActivated) {
         return new Response(
           JSON.stringify({

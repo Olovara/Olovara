@@ -10,6 +10,7 @@ import {
   FormItem,
   FormControl,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import {
   Select,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { X } from "lucide-react";
+import { X, HelpCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { CategoriesMap } from "@/data/categories";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
@@ -28,7 +29,12 @@ import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
-import { createPortal } from "react-dom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Update the SUPPORTED_CURRENCIES to match the schema
 const SUPPORTED_CURRENCIES = [
@@ -66,11 +72,50 @@ export const ProductInfoSection = ({
   setShortDescriptionBullets,
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = form;
-  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(
+    null
+  );
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
 
+  // Close tooltip on scroll and reset button state
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      if (tooltipOpen) {
+        // Clear any pending timeouts
+        clearTimeout(scrollTimeout);
+
+        // Close tooltip immediately
+        setTooltipOpen(false);
+
+        // Reset button state after a brief delay to ensure state is cleared
+        scrollTimeout = setTimeout(() => {
+          if (buttonRef.current) {
+            // Blur the button to remove focus/active state
+            buttonRef.current.blur();
+            // Force a state reset by toggling pointer events
+            const originalPointerEvents = buttonRef.current.style.pointerEvents;
+            buttonRef.current.style.pointerEvents = "none";
+            // Use requestAnimationFrame to ensure the change is processed
+            requestAnimationFrame(() => {
+              if (buttonRef.current) {
+                buttonRef.current.style.pointerEvents =
+                  originalPointerEvents || "auto";
+              }
+            });
+          }
+        }, 50);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      clearTimeout(scrollTimeout);
+    };
+  }, [tooltipOpen]);
 
   const currentStatus = watch("status");
   const selectedCurrency = watch("currency") || "USD";
@@ -79,7 +124,10 @@ export const ProductInfoSection = ({
 
   // Get currency info for the selected currency
   const getCurrencyInfo = (currencyCode: string) => {
-    return SUPPORTED_CURRENCIES.find(c => c.code === currencyCode) || SUPPORTED_CURRENCIES[0];
+    return (
+      SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode) ||
+      SUPPORTED_CURRENCIES[0]
+    );
   };
 
   const currencyInfo = getCurrencyInfo(selectedCurrency);
@@ -102,16 +150,18 @@ export const ProductInfoSection = ({
   const selectedSecondaryCategory = watch("secondaryCategory");
 
   // Get secondary categories based on selected primary category
-  const availableSecondaryCategories = selectedPrimaryCategory 
-    ? CategoriesMap.SECONDARY.filter(category => 
-        CategoriesMap.MAPPING[selectedPrimaryCategory as keyof typeof CategoriesMap.MAPPING]?.includes(category.id)
+  const availableSecondaryCategories = selectedPrimaryCategory
+    ? CategoriesMap.SECONDARY.filter((category) =>
+        CategoriesMap.MAPPING[
+          selectedPrimaryCategory as keyof typeof CategoriesMap.MAPPING
+        ]?.includes(category.id)
       )
     : [];
 
   // Get tertiary categories based on selected secondary category
-  const availableTertiaryCategories = selectedSecondaryCategory 
-    ? CategoriesMap.TERTIARY.filter(category => 
-        category.secondaryCategoryId === selectedSecondaryCategory
+  const availableTertiaryCategories = selectedSecondaryCategory
+    ? CategoriesMap.TERTIARY.filter(
+        (category) => category.secondaryCategoryId === selectedSecondaryCategory
       )
     : [];
 
@@ -153,7 +203,11 @@ export const ProductInfoSection = ({
 
   // Add bullet point
   const addBulletPoint = () => {
-    if (bulletInput.trim() !== "" && !shortDescriptionBullets.includes(bulletInput.trim()) && shortDescriptionBullets.length < 5) {
+    if (
+      bulletInput.trim() !== "" &&
+      !shortDescriptionBullets.includes(bulletInput.trim()) &&
+      shortDescriptionBullets.length < 5
+    ) {
       const updatedBullets = [...shortDescriptionBullets, bulletInput.trim()];
       setShortDescriptionBullets(updatedBullets);
       setValue("shortDescriptionBullets", updatedBullets);
@@ -163,7 +217,9 @@ export const ProductInfoSection = ({
 
   // Remove bullet point
   const removeBulletPoint = (bulletToRemove: string) => {
-    const updatedBullets = shortDescriptionBullets.filter((bullet) => bullet !== bulletToRemove);
+    const updatedBullets = shortDescriptionBullets.filter(
+      (bullet) => bullet !== bulletToRemove
+    );
     setShortDescriptionBullets(updatedBullets);
     setValue("shortDescriptionBullets", updatedBullets);
   };
@@ -174,14 +230,22 @@ export const ProductInfoSection = ({
       <FormField
         control={control}
         name="name"
-        render={({ field }) => (
-          <div className="flex flex-col gap-y-2">
-            <Label>Product Name</Label>
-            <Input
-              placeholder="Product name"
-              {...register("name", { required: "Product name is required" })}
-            />
-          </div>
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel>Product Name</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Product name"
+                {...field}
+                className={
+                  fieldState.error
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
       />
 
@@ -198,61 +262,90 @@ export const ProductInfoSection = ({
                 {...register("sku")}
                 className="flex-1"
               />
-              <div 
-                className="relative inline-block"
-                onMouseEnter={() => {
-                  if (!watch("name") && buttonRef.current) {
-                    const rect = buttonRef.current.getBoundingClientRect();
-                    setTooltipPosition({
-                      x: rect.left + rect.width / 2,
-                      y: rect.top
-                    });
-                    setShowTooltip(true);
-                  }
-                }}
-                onMouseLeave={() => {
-                  setShowTooltip(false);
-                }}
-                onClick={() => {
-                  if (!watch("name")) {
-                    toast.error("Please enter a product name first");
-                  }
-                }}
-              >
-                <Button
-                  ref={buttonRef}
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    const productName = watch("name");
-                    if (!productName) {
-                      toast.error("Please enter a product name first");
-                      return;
-                    }
-                    
-                    try {
-                      // Import the function dynamically to avoid SSR issues
-                      const { generateUniqueSKU } = await import("@/lib/sku-generator");
-                      if (!currentUser?.id) {
-                        toast.error("User not authenticated");
-                        return;
-                      }
-                      const generatedSKU = await generateUniqueSKU(productName, currentUser.id);
-                      setValue("sku", generatedSKU);
-                      toast.success("SKU generated successfully!");
-                    } catch (error) {
-                      console.error("Error generating SKU:", error);
-                      toast.error("Failed to generate SKU");
-                    }
-                  }}
-                  disabled={!watch("name")}
+              <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+                <Tooltip
+                  open={tooltipOpen && !watch("name")}
+                  onOpenChange={setTooltipOpen}
+                  disableHoverableContent
                 >
-                  Generate
-                </Button>
-              </div>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button
+                        ref={buttonRef}
+                        type="button"
+                        variant="outline"
+                        onClick={async (e) => {
+                          const productName = watch("name");
+                          if (!productName) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toast.error("Please enter a product name first");
+                            return;
+                          }
+
+                          try {
+                            const response = await fetch(
+                              "/api/products/generate-sku",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ productName }),
+                              }
+                            );
+
+                            if (!response.ok) {
+                              const errorData = await response.json();
+                              throw new Error(
+                                errorData.error || "Failed to generate SKU"
+                              );
+                            }
+
+                            const data = await response.json();
+                            setValue("sku", data.sku);
+                            toast.success("SKU generated successfully!");
+                          } catch (error) {
+                            console.error("Error generating SKU:", error);
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : "Failed to generate SKU"
+                            );
+                          }
+                        }}
+                        disabled={!watch("name")}
+                        onMouseEnter={() => {
+                          if (!watch("name")) {
+                            setTooltipOpen(true);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setTooltipOpen(false);
+                        }}
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="max-w-xs"
+                    side="top"
+                    sideOffset={8}
+                    align="start"
+                    avoidCollisions={true}
+                    collisionPadding={8}
+                  >
+                    <p className="text-sm">
+                      Please enter a product name first to generate a SKU
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <p className="text-xs text-muted-foreground">
-              SKU helps you track inventory. Leave blank to auto-generate, or enter your own.
+              SKU helps you track inventory. Leave blank to auto-generate, or
+              enter your own.
             </p>
           </div>
         )}
@@ -262,17 +355,26 @@ export const ProductInfoSection = ({
       <FormField
         control={control}
         name="shortDescription"
-        render={({ field }) => (
-          <div className="flex flex-col gap-y-2">
-            <Label>Short Description *</Label>
-            <Input
-              placeholder="Brief description about your product"
-              {...register("shortDescription", { required: "Short description is required" })}
-            />
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel>Short Description</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Brief description about your product"
+                {...field}
+                className={
+                  fieldState.error
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }
+              />
+            </FormControl>
             <p className="text-xs text-muted-foreground">
-              A short description that will appear under your shop name on the product page.
+              A short description that will appear under your shop name on the
+              product page.
             </p>
-          </div>
+            <FormMessage />
+          </FormItem>
         )}
       />
 
@@ -286,21 +388,26 @@ export const ProductInfoSection = ({
             placeholder="Enter a bullet point..."
             disabled={shortDescriptionBullets.length >= 5}
           />
-          <Button 
-            onClick={addBulletPoint} 
-            type="button" 
-            disabled={!bulletInput.trim() || shortDescriptionBullets.length >= 5}
+          <Button
+            onClick={addBulletPoint}
+            type="button"
+            disabled={
+              !bulletInput.trim() || shortDescriptionBullets.length >= 5
+            }
             variant="outline"
           >
             Add
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Add up to 5 bullet points to highlight key features. These will appear below the short description on the product page.
+          Add up to 5 bullet points to highlight key features. These will appear
+          below the short description on the product page.
         </p>
         {shortDescriptionBullets.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Current bullet points:</p>
+            <p className="text-sm font-medium text-gray-700">
+              Current bullet points:
+            </p>
             <div className="space-y-1">
               {shortDescriptionBullets.map((bullet, index) => (
                 <div
@@ -327,14 +434,33 @@ export const ProductInfoSection = ({
       </div>
 
       {/* Product Description */}
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <QuillEditor
-          value={description}
-          onChange={setDescription}
-          placeholder="Enter product description..."
-        />
-      </div>
+      <FormField
+        control={control}
+        name="description"
+        render={({ fieldState }) => {
+          // Only show error if status is not DRAFT
+          const shouldShowError = currentStatus !== "DRAFT" && fieldState.error;
+          return (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <div
+                  className={
+                    shouldShowError ? "border border-red-500 rounded-md" : ""
+                  }
+                >
+                  <QuillEditor
+                    value={description}
+                    onChange={setDescription}
+                    placeholder="Enter product description..."
+                  />
+                </div>
+              </FormControl>
+              {shouldShowError && <FormMessage />}
+            </FormItem>
+          );
+        }}
+      />
 
       {/* Price and Currency */}
       <div className="space-y-4">
@@ -367,37 +493,49 @@ export const ProductInfoSection = ({
           />
         </div>
 
-        <div className="flex flex-col gap-y-2">
-          <Label>Price</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-              {currencyInfo.symbol}
-            </span>
-            <Input
-              type="number"
-              step={1 / Math.pow(10, currencyInfo.decimals)}
-              min={1 / Math.pow(10, currencyInfo.decimals)}
-              placeholder="Price"
-              className="pl-8"
-              {...register("price", {
-                valueAsNumber: true,
-                required: "Price is required",
-              })}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {currencyInfo.decimals === 0 
-              ? "Enter whole numbers only (no decimal places)"
-              : `Enter price with up to ${currencyInfo.decimals} decimal places`}
-          </p>
-        </div>
+        <FormField
+          control={control}
+          name="price"
+          render={({ field, fieldState }) => (
+            <FormItem>
+              <FormLabel>Price</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                    {currencyInfo.symbol}
+                  </span>
+                  <Input
+                    type="number"
+                    step={1 / Math.pow(10, currencyInfo.decimals)}
+                    min={1 / Math.pow(10, currencyInfo.decimals)}
+                    placeholder="Price"
+                    className={`pl-8 ${fieldState.error ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    {...field}
+                    value={field.value || ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseFloat(e.target.value) : 0
+                      )
+                    }
+                  />
+                </div>
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                {currencyInfo.decimals === 0
+                  ? "Enter whole numbers only (no decimal places)"
+                  : `Enter price with up to ${currencyInfo.decimals} decimal places`}
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       {/* Primary Category */}
       <FormField
         control={control}
         name="primaryCategory"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Primary Category</FormLabel>
             <Select
@@ -405,7 +543,11 @@ export const ProductInfoSection = ({
               defaultValue={field.value || ""}
             >
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger
+                  className={
+                    fieldState.error ? "border-red-500 focus:ring-red-500" : ""
+                  }
+                >
                   <SelectValue placeholder="Select primary category" />
                 </SelectTrigger>
               </FormControl>
@@ -417,6 +559,7 @@ export const ProductInfoSection = ({
                 ))}
               </SelectContent>
             </Select>
+            <FormMessage />
           </FormItem>
         )}
       />
@@ -425,7 +568,7 @@ export const ProductInfoSection = ({
       <FormField
         control={control}
         name="secondaryCategory"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem className="flex flex-col">
             <FormLabel>Secondary Categories</FormLabel>
             <Select
@@ -438,8 +581,18 @@ export const ProductInfoSection = ({
               disabled={!selectedPrimaryCategory}
             >
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={selectedPrimaryCategory ? "Select secondary category" : "Select a primary category first"} />
+                <SelectTrigger
+                  className={
+                    fieldState.error ? "border-red-500 focus:ring-red-500" : ""
+                  }
+                >
+                  <SelectValue
+                    placeholder={
+                      selectedPrimaryCategory
+                        ? "Select secondary category"
+                        : "Select a primary category first"
+                    }
+                  />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -450,6 +603,7 @@ export const ProductInfoSection = ({
                 ))}
               </SelectContent>
             </Select>
+            <FormMessage />
           </FormItem>
         )}
       />
@@ -486,7 +640,8 @@ export const ProductInfoSection = ({
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Adding a tertiary category helps buyers find your product more easily
+                Adding a tertiary category helps buyers find your product more
+                easily
               </p>
             </FormItem>
           )}
@@ -495,12 +650,84 @@ export const ProductInfoSection = ({
 
       {/* Product Status */}
       <div className="space-y-4">
-        <Label className="text-lg font-semibold">Product Status</Label>
+        <div className="flex items-center gap-2">
+          <Label className="text-lg font-semibold">Product Status</Label>
+          <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+            <Tooltip
+              open={tooltipOpen}
+              onOpenChange={(open) => {
+                setTooltipOpen(open);
+                // Reset button state when tooltip closes
+                if (!open && buttonRef.current) {
+                  buttonRef.current.blur();
+                }
+              }}
+              disableHoverableContent
+            >
+              <TooltipTrigger asChild>
+                <button
+                  ref={buttonRef}
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors touch-manipulation"
+                  aria-label="Product status help"
+                  onClick={(e) => {
+                    // Prevent form submission when clicking the help button
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                className="max-w-xs"
+                side="top"
+                sideOffset={8}
+                align="start"
+                avoidCollisions={true}
+                collisionPadding={8}
+              >
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <strong className="text-purple-600">Draft:</strong> Save
+                    your product with incomplete information. Not visible on the
+                    site. You can come back anytime to finish it.
+                  </div>
+                  <div>
+                    <strong className="text-purple-600">Hidden:</strong> A
+                    completed product that won&apos;t show on the site. All
+                    required fields must be filled.
+                  </div>
+                  <div>
+                    <strong className="text-purple-600">Active:</strong> A
+                    completed product that is live and shown on the site for
+                    purchase. All required fields must be filled.
+                  </div>
+                  <div>
+                    <strong className="text-purple-600">Disabled:</strong> A
+                    completed product that is temporarily disabled. All required
+                    fields must be filled.
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <RadioGroup
-          value={currentStatus || "HIDDEN"}
+          value={currentStatus || "DRAFT"}
           onValueChange={(value) => form.setValue("status", value)}
           className="flex flex-col space-y-2"
         >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem
+              value="DRAFT"
+              id="draft"
+              className="text-purple-600"
+            />
+            <Label htmlFor="draft" className="text-base">
+              Draft
+            </Label>
+          </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem
               value="HIDDEN"
@@ -518,9 +745,9 @@ export const ProductInfoSection = ({
               className="text-purple-600"
               disabled={isSellerApproved === null || !isSellerApproved}
             />
-            <Label 
-              htmlFor="active" 
-              className={`text-base ${isSellerApproved === null || !isSellerApproved ? 'text-gray-400' : ''}`}
+            <Label
+              htmlFor="active"
+              className={`text-base ${isSellerApproved === null || !isSellerApproved ? "text-gray-400" : ""}`}
             >
               Active
               {(isSellerApproved === null || !isSellerApproved) && (
@@ -537,9 +764,9 @@ export const ProductInfoSection = ({
               className="text-purple-600"
               disabled={isSellerApproved === null || !isSellerApproved}
             />
-            <Label 
-              htmlFor="disabled" 
-              className={`text-base ${isSellerApproved === null || !isSellerApproved ? 'text-gray-400' : ''}`}
+            <Label
+              htmlFor="disabled"
+              className={`text-base ${isSellerApproved === null || !isSellerApproved ? "text-gray-400" : ""}`}
             >
               Disabled
               {(isSellerApproved === null || !isSellerApproved) && (
@@ -564,7 +791,10 @@ export const ProductInfoSection = ({
                 onCheckedChange={(checked) => {
                   field.onChange(checked === true);
                   // Automatically update tax category based on isDigital
-                  form.setValue("taxCategory", checked ? "DIGITAL_GOODS" : "PHYSICAL_GOODS");
+                  form.setValue(
+                    "taxCategory",
+                    checked ? "DIGITAL_GOODS" : "PHYSICAL_GOODS"
+                  );
                 }}
               />
             </FormControl>
@@ -648,7 +878,7 @@ export const ProductInfoSection = ({
       {/* Tax Settings */}
       <div className="space-y-4">
         <Label className="text-lg font-semibold">Tax Settings</Label>
-        
+
         <FormField
           control={control}
           name="taxCategory"
@@ -674,7 +904,7 @@ export const ProductInfoSection = ({
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground mt-1">
-                {watch("isDigital") 
+                {watch("isDigital")
                   ? "Automatically set to Digital Goods based on product type"
                   : "Automatically set to Physical Goods based on product type"}
               </p>
@@ -690,40 +920,22 @@ export const ProductInfoSection = ({
               <FormControl>
                 <Checkbox
                   checked={field.value}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true)
+                  }
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
                 <FormLabel>Tax Exempt</FormLabel>
                 <p className="text-sm text-muted-foreground">
-                  Check this if your product is tax exempt (e.g., educational materials, certain medical supplies)
+                  Check this if your product is tax exempt (e.g., educational
+                  materials, certain medical supplies)
                 </p>
               </div>
             </FormItem>
           )}
         />
       </div>
-
-      {/* Portal Tooltip */}
-      {showTooltip && createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            left: tooltipPosition.x,
-            top: tooltipPosition.y - 40, // Move it higher above the button
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            pointerEvents: 'none'
-          }}
-          className="bg-purple-600 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap"
-        >
-          Please enter a product name first
-          <div 
-            className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-purple-600"
-          ></div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 };

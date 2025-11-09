@@ -17,7 +17,7 @@ import { toast } from "sonner";
 interface ShippingOptionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (shippingOptionId?: string) => void;
 }
 
 export default function ShippingOptionModal({
@@ -27,10 +27,10 @@ export default function ShippingOptionModal({
 }: ShippingOptionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSuccess = () => {
+  const handleSuccess = (shippingOptionId?: string) => {
     toast.success("Shipping option created successfully!");
     onOpenChange(false);
-    onSuccess?.();
+    onSuccess?.(shippingOptionId);
   };
 
   return (
@@ -42,14 +42,13 @@ export default function ShippingOptionModal({
             Create Your First Shipping Option
           </DialogTitle>
           <DialogDescription>
-            Set up shipping rates for your products. This will help customers know how much shipping will cost.
+            Set up shipping rates for your products. This will help customers
+            know how much shipping will cost.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="mt-6">
-          <ShippingOptionForm 
-            onSuccess={handleSuccess}
-          />
+          <ShippingOptionForm onSuccess={handleSuccess} />
         </div>
       </DialogContent>
     </Dialog>

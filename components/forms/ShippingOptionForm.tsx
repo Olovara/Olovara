@@ -60,7 +60,7 @@ interface ShippingOption {
 
 interface ShippingOptionFormProps {
   initialData?: ShippingOption;
-  onSuccess?: () => void;
+  onSuccess?: (shippingOptionId?: string) => void;
 }
 
 export default function ShippingOptionForm({
@@ -122,13 +122,18 @@ export default function ShippingOptionForm({
 
   async function onSubmit(values: ShippingOptionFormValues) {
     try {
-      const response = await fetch("/api/shipping-options", {
-        method: initialData ? "PUT" : "POST",
+      // Use the correct endpoint based on whether we're creating or editing
+      const url = initialData
+        ? `/api/shipping-options/${initialData.id}`
+        : "/api/shipping-options";
+      const method = initialData ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: initialData?.id,
           ...values,
           rates: values.rates.map((rate) => ({
             ...rate,
@@ -148,20 +153,23 @@ export default function ShippingOptionForm({
         throw new Error("Failed to save shipping option");
       }
 
+      const result = await response.json();
+      const shippingOptionId = result.shippingOption?.id || result.id;
+
       toast.success(
         initialData
           ? "Shipping option updated successfully"
           : "Shipping option created successfully"
       );
 
-      // If this is a new profile creation, refresh the page to get updated session data TODO: The same modification here as seller form
-      if (!initialData) {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
+      // Call onSuccess callback with the shipping option ID to refresh shipping options TODO: The same modification here as seller form
+      // This preserves all form data the seller has entered
+      // Pass the ID so the parent can auto-select it if needed
+      onSuccess?.(shippingOptionId);
+
+      // Only refresh router for updates, not for new creations
+      if (initialData) {
         router.refresh();
-        onSuccess?.();
       }
     } catch (error) {
       toast.error("Something went wrong");

@@ -10,7 +10,17 @@ import {
 const descriptionJsonSchema = z.object({
   html: z.string(),
   text: z.string(),
-}).nullable().refine((val) => !!val, {
+}).nullable().refine((val) => {
+  if (!val) return false;
+  // Check if text content is empty or only contains empty HTML tags
+  const textContent = val.text?.trim() || "";
+  const isEmpty = 
+    textContent === "" || 
+    textContent === "<p><br></p>" || 
+    textContent === "<p></p>" ||
+    textContent.replace(/<[^>]*>/g, "").trim() === "";
+  return !isEmpty;
+}, {
   message: "Product description is required.",
 });
 
@@ -44,7 +54,7 @@ const baseProductSchema = z.object({
     message: "Please enter your product's name, required.",
   }),
   sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
-  shortDescription: z.string(), // Short description with bullet points for product overview
+  shortDescription: z.string().min(1, "Short description is required"), // Short description with bullet points for product overview
   shortDescriptionBullets: z.array(z.string()).max(5, "Maximum 5 bullet points allowed").default([]), // Array of bullet points for short description
   description: descriptionJsonSchema,
   options: z
@@ -104,8 +114,8 @@ const baseProductSchema = z.object({
     .transform((stock) => (stock === null ? undefined : stock)),
   productFile: z.string().nullable().optional(),
   numberSold: z.number().int().optional().default(0),
-  primaryCategory: z.string(),
-  secondaryCategory: z.string(),
+  primaryCategory: z.string().min(1, "Primary category is required"),
+  secondaryCategory: z.string().min(1, "Secondary category is required"),
   tertiaryCategory: z.string().nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
   materialTags: z.array(z.string()).optional().default([]),
@@ -320,6 +330,15 @@ export const ProductSchema = baseProductSchema
           code: "custom",
           message: "Stock is required for physical products.",
           path: ["stock"],
+        });
+      }
+
+      // Require shipping option if free shipping is not selected
+      if (!data.freeShipping && (!data.shippingOptionId || data.shippingOptionId === "")) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Shipping option is required when free shipping is not selected.",
+          path: ["shippingOptionId"],
         });
       }
 

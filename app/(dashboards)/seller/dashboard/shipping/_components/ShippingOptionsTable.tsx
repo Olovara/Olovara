@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -12,8 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import ShippingOptionModal from "./ShippingOptionModal";
-import EditShippingOptionModal from "./EditShippingOptionModal";
+import Link from "next/link";
 
 interface CountryRate {
   countryCode: string;
@@ -51,13 +50,7 @@ interface ShippingOptionsTableProps {
 export default function ShippingOptionsTable({
   options,
 }: ShippingOptionsTableProps) {
-  const [editingOption, setEditingOption] = useState<ShippingOption | null>(
-    null
-  );
-
-  const handleEdit = (option: ShippingOption) => {
-    setEditingOption(option);
-  };
+  const router = useRouter();
 
   const handleDelete = async (id: string) => {
     try {
@@ -70,7 +63,7 @@ export default function ShippingOptionsTable({
       }
 
       toast.success("Shipping option deleted successfully");
-      window.location.reload();
+      router.refresh();
     } catch (error) {
       toast.error("Something went wrong");
     }
@@ -79,9 +72,7 @@ export default function ShippingOptionsTable({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <ShippingOptionModal />
-        </div>
+        {/* Modal removed - shipping options are now created on a dedicated page */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -145,13 +136,11 @@ export default function ShippingOptionsTable({
                   <TableCell>{option.isDefault ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingOption(option)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/seller/dashboard/shipping/${option.id}/edit`}>
+                        <Button variant="ghost" size="sm">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -167,14 +156,6 @@ export default function ShippingOptionsTable({
           </Table>
         </div>
       </div>
-
-      {editingOption && (
-        <EditShippingOptionModal
-          option={editingOption}
-          isOpen={!!editingOption}
-          onClose={() => setEditingOption(null)}
-        />
-      )}
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +13,14 @@ import { Plus } from "lucide-react";
 import ShippingOptionForm from "@/components/forms/ShippingOptionForm";
 
 export default function ShippingOptionModal() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleSuccess = () => {
+    setIsOpen(false);
+    // Refresh the page to show the new shipping option
+    router.refresh();
+  };
 
   return (
     <>
@@ -25,7 +33,7 @@ export default function ShippingOptionModal() {
           <DialogHeader>
             <DialogTitle>Add Shipping Option</DialogTitle>
           </DialogHeader>
-          <ShippingOptionForm onSuccess={() => setIsOpen(false)} />
+          <ShippingOptionForm onSuccess={handleSuccess} />
         </DialogContent>
       </Dialog>
     </>
