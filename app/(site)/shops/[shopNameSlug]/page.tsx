@@ -72,6 +72,16 @@ async function getShopData(
       isVeteranOwned: true,
       isSustainable: true,
       isCharitable: true,
+      // Location fields (direct on seller model)
+      shopCountry: true,
+      shopState: true,
+      shopCity: true,
+      encryptedShopState: true,
+      shopStateIV: true,
+      shopStateSalt: true,
+      encryptedShopCity: true,
+      shopCityIV: true,
+      shopCitySalt: true,
       // Social media links
       facebookUrl: true,
       instagramUrl: true,
@@ -85,19 +95,6 @@ async function getShopData(
       ogTitle: true,
       ogDescription: true,
       ogImage: true,
-      // Address for location
-      addresses: {
-        where: { isDefault: true },
-        select: {
-          encryptedCountry: true,
-          encryptedState: true,
-          countryIV: true,
-          stateIV: true,
-          countrySalt: true,
-          stateSalt: true,
-        },
-        take: 1,
-      },
       products: {
         where: productWhere,
         select: {
@@ -288,24 +285,67 @@ export default async function ShopPage({ params }: ShopPageProps) {
     { url: seller.tiktokUrl || undefined, icon: TikTokIcon, label: "TikTok" },
   ].filter((link) => link.url);
 
-  // Get location from default address
-  const defaultAddress = seller.addresses[0];
-  const location = defaultAddress
-    ? {
-        country: decryptData(
-          defaultAddress.encryptedCountry,
-          defaultAddress.countryIV,
-          defaultAddress.countrySalt
-        ),
-        state: defaultAddress.encryptedState
-          ? decryptData(
-              defaultAddress.encryptedState,
-              defaultAddress.stateIV!,
-              defaultAddress.stateSalt!
-            )
-          : null,
+  // Get location from seller's direct fields (shopCountry, shopState, shopCity)
+  // Note: We no longer use addresses since we're not collecting that information
+  let location = null;
+  
+  if (seller.shopCountry) {
+    const locationData: { 
+      country: string; 
+      state: string | null; 
+      city: string | null;
+    } = {
+      country: seller.shopCountry,
+      state: null,
+      city: null,
+    };
+
+    // Try to get state from encrypted field or plain field
+    if (seller.encryptedShopState && seller.shopStateIV && seller.shopStateSalt) {
+      try {
+        const decryptedState = decryptData(
+          seller.encryptedShopState,
+          seller.shopStateIV,
+          seller.shopStateSalt
+        );
+        if (
+          decryptedState &&
+          decryptedState !== "Temporary Data - Please Update"
+        ) {
+          locationData.state = decryptedState;
+        }
+      } catch (error) {
+        console.error("Error decrypting shop state:", error);
       }
-    : null;
+    } else if (seller.shopState) {
+      // Use plain shopState if available
+      locationData.state = seller.shopState;
+    }
+
+    // Try to get city from encrypted field or plain field
+    if (seller.encryptedShopCity && seller.shopCityIV && seller.shopCitySalt) {
+      try {
+        const decryptedCity = decryptData(
+          seller.encryptedShopCity,
+          seller.shopCityIV,
+          seller.shopCitySalt
+        );
+        if (
+          decryptedCity &&
+          decryptedCity !== "Temporary Data - Please Update"
+        ) {
+          locationData.city = decryptedCity;
+        }
+      } catch (error) {
+        console.error("Error decrypting shop city:", error);
+      }
+    } else if (seller.shopCity) {
+      // Use plain shopCity if available
+      locationData.city = seller.shopCity;
+    }
+
+    location = locationData;
+  }
 
   return (
     <>
@@ -363,17 +403,6 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   </p>
                 )}
 
-                {/* Location */}
-                {location && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                    <MapPin className="h-4 w-4" />
-                    <span>
-                      {location.state ? `${location.state}, ` : ""}
-                      {location.country}
-                    </span>
-                  </div>
-                )}
-
                 {/* Social Links */}
                 {socialLinks.length > 0 && (
                   <div className="flex flex-wrap gap-3 mb-4">
@@ -393,7 +422,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                 )}
 
                 {/* Quick Stats */}
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
                   <span>{seller.products.length} products</span>
                   <span>•</span>
                   <span>{seller.totalSales} sales</span>
@@ -408,10 +437,22 @@ export default async function ShopPage({ params }: ShopPageProps) {
                     </>
                   )}
                 </div>
+
+                {/* Location */}
+                {location && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <MapPin className="h-4 w-4" />
+                    <span>
+                      Handmade in: {location.city && `${location.city}, `}
+                      {location.state && `${location.state}, `}
+                      {location.country}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Contact & Custom Order Buttons */}
-              <div className="flex-shrink-0 flex items-center gap-2">
+              <div className="flex-shrink-0 flex flex-wrap items-center gap-2">
                 <FollowButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
@@ -423,11 +464,15 @@ export default async function ShopPage({ params }: ShopPageProps) {
                 <ContactSellerButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
+                  variant="outline"
+                  size="sm"
                 />
                 <CustomOrderButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
                   acceptsCustom={seller.acceptsCustom}
+                  variant="outline"
+                  size="sm"
                 />
                 <ReportButton
                   reportType="SELLER"

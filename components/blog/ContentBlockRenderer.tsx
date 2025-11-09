@@ -63,7 +63,10 @@ export function ContentBlockRenderer({
   return (
     <div className={className}>
       {sortedBlocks.map((block, index) => (
-        <div key={block.id || index} className="mb-6 last:mb-0">
+        <div 
+          key={block.id || index} 
+          className={index === 0 ? "first:mt-0" : ""}
+        >
           {renderBlock(block)}
         </div>
       ))}

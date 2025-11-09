@@ -25,6 +25,11 @@ interface RichTextBlockProps {
 }
 
 export function RichTextBlock({ block, className }: RichTextBlockProps) {
+  // Safety check: if content is empty or null, don't render anything
+  if (!block.content || block.content.trim() === "") {
+    return null;
+  }
+
   return (
     <div className={className}>
       <div

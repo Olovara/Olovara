@@ -178,23 +178,23 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <Separator />
 
         {/* Content */}
-        <div className="prose max-w-none ql-snow">
-          <div
-            className="ql-editor"
-            dangerouslySetInnerHTML={{ __html: post.content as string }}
-          />
-        </div>
+        {post.content && (
+          <div className="prose max-w-none ql-snow">
+            <div
+              className="ql-editor"
+              dangerouslySetInnerHTML={{ __html: post.content as string }}
+            />
+          </div>
+        )}
 
         {/* Structured Content Blocks */}
         {post.contentBlocks &&
           Array.isArray(post.contentBlocks) &&
           post.contentBlocks.length > 0 && (
-            <div className="space-y-8">
-              <ContentBlockRenderer
-                blocks={post.contentBlocks as unknown as ContentBlock[]}
-                className="space-y-6"
-              />
-            </div>
+            <ContentBlockRenderer
+              blocks={post.contentBlocks as unknown as ContentBlock[]}
+              className="space-y-6"
+            />
           )}
 
         {/* Tags */}

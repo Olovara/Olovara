@@ -21,12 +21,18 @@ interface CustomOrderButtonProps {
   sellerId: string;
   sellerName: string;
   acceptsCustom: boolean;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
 }
 
 export default function CustomOrderButton({ 
   sellerId, 
   sellerName, 
-  acceptsCustom 
+  acceptsCustom,
+  variant = "outline",
+  size = "default",
+  className = ""
 }: CustomOrderButtonProps) {
   const { data: session, status } = useSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -143,8 +149,9 @@ export default function CustomOrderButton({
     return (
       <Button
         asChild
-        variant="outline"
-        className="flex items-center gap-2"
+        variant={variant}
+        size={size}
+        className={`flex items-center gap-2 ${className}`}
       >
         <Link href="/login">
           <LogIn className="h-4 w-4" />
@@ -159,8 +166,9 @@ export default function CustomOrderButton({
       <Button
         onClick={handleCustomOrderClick}
         disabled={isLoading || status === "loading"}
-        variant="outline"
-        className="flex items-center gap-2"
+        variant={variant}
+        size={size}
+        className={`flex items-center gap-2 ${className}`}
       >
         <FileText className="h-4 w-4" />
         Custom Order

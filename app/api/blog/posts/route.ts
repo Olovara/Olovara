@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, content, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
+    const { title, description, content, contentBlocks, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
 
     // Generate slug from title
     const slug = title
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         title,
         description,
         content,
+        contentBlocks: contentBlocks || [],
         slug,
         status,
         isPrivate,

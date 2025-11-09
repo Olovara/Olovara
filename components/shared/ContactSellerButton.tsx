@@ -11,9 +11,18 @@ import { toast } from "sonner";
 interface ContactSellerButtonProps {
   sellerId: string;
   sellerName: string;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
 }
 
-export function ContactSellerButton({ sellerId, sellerName }: ContactSellerButtonProps) {
+export function ContactSellerButton({ 
+  sellerId, 
+  sellerName,
+  variant = "default",
+  size = "default",
+  className = ""
+}: ContactSellerButtonProps) {
   const { data: session } = useSession();
   const { role } = usePermissions();
   const [isLoading, setIsLoading] = useState(false);
@@ -75,8 +84,9 @@ export function ContactSellerButton({ sellerId, sellerName }: ContactSellerButto
     return (
       <Button 
         onClick={() => router.push("/login")}
-        variant="outline"
-        className="w-full"
+        variant={variant}
+        size={size}
+        className={className}
       >
         Log in to Contact Seller
       </Button>
@@ -87,7 +97,9 @@ export function ContactSellerButton({ sellerId, sellerName }: ContactSellerButto
     <Button
       onClick={handleContactSeller}
       disabled={isLoading || session.user.id === sellerId}
-      className="w-full"
+      variant={variant}
+      size={size}
+      className={className}
     >
       {isLoading ? "Creating Conversation..." : "Contact Seller"}
     </Button>
