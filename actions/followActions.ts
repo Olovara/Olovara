@@ -230,12 +230,10 @@ export async function getFollowedSellersFeed(limit: number = 20) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      console.log("No session found in getFollowedSellersFeed");
       return [];
     }
 
     const userId = session.user.id;
-    console.log("Getting followed sellers feed for user:", userId);
 
     // Get all sellers the user is following
     const followedSellers = await db.follow.findMany({
@@ -244,12 +242,10 @@ export async function getFollowedSellersFeed(limit: number = 20) {
     });
 
     if (followedSellers.length === 0) {
-      console.log("No followed sellers found for user:", userId);
       return [];
     }
 
     const sellerIds = followedSellers.map((f) => f.sellerId);
-    console.log("Found followed seller IDs:", sellerIds);
 
     // Get the userIds of the followed sellers
     const followedSellerUsers = await db.seller.findMany({
@@ -258,12 +254,10 @@ export async function getFollowedSellersFeed(limit: number = 20) {
     });
 
     if (followedSellerUsers.length === 0) {
-      console.log("No seller users found for seller IDs:", sellerIds);
       return [];
     }
 
     const sellerUserIds = followedSellerUsers.map((s) => s.userId);
-    console.log("Found seller user IDs:", sellerUserIds);
 
     // Get recent products from followed sellers
     const products = await db.product.findMany({
@@ -285,7 +279,6 @@ export async function getFollowedSellersFeed(limit: number = 20) {
       take: limit,
     });
 
-    console.log("Found products from followed sellers:", products.length);
     return products;
   } catch (error) {
     console.error("Error getting followed sellers feed:", error);

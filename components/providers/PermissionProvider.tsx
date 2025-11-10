@@ -97,22 +97,10 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log("PermissionProvider - fetchUserData called:", {
-      userId: session.user.id,
-      forceRefresh,
-      timestamp: new Date().toISOString()
-    });
-
     // Try to get cached data first (unless forcing refresh)
     if (!forceRefresh) {
       const cachedData = getCachedData();
       if (cachedData) {
-        console.log("PermissionProvider - Using cached data:", {
-          userId: session.user.id,
-          role: cachedData.role,
-          permissionsCount: cachedData.permissions.length,
-          permissions: cachedData.permissions
-        });
         setPermissions(cachedData.permissions);
         setRole(cachedData.role);
         setLoading(false);
@@ -123,7 +111,6 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      console.log("PermissionProvider - Fetching fresh user data from API...");
       const response = await fetch('/api/auth/permissions');
       
       if (!response.ok) {
@@ -134,20 +121,12 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       const freshPermissions = data.permissions || [];
       const freshRole = data.role || 'MEMBER';
       
-      console.log("PermissionProvider - Received fresh user data:", {
-        userId: session.user.id,
-        role: freshRole,
-        permissionsCount: freshPermissions.length,
-        permissions: freshPermissions
-      });
-      
       setPermissions(freshPermissions);
       setRole(freshRole);
       setError(null);
       
       // Cache the fresh data
       saveDataToCache(freshPermissions, freshRole);
-      console.log("PermissionProvider - User data cached successfully");
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch user data');
@@ -194,17 +173,6 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const refreshPermissions = useCallback(async () => {
     await fetchUserData(true); // Force refresh
   }, [fetchUserData]);
-
-  // Debug logging
-  console.log("PermissionProvider - Current State:", {
-    userId: session?.user?.id,
-    role,
-    loading,
-    error,
-    permissionsCount: permissions.length,
-    status,
-    permissions: permissions.map(p => typeof p === 'string' ? p : p.permission)
-  });
 
   const value: PermissionContextType = {
     permissions,

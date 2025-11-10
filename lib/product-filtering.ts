@@ -36,13 +36,6 @@ export async function createProductFilterWhereClause(
       : false;
   }
 
-  // Debug logging for test product filtering
-  console.log('[DEBUG] Product Filtering - User test access:', {
-    canAccessTest,
-    includeTestProducts: config.includeTestProducts,
-    userId: (await auth())?.user?.id
-  });
-
   // Build the base where clause
   const where: Prisma.ProductWhereInput = {
     AND: [
@@ -68,9 +61,6 @@ export async function createProductFilterWhereClause(
       ...Object.keys(additionalFilters).length > 0 ? [additionalFilters] : [],
     ],
   };
-
-  // Debug logging for final where clause
-  console.log('[DEBUG] Product Filtering - Final where clause:', JSON.stringify(where, null, 2));
 
   return where;
 }
@@ -187,7 +177,6 @@ export function createLocationFilterWhereClause(userCountryCode: string) {
 
   // Temporarily disable location filtering at database level due to Prisma array filtering issues
   // We'll handle location filtering in memory instead
-  console.log('Location filtering disabled at database level for user country:', userCountryCode);
   return {};
 }
 
