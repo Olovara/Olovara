@@ -37,7 +37,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     searchParams.get("error") === "OAuthAccountNotLinked"
       ? "Email already in use with a different provider!"
       : "";
-  
+
   // Check if this is part of the seller signup flow
   const isSellerSignupFlow = callbackUrl === "/seller-application";
 
@@ -71,7 +71,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           if (data?.success) {
             form.reset();
             if (isSellerSignupFlow) {
-              setSuccess("Signing you in and redirecting to seller application...");
+              setSuccess(
+                "Signing you in and redirecting to seller application..."
+              );
             } else {
               setSuccess(data.success);
             }
@@ -81,6 +83,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           if (data?.twoFactor) {
             setShowTwoFactor(true);
           }
+
+          // Note: signIn() in the login action handles the redirect
+          // No need to manually redirect here as it's handled server-side
         });
       } catch (err) {
         setError(`Something went wrong! Error:${err}`);
@@ -100,13 +105,14 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       backButtonHref="/register"
       showSocial
       title={isSellerSignupFlow ? "Sign in to Continue" : "Welcome back"}
-      subtitle={isSellerSignupFlow ? "Complete your seller application" : "Sign in to your account"}
+      subtitle={
+        isSellerSignupFlow
+          ? "Complete your seller application"
+          : "Sign in to your account"
+      }
     >
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
             {showTwoFactor && (
               <FormField
@@ -170,7 +176,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                         asChild
                         className="px-0 text-muted-foreground"
                       >
-                        <Link href="/reset-password">Forgot your password?</Link>
+                        <Link href="/reset-password">
+                          Forgot your password?
+                        </Link>
                       </Button>
                     </FormItem>
                   )}

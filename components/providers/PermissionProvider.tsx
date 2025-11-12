@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
 import { useSession } from "next-auth/react";
 
 interface Permission {
@@ -22,12 +29,14 @@ interface PermissionContextType {
   refreshPermissions: () => Promise<void>;
 }
 
-const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
+const PermissionContext = createContext<PermissionContextType | undefined>(
+  undefined
+);
 
 // localStorage keys
-const PERMISSIONS_STORAGE_KEY = 'yarnnu_user_permissions';
-const ROLE_STORAGE_KEY = 'yarnnu_user_role';
-const PERMISSIONS_TIMESTAMP_KEY = 'yarnnu_permissions_timestamp';
+const PERMISSIONS_STORAGE_KEY = "yarnnu_user_permissions";
+const ROLE_STORAGE_KEY = "yarnnu_user_role";
+const PERMISSIONS_TIMESTAMP_KEY = "yarnnu_permissions_timestamp";
 const PERMISSIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
@@ -39,109 +48,126 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
   // Get cached data from localStorage
   const getCachedData = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    
+    if (typeof window === "undefined") return null;
+
     try {
       const timestamp = localStorage.getItem(PERMISSIONS_TIMESTAMP_KEY);
       const cachedPermissions = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
       const cachedRole = localStorage.getItem(ROLE_STORAGE_KEY);
-      
+
       if (timestamp && cachedPermissions && cachedRole) {
         const age = Date.now() - parseInt(timestamp);
         if (age < PERMISSIONS_CACHE_DURATION) {
           return {
             permissions: JSON.parse(cachedPermissions),
-            role: cachedRole
+            role: cachedRole,
           };
         }
       }
     } catch (error) {
-      console.error('Error reading cached data:', error);
+      console.error("Error reading cached data:", error);
     }
-    
+
     return null;
   }, []);
 
   // Save data to localStorage
-  const saveDataToCache = useCallback((permissions: Permission[], role: string) => {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      localStorage.setItem(PERMISSIONS_STORAGE_KEY, JSON.stringify(permissions));
-      localStorage.setItem(ROLE_STORAGE_KEY, role);
-      localStorage.setItem(PERMISSIONS_TIMESTAMP_KEY, Date.now().toString());
-    } catch (error) {
-      console.error('Error saving data to cache:', error);
-    }
-  }, []);
+  const saveDataToCache = useCallback(
+    (permissions: Permission[], role: string) => {
+      if (typeof window === "undefined") return;
+
+      try {
+        localStorage.setItem(
+          PERMISSIONS_STORAGE_KEY,
+          JSON.stringify(permissions)
+        );
+        localStorage.setItem(ROLE_STORAGE_KEY, role);
+        localStorage.setItem(PERMISSIONS_TIMESTAMP_KEY, Date.now().toString());
+      } catch (error) {
+        console.error("Error saving data to cache:", error);
+      }
+    },
+    []
+  );
 
   // Clear cached data
   const clearCachedData = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    
+    if (typeof window === "undefined") return;
+
     try {
       localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
       localStorage.removeItem(ROLE_STORAGE_KEY);
       localStorage.removeItem(PERMISSIONS_TIMESTAMP_KEY);
     } catch (error) {
-      console.error('Error clearing cached data:', error);
+      console.error("Error clearing cached data:", error);
     }
   }, []);
 
-  const fetchUserData = useCallback(async (forceRefresh = false) => {
-    if (!session?.user?.id) {
-      setPermissions([]);
-      setRole(null);
-      setLoading(false);
-      clearCachedData();
-      return;
-    }
-
-    // Try to get cached data first (unless forcing refresh)
-    if (!forceRefresh) {
-      const cachedData = getCachedData();
-      if (cachedData) {
-        setPermissions(cachedData.permissions);
-        setRole(cachedData.role);
+  const fetchUserData = useCallback(
+    async (forceRefresh = false) => {
+      if (!session?.user?.id) {
+        setPermissions([]);
+        setRole(null);
         setLoading(false);
-        setError(null);
+        clearCachedData();
         return;
       }
-    }
 
-    try {
-      setLoading(true);
-      const response = await fetch('/api/auth/permissions');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
+      // Try to get cached data first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedData = getCachedData();
+        if (cachedData) {
+          setPermissions(cachedData.permissions);
+          setRole(cachedData.role);
+          setLoading(false);
+          setError(null);
+          return;
+        }
       }
 
-      const data = await response.json();
-      const freshPermissions = data.permissions || [];
-      const freshRole = data.role || 'MEMBER';
-      
-      setPermissions(freshPermissions);
-      setRole(freshRole);
-      setError(null);
-      
-      // Cache the fresh data
-      saveDataToCache(freshPermissions, freshRole);
-    } catch (err) {
-      console.error('Error fetching user data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch user data');
-      setPermissions([]);
-      setRole(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id, getCachedData, saveDataToCache, clearCachedData]);
+      try {
+        setLoading(true);
+        const response = await fetch("/api/auth/permissions");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const data = await response.json();
+        const freshPermissions = data.permissions || [];
+        const freshRole = data.role || "MEMBER";
+
+        setPermissions(freshPermissions);
+        setRole(freshRole);
+        setError(null);
+
+        // Cache the fresh data
+        saveDataToCache(freshPermissions, freshRole);
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch user data"
+        );
+        setPermissions([]);
+        setRole(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session?.user?.id, getCachedData, saveDataToCache, clearCachedData]
+  );
 
   // Fetch user data when session changes
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id) {
+    // Wait for session to finish loading before making decisions
+    if (status === "loading") {
+      // Keep loading state while session is loading
+      return;
+    }
+
+    if (status === "authenticated" && session?.user?.id) {
       fetchUserData();
-    } else if (status === 'unauthenticated') {
+    } else if (status === "unauthenticated") {
       setPermissions([]);
       setRole(null);
       setLoading(false);
@@ -152,21 +178,23 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   // Helper function to check if user has a specific permission
   const hasPermission = (permission: string): boolean => {
     // Check if permissions is an array of strings (from API) or objects (from cache)
-    if (permissions.length > 0 && typeof permissions[0] === 'string') {
+    if (permissions.length > 0 && typeof permissions[0] === "string") {
       return permissions.includes(permission);
     } else {
-      return permissions.some(p => typeof p === 'object' && p.permission === permission);
+      return permissions.some(
+        (p) => typeof p === "object" && p.permission === permission
+      );
     }
   };
 
   // Helper function to check if user has any of the given permissions
   const hasAnyPermission = (permissionList: string[]): boolean => {
-    return permissionList.some(permission => hasPermission(permission));
+    return permissionList.some((permission) => hasPermission(permission));
   };
 
   // Helper function to check if user has all of the given permissions
   const hasAllPermissions = (permissionList: string[]): boolean => {
-    return permissionList.every(permission => hasPermission(permission));
+    return permissionList.every((permission) => hasPermission(permission));
   };
 
   // Function to manually refresh user data (useful after permission/role changes)
@@ -195,7 +223,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 export function usePermissions() {
   const context = useContext(PermissionContext);
   if (context === undefined) {
-    throw new Error('usePermissions must be used within a PermissionProvider');
+    throw new Error("usePermissions must be used within a PermissionProvider");
   }
   return context;
-} 
+}

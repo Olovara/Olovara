@@ -96,6 +96,7 @@ export const TertiaryCategories = [
   { id: "MERINO_WOOL", name: "Merino Wool", secondaryCategoryId: "YARN" },
   { id: "BULKY_YARN", name: "Bulky Yarn", secondaryCategoryId: "YARN" },
   { id: "FINGERING_YARN", name: "Fingering Yarn", secondaryCategoryId: "YARN" },
+  { id: "POLYESTER_YARN", name: "Polyester Yarn", secondaryCategoryId: "YARN" },
   
   // Home - Decor
   { id: "WALL_ART", name: "Wall Art", secondaryCategoryId: "DECOR" },
@@ -103,12 +104,41 @@ export const TertiaryCategories = [
   { id: "VASES", name: "Vases", secondaryCategoryId: "DECOR" },
   { id: "THROW_PILLOWS", name: "Throw Pillows", secondaryCategoryId: "DECOR" },
   { id: "RUGS", name: "Rugs", secondaryCategoryId: "DECOR" },
-  
-  // Bath - Soaps
+
+  // Bath - Soap
   { id: "BAR_SOAP", name: "Bar Soap", secondaryCategoryId: "SOAP" },
   { id: "LIQUID_SOAP", name: "Liquid Soap", secondaryCategoryId: "SOAP" },
   { id: "BATH_BOMBS", name: "Bath Bombs", secondaryCategoryId: "SOAP" },
   { id: "SHOWER_GELS", name: "Shower Gels", secondaryCategoryId: "SOAP" },
+  { id: "BATH_SALTS_AND_SCRUBS", name: "Bath Salts and Scrubs", secondaryCategoryId: "SOAP" },
+  { id: "BATH_OILS", name: "Bath Oils", secondaryCategoryId: "SOAP" },
+  
+  // Bath - Skin Care
+  { id: "FACIAL_CARE", name: "Facial Care", secondaryCategoryId: "SKIN" },
+  { id: "MOISTURIZERS", name: "Moisturizers", secondaryCategoryId: "SKIN" },
+  { id: "BALMS_AND_SALVES", name: "Balms and Salves", secondaryCategoryId: "SKIN" },
+  { id: "EXFOLIATION", name: "Exfoliation", secondaryCategoryId: "SKIN" },
+  { id: "EYE_TREATMENTS", name: "Eye Treatments", secondaryCategoryId: "SKIN" },
+
+  // Bath - Spa and Relaxation
+  { id: "AROMATHERAPY", name: "Aromatherapy", secondaryCategoryId: "SPA" },
+  { id: "HEAT_AND_COLD_PACKS", name: "Heat and Cold Packs", secondaryCategoryId: "SPA" },
+  { id: "MASSAGE", name: "Massage", secondaryCategoryId: "SPA" },
+  { id: "ESSENTIAL_OILS", name: "Essential Oils", secondaryCategoryId: "SPA" },
+  { id: "SPA_KITS", name: "Spa Kits", secondaryCategoryId: "SPA" },
+
+  // Bath - Cosmetics
+  { id: "EYES", name: "Eyes", secondaryCategoryId: "COSMETICS" },
+  { id: "LIPS", name: "Lips", secondaryCategoryId: "COSMETICS" },
+  { id: "FACE", name: "Face", secondaryCategoryId: "COSMETICS" },
+  { id: "NAILS_AND_NAIL_CARE", name: "Nails and Nail Care", secondaryCategoryId: "COSMETICS" },
+  { id: "MAKEUP_TOOLS_BRUSHES", name: "Makeup Tools and Brushes", secondaryCategoryId: "COSMETICS" },
+
+  // Bath - Hair Care
+  { id: "SHAMPOOS", name: "Shampoos", secondaryCategoryId: "HAIR" },
+  { id: "CONDITIONERS_AND_TREATMENTS", name: "Conditioners and Treatments", secondaryCategoryId: "HAIR" },
+  { id: "BRUSHES_AND_COMBS", name: "Brushes and Combs", secondaryCategoryId: "HAIR" },
+  { id: "WAXES_AND_GELS", name: "Waxes and Gels", secondaryCategoryId: "HAIR" },
   
   // Toys - Stuffed Animals
   { id: "TEDDY_BEARS", name: "Teddy Bears", secondaryCategoryId: "STUFFED" },
@@ -117,11 +147,18 @@ export const TertiaryCategories = [
   { id: "PLUSHIES", name: "Plushies", secondaryCategoryId: "STUFFED" },
 
   // Art - Prints
-  { id: "WOODANDLINOCUT", name: "Wood and Linocut", secondaryCategoryId: "PRINTS" },
+  { id: "WOOD_AND_LINOCUT", name: "Wood and Linocut", secondaryCategoryId: "PRINTS" },
+  { id: "DIGITAL_ART", name: "Digital Art", secondaryCategoryId: "PRINTS" },
+  { id: "GICLEE", name: "Giclee", secondaryCategoryId: "PRINTS" },
+  { id: "SCREENPRINTS", name: "Screenprints", secondaryCategoryId: "PRINTS" },
+  { id: "LETTERPRESS", name: "Letterpress", secondaryCategoryId: "PRINTS" },
 
   // Art - Painting
   { id: "ACRYLIC", name: "Acrylic", secondaryCategoryId: "PAINTINGS" },
   { id: "OIL", name: "Oil", secondaryCategoryId: "PAINTINGS" },
+  { id: "GOUACHE", name: "Gouache", secondaryCategoryId: "PAINTINGS" },
+  { id: "INK", name: "Ink", secondaryCategoryId: "PAINTINGS" },
+  { id: "SPRAY_PAINT", name: "Spray Paint", secondaryCategoryId: "PAINTINGS" },
 ] as const;
 
 // Extract IDs for strict typing
@@ -155,12 +192,16 @@ export const TertiaryCategoryMapping: Record<string, string[]> = {
   NECKLACES: ["CHOKERS", "BEADED_NECKLACES", "PENDANT_NECKLACES", "LAYERED_NECKLACES", "STATEMENT_NECKLACES"],
   RINGS: ["ENGAGEMENT_RINGS", "WEDDING_RINGS", "STACKING_RINGS", "COCKTAIL_RINGS"],
   EARRINGS: ["STUDS", "HOOPS", "DANGLES", "CHANDELIER"],
-  YARN: ["COTTON_YARN", "WOOL_YARN", "ACRYLIC_YARN", "MERINO_WOOL", "BULKY_YARN", "FINGERING_YARN"],
+  YARN: ["COTTON_YARN", "WOOL_YARN", "ACRYLIC_YARN", "MERINO_WOOL", "BULKY_YARN", "FINGERING_YARN", "POLYESTER_YARN"],
   DECOR: ["WALL_ART", "CANDLES", "VASES", "THROW_PILLOWS", "RUGS"],
-  SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS"],
+  SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS", "BATH_SALTS_AND_SCRUBS", "BATH_OILS"],
+  SKIN: ["FACIAL_CARE", "MOISTURIZERS", "BALMS_AND_SALVES", "EXFOLIATION", "EYE_TREATMENTS"],
+  SPA: ["AROMATHERAPY", "HEAT_AND_COLD_PACKS", "MASSAGE", "ESSENTIAL_OILS", "SPA_KITS"],
+  HAIR: ["SHAMPOOS", "CONDITIONERS_AND_TREATMENTS", "BRUSHES_AND_COMBS", "WAXES_AND_GELS"],
+  COSMETICS: ["EYES", "LIPS", "FACE", "NAILS_AND_NAIL_CARE", "MAKEUP_TOOLS_BRUSHES"],
   STUFFED: ["TEDDY_BEARS", "ANIMALS", "DOLLS", "PLUSHIES"],
-  PRINTS: ["WOODANDLINOCUT"],
-  PAINTINGS: ["ACRYLIC", "OIL"],
+  PRINTS: ["WOOD_AND_LINOCUT", "DIGITAL_ART", "GICLEE", "SCREENPRINTS", "LETTERPRESS"],
+  PAINTINGS: ["ACRYLIC", "OIL", "GOUACHE", "INK", "SPRAY_PAINT"],
 };
 
 /**

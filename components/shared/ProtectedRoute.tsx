@@ -13,50 +13,74 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export function ProtectedRoute({ 
-  children, 
-  requiredPermissions = [], 
+export function ProtectedRoute({
+  children,
+  requiredPermissions = [],
   fallback,
-  redirectTo = "/"
+  redirectTo = "/",
 }: ProtectedRouteProps) {
   const { data: session, status } = useSession();
-  const { permissions, loading: permissionsLoading, hasAllPermissions } = usePermissions();
+  const {
+    permissions,
+    loading: permissionsLoading,
+    hasAllPermissions,
+  } = usePermissions();
   const router = useRouter();
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [redirectPath, setRedirectPath] = useState("");
 
   // Handle redirects in useEffect to avoid React warnings
   useEffect(() => {
+    // Don't do anything while session is still loading
+    // This prevents premature redirects that cause login loops
+    if (status === "loading") {
+      return;
+    }
+
     console.log("ProtectedRoute - useEffect triggered:", {
       status,
       permissionsLoading,
       requiredPermissions,
       permissionsCount: permissions.length,
       shouldRedirect,
-      redirectPath
+      redirectPath,
     });
 
-    // If not authenticated, redirect to login
+    // Only redirect if we're definitely unauthenticated (not loading)
     if (status === "unauthenticated") {
-      setRedirectPath(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
-      setShouldRedirect(true);
-      return;
+      // Add a small delay to ensure session state is stable
+      // This helps prevent race conditions after login
+      const timeoutId = setTimeout(() => {
+        setRedirectPath(
+          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        );
+        setShouldRedirect(true);
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
 
     // If permissions are required, check them (only after permissions have loaded)
-    if (requiredPermissions.length > 0 && !permissionsLoading) {
+    if (
+      requiredPermissions.length > 0 &&
+      !permissionsLoading &&
+      status === "authenticated"
+    ) {
       console.log("ProtectedRoute - Checking permissions:", {
         requiredPermissions,
         currentPermissions: permissions,
         hasRequiredPermissions: hasAllPermissions(requiredPermissions),
         permissionsLoading,
-        permissionsCount: permissions.length
+        permissionsCount: permissions.length,
       });
-      
+
       const hasRequiredPermissions = hasAllPermissions(requiredPermissions);
-      
+
       if (!hasRequiredPermissions) {
-        console.log("ProtectedRoute - Access denied, redirecting to:", redirectTo);
+        console.log(
+          "ProtectedRoute - Access denied, redirecting to:",
+          redirectTo
+        );
         setRedirectPath(redirectTo);
         setShouldRedirect(true);
         return;
@@ -64,7 +88,16 @@ export function ProtectedRoute({
         console.log("ProtectedRoute - Access granted!");
       }
     }
-  }, [status, permissionsLoading, requiredPermissions, permissions, hasAllPermissions, redirectTo, shouldRedirect, redirectPath]);
+  }, [
+    status,
+    permissionsLoading,
+    requiredPermissions,
+    permissions,
+    hasAllPermissions,
+    redirectTo,
+    shouldRedirect,
+    redirectPath,
+  ]);
 
   // Execute redirect
   useEffect(() => {
@@ -74,7 +107,11 @@ export function ProtectedRoute({
   }, [shouldRedirect, redirectPath, router]);
 
   // Show loading while checking authentication and permissions
-  if (status === "loading" || permissionsLoading) {
+  // IMPORTANT: Always show loading while status is "loading" to prevent premature redirects
+  if (
+    status === "loading" ||
+    (permissionsLoading && status === "authenticated")
+  ) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
         <Spinner />
@@ -83,6 +120,7 @@ export function ProtectedRoute({
   }
 
   // If not authenticated or missing permissions, show fallback or nothing
+  // At this point, status is either "authenticated" or "unauthenticated" (loading was handled above)
   if (status === "unauthenticated" || shouldRedirect) {
     if (fallback) {
       return <>{fallback}</>;
@@ -95,10 +133,16 @@ export function ProtectedRoute({
 }
 
 // Convenience components for common route types
-export function AdminRoute({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+export function AdminRoute({
+  children,
+  fallback,
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
   return (
-    <ProtectedRoute 
-      requiredPermissions={['ACCESS_ADMIN_DASHBOARD']}
+    <ProtectedRoute
+      requiredPermissions={["ACCESS_ADMIN_DASHBOARD"]}
       fallback={fallback}
       redirectTo="/unauthorized"
     >
@@ -107,10 +151,16 @@ export function AdminRoute({ children, fallback }: { children: ReactNode; fallba
   );
 }
 
-export function SellerRoute({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+export function SellerRoute({
+  children,
+  fallback,
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
   return (
-    <ProtectedRoute 
-      requiredPermissions={['ACCESS_SELLER_DASHBOARD']}
+    <ProtectedRoute
+      requiredPermissions={["ACCESS_SELLER_DASHBOARD"]}
       fallback={fallback}
       redirectTo="/unauthorized"
     >
@@ -119,14 +169,20 @@ export function SellerRoute({ children, fallback }: { children: ReactNode; fallb
   );
 }
 
-export function MemberRoute({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+export function MemberRoute({
+  children,
+  fallback,
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
   return (
-    <ProtectedRoute 
-      requiredPermissions={['ACCESS_MEMBER_DASHBOARD']}
+    <ProtectedRoute
+      requiredPermissions={["ACCESS_MEMBER_DASHBOARD"]}
       fallback={fallback}
       redirectTo="/unauthorized"
     >
       {children}
     </ProtectedRoute>
   );
-} 
+}

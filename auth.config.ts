@@ -18,14 +18,11 @@ export const authConfig = {
 
         if (validatedFields.success) {
           const { email, password } = validatedFields.data;
-          
+
           const user = await getUserByEmail(email);
           if (!user || !user.password) return null;
 
-          const passwordsMatch = await bcrypt.compare(
-            password,
-            user.password,
-          );
+          const passwordsMatch = await bcrypt.compare(password, user.password);
 
           if (passwordsMatch) {
             return user;
@@ -33,7 +30,7 @@ export const authConfig = {
         }
 
         return null;
-      }
+      },
     }),
   ],
   pages: {
@@ -46,7 +43,7 @@ export const authConfig = {
         token.id = user.id;
         token.isOAuth = !!account;
 
-        const dbUser = await db.user.findUnique({ 
+        const dbUser = await db.user.findUnique({
           where: { id: user.id },
           include: {
             seller: {
@@ -55,15 +52,15 @@ export const authConfig = {
                 applicationAccepted: true,
                 stripeConnected: true,
                 isFullyActivated: true,
-              }
-            }
-          }
+              },
+            },
+          },
         });
 
         if (dbUser) {
           // Only include essential auth data in JWT (no role, no permissions)
           token.isTwoFactorEnabled = dbUser.isTwoFactorEnabled;
-          
+
           // Include seller onboarding fields in token
           if (dbUser.seller) {
             token.sellerOnboarding = {
@@ -83,7 +80,7 @@ export const authConfig = {
         // Role is now fetched via API, not stored in session
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
         session.user.isOAuth = token.isOAuth as boolean;
-        
+
         // Include seller onboarding fields in session
         if (token.sellerOnboarding) {
           session.user.sellerOnboarding = token.sellerOnboarding as {
@@ -99,6 +96,8 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   secret: process.env.AUTH_SECRET,
 } satisfies NextAuthConfig;

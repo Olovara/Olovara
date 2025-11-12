@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +36,13 @@ export const metadata = {
 };
 
 export default async function AdminDashboardHome() {
+  // Server-side auth check - this is the REAL security layer
+  // Middleware just prevents redirect loops, but this validates actual authentication
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
   try {
     const [stats, recentActivity] = await Promise.all([
       getDashboardStats(),

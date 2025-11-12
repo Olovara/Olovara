@@ -14,7 +14,11 @@ const { auth } = NextAuth(authConfig);
 // Simple in-memory rate limiter (use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-function getRateLimit(identifier: string, limit: number = 100, windowMs: number = 60 * 1000) {
+function getRateLimit(
+  identifier: string,
+  limit: number = 100,
+  windowMs: number = 60 * 1000
+) {
   const now = Date.now();
   const windowStart = now - windowMs;
 
@@ -40,7 +44,12 @@ function getRateLimit(identifier: string, limit: number = 100, windowMs: number 
     return { success: false, limit, remaining: 0, reset: entry.resetTime };
   }
 
-  return { success: true, limit, remaining: limit - entry.count, reset: entry.resetTime };
+  return {
+    success: true,
+    limit,
+    remaining: limit - entry.count,
+    reset: entry.resetTime,
+  };
 }
 
 export default auth(async (req) => {
@@ -48,38 +57,49 @@ export default auth(async (req) => {
   const isAuthorized = !!req.auth;
 
   // Rate limiting for all requests
-  const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const clientIP =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
   const rateLimitResult = getRateLimit(clientIP, 200, 60 * 1000); // 200 requests per minute per IP
 
   if (!rateLimitResult.success) {
     return new NextResponse(
-      JSON.stringify({ 
-        error: 'Too many requests', 
-        retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) 
+      JSON.stringify({
+        error: "Too many requests",
+        retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
       }),
-      { 
+      {
         status: 429,
         headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-          'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-        }
+          "Content-Type": "application/json",
+          "Retry-After": Math.ceil(
+            (rateLimitResult.reset - Date.now()) / 1000
+          ).toString(),
+          "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+        },
       }
     );
   }
 
   // Add security headers to all responses
   const response = NextResponse.next();
-  
+
   // Security headers
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) =>
@@ -90,6 +110,12 @@ export default auth(async (req) => {
   const isLogoutRedirect =
     nextUrl.pathname === "/login" &&
     nextUrl.searchParams.get("callbackUrl")?.includes("/login");
+
+  // Check if this is a dashboard route (protected route)
+  const isDashboardRoute =
+    nextUrl.pathname.startsWith("/seller/dashboard") ||
+    nextUrl.pathname.startsWith("/admin/dashboard") ||
+    nextUrl.pathname.startsWith("/member/dashboard");
 
   // Allow Stripe webhooks without authentication
   if (isStripeWebhook) {
@@ -112,6 +138,37 @@ export default auth(async (req) => {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
     return response;
+  }
+
+  // For dashboard routes, be more lenient - let the client-side handle auth checks
+  // This prevents race conditions where session cookie hasn't propagated yet
+  // SECURITY: Server-side pages will still validate auth, this just prevents redirect loops
+  if (isDashboardRoute && !isAuthorized) {
+    // Only check for VALID NextAuth session cookies (not just any cookie)
+    // This is safer than checking for any cookie with "session" in the name
+    const hasValidSessionCookie =
+      req.cookies.get("authjs.session-token")?.value ||
+      req.cookies.get("__Secure-authjs.session-token")?.value ||
+      req.cookies.get("next-auth.session-token")?.value ||
+      req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+    // If there's a valid session cookie (even if not yet validated by auth()),
+    // allow through - server-side page will validate and redirect if needed
+    // This prevents the redirect loop when session is being established after login
+    // IMPORTANT: Server-side pages MUST validate auth - this is just a timing fix
+    if (hasValidSessionCookie) {
+      return response;
+    }
+
+    // If no valid session cookie at all, redirect to login
+    let callbackUrl = nextUrl.pathname;
+    if (nextUrl.search) {
+      callbackUrl += nextUrl.search;
+    }
+    const encodedCallbackUrl = encodeURIComponent(callbackUrl);
+    return Response.redirect(
+      new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
+    );
   }
 
   // For all other routes, just check if user is authenticated
