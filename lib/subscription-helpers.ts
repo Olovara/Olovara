@@ -121,19 +121,31 @@ export async function assignFreeStudioPlan(sellerId: string) {
 
   if (existingSubscription) {
     // Update existing subscription to STUDIO_FREE
+    // Use placeholder for websiteSlug - will be updated to actual slug when website is created
+    const updateData: any = {
+      planId: studioFreePlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      stripeSubscriptionId: `free_${sellerId}`, // Unique placeholder for free plans (avoids unique constraint issues)
+      cancelAtPeriodEnd: false
+    };
+    
+    // If websiteSlug is null or starts with placeholder, set pending placeholder
+    // This will be updated to actual slug when website is created
+    if (!existingSubscription.websiteSlug || 
+        existingSubscription.websiteSlug.startsWith('pending_website_') ||
+        existingSubscription.websiteSlug.startsWith('no_website_')) {
+      updateData.websiteSlug = `pending_website_${sellerId}`;
+    }
+    
     return await db.sellerSubscription.update({
       where: { sellerId },
-      data: {
-        planId: studioFreePlan.id,
-        status: 'ACTIVE',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-        stripeSubscriptionId: null, // Remove any Stripe subscription
-        cancelAtPeriodEnd: false
-      }
+      data: updateData
     })
   } else {
-    // Create new subscription
+    // Create new subscription for STUDIO_FREE plan
+    // Use placeholder for websiteSlug - will be updated to actual slug when website is created
     return await db.sellerSubscription.create({
       data: {
         sellerId,
@@ -141,7 +153,8 @@ export async function assignFreeStudioPlan(sellerId: string) {
         status: 'ACTIVE',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-        // No stripeSubscriptionId for free plan
+        stripeSubscriptionId: `free_${sellerId}`, // Unique placeholder for free plans (avoids unique constraint issues)
+        websiteSlug: `pending_website_${sellerId}`, // Placeholder for STUDIO plans - will be updated when website is created
       }
     })
   }

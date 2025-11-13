@@ -54,7 +54,8 @@ async function migrateSellersToSubscriptions() {
             status: 'ACTIVE',
             currentPeriodStart: seller.createdAt, // Use seller creation date as start
             currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-            // No stripeSubscriptionId for free plan
+            stripeSubscriptionId: `free_${seller.id}`, // Unique placeholder for free plans (avoids unique constraint issues)
+            websiteSlug: `no_website_${seller.id}`, // Unique placeholder for non-STUDIO plans (avoids unique constraint issues)
             // No trialEndsAt for free plan
           }
         })

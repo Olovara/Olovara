@@ -21,6 +21,21 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
   const userId = session.user.id;
 
   try {
+    // Check if user already has a seller profile (prevent duplicate applications)
+    const existingSeller = await db.seller.findUnique({
+      where: { userId },
+      select: { id: true, applicationAccepted: true }
+    });
+
+    if (existingSeller) {
+      // If seller already exists and application was accepted, they're already a seller
+      if (existingSeller.applicationAccepted) {
+        return { error: "You are already a registered seller." };
+      }
+      // If seller exists but application not accepted, allow them to submit again (maybe they want to update)
+      // We'll handle this in the transaction by finding the existing seller
+    }
+
     // Validate referral code if provided
     if (values.referralCode) {
       // First check the format
@@ -99,30 +114,38 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // No longer need to encrypt temporary tax information since we removed tax fields
 
-      const seller = await tx.seller.create({
-        data: {
-          shopName: tempShopName,
-          shopNameSlug: tempShopSlug,
-          applicationAccepted: false, // Will be set to true when approved
-          isFullyActivated: false, // Will be set to true when all steps are completed
-          // Default shop country
-          shopCountry: "US", // Default to US, can be updated later
-          // Use unique temporary connectedAccountId to avoid constraint issues
-          connectedAccountId: uniqueConnectedAccountId,
-          // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy
-          // TODO: Remove this after campaign launch and implement proper founding seller logic
-          // When ready to track signups: remove these lines and implement checkFoundingSellerEligibility
-          isFoundingSeller: true,
-          foundingSellerType: "LEGACY",
-          foundingSellerNumber: null, // Legacy sellers don't get numbers
-          foundingSellerBenefits: FOUNDING_SELLER_BENEFITS,
-          user: {
-            connect: {
-              id: userId
-            }
-          }
-        },
+      // Check if seller already exists (in case of retry or partial failure)
+      let seller = await tx.seller.findUnique({
+        where: { userId }
       });
+
+      // Only create seller if it doesn't exist
+      if (!seller) {
+        seller = await tx.seller.create({
+          data: {
+            shopName: tempShopName,
+            shopNameSlug: tempShopSlug,
+            applicationAccepted: false, // Will be set to true when approved
+            isFullyActivated: false, // Will be set to true when all steps are completed
+            // Default shop country
+            shopCountry: "US", // Default to US, can be updated later
+            // Use unique temporary connectedAccountId to avoid constraint issues
+            connectedAccountId: uniqueConnectedAccountId,
+            // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy
+            // TODO: Remove this after campaign launch and implement proper founding seller logic
+            // When ready to track signups: remove these lines and implement checkFoundingSellerEligibility
+            isFoundingSeller: true,
+            foundingSellerType: "LEGACY",
+            foundingSellerNumber: null, // Legacy sellers don't get numbers
+            foundingSellerBenefits: FOUNDING_SELLER_BENEFITS,
+            user: {
+              connect: {
+                id: userId
+              }
+            }
+          },
+        });
+      }
 
       // Get the STARTER plan (free plan)
       const starterPlan = await tx.subscriptionPlan.findUnique({
@@ -133,18 +156,52 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         throw new Error('STARTER subscription plan not found. Please seed subscription plans first.');
       }
 
-      // Create subscription record for the new seller with STARTER plan
-      await tx.sellerSubscription.create({
-        data: {
-          sellerId: seller.id,
+      // Check if subscription already exists for this seller
+      const existingSubscription = await tx.sellerSubscription.findUnique({
+        where: { sellerId: seller.id }
+      });
+
+      if (existingSubscription) {
+        // Update existing subscription to ensure it's on STARTER plan and active
+        // Also migrate null stripeSubscriptionId to the placeholder pattern if needed
+        const updateData: any = {
           planId: starterPlan.id,
           status: 'ACTIVE',
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now (free plan)
-          // No stripeSubscriptionId for free plan
-          // No trialEndsAt for free plan
+        };
+        
+        // If stripeSubscriptionId is null, migrate it to the placeholder pattern
+        if (!existingSubscription.stripeSubscriptionId || existingSubscription.stripeSubscriptionId === null) {
+          updateData.stripeSubscriptionId = `free_${seller.id}`;
         }
-      });
+        
+        // If websiteSlug is null, migrate it to the placeholder pattern (only STUDIO plans have websites)
+        if (!existingSubscription.websiteSlug || existingSubscription.websiteSlug === null) {
+          updateData.websiteSlug = `no_website_${seller.id}`;
+        }
+        
+        await tx.sellerSubscription.update({
+          where: { sellerId: seller.id },
+          data: updateData
+        });
+      } else {
+        // Create new subscription for free STARTER plan
+        // Use unique placeholder values to avoid unique constraint issues with MongoDB
+        // MongoDB unique indexes only allow ONE null value, so we use patterns:
+        // - stripeSubscriptionId: free_{sellerId} (indicates free plan, not Stripe subscription)
+        // - websiteSlug: no_website_{sellerId} (indicates no website, only STUDIO plans have websites)
+        await tx.sellerSubscription.create({
+          data: {
+            sellerId: seller.id,
+            planId: starterPlan.id,
+            status: 'ACTIVE',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now (free plan)
+            stripeSubscriptionId: `free_${seller.id}`, // Unique placeholder for free plans
+            websiteSlug: `no_website_${seller.id}`, // Unique placeholder for non-STUDIO plans (no website access)
+            // No trialEndsAt for free plan
+          }
+        });
+      }
 
       // Update user role to SELLER
       await tx.user.update({

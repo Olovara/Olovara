@@ -43,7 +43,6 @@ export const SecondaryCategories = [
   { id: "TOOLS", name: "Tools & Equipment", primaryCategoryId: "CRAFT_SUPPLIES" },
   { id: "BEADS", name: "Beads & Jewelry Making", primaryCategoryId: "CRAFT_SUPPLIES" },
   { id: "PINS", name: "Pins and Brooches", primaryCategoryId: "JEWELRY" },
-  { id: "HOMEDECOR", name: "Home Decor", primaryCategoryId: "HOME" },
   { id: "WALLDECOR", name: "Wall Decor", primaryCategoryId: "HOME" },
   { id: "KIDS", name: "Baby and Kids", primaryCategoryId: "HOME" },
   { id: "PETS", name: "Pets", primaryCategoryId: "HOME" },
@@ -88,6 +87,18 @@ export const TertiaryCategories = [
   { id: "HOOPS", name: "Hoops", secondaryCategoryId: "EARRINGS" },
   { id: "DANGLES", name: "Dangles", secondaryCategoryId: "EARRINGS" },
   { id: "CHANDELIER", name: "Chandelier", secondaryCategoryId: "EARRINGS" },
+
+  // Jewelry - Bracelets
+  { id: "BEADED", name: "Beaded", secondaryCategoryId: "BRACELETS" },
+  { id: "BANGLES", name: "Bangles", secondaryCategoryId: "BRACELETS" },
+  { id: "CUFF", name: "Cuff", secondaryCategoryId: "BRACELETS" },
+  { id: "CHARM", name: "Charm", secondaryCategoryId: "BRACELETS" },
+  { id: "CHAIN_AND_LINK", name: "Chain and Link", secondaryCategoryId: "BRACELETS" },
+
+  // Jewelry - Pins and Brooches
+  { id: "ENAMEL_PINS", name: "Enamel Pins", secondaryCategoryId: "PINS" },
+  { id: "NOVELTY_PINS", name: "Novelty Pins", secondaryCategoryId: "PINS" },
+  { id: "BROOCHES", name: "Brooches", secondaryCategoryId: "PINS" },
   
   // Craft Supplies - Yarn
   { id: "COTTON_YARN", name: "Cotton Yarn", secondaryCategoryId: "YARN" },
@@ -104,6 +115,20 @@ export const TertiaryCategories = [
   { id: "VASES", name: "Vases", secondaryCategoryId: "DECOR" },
   { id: "THROW_PILLOWS", name: "Throw Pillows", secondaryCategoryId: "DECOR" },
   { id: "RUGS", name: "Rugs", secondaryCategoryId: "DECOR" },
+
+  // Home - Kitchen and Dining
+  { id: "DRINKWARE", name: "Drinkware", secondaryCategoryId: "KITCHEN" },
+  { id: "TABLEWARE", name: "Tableware", secondaryCategoryId: "KITCHEN" },
+  { id: "COOKING_AND_BAKING", name: "Cooking and Baking", secondaryCategoryId: "KITCHEN" },
+  { id: "TRAYS_AND_PLATTERS", name: "Trays and Platters", secondaryCategoryId: "KITCHEN" },
+  { id: "CUTTING_BOARDS", name: "Cutting Boards", secondaryCategoryId: "KITCHEN" },
+
+  // Home - Furniture
+  { id: "CHAIRS", name: "Chairs", secondaryCategoryId: "FURNITURE" },
+  { id: "TABLES", name: "Tables", secondaryCategoryId: "FURNITURE" },
+  { id: "STOOLS", name: "Stools", secondaryCategoryId: "FURNITURE" },
+  { id: "DESKS", name: "Desks", secondaryCategoryId: "FURNITURE" },
+  { id: "BENCHES", name: "Benches", secondaryCategoryId: "FURNITURE" },
 
   // Bath - Soap
   { id: "BAR_SOAP", name: "Bar Soap", secondaryCategoryId: "SOAP" },
@@ -159,6 +184,12 @@ export const TertiaryCategories = [
   { id: "GOUACHE", name: "Gouache", secondaryCategoryId: "PAINTINGS" },
   { id: "INK", name: "Ink", secondaryCategoryId: "PAINTINGS" },
   { id: "SPRAY_PAINT", name: "Spray Paint", secondaryCategoryId: "PAINTINGS" },
+
+  // Art - Sculptures
+  { id: "CERAMIC", name: "Ceramic", secondaryCategoryId: "SCULPTURES" },
+  { id: "GLASS", name: "Glass", secondaryCategoryId: "SCULPTURES" },
+  { id: "METAL", name: "Metal", secondaryCategoryId: "SCULPTURES" },
+  { id: "WOOD", name: "Wood", secondaryCategoryId: "SCULPTURES" },
 ] as const;
 
 // Extract IDs for strict typing
@@ -174,7 +205,7 @@ export const CategoryMapping: Record<PrimaryCategoryID, SecondaryCategoryID[]> =
   BOOKS: ["COMICS", "AUDIO"],
   CLOTHING: ["TOPS", "BOTTOMS", "DRESSES", "ACCESSORIES", "WOMENS", "MENS", "UNISEX", "CHILD", "BAGS"],
   CRAFT_SUPPLIES: ["YARN", "FABRIC", "TOOLS", "BEADS", "FIBER", "PAPER", "PAINT"],
-  HOME: ["DECOR", "KITCHEN", "FURNITURE", "GARDEN", "HOMEDECOR", "WALLDECOR", "KIDS", "PETS"],
+  HOME: ["DECOR", "KITCHEN", "FURNITURE", "GARDEN", "WALLDECOR", "KIDS", "PETS"],
   JEWELRY: ["NECKLACES", "RINGS", "EARRINGS", "BRACELETS", "PINS"],
   TOYS: ["TODDLER", "KID", "GAMES", "STUFFED", "SENSORY"],
 };
@@ -192,8 +223,12 @@ export const TertiaryCategoryMapping: Record<string, string[]> = {
   NECKLACES: ["CHOKERS", "BEADED_NECKLACES", "PENDANT_NECKLACES", "LAYERED_NECKLACES", "STATEMENT_NECKLACES"],
   RINGS: ["ENGAGEMENT_RINGS", "WEDDING_RINGS", "STACKING_RINGS", "COCKTAIL_RINGS"],
   EARRINGS: ["STUDS", "HOOPS", "DANGLES", "CHANDELIER"],
+  BRACELETS: ["BEADED", "BANGLES", "CUFF", "CHARM", "CHAIN_AND_LINK"],
+  PINS: ["ENAMEL_PINS", "NOVELTY_PINS", "BROOCHES"],
   YARN: ["COTTON_YARN", "WOOL_YARN", "ACRYLIC_YARN", "MERINO_WOOL", "BULKY_YARN", "FINGERING_YARN", "POLYESTER_YARN"],
   DECOR: ["WALL_ART", "CANDLES", "VASES", "THROW_PILLOWS", "RUGS"],
+  KITCHEN: ["DRINKWARE", "TABLEWARE", "COOKING_AND_BAKING", "TRAYS_AND_PLATTERS", "CUTTING_BOARDS"],
+  FURNITURE: ["CHAIRS", "TABLES", "STOOLS", "DESKS", "BENCHES"],
   SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS", "BATH_SALTS_AND_SCRUBS", "BATH_OILS"],
   SKIN: ["FACIAL_CARE", "MOISTURIZERS", "BALMS_AND_SALVES", "EXFOLIATION", "EYE_TREATMENTS"],
   SPA: ["AROMATHERAPY", "HEAT_AND_COLD_PACKS", "MASSAGE", "ESSENTIAL_OILS", "SPA_KITS"],
@@ -202,6 +237,7 @@ export const TertiaryCategoryMapping: Record<string, string[]> = {
   STUFFED: ["TEDDY_BEARS", "ANIMALS", "DOLLS", "PLUSHIES"],
   PRINTS: ["WOOD_AND_LINOCUT", "DIGITAL_ART", "GICLEE", "SCREENPRINTS", "LETTERPRESS"],
   PAINTINGS: ["ACRYLIC", "OIL", "GOUACHE", "INK", "SPRAY_PAINT"],
+  SCULPTURES: ["CERAMIC", "GLASS", "METAL", "WOOD",]
 };
 
 /**
