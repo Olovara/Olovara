@@ -439,8 +439,8 @@ const EnhancedCountryExclusionsForm = () => {
           Shipping Restrictions & Business Address
         </h3>
         <p className="text-sm text-muted-foreground">
-          Select countries you don&apos;t want to ship to and provide your
-          business address for EU compliance.
+          Select countries you don&apos;t want to do business with and provide your
+          business address for EU compliance (if applicable).
         </p>
         <Alert className="border-blue-200 bg-blue-50">
           <AlertTriangle className="h-4 w-4 text-blue-600" />

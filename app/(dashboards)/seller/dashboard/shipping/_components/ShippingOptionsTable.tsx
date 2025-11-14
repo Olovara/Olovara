@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { SHIPPING_ZONES } from "@/data/shipping";
 import { getCountryByCode } from "@/data/countries";
+import { SUPPORTED_CURRENCIES } from "@/data/units";
 
 interface ShippingRate {
   id: string;
@@ -31,6 +32,8 @@ interface ShippingOption {
   name: string;
   isDefault: boolean;
   countryOfOrigin: string;
+  defaultShipping?: number | null;
+  defaultShippingCurrency?: string;
   sellerId: string;
   rates: ShippingRate[];
   createdAt: Date;
@@ -82,11 +85,45 @@ export default function ShippingOptionsTable({
                 <TableRow key={option.id}>
                   <TableCell>{option.name}</TableCell>
                   <TableCell>
-                    {option.rates.length === 0 ? (
-                      <span className="text-muted-foreground">No rates</span>
-                    ) : (
-                      <ul className="space-y-1">
-                        {option.rates.map((rate) => {
+                    <ul className="space-y-1">
+                      {/* Display default shipping cost */}
+                      {option.defaultShipping !== null &&
+                        option.defaultShipping !== undefined && (
+                          <li className="border-b pb-1">
+                            <span className="font-medium">Default (Worldwide)</span>
+                            :{" "}
+                            {(() => {
+                              const currency =
+                                option.defaultShippingCurrency || "USD";
+                              const currencyInfo =
+                                SUPPORTED_CURRENCIES.find(
+                                  (c) => c.code === currency
+                                ) || SUPPORTED_CURRENCIES[0];
+                              const decimals = currencyInfo.decimals;
+                              const divisor = Math.pow(10, decimals);
+                              const displayValue =
+                                option.defaultShipping / divisor;
+                              return (
+                                <>
+                                  {currencyInfo.symbol}
+                                  {displayValue.toFixed(decimals)} {currency}
+                                </>
+                              );
+                            })()}
+                          </li>
+                        )}
+                      {/* Display exception rates */}
+                      {option.rates.length === 0 ? (
+                        option.defaultShipping === null ||
+                        option.defaultShipping === undefined ? (
+                          <li>
+                            <span className="text-muted-foreground">
+                              No rates
+                            </span>
+                          </li>
+                        ) : null
+                      ) : (
+                        option.rates.map((rate) => {
                           // Get display name based on type
                           let displayName = "";
                           if (rate.type === "zone" && rate.zone) {
@@ -132,9 +169,9 @@ export default function ShippingOptionsTable({
                               )}
                             </li>
                           );
-                        })}
-                      </ul>
-                    )}
+                        })
+                      )}
+                    </ul>
                   </TableCell>
                   <TableCell>{option.isDefault ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-right">

@@ -1,5 +1,7 @@
 import { SUPPORTED_COUNTRIES } from "@/data/countries";
 import { SHIPPING_ZONES } from "@/data/shipping";
+import { isZoneFullyExcluded, shouldShowEuropeZone } from "./filter-shipping-options";
+import { EEA_COUNTRIES, NORTHERN_IRELAND_CODE } from "@/lib/gpsr-compliance";
 
 export interface FormattedExclusions {
   hasExclusions: boolean;
@@ -23,49 +25,67 @@ export function formatCountryExclusions(
     };
   }
 
-  // Group countries by zone
-  const countriesByZone = new Map<string, string[]>();
-  const excludedCountriesByZone = new Map<string, string[]>();
-
-  // Initialize zones
-  SHIPPING_ZONES.forEach((zone) => {
-    countriesByZone.set(zone.id, []);
-    excludedCountriesByZone.set(zone.id, []);
-  });
-
-  // Get all countries for each zone
-  SUPPORTED_COUNTRIES.forEach((country) => {
-    const zoneCountries = countriesByZone.get(country.zone) || [];
-    zoneCountries.push(country.code);
-    countriesByZone.set(country.zone, zoneCountries);
-
-    // Check if this country is excluded
-    if (excludedCountryCodes.includes(country.code)) {
-      const excluded = excludedCountriesByZone.get(country.zone) || [];
-      excluded.push(country.code);
-      excludedCountriesByZone.set(country.zone, excluded);
-    }
-  });
-
-  // Determine which zones are fully excluded and which countries are individually excluded
+  // Use the same logic as filter-shipping-options to determine fully excluded zones
   const excludedZones: string[] = [];
   const excludedCountries: string[] = [];
 
   SHIPPING_ZONES.forEach((zone) => {
-    const zoneCountries = countriesByZone.get(zone.id) || [];
-    const zoneExcluded = excludedCountriesByZone.get(zone.id) || [];
+    if (zone.id === "EUROPE") {
+      // Special handling for Europe zone - use the same logic as shouldShowEuropeZone
+      const europeanCountries = SUPPORTED_COUNTRIES.filter(
+        (c) => c.zone === "EUROPE"
+      );
+      
+      // Separate EU and non-EU European countries
+      const euCountries = europeanCountries.filter((c) =>
+        EEA_COUNTRIES.includes(c.code) || c.code === NORTHERN_IRELAND_CODE
+      );
+      const nonEuEuropeanCountries = europeanCountries.filter(
+        (c) => !EEA_COUNTRIES.includes(c.code) && c.code !== NORTHERN_IRELAND_CODE
+      );
 
-    // If all countries in the zone are excluded, add the zone
-    if (zoneCountries.length > 0 && zoneExcluded.length === zoneCountries.length) {
-      excludedZones.push(zone.name);
+      // Check if all EU countries are excluded
+      const allEUExcluded =
+        euCountries.length > 0 &&
+        euCountries.every((c) => excludedCountryCodes.includes(c.code));
+
+      // Check if all non-EU European countries are excluded
+      const allNonEUExcluded =
+        nonEuEuropeanCountries.length > 0 &&
+        nonEuEuropeanCountries.every((c) => excludedCountryCodes.includes(c.code));
+
+      // Europe zone is fully excluded if BOTH are fully excluded
+      if (allEUExcluded && allNonEUExcluded) {
+        excludedZones.push(zone.name);
+      } else {
+        // Show individual excluded countries from Europe
+        europeanCountries.forEach((country) => {
+          if (excludedCountryCodes.includes(country.code)) {
+            // Avoid duplicates
+            if (!excludedCountries.includes(country.name)) {
+              excludedCountries.push(country.name);
+            }
+          }
+        });
+      }
     } else {
-      // Otherwise, add individual excluded countries from this zone
-      zoneExcluded.forEach((countryCode) => {
-        const country = SUPPORTED_COUNTRIES.find((c) => c.code === countryCode);
-        if (country) {
-          excludedCountries.push(country.name);
-        }
-      });
+      // For other zones, check if the entire zone is excluded
+      if (isZoneFullyExcluded(zone.id, excludedCountryCodes)) {
+        excludedZones.push(zone.name);
+      } else {
+        // If zone is not fully excluded, show individual excluded countries from this zone
+        const zoneCountries = SUPPORTED_COUNTRIES.filter(
+          (c) => c.zone === zone.id
+        );
+        zoneCountries.forEach((country) => {
+          if (excludedCountryCodes.includes(country.code)) {
+            // Avoid duplicates
+            if (!excludedCountries.includes(country.name)) {
+              excludedCountries.push(country.name);
+            }
+          }
+        });
+      }
     }
   });
 

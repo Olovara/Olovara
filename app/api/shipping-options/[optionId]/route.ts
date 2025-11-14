@@ -66,6 +66,14 @@ export async function PUT(
       defaultShippingCurrency,
     } = body;
 
+    // Default shipping is required
+    if (defaultShipping === null || defaultShipping === undefined) {
+      return NextResponse.json(
+        { error: "Default shipping cost is required" },
+        { status: 400 }
+      );
+    }
+
     // If this is set as default, unset any existing default options
     if (isDefault) {
       await db.shippingOption.updateMany({

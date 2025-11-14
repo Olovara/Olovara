@@ -27,7 +27,19 @@ export const ShippingRateSchema = z
     }),
     zone: z.string().optional(),
     countryCode: z.string().optional(),
-    price: createMonetarySchema("price"),
+    price: z.preprocess(
+      (val) => {
+        if (typeof val === "string") return parseFloat(val);
+        if (typeof val === "number") return val;
+        return 0;
+      },
+      z
+        .number()
+        .min(0, "Price must be at least $0")
+        .refine((val) => Number.isFinite(val), {
+          message: "Price must be a valid number",
+        })
+    ),
     additionalItem: z.preprocess((val) => {
       if (typeof val === "string") return parseFloat(val);
       if (typeof val === "number") return val;
@@ -47,6 +59,20 @@ export const ShippingRateSchema = z
     },
     {
       message: "Zone is required when type is zone, or country is required when type is country",
+    }
+  )
+  .refine(
+    (data) => {
+      // If free shipping is enabled, price can be 0
+      // Otherwise, price must be at least 0.01
+      if (data.isFreeShipping) {
+        return true; // Allow 0 for free shipping
+      }
+      return data.price >= 0.01;
+    },
+    {
+      message: "Price must be at least $0.01 when free shipping is disabled",
+      path: ["price"],
     }
   )
   .transform((data) => ({
@@ -74,22 +100,20 @@ export const ShippingOptionSchema = z
         return null;
       },
       z
-        .number()
-        .min(0, "Default shipping must be at least $0")
+        .number({
+          required_error: "Default shipping cost is required",
+        })
+        .min(0.01, "Default shipping must be at least $0.01")
         .refine((val) => Number.isFinite(val), {
           message: "Default shipping must be a valid number",
         })
-        .nullable()
-        .optional()
     ),
     defaultShippingCurrency: z
       .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
         required_error: "Please select a currency",
       })
       .default("USD"),
-    rates: z.array(ShippingRateSchema).min(1, {
-      message: "Please add at least one shipping rate.",
-    }),
+    rates: z.array(ShippingRateSchema).default([]),
   })
   .transform((data) => {
     // Convert defaultShipping to smallest currency unit (cents or equivalent)

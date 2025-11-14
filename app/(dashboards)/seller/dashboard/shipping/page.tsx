@@ -37,6 +37,8 @@ export default async function ShippingPage() {
           name: true,
           isDefault: true,
           countryOfOrigin: true,
+          defaultShipping: true,
+          defaultShippingCurrency: true,
           sellerId: true,
           createdAt: true,
           updatedAt: true,

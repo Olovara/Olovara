@@ -120,7 +120,7 @@ export default function ShippingOptionForm({
               const divisor = Math.pow(10, decimals);
               return initialData.defaultShipping / divisor;
             })()
-          : null,
+          : undefined, // Use undefined instead of null for required field
       defaultShippingCurrency:
         initialData?.defaultShippingCurrency || sellerCurrency,
       rates:
@@ -154,6 +154,7 @@ export default function ShippingOptionForm({
   });
 
   async function onSubmit(values: ShippingOptionFormValues) {
+    console.log("Shipping option form submitted:", values);
     try {
       // Use the correct endpoint based on whether we're creating or editing
       const url = initialData
@@ -161,15 +162,9 @@ export default function ShippingOptionForm({
         : "/api/shipping-options";
       const method = initialData ? "PUT" : "POST";
 
-      // Convert defaultShipping to cents based on currency decimals
+      // Note: defaultShipping is already converted to cents by the schema transform
       const defaultShippingCurrency = values.defaultShippingCurrency || "USD";
-      const decimals = getCurrencyDecimals(defaultShippingCurrency);
-      const multiplier = Math.pow(10, decimals);
-      const defaultShippingInCents =
-        values.defaultShipping !== null && values.defaultShipping !== undefined
-          ? Math.round(values.defaultShipping * multiplier)
-          : null;
-
+      
       const response = await fetch(url, {
         method,
         headers: {
@@ -177,23 +172,29 @@ export default function ShippingOptionForm({
         },
         body: JSON.stringify({
           ...values,
-          defaultShipping: defaultShippingInCents,
           rates: values.rates.map((rate) => ({
             type: rate.type,
             zone: rate.type === "zone" ? rate.zone : undefined,
             countryCode: rate.type === "country" ? rate.countryCode : undefined,
-            price: Math.round(rate.price * 100), // Convert to cents
+            price: rate.price, // Already converted to cents by schema transform
             currency: defaultShippingCurrency, // Use shipping option's currency
-            additionalItem: rate.additionalItem
-              ? Math.round(rate.additionalItem * 100)
-              : null,
+            additionalItem: rate.additionalItem, // Already converted to cents by schema transform
             isFreeShipping: rate.isFreeShipping,
           })),
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save shipping option");
+        // Try to get error message from response
+        let errorMessage = "Failed to save shipping option";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -215,7 +216,10 @@ export default function ShippingOptionForm({
         router.refresh();
       }
     } catch (error) {
-      toast.error("Something went wrong");
+      console.error("Error saving shipping option:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Something went wrong";
+      toast.error(errorMessage);
     }
   }
 
@@ -357,8 +361,16 @@ export default function ShippingOptionForm({
               SUPPORTED_CURRENCIES[0];
 
             const rateType = rate.type || "zone";
+            // Debug: log excluded countries to help troubleshoot
+            if (process.env.NODE_ENV === "development") {
+              console.log("Excluded countries:", excludedCountries);
+            }
             const availableZones = getAvailableZones(excludedCountries);
             const availableCountries = getAvailableCountries(excludedCountries);
+            if (process.env.NODE_ENV === "development") {
+              console.log("Available zones:", availableZones);
+              console.log("Available countries:", availableCountries);
+            }
             const selectedZone = rate.zone
               ? SHIPPING_ZONES.find((z) => z.id === rate.zone)
               : null;
@@ -513,7 +525,13 @@ export default function ShippingOptionForm({
                           <FormControl>
                             <Switch
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked);
+                                // When free shipping is enabled, set price to 0
+                                if (checked) {
+                                  form.setValue(`rates.${index}.price`, 0);
+                                }
+                              }}
                             />
                           </FormControl>
                         </FormItem>

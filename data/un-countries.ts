@@ -114,6 +114,7 @@ export const UN_COUNTRIES: UNCountry[] = [
   { code: "FR", name: "France", isSanctioned: false, region: "EUROPE" },
   { code: "GE", name: "Georgia", isSanctioned: false, region: "EUROPE" },
   { code: "DE", name: "Germany", isSanctioned: false, region: "EUROPE" },
+  { code: "GI", name: "Gibraltar", isSanctioned: false, region: "EUROPE" },
   { code: "GR", name: "Greece", isSanctioned: false, region: "EUROPE" },
   { code: "HU", name: "Hungary", isSanctioned: false, region: "EUROPE" },
   { code: "IS", name: "Iceland", isSanctioned: false, region: "EUROPE" },
@@ -145,6 +146,7 @@ export const UN_COUNTRIES: UNCountry[] = [
   { code: "CH", name: "Switzerland", isSanctioned: false, region: "EUROPE" },
   { code: "TR", name: "Turkey", isSanctioned: false, region: "EUROPE" },
   { code: "UA", name: "Ukraine", isSanctioned: false, region: "EUROPE" },
+  { code: "GB", name: "United Kingdom", isSanctioned: false, region: "EUROPE" },
   { code: "VA", name: "Vatican City", isSanctioned: false, region: "EUROPE" },
 
   // Asia

@@ -19,9 +19,25 @@ export async function POST(request: NextRequest) {
       defaultShippingCurrency,
     } = await request.json();
 
-    if (!name || !countryOfOrigin || !rates || !Array.isArray(rates)) {
+    if (!name || !countryOfOrigin) {
       return NextResponse.json(
-        { error: "Name, country of origin, and rates array are required" },
+        { error: "Name and country of origin are required" },
+        { status: 400 }
+      );
+    }
+
+    // Default shipping is required
+    if (defaultShipping === null || defaultShipping === undefined) {
+      return NextResponse.json(
+        { error: "Default shipping cost is required" },
+        { status: 400 }
+      );
+    }
+
+    // Rates array is optional, but if provided must be an array
+    if (rates !== undefined && (!Array.isArray(rates))) {
+      return NextResponse.json(
+        { error: "Rates must be an array" },
         { status: 400 }
       );
     }
@@ -48,7 +64,7 @@ export async function POST(request: NextRequest) {
         defaultShippingCurrency: defaultShippingCurrency || "USD",
         sellerId: session.user.id,
         rates: {
-          create: rates.map((rate: any) => {
+          create: (rates || []).map((rate: any) => {
             // For country type, determine zone from country code
             // For zone type, use the zone directly
             let zoneValue = rate.zone;

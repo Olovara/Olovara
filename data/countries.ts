@@ -221,17 +221,6 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     zone: "EUROPE",
   },
   {
-    code: "NI",
-    name: "Northern Ireland",
-    currency: "GBP",
-    currencySymbol: "£",
-    phoneCode: "+44",
-    isEU: false, // Technically not EU but requires EU compliance due to Protocol
-    status: "supported",
-    canOnboardSellers: false, // Use GB for onboarding
-    zone: "EUROPE",
-  },
-  {
     code: "GH",
     name: "Ghana",
     currency: "GHS",
