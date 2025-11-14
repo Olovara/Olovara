@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getCountryByCode } from "@/data/countries";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { name, countryOfOrigin, rates } = await request.json();
+    const {
+      name,
+      countryOfOrigin,
+      rates,
+      defaultShipping,
+      defaultShippingCurrency,
+    } = await request.json();
 
     if (!name || !countryOfOrigin || !rates || !Array.isArray(rates)) {
       return NextResponse.json(
@@ -37,19 +44,28 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         countryOfOrigin,
+        defaultShipping: defaultShipping ?? null,
+        defaultShippingCurrency: defaultShippingCurrency || "USD",
         sellerId: session.user.id,
         rates: {
-          create: rates.map((rate: any) => ({
-            zone: rate.zone,
-            isInternational: rate.isInternational || false,
-            price: rate.price,
-            currency: rate.currency || "USD",
-            estimatedDays: rate.estimatedDays,
-            additionalItem: rate.additionalItem,
-            serviceLevel: rate.serviceLevel,
-            isFreeShipping: rate.isFreeShipping || false,
-            countryRates: rate.countryRates || [],
-          })),
+          create: rates.map((rate: any) => {
+            // For country type, determine zone from country code
+            // For zone type, use the zone directly
+            let zoneValue = rate.zone;
+            if (rate.type === "country" && rate.countryCode) {
+              const country = getCountryByCode(rate.countryCode);
+              zoneValue = country?.zone || "NORTH_AMERICA"; // Default fallback
+            }
+            
+            return {
+              type: rate.type || "zone",
+              zone: zoneValue || "NORTH_AMERICA", // Ensure zone is always set
+              countryCode: rate.type === "country" ? rate.countryCode : null,
+              price: rate.price,
+              additionalItem: rate.additionalItem,
+              isFreeShipping: rate.isFreeShipping || false,
+            };
+          }),
         },
       },
       include: {

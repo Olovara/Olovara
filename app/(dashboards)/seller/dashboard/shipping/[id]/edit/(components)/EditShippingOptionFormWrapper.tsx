@@ -3,22 +3,14 @@
 import { useRouter } from "next/navigation";
 import ShippingOptionForm from "@/components/forms/ShippingOptionForm";
 
-interface CountryRate {
-  countryCode: string;
-  price: number;
-  currency: string;
-}
-
 interface ShippingRate {
   id: string;
-  zone: string;
-  isInternational: boolean;
+  type: "zone" | "country";
+  zone?: string;
+  countryCode?: string;
   price: number;
-  currency: string;
-  estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
-  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -26,6 +18,8 @@ interface ShippingOption {
   name: string;
   isDefault: boolean;
   countryOfOrigin: string;
+  defaultShipping?: number | null;
+  defaultShippingCurrency?: string;
   sellerId: string;
   rates: ShippingRate[];
   createdAt: Date;

@@ -26,28 +26,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { SUPPORTED_CURRENCIES, getCurrencyDecimals } from "@/data/units";
 import { SHIPPING_ZONES } from "@/data/shipping";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { getCountryByCode, SUPPORTED_COUNTRIES } from "@/data/countries";
-
-interface CountryRate {
-  countryCode: string;
-  price: number;
-  currency: string;
-}
+import {
+  getAvailableZones,
+  getAvailableCountries,
+} from "@/lib/filter-shipping-options";
 
 interface ShippingRate {
   id: string;
-  zone: string;
+  type: "zone" | "country";
+  zone?: string;
+  countryCode?: string;
   price: number;
-  currency: string;
-  estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
-  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -55,6 +52,8 @@ interface ShippingOption {
   name: string;
   isDefault: boolean;
   countryOfOrigin: string;
+  defaultShipping?: number | null; // In cents
+  defaultShippingCurrency?: string;
   rates: ShippingRate[];
 }
 
@@ -69,22 +68,40 @@ export default function ShippingOptionForm({
 }: ShippingOptionFormProps) {
   const router = useRouter();
   const [sellerCountry, setSellerCountry] = useState<string>("");
+  const [sellerCurrency, setSellerCurrency] = useState<string>("USD");
+  const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
 
-  // Fetch seller's country when component mounts
+  // Fetch seller's country, currency, and exclusions when component mounts
   useEffect(() => {
-    const fetchSellerCountry = async () => {
+    const fetchSellerData = async () => {
       try {
-        const response = await fetch("/api/seller/country");
-        if (!response.ok) throw new Error("Failed to fetch seller country");
-        const data = await response.json();
-        setSellerCountry(data.country);
+        // Fetch country
+        const countryResponse = await fetch("/api/seller/country");
+        if (countryResponse.ok) {
+          const countryData = await countryResponse.json();
+          setSellerCountry(countryData.country);
+        }
+
+        // Fetch preferred currency
+        const currencyResponse = await fetch("/api/seller/currency");
+        if (currencyResponse.ok) {
+          const currencyData = await currencyResponse.json();
+          setSellerCurrency(currencyData.currency || "USD");
+        }
+
+        // Fetch excluded countries
+        const exclusionsResponse = await fetch("/api/seller/exclusions");
+        if (exclusionsResponse.ok) {
+          const exclusionsData = await exclusionsResponse.json();
+          setExcludedCountries(exclusionsData.excludedCountries || []);
+        }
       } catch (error) {
-        console.error("Error fetching seller country:", error);
-        toast.error("Failed to fetch seller country");
+        console.error("Error fetching seller data:", error);
+        toast.error("Failed to fetch seller data");
       }
     };
 
-    void fetchSellerCountry();
+    void fetchSellerData();
   }, []);
 
   const form = useForm<ShippingOptionFormValues>({
@@ -93,27 +110,43 @@ export default function ShippingOptionForm({
       name: initialData?.name || "",
       isDefault: initialData?.isDefault || false,
       countryOfOrigin: initialData?.countryOfOrigin || sellerCountry,
+      defaultShipping:
+        initialData?.defaultShipping !== null &&
+        initialData?.defaultShipping !== undefined
+          ? (() => {
+              // Convert from cents to display value based on currency decimals
+              const currency = initialData?.defaultShippingCurrency || "USD";
+              const decimals = getCurrencyDecimals(currency);
+              const divisor = Math.pow(10, decimals);
+              return initialData.defaultShipping / divisor;
+            })()
+          : null,
+      defaultShippingCurrency:
+        initialData?.defaultShippingCurrency || sellerCurrency,
       rates:
         initialData?.rates.map((rate) => ({
-          ...rate,
+          id: rate.id,
+          type: rate.type || (rate.countryCode ? "country" : "zone"), // Use type if available, otherwise determine from countryCode
+          zone: rate.zone || undefined,
+          countryCode: rate.countryCode || undefined,
           price: rate.price / 100, // Convert cents to dollars for display
           additionalItem: rate.additionalItem
             ? rate.additionalItem / 100
             : null,
-          countryRates: (rate.countryRates || []).map((countryRate: any) => ({
-            ...countryRate,
-            price: countryRate.price / 100, // Convert cents to dollars for display
-          })),
+          isFreeShipping: rate.isFreeShipping,
         })) || [],
     },
   });
 
-  // Update countryOfOrigin when sellerCountry is fetched
+  // Update countryOfOrigin and defaultShippingCurrency when seller data is fetched
   useEffect(() => {
     if (sellerCountry && !initialData) {
       form.setValue("countryOfOrigin", sellerCountry);
     }
-  }, [sellerCountry, form, initialData]);
+    if (sellerCurrency && !initialData?.defaultShippingCurrency) {
+      form.setValue("defaultShippingCurrency", sellerCurrency);
+    }
+  }, [sellerCountry, sellerCurrency, form, initialData]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -128,6 +161,15 @@ export default function ShippingOptionForm({
         : "/api/shipping-options";
       const method = initialData ? "PUT" : "POST";
 
+      // Convert defaultShipping to cents based on currency decimals
+      const defaultShippingCurrency = values.defaultShippingCurrency || "USD";
+      const decimals = getCurrencyDecimals(defaultShippingCurrency);
+      const multiplier = Math.pow(10, decimals);
+      const defaultShippingInCents =
+        values.defaultShipping !== null && values.defaultShipping !== undefined
+          ? Math.round(values.defaultShipping * multiplier)
+          : null;
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -135,16 +177,17 @@ export default function ShippingOptionForm({
         },
         body: JSON.stringify({
           ...values,
+          defaultShipping: defaultShippingInCents,
           rates: values.rates.map((rate) => ({
-            ...rate,
+            type: rate.type,
+            zone: rate.type === "zone" ? rate.zone : undefined,
+            countryCode: rate.type === "country" ? rate.countryCode : undefined,
             price: Math.round(rate.price * 100), // Convert to cents
+            currency: defaultShippingCurrency, // Use shipping option's currency
             additionalItem: rate.additionalItem
               ? Math.round(rate.additionalItem * 100)
               : null,
-            countryRates: rate.countryRates.map((countryRate) => ({
-              ...countryRate,
-              price: Math.round(countryRate.price * 100), // Convert to cents
-            })),
+            isFreeShipping: rate.isFreeShipping,
           })),
         }),
       });
@@ -216,13 +259,112 @@ export default function ShippingOptionForm({
         />
 
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Shipping Rates</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="defaultShippingCurrency"
+              render={({ field }) => {
+                const currencyInfo =
+                  SUPPORTED_CURRENCIES.find((c) => c.code === field.value) ||
+                  SUPPORTED_CURRENCIES[0];
+                return (
+                  <FormItem>
+                    <FormLabel>Shipping Currency</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SUPPORTED_CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code} - {currency.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="defaultShipping"
+              render={({ field }) => {
+                const defaultShippingCurrency = form.watch(
+                  "defaultShippingCurrency"
+                );
+                const currencyInfo =
+                  SUPPORTED_CURRENCIES.find(
+                    (c) => c.code === defaultShippingCurrency
+                  ) || SUPPORTED_CURRENCIES[0];
+                return (
+                  <FormItem>
+                    <FormLabel>Default Shipping Cost (Worldwide)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                          {currencyInfo.symbol}
+                        </span>
+                        <Input
+                          type="number"
+                          step={1 / Math.pow(10, currencyInfo.decimals)}
+                          min={0}
+                          placeholder="0.00"
+                          className="pl-8"
+                          {...field}
+                          value={field.value === null ? "" : field.value}
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? null
+                                : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </div>
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">
+                      {currencyInfo.decimals === 0
+                        ? "Enter whole numbers only (no decimal places)"
+                        : `Enter price with up to ${currencyInfo.decimals} decimal places`}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Exception Rates</h3>
+          <p className="text-sm text-muted-foreground">
+            Add exception for specific country or region.
+          </p>
 
           {fields.map((field, index) => {
             const rate = form.watch(`rates.${index}`);
+            const shippingOptionCurrency = form.watch("defaultShippingCurrency");
             const currencyInfo =
-              SUPPORTED_CURRENCIES.find((c) => c.code === rate.currency) ||
+              SUPPORTED_CURRENCIES.find((c) => c.code === shippingOptionCurrency) ||
               SUPPORTED_CURRENCIES[0];
+
+            const rateType = rate.type || "zone";
+            const availableZones = getAvailableZones(excludedCountries);
+            const availableCountries = getAvailableCountries(excludedCountries);
+            const selectedZone = rate.zone
+              ? SHIPPING_ZONES.find((z) => z.id === rate.zone)
+              : null;
+            const selectedCountry = rate.countryCode
+              ? getCountryByCode(rate.countryCode)
+              : null;
 
             return (
               <Card key={field.id}>
@@ -230,10 +372,14 @@ export default function ShippingOptionForm({
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="font-medium">
-                        {SHIPPING_ZONES.find((z) => z.id === rate.zone)?.name}
+                        {rateType === "zone"
+                          ? selectedZone?.name || "Zone"
+                          : selectedCountry?.name || "Country"}
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        Zone rate for all countries in this region
+                        {rateType === "zone"
+                          ? "Rate for all countries in this region"
+                          : "Rate for this specific country"}
                       </p>
                     </div>
                     <Button
@@ -249,25 +395,32 @@ export default function ShippingOptionForm({
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
-                      name={`rates.${index}.zone`}
+                      name={`rates.${index}.type`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Zone</FormLabel>
+                          <FormLabel>Type</FormLabel>
                           <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Clear zone/country when type changes
+                              if (value === "zone") {
+                                form.setValue(`rates.${index}.countryCode`, undefined);
+                                form.setValue(`rates.${index}.zone`, availableZones[0] || "");
+                              } else {
+                                form.setValue(`rates.${index}.zone`, undefined);
+                                form.setValue(`rates.${index}.countryCode`, availableCountries[0] || "");
+                              }
+                            }}
+                            defaultValue={field.value || "zone"}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select zone" />
+                                <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {SHIPPING_ZONES.map((zone) => (
-                                <SelectItem key={zone.id} value={zone.id}>
-                                  {zone.name}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="zone">Zone</SelectItem>
+                              <SelectItem value="country">Country</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -275,29 +428,73 @@ export default function ShippingOptionForm({
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name={`rates.${index}.isInternational`}
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                              International Shipping
-                            </FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Enable this if this rate applies to international
-                              shipping within this zone
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    {rateType === "zone" ? (
+                      <FormField
+                        control={form.control}
+                        name={`rates.${index}.zone`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Zone</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select zone" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {SHIPPING_ZONES.filter((zone) =>
+                                  availableZones.includes(zone.id)
+                                ).map((zone) => (
+                                  <SelectItem key={zone.id} value={zone.id}>
+                                    {zone.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name={`rates.${index}.countryCode`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Country</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select country" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {SUPPORTED_COUNTRIES.filter((country) =>
+                                  availableCountries.includes(country.code)
+                                )
+                                  .sort((a, b) => a.name.localeCompare(b.name))
+                                  .map((country) => (
+                                    <SelectItem
+                                      key={country.code}
+                                      value={country.code}
+                                    >
+                                      {country.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
 
                     <FormField
                       control={form.control}
@@ -309,7 +506,8 @@ export default function ShippingOptionForm({
                               Free Shipping
                             </FormLabel>
                             <div className="text-sm text-muted-foreground">
-                              Offer free shipping for this zone
+                              Offer free shipping
+                              {rateType === "zone" ? " for this zone" : " for this country"}
                             </div>
                           </div>
                           <FormControl>
@@ -324,78 +522,45 @@ export default function ShippingOptionForm({
 
                     {!rate.isFreeShipping && (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name={`rates.${index}.currency`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Currency</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select currency" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {SUPPORTED_CURRENCIES.map((currency) => (
-                                      <SelectItem
-                                        key={currency.code}
-                                        value={currency.code}
-                                      >
-                                        {currency.code} - {currency.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`rates.${index}.price`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Price</FormLabel>
-                                <FormControl>
-                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                                      {currencyInfo.symbol}
-                                    </span>
-                                    <Input
-                                      type="number"
-                                      step={
-                                        1 / Math.pow(10, currencyInfo.decimals)
-                                      }
-                                      min={
-                                        1 / Math.pow(10, currencyInfo.decimals)
-                                      }
-                                      placeholder="0.00"
-                                      className="pl-8"
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(
-                                          parseFloat(e.target.value)
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                </FormControl>
-                                <p className="text-sm text-muted-foreground">
-                                  {currencyInfo.decimals === 0
-                                    ? "Enter whole numbers only (no decimal places)"
-                                    : `Enter price with up to ${currencyInfo.decimals} decimal places`}
-                                </p>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        <FormField
+                          control={form.control}
+                          name={`rates.${index}.price`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Price</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                                    {currencyInfo.symbol}
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    step={
+                                      1 / Math.pow(10, currencyInfo.decimals)
+                                    }
+                                    min={
+                                      1 / Math.pow(10, currencyInfo.decimals)
+                                    }
+                                    placeholder="0.00"
+                                    className="pl-8"
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseFloat(e.target.value)
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </FormControl>
+                              <p className="text-sm text-muted-foreground">
+                                {currencyInfo.decimals === 0
+                                  ? "Enter whole numbers only (no decimal places)"
+                                  : `Enter price with up to ${currencyInfo.decimals} decimal places`}
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
                         <FormField
                           control={form.control}
@@ -440,242 +605,7 @@ export default function ShippingOptionForm({
                       </>
                     )}
 
-                    <FormField
-                      control={form.control}
-                      name={`rates.${index}.estimatedDays`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estimated Delivery Time</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={90}
-                              placeholder="1-90 days"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(parseInt(e.target.value))
-                              }
-                            />
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            Estimated number of days for delivery
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    {/* Country-Specific Rates Section */}
-                    <div className="space-y-4 border-t pt-4">
-                      <div className="flex justify-between items-center">
-                        <h5 className="font-medium text-sm">
-                          Country-Specific Rates
-                        </h5>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const currentCountryRates =
-                              form.getValues(`rates.${index}.countryRates`) ||
-                              [];
-                            form.setValue(`rates.${index}.countryRates`, [
-                              ...currentCountryRates,
-                              {
-                                countryCode: "",
-                                price: 0,
-                                currency: rate.currency, // Default to the zone's currency (seller's preferred)
-                              },
-                            ]);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Country Rate
-                        </Button>
-                      </div>
-
-                      {rate.countryRates && rate.countryRates.length > 0 && (
-                        <div className="space-y-3">
-                          {rate.countryRates.map(
-                            (countryRate, countryIndex) => (
-                              <div
-                                key={countryIndex}
-                                className="flex gap-3 items-end p-3 border rounded-lg bg-muted/30"
-                              >
-                                <div className="flex-1">
-                                  <FormField
-                                    control={form.control}
-                                    name={`rates.${index}.countryRates.${countryIndex}.countryCode`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">
-                                          Country
-                                        </FormLabel>
-                                        <Select
-                                          onValueChange={field.onChange}
-                                          value={field.value}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select country" />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            {SUPPORTED_COUNTRIES.filter(
-                                              (country) =>
-                                                country.zone === rate.zone
-                                            )
-                                              .filter(
-                                                (country) =>
-                                                  !rate.countryRates?.some(
-                                                    (cr) =>
-                                                      cr.countryCode ===
-                                                        country.code &&
-                                                      rate.countryRates.indexOf(
-                                                        cr
-                                                      ) !== countryIndex
-                                                  )
-                                              )
-                                              .map((country) => (
-                                                <SelectItem
-                                                  key={country.code}
-                                                  value={country.code}
-                                                >
-                                                  {country.name}
-                                                </SelectItem>
-                                              ))}
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-
-                                <div className="flex-1">
-                                  <FormField
-                                    control={form.control}
-                                    name={`rates.${index}.countryRates.${countryIndex}.price`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">
-                                          Price
-                                        </FormLabel>
-                                        <FormControl>
-                                          <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                                              {SUPPORTED_CURRENCIES.find(
-                                                (c) =>
-                                                  c.code ===
-                                                  rate.countryRates[
-                                                    countryIndex
-                                                  ]?.currency
-                                              )?.symbol || "$"}
-                                            </span>
-                                            <Input
-                                              type="number"
-                                              step={
-                                                1 /
-                                                Math.pow(
-                                                  10,
-                                                  currencyInfo.decimals
-                                                )
-                                              }
-                                              min={
-                                                1 /
-                                                Math.pow(
-                                                  10,
-                                                  currencyInfo.decimals
-                                                )
-                                              }
-                                              placeholder="0.00"
-                                              className="pl-8"
-                                              {...field}
-                                              onChange={(e) =>
-                                                field.onChange(
-                                                  parseFloat(e.target.value)
-                                                )
-                                              }
-                                            />
-                                          </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-
-                                <div className="flex-1">
-                                  <FormField
-                                    control={form.control}
-                                    name={`rates.${index}.countryRates.${countryIndex}.currency`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">
-                                          Currency
-                                        </FormLabel>
-                                        <Select
-                                          onValueChange={field.onChange}
-                                          value={field.value}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Currency" />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            {SUPPORTED_CURRENCIES.map(
-                                              (currency) => (
-                                                <SelectItem
-                                                  key={currency.code}
-                                                  value={currency.code}
-                                                >
-                                                  {currency.code}
-                                                </SelectItem>
-                                              )
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    const currentCountryRates =
-                                      form.getValues(
-                                        `rates.${index}.countryRates`
-                                      ) || [];
-                                    const newCountryRates =
-                                      currentCountryRates.filter(
-                                        (_, i) => i !== countryIndex
-                                      );
-                                    form.setValue(
-                                      `rates.${index}.countryRates`,
-                                      newCountryRates
-                                    );
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      )}
-
-                      <p className="text-xs text-muted-foreground">
-                        Add specific rates for countries that need different
-                        pricing (e.g., higher tariffs). Countries without
-                        specific rates will use the zone rate above.
-                      </p>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -685,19 +615,17 @@ export default function ShippingOptionForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
+            onClick={() => {
+              const availableZones = getAvailableZones(excludedCountries);
               append({
                 id: crypto.randomUUID(),
-                zone: SHIPPING_ZONES[0].id,
-                isInternational: false,
+                type: "zone",
+                zone: availableZones[0] || SHIPPING_ZONES[0].id,
                 price: 0,
-                currency: "USD",
-                estimatedDays: 1,
                 additionalItem: null,
                 isFreeShipping: false,
-                countryRates: [],
-              })
-            }
+              } as any);
+            }}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Rate

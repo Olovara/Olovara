@@ -1,7 +1,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import PermissionGate from "@/components/auth/permission-gate";
 import ShippingOptionFormWrapper from "./(components)/ShippingOptionFormWrapper";
+import CountryExclusionsMessage from "@/components/shipping/CountryExclusionsMessage";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,6 +22,14 @@ export default async function CreateShippingOptionPage() {
   if (!session?.user?.id) {
     redirect("/login");
   }
+
+  // Get seller's excluded countries
+  const seller = await db.seller.findUnique({
+    where: { userId: session.user.id },
+    select: {
+      excludedCountries: true,
+    },
+  });
 
   return (
     <PermissionGate requiredPermission="MANAGE_SELLER_SETTINGS">
@@ -54,6 +64,9 @@ export default async function CreateShippingOptionPage() {
               know how much shipping will cost.
             </p>
           </div>
+          <CountryExclusionsMessage
+            excludedCountries={seller?.excludedCountries || []}
+          />
           <ShippingOptionFormWrapper />
         </div>
       </div>

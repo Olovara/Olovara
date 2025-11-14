@@ -5,6 +5,7 @@ import { stripeSecret } from "@/lib/stripe";
 import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { calculateShippingCost } from "@/lib/shipping-calculator";
 import { decryptOrderData } from "@/lib/encryption";
+import { getCountryByCode } from "@/data/countries";
 import { validateDiscountCode, calculateDiscount, calculateProductSaleDiscount } from "@/lib/discount-calculator";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 
@@ -65,17 +66,16 @@ export async function POST(req: Request) {
               select: {
                 id: true,
                 countryOfOrigin: true,
+                defaultShipping: true,
+                defaultShippingCurrency: true,
                 rates: {
                   select: {
                     zone: true,
-                    isInternational: true,
                     price: true,
-                    currency: true,
-                    estimatedDays: true,
                     additionalItem: true,
-                    serviceLevel: true,
                     isFreeShipping: true,
-                    countryRates: true
+                    type: true,
+                    countryCode: true
                   }
                 }
               }
@@ -123,13 +123,28 @@ export async function POST(req: Request) {
         // Calculate shipping cost based on origin and destination
         const defaultOption = product.seller.shippingOptions[0];
         const shippingCalculation = calculateShippingCost(
-          defaultOption.rates.map(rate => ({
-            ...rate,
-            countryRates: (rate.countryRates as any) || []
-          })),
+          defaultOption.rates.map(rate => {
+            // For country type, determine zone from country code if zone is not set
+            let zoneValue = rate.zone;
+            if (!zoneValue && rate.countryCode) {
+              const country = getCountryByCode(rate.countryCode);
+              zoneValue = country?.zone || "NORTH_AMERICA";
+            }
+            return {
+              zone: zoneValue || "NORTH_AMERICA", // Ensure zone is always set
+              price: rate.price,
+              currency: defaultOption.defaultShippingCurrency || "USD", // Use shipping option currency
+              additionalItem: rate.additionalItem,
+              isFreeShipping: rate.isFreeShipping,
+              type: (rate.type || "zone") as "zone" | "country",
+              countryCode: rate.countryCode || undefined
+            };
+          }),
           sellerOriginCountry,
           userCountry,
-          parseInt(quantity.toString())
+          parseInt(quantity.toString()),
+          defaultOption.defaultShipping ?? null,
+          defaultOption.defaultShippingCurrency || "USD"
         );
         
         if (shippingCalculation) {

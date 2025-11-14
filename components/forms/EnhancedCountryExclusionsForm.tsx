@@ -72,7 +72,12 @@ const REGION_GROUPS = {
     .filter((c) => c.region === "SOUTH_AMERICA")
     .map((c) => c.code),
   "Europe (Non-EU)": getShippableCountries()
-    .filter((c) => c.region === "EUROPE" && !EEA_COUNTRIES.includes(c.code))
+    .filter(
+      (c) =>
+        c.region === "EUROPE" &&
+        !EEA_COUNTRIES.includes(c.code) &&
+        c.code !== NORTHERN_IRELAND_CODE
+    )
     .map((c) => c.code),
   "Middle East": getShippableCountries()
     .filter((c) => c.region === "MIDDLE_EAST")

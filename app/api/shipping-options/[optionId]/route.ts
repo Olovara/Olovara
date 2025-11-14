@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
+import { getCountryByCode } from "@/data/countries";
 
 export async function GET(
   req: Request,
@@ -56,7 +57,14 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, rates, isDefault, countryOfOrigin } = body;
+    const {
+      name,
+      rates,
+      isDefault,
+      countryOfOrigin,
+      defaultShipping,
+      defaultShippingCurrency,
+    } = body;
 
     // If this is set as default, unset any existing default options
     if (isDefault) {
@@ -89,18 +97,27 @@ export async function PUT(
         name,
         isDefault,
         countryOfOrigin,
+        defaultShipping: defaultShipping ?? null,
+        defaultShippingCurrency: defaultShippingCurrency || "USD",
         rates: {
-          create: rates.map((rate: any) => ({
-            zone: rate.zone,
-            isInternational: rate.isInternational || false,
-            price: rate.price,
-            currency: rate.currency,
-            estimatedDays: rate.estimatedDays,
-            additionalItem: rate.additionalItem,
-            serviceLevel: rate.serviceLevel,
-            isFreeShipping: rate.isFreeShipping,
-            countryRates: rate.countryRates || [],
-          })),
+          create: rates.map((rate: any) => {
+            // For country type, determine zone from country code
+            // For zone type, use the zone directly
+            let zoneValue = rate.zone;
+            if (rate.type === "country" && rate.countryCode) {
+              const country = getCountryByCode(rate.countryCode);
+              zoneValue = country?.zone || "NORTH_AMERICA"; // Default fallback
+            }
+            
+            return {
+              type: rate.type || "zone",
+              zone: zoneValue || "NORTH_AMERICA", // Ensure zone is always set
+              countryCode: rate.type === "country" ? rate.countryCode : null,
+              price: rate.price,
+              additionalItem: rate.additionalItem,
+              isFreeShipping: rate.isFreeShipping,
+            };
+          }),
         },
       },
       include: {

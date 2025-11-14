@@ -13,23 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-
-interface CountryRate {
-  countryCode: string;
-  price: number;
-  currency: string;
-}
+import { SHIPPING_ZONES } from "@/data/shipping";
+import { getCountryByCode } from "@/data/countries";
 
 interface ShippingRate {
   id: string;
-  zone: string;
-  isInternational: boolean;
+  type: "zone" | "country";
+  zone?: string;
+  countryCode?: string;
   price: number;
-  currency: string;
-  estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
-  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -92,51 +86,62 @@ export default function ShippingOptionsTable({
                       <span className="text-muted-foreground">No rates</span>
                     ) : (
                       <ul className="space-y-1">
-                        {option.rates.map((rate) => (
-                          <li
-                            key={rate.id}
-                            className="border-b last:border-b-0 pb-1 last:pb-0"
-                          >
-                            <span className="font-medium">
-                              {rate.zone}
-                              {rate.isInternational && (
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  (International)
+                        {option.rates.map((rate) => {
+                          // Get display name based on type
+                          let displayName = "";
+                          if (rate.type === "zone" && rate.zone) {
+                            const zone = SHIPPING_ZONES.find(
+                              (z) => z.id === rate.zone
+                            );
+                            displayName = zone?.name || rate.zone;
+                          } else if (
+                            rate.type === "country" &&
+                            rate.countryCode
+                          ) {
+                            const country = getCountryByCode(rate.countryCode);
+                            displayName = country?.name || rate.countryCode;
+                          } else {
+                            displayName = "Unknown";
+                          }
+
+                          return (
+                            <li
+                              key={rate.id}
+                              className="border-b last:border-b-0 pb-1 last:pb-0"
+                            >
+                              <span className="font-medium">{displayName}</span>
+                              :{" "}
+                              {rate.isFreeShipping ? (
+                                <span className="text-green-600 font-semibold">
+                                  Free Shipping
                                 </span>
+                              ) : (
+                                <>
+                                  ${(rate.price / 100).toFixed(2)}
+                                  {rate.additionalItem !== null &&
+                                    rate.additionalItem > 0 && (
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        (+$
+                                        {(rate.additionalItem / 100).toFixed(
+                                          2
+                                        )}{" "}
+                                        per extra item)
+                                      </span>
+                                    )}
+                                </>
                               )}
-                            </span>
-                            :{" "}
-                            {rate.isFreeShipping ? (
-                              <span className="text-green-600 font-semibold">
-                                Free Shipping
-                              </span>
-                            ) : (
-                              <>
-                                ${(rate.price / 100).toFixed(2)} {rate.currency}
-                                {rate.additionalItem !== null &&
-                                  rate.additionalItem > 0 && (
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      (+$
-                                      {(rate.additionalItem / 100).toFixed(
-                                        2
-                                      )}{" "}
-                                      per extra item)
-                                    </span>
-                                  )}
-                              </>
-                            )}
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              ({rate.estimatedDays} days)
-                            </span>
-                          </li>
-                        ))}
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </TableCell>
                   <TableCell>{option.isDefault ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center gap-2">
-                      <Link href={`/seller/dashboard/shipping/${option.id}/edit`}>
+                      <Link
+                        href={`/seller/dashboard/shipping/${option.id}/edit`}
+                      >
                         <Button variant="ghost" size="sm">
                           <Pencil className="h-4 w-4" />
                         </Button>

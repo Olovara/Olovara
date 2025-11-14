@@ -972,14 +972,16 @@ model HelpCategory {
 }
 
 model ShippingOption {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  isDefault       Boolean        @default(false)
-  countryOfOrigin String // Country where the products are shipped from
-  sellerId        String
-  seller          Seller         @relation(fields: [sellerId], references: [userId])
-  rates           ShippingRate[]
-  products        Product[]
+  id                   String         @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  isDefault            Boolean        @default(false)
+  countryOfOrigin      String // Country where the products are shipped from
+  defaultShipping      Int? // Default worldwide shipping cost in cents
+  defaultShippingCurrency String @default("USD") // Currency for default shipping
+  sellerId             String
+  seller               Seller         @relation(fields: [sellerId], references: [userId])
+  rates                ShippingRate[]
+  products             Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -990,15 +992,12 @@ model ShippingOption {
 model ShippingRate {
   id              String  @id @default(auto()) @map("_id") @db.ObjectId
   profileId       String
-  zone            String // e.g., "NORTH_AMERICA", "EUROPE", etc.
-  isInternational Boolean @default(false) // Whether this is an international shipping rate
+  type            String // "zone" or "country"
+  zone            String? // e.g., "NORTH_AMERICA", "EUROPE", etc. (required for zone type, determined from countryCode for country type)
+  countryCode     String? // Country code (required for country type, null for zone type)
   price           Int // In cents
-  currency        String  @default("USD")
-  estimatedDays   Int
   additionalItem  Int? // Optional: charge extra per item
-  serviceLevel    String? // Optional: e.g., "STANDARD", "EXPRESS"
   isFreeShipping  Boolean @default(false)
-  countryRates    Json? // Array of country-specific rates: [{countryCode: "US", price: 2500, currency: "USD"}]
 
   shippingOption ShippingOption @relation(fields: [profileId], references: [id], onDelete: Cascade)
 

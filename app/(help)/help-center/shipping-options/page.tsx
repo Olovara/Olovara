@@ -43,13 +43,6 @@ const shippingZones = [
     estimatedDays: "10-21 business days",
     icon: Globe,
   },
-  {
-    name: "Rest of World",
-    countries: ["*"],
-    description: "All other countries not covered above",
-    estimatedDays: "14-28 business days",
-    icon: Globe,
-  },
 ];
 
 const setupSteps = [
@@ -401,9 +394,10 @@ export default function ShippingOptionsPage() {
 
       {/* Shipping Zones */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold text-gray-900">Shipping Zones</h2>
+        <h2 className="text-2xl font-semibold text-gray-900">Shipping Zones & Default Shipping</h2>
         <p className="text-gray-600">
           Shipping zones help you organize your shipping rates by geographic regions. 
+          You can also set a default worldwide shipping cost that applies to countries not covered by your zone rates.
           Here are the recommended zones for most sellers:
         </p>
         

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import PermissionGate from "@/components/auth/permission-gate";
 import ShippingOptionsTable from "@/app/(dashboards)/seller/dashboard/shipping/_components/ShippingOptionsTable";
+import CountryExclusionsMessage from "@/components/shipping/CountryExclusionsMessage";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,10 +26,11 @@ export default async function ShippingPage() {
     redirect("/login");
   }
 
-  // Get seller data to access shipping options
+  // Get seller data to access shipping options and exclusions
   const seller = await db.seller.findUnique({
     where: { userId: session.user.id },
     select: {
+      excludedCountries: true,
       shippingOptions: {
         select: {
           id: true,
@@ -42,14 +44,11 @@ export default async function ShippingPage() {
             select: {
               id: true,
               zone: true,
-              isInternational: true,
               price: true,
-              currency: true,
-              estimatedDays: true,
               additionalItem: true,
-              serviceLevel: true,
               isFreeShipping: true,
-              countryRates: true,
+              type: true,
+              countryCode: true,
             },
           },
         },
@@ -57,19 +56,14 @@ export default async function ShippingPage() {
     },
   });
 
-  // Transform the data to match the expected interface
-  // Prisma returns countryRates as JsonValue, so we need to cast it properly
+  // Transform the data to match the expected interface (convert null to undefined)
   const transformedOptions = (seller?.shippingOptions || []).map((option) => ({
     ...option,
     rates: option.rates.map((rate) => ({
       ...rate,
-      countryRates: Array.isArray(rate.countryRates)
-        ? (rate.countryRates as Array<{
-            countryCode: string;
-            price: number;
-            currency: string;
-          }>)
-        : [],
+      type: (rate.type || "zone") as "zone" | "country",
+      zone: rate.zone ?? undefined,
+      countryCode: rate.countryCode ?? undefined,
     })),
   }));
 
@@ -107,6 +101,9 @@ export default async function ShippingPage() {
               Manage your shipping rates and delivery options for your products.
             </p>
           </div>
+          <CountryExclusionsMessage
+            excludedCountries={seller?.excludedCountries || []}
+          />
           <ShippingOptionsTable options={transformedOptions} />
         </div>
       </div>

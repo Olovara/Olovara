@@ -11,22 +11,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-interface CountryRate {
-  countryCode: string;
-  price: number;
-  currency: string;
-}
-
 interface ShippingRate {
   id: string;
-  zone: string;
-  isInternational: boolean;
+  type: "zone" | "country";
+  zone?: string;
+  countryCode?: string;
   price: number;
-  currency: string;
-  estimatedDays: number;
   additionalItem: number | null;
   isFreeShipping: boolean;
-  countryRates: CountryRate[];
 }
 
 interface ShippingOption {
@@ -34,6 +26,8 @@ interface ShippingOption {
   name: string;
   isDefault: boolean;
   countryOfOrigin: string;
+  defaultShipping?: number | null;
+  defaultShippingCurrency?: string;
   sellerId: string;
   rates: ShippingRate[];
   createdAt: Date;
@@ -64,7 +58,16 @@ export default function EditShippingOptionPage() {
         }
 
         const data = await response.json();
-        setShippingOption(data);
+        // Transform the data to match the form's expected types (convert null to undefined)
+        const transformedData: ShippingOption = {
+          ...data,
+          rates: data.rates.map((rate: any) => ({
+            ...rate,
+            zone: rate.zone ?? undefined,
+            countryCode: rate.countryCode ?? undefined,
+          })),
+        };
+        setShippingOption(transformedData);
       } catch (error) {
         console.error("Error fetching shipping option:", error);
         setError("An unexpected error occurred");

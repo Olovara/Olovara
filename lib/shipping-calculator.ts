@@ -1,22 +1,15 @@
 import { getCountryByCode } from "@/data/countries";
 import { SHIPPING_ZONES } from "@/data/shipping";
 
-export interface CountryRate {
-  countryCode: string;
-  price: number;
-  currency: string;
-}
-
 export interface ShippingCalculation {
   zone: string;
-  isInternational: boolean;
   price: number;
-  currency: string;
-  estimatedDays: number;
+  currency?: string; // Optional - defaults to USD or shipping option currency
   additionalItem?: number | null;
   serviceLevel?: string | null;
   isFreeShipping: boolean;
-  countryRates?: CountryRate[]; // Array of country-specific rates
+  type?: "zone" | "country";
+  countryCode?: string;
 }
 
 /**
@@ -43,7 +36,11 @@ export function determineShippingZone(
 
   if (!originCountryData || !destinationCountryData) {
     // Fallback to international if country data not found
-    return { zone: "REST_OF_WORLD", isInternational: true };
+    // Use the destination country's zone if available, otherwise default to first zone
+    return {
+      zone: destinationCountryData?.zone || "NORTH_AMERICA",
+      isInternational: true,
+    };
   }
 
   // Different countries = international shipping (even within same zone)
@@ -60,59 +57,80 @@ export function determineShippingZone(
  * @param originCountry - Seller's country
  * @param destinationCountry - Buyer's country
  * @param quantity - Number of items (for additional item calculations)
- * @returns Shipping calculation or null if no matching rate found
+ * @param defaultShipping - Default worldwide shipping cost in cents (optional)
+ * @param defaultShippingCurrency - Currency for default shipping (optional)
+ * @returns Shipping calculation or null if no matching rate found and no default shipping
  */
 export function calculateShippingCost(
   shippingRates: ShippingCalculation[],
   originCountry: string,
   destinationCountry: string,
-  quantity: number = 1
+  quantity: number = 1,
+  defaultShipping: number | null = null,
+  defaultShippingCurrency: string = "USD"
 ): ShippingCalculation | null {
-  // Determine the appropriate zone and international status
-  const { zone, isInternational } = determineShippingZone(
+  // Determine the appropriate zone
+  const { zone } = determineShippingZone(
     originCountry,
     destinationCountry
   );
 
-  // Find the zone rate
-  const zoneRate = shippingRates.find(
-    (rate) => rate.zone === zone && rate.isInternational === isInternational
+  // First, check for a country-specific rate
+  const countryRate = shippingRates.find(
+    (rate) =>
+      rate.type === "country" && rate.countryCode === destinationCountry
   );
 
-  if (!zoneRate) {
-    return null;
+  // If country rate found, use it
+  if (countryRate) {
+    const additionalItemCost =
+      countryRate.additionalItem && quantity > 1
+        ? countryRate.additionalItem * (quantity - 1)
+        : 0;
+
+    const totalPrice = countryRate.price + additionalItemCost;
+
+    return {
+      ...countryRate,
+      price: totalPrice,
+    };
   }
 
-  // Check if there's a country-specific rate for this destination
-  let finalPrice = zoneRate.price;
-  let finalCurrency = zoneRate.currency;
+  // If no country rate, look for a zone rate
+  const zoneRate = shippingRates.find(
+    (rate) =>
+      rate.type === "zone" &&
+      rate.zone === zone
+  );
 
-  if (zoneRate.countryRates && zoneRate.countryRates.length > 0) {
-    const countryRate = zoneRate.countryRates.find(
-      (countryRate) => countryRate.countryCode === destinationCountry
-    );
+  // If zone rate found, use it
+  if (zoneRate) {
+    const additionalItemCost =
+      zoneRate.additionalItem && quantity > 1
+        ? zoneRate.additionalItem * (quantity - 1)
+        : 0;
 
-    if (countryRate) {
-      // Use country-specific rate
-      finalPrice = countryRate.price;
-      finalCurrency = countryRate.currency;
-    }
-    // If no country-specific rate found, use zone rate (already set above)
+    const totalPrice = zoneRate.price + additionalItemCost;
+
+    return {
+      ...zoneRate,
+      price: totalPrice,
+    };
   }
 
-  // Calculate total shipping cost including additional items
-  const additionalItemCost =
-    zoneRate.additionalItem && quantity > 1
-      ? zoneRate.additionalItem * (quantity - 1)
-      : 0;
+  // If no zone rate found, use default shipping if available
+  if (defaultShipping !== null && defaultShipping !== undefined) {
+    return {
+      zone: "WORLDWIDE",
+      price: defaultShipping,
+      currency: defaultShippingCurrency,
+      additionalItem: null,
+      serviceLevel: null,
+      isFreeShipping: false,
+    };
+  }
 
-  const totalPrice = finalPrice + additionalItemCost;
-
-  return {
-    ...zoneRate,
-    price: totalPrice,
-    currency: finalCurrency,
-  };
+  return null;
 }
 
 /**
@@ -120,31 +138,46 @@ export function calculateShippingCost(
  * @param shippingRates - Array of shipping rates
  * @param originCountry - Seller's country
  * @param destinationCountry - Buyer's country
+ * @param defaultShipping - Default worldwide shipping cost in cents (optional)
+ * @param defaultShippingCurrency - Currency for default shipping (optional)
  * @returns Best shipping rate or null
  */
 export function getBestShippingRate(
   shippingRates: ShippingCalculation[],
   originCountry: string,
-  destinationCountry: string
+  destinationCountry: string,
+  defaultShipping: number | null = null,
+  defaultShippingCurrency: string = "USD"
 ): ShippingCalculation | null {
-  const { zone, isInternational } = determineShippingZone(
+  const { zone } = determineShippingZone(
     originCountry,
     destinationCountry
   );
 
-  // Find the zone rate
+  // First, check for a country-specific rate
   let rate = shippingRates.find(
-    (r) => r.zone === zone && r.isInternational === isInternational
+    (r) => r.type === "country" && r.countryCode === destinationCountry
   );
 
-  // If no exact match, try to find any rate for the zone
+  // If no country rate, look for a zone rate
   if (!rate) {
-    rate = shippingRates.find((r) => r.zone === zone);
+    rate = shippingRates.find(
+      (r) =>
+        r.type === "zone" &&
+        r.zone === zone
+    );
   }
 
-  // If still no match, try to find any international rate
-  if (!rate && isInternational) {
-    rate = shippingRates.find((r) => r.isInternational);
+  // If still no match, use default shipping if available
+  if (!rate && defaultShipping !== null && defaultShipping !== undefined) {
+    return {
+      zone: "WORLDWIDE",
+      price: defaultShipping,
+      currency: defaultShippingCurrency,
+      additionalItem: null,
+      serviceLevel: null,
+      isFreeShipping: false,
+    };
   }
 
   // Last resort: find any rate
@@ -160,15 +193,24 @@ export function getBestShippingRate(
  * @param shippingRates - Array of shipping rates
  * @param originCountry - Seller's country
  * @param destinationCountry - Buyer's country
+ * @param defaultShipping - Default worldwide shipping cost in cents (optional)
+ * @param defaultShippingCurrency - Currency for default shipping (optional)
  * @returns boolean indicating if shipping is available
  */
 export function isShippingAvailable(
   shippingRates: ShippingCalculation[],
   originCountry: string,
-  destinationCountry: string
+  destinationCountry: string,
+  defaultShipping: number | null = null,
+  defaultShippingCurrency: string = "USD"
 ): boolean {
   return (
-    getBestShippingRate(shippingRates, originCountry, destinationCountry) !==
-    null
+    getBestShippingRate(
+      shippingRates,
+      originCountry,
+      destinationCountry,
+      defaultShipping,
+      defaultShippingCurrency
+    ) !== null
   );
 }

@@ -32,12 +32,8 @@ export const SHIPPING_ZONES = [
   {
     id: "MIDDLE_EAST",
     name: "Middle East",
-    description: "Middle Eastern countries including UAE, Saudi Arabia, Israel, etc.",
-  },
-  {
-    id: "REST_OF_WORLD",
-    name: "Rest of World",
-    description: "All other countries not covered above",
+    description:
+      "Middle Eastern countries including UAE, Saudi Arabia, Israel, etc.",
   },
 ] as const;
 
@@ -54,5 +50,6 @@ export const SHIPPING_SERVICE_LEVELS = [
   },
 ] as const;
 
-export type ShippingZone = typeof SHIPPING_ZONES[number]["id"];
-export type ShippingServiceLevel = typeof SHIPPING_SERVICE_LEVELS[number]["id"]; 
+export type ShippingZone = (typeof SHIPPING_ZONES)[number]["id"];
+export type ShippingServiceLevel =
+  (typeof SHIPPING_SERVICE_LEVELS)[number]["id"];

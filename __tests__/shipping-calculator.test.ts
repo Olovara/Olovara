@@ -93,7 +93,7 @@ describe('Shipping Calculator', () => {
 
     it('should handle unknown countries gracefully', () => {
       const result = determineShippingZone('XX', 'YY');
-      expect(result).toEqual({ zone: 'REST_OF_WORLD', isInternational: true });
+      expect(result).toEqual({ zone: 'NORTH_AMERICA', isInternational: true });
     });
   });
 

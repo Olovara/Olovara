@@ -1,6 +1,6 @@
 import { SHIPPING_ZONES } from "@/data/shipping";
 
-export type CountryStatus = 'supported' | 'extended_network' | 'preview';
+export type CountryStatus = "supported" | "extended_network" | "preview";
 
 export interface Country {
   code: string;
@@ -11,7 +11,14 @@ export interface Country {
   isEU: boolean;
   status: CountryStatus;
   canOnboardSellers: boolean; // Whether this country can create Express accounts for sellers
-  zone: "NORTH_AMERICA" | "EUROPE" | "ASIA" | "OCEANIA" | "SOUTH_AMERICA" | "AFRICA" | "MIDDLE_EAST" | "REST_OF_WORLD";
+  zone:
+    | "NORTH_AMERICA"
+    | "EUROPE"
+    | "ASIA"
+    | "OCEANIA"
+    | "SOUTH_AMERICA"
+    | "AFRICA"
+    | "MIDDLE_EAST";
 }
 
 export const SUPPORTED_COUNTRIES: Country[] = [
@@ -24,7 +31,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: false,
-    zone: "MIDDLE_EAST"
+    zone: "MIDDLE_EAST",
   },
   {
     code: "AT",
@@ -35,7 +42,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "AU",
@@ -46,7 +53,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "OCEANIA"
+    zone: "OCEANIA",
   },
   {
     code: "BE",
@@ -57,7 +64,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "BG",
@@ -68,7 +75,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "BR",
@@ -79,7 +86,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "SOUTH_AMERICA"
+    zone: "SOUTH_AMERICA",
   },
   {
     code: "CA",
@@ -90,7 +97,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "NORTH_AMERICA"
+    zone: "NORTH_AMERICA",
   },
   {
     code: "CH",
@@ -101,7 +108,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "CI",
@@ -112,7 +119,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "extended_network",
     canOnboardSellers: false,
-    zone: "AFRICA"
+    zone: "AFRICA",
   },
   {
     code: "CY",
@@ -123,7 +130,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "CZ",
@@ -134,7 +141,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "DE",
@@ -145,7 +152,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "DK",
@@ -156,7 +163,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "EE",
@@ -167,7 +174,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "ES",
@@ -178,7 +185,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "FI",
@@ -189,7 +196,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "FR",
@@ -200,7 +207,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "GB",
@@ -211,7 +218,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "NI",
@@ -222,7 +229,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false, // Technically not EU but requires EU compliance due to Protocol
     status: "supported",
     canOnboardSellers: false, // Use GB for onboarding
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "GH",
@@ -233,7 +240,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "extended_network",
     canOnboardSellers: false,
-    zone: "AFRICA"
+    zone: "AFRICA",
   },
   {
     code: "GI",
@@ -244,7 +251,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: false,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "GR",
@@ -255,7 +262,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "HK",
@@ -266,7 +273,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "HR",
@@ -277,7 +284,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "HU",
@@ -288,7 +295,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "ID",
@@ -299,7 +306,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "preview",
     canOnboardSellers: false,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "IE",
@@ -310,7 +317,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "IN",
@@ -321,7 +328,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "preview",
     canOnboardSellers: false,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "IT",
@@ -332,7 +339,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "JP",
@@ -343,7 +350,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "KE",
@@ -354,7 +361,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "extended_network",
     canOnboardSellers: false,
-    zone: "AFRICA"
+    zone: "AFRICA",
   },
   {
     code: "LI",
@@ -365,7 +372,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: false,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "LT",
@@ -376,7 +383,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "LU",
@@ -387,7 +394,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "LV",
@@ -398,7 +405,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "MT",
@@ -409,7 +416,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "MX",
@@ -420,7 +427,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "NORTH_AMERICA"
+    zone: "NORTH_AMERICA",
   },
   {
     code: "MY",
@@ -431,7 +438,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: false,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "NG",
@@ -442,7 +449,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "extended_network",
     canOnboardSellers: false,
-    zone: "AFRICA"
+    zone: "AFRICA",
   },
   {
     code: "NL",
@@ -453,7 +460,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "NO",
@@ -464,7 +471,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "NZ",
@@ -475,7 +482,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "OCEANIA"
+    zone: "OCEANIA",
   },
   {
     code: "PL",
@@ -486,7 +493,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "PT",
@@ -497,7 +504,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "RO",
@@ -508,7 +515,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "SE",
@@ -519,7 +526,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "SG",
@@ -530,7 +537,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "SI",
@@ -541,7 +548,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "SK",
@@ -552,7 +559,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: true,
     status: "supported",
     canOnboardSellers: true,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
   {
     code: "TH",
@@ -563,7 +570,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "ASIA"
+    zone: "ASIA",
   },
   {
     code: "US",
@@ -574,7 +581,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "supported",
     canOnboardSellers: true,
-    zone: "NORTH_AMERICA"
+    zone: "NORTH_AMERICA",
   },
   {
     code: "ZA",
@@ -585,7 +592,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false,
     status: "extended_network",
     canOnboardSellers: false,
-    zone: "AFRICA"
+    zone: "AFRICA",
   },
   {
     code: "NIR",
@@ -596,76 +603,89 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     isEU: false, // Not EU but requires EU compliance
     status: "supported",
     canOnboardSellers: false,
-    zone: "EUROPE"
+    zone: "EUROPE",
   },
 ];
 
 // Helper function to get country by code
 export const getCountryByCode = (code: string): Country | undefined => {
-  return SUPPORTED_COUNTRIES.find(country => country.code === code);
+  return SUPPORTED_COUNTRIES.find((country) => country.code === code);
 };
 
 // Helper function to get country by name
 export const getCountryByName = (name: string): Country | undefined => {
-  return SUPPORTED_COUNTRIES.find(country => country.name === name);
+  return SUPPORTED_COUNTRIES.find((country) => country.name === name);
 };
 
 // Helper function to get EU countries
 export const getEUCountries = (): Country[] => {
-  return SUPPORTED_COUNTRIES.filter(country => country.isEU);
+  return SUPPORTED_COUNTRIES.filter((country) => country.isEU);
 };
 
 // Helper function to get non-EU countries
 export const getNonEUCountries = (): Country[] => {
-  return SUPPORTED_COUNTRIES.filter(country => !country.isEU);
+  return SUPPORTED_COUNTRIES.filter((country) => !country.isEU);
 };
 
 // Helper function to get countries by status
 export const getCountriesByStatus = (status: CountryStatus): Country[] => {
-  return SUPPORTED_COUNTRIES.filter(country => country.status === status);
+  return SUPPORTED_COUNTRIES.filter((country) => country.status === status);
 };
 
 // Helper function to get fully supported countries (excluding extended network and preview)
 export const getFullySupportedCountries = (): Country[] => {
-  return SUPPORTED_COUNTRIES.filter(country => country.status === "supported");
+  return SUPPORTED_COUNTRIES.filter(
+    (country) => country.status === "supported"
+  );
 };
 
 // Helper function to get countries that can onboard sellers
 export const getOnboardingCountries = (): Country[] => {
-  return SUPPORTED_COUNTRIES.filter(country => country.canOnboardSellers);
+  return SUPPORTED_COUNTRIES.filter((country) => country.canOnboardSellers);
 };
 
 // Helper function to get countries grouped by zone
 export const getCountriesByZone = () => {
-  const groupedCountries = SUPPORTED_COUNTRIES.reduce((acc, country) => {
-    if (!acc[country.zone]) {
-      acc[country.zone] = [];
-    }
-    acc[country.zone].push(country);
-    return acc;
-  }, {} as Record<string, Country[]>);
-
-  return Object.entries(groupedCountries).map(([zone, countries]) => ({
-    zone,
-    name: SHIPPING_ZONES.find((z: { id: string; name: string }) => z.id === zone)?.name || zone,
-    countries: countries.sort((a, b) => a.name.localeCompare(b.name))
-  }));
-};
-
-// Helper function to get countries grouped by zone for onboarding
-export const getOnboardingCountriesByZone = () => {
-  const groupedCountries = SUPPORTED_COUNTRIES.filter(country => country.canOnboardSellers)
-    .reduce((acc, country) => {
+  const groupedCountries = SUPPORTED_COUNTRIES.reduce(
+    (acc, country) => {
       if (!acc[country.zone]) {
         acc[country.zone] = [];
       }
       acc[country.zone].push(country);
       return acc;
-    }, {} as Record<string, Country[]>);
+    },
+    {} as Record<string, Country[]>
+  );
 
   return Object.entries(groupedCountries).map(([zone, countries]) => ({
     zone,
-    name: SHIPPING_ZONES.find((z: { id: string; name: string }) => z.id === zone)?.name || zone,
-    countries: countries.sort((a, b) => a.name.localeCompare(b.name))
+    name:
+      SHIPPING_ZONES.find((z: { id: string; name: string }) => z.id === zone)
+        ?.name || zone,
+    countries: countries.sort((a, b) => a.name.localeCompare(b.name)),
   }));
-}; 
+};
+
+// Helper function to get countries grouped by zone for onboarding
+export const getOnboardingCountriesByZone = () => {
+  const groupedCountries = SUPPORTED_COUNTRIES.filter(
+    (country) => country.canOnboardSellers
+  ).reduce(
+    (acc, country) => {
+      if (!acc[country.zone]) {
+        acc[country.zone] = [];
+      }
+      acc[country.zone].push(country);
+      return acc;
+    },
+    {} as Record<string, Country[]>
+  );
+
+  return Object.entries(groupedCountries).map(([zone, countries]) => ({
+    zone,
+    name:
+      SHIPPING_ZONES.find((z: { id: string; name: string }) => z.id === zone)
+        ?.name || zone,
+    countries: countries.sort((a, b) => a.name.localeCompare(b.name)),
+  }));
+};
