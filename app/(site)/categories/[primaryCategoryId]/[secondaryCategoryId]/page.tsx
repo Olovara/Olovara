@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { CategoriesMap } from "@/data/categories";
+import { Categories, getTertiaryCategories } from "@/data/categories";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Filters } from "@/components/filters";
@@ -19,10 +19,10 @@ interface CategoryPageProps {
 export async function generateMetadata({
   params,
 }: CategoryPageProps): Promise<Metadata> {
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (c) => c.id === params.primaryCategoryId
   );
-  const secondaryCategory = CategoriesMap.SECONDARY.find(
+  const secondaryCategory = primaryCategory?.children.find(
     (c) => c.id === params.secondaryCategoryId
   );
 
@@ -56,10 +56,10 @@ export default async function SecondaryCategoryPage({
 
   const { primaryCategoryId, secondaryCategoryId } = params;
 
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (c) => c.id.toLowerCase() === primaryCategoryId.toLowerCase()
   );
-  const secondaryCategory = CategoriesMap.SECONDARY.find(
+  const secondaryCategory = primaryCategory?.children.find(
     (c) => c.id.toLowerCase() === secondaryCategoryId.toLowerCase()
   );
 
@@ -144,13 +144,15 @@ export default async function SecondaryCategoryPage({
           <div className="w-full md:w-1/4">
             {/* Tertiary Categories Sidebar */}
             {(() => {
-              const tertiaryCategories = CategoriesMap.getTertiaryCategories(secondaryCategoryId);
+              const tertiaryCategories = getTertiaryCategories(secondaryCategoryId);
               return tertiaryCategories.length > 0 ? (
                 <div className="mb-6">
                   <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
                   <ul className="space-y-2">
                     {tertiaryCategories.map((tertiaryId) => {
-                      const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                      const tertiaryCategory = ("children" in secondaryCategory && secondaryCategory.children) 
+                        ? secondaryCategory.children.find(t => t.id === tertiaryId)
+                        : undefined;
                       return tertiaryCategory ? (
                         <li key={tertiaryId}>
                           <a

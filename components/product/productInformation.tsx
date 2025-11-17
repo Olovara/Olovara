@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { X, HelpCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { CategoriesMap } from "@/data/categories";
+import { Categories, getSecondaryCategories, getTertiaryCategories, SecondaryCategoryID } from "@/data/categories";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
@@ -151,18 +151,33 @@ export const ProductInfoSection = ({
 
   // Get secondary categories based on selected primary category
   const availableSecondaryCategories = selectedPrimaryCategory
-    ? CategoriesMap.SECONDARY.filter((category) =>
-        CategoriesMap.MAPPING[
-          selectedPrimaryCategory as keyof typeof CategoriesMap.MAPPING
-        ]?.includes(category.id)
-      )
+    ? (() => {
+        const primary = Categories.find((cat) => cat.id === selectedPrimaryCategory);
+        return primary ? primary.children.map((child) => ({ id: child.id, name: child.name })) : [];
+      })()
     : [];
 
   // Get tertiary categories based on selected secondary category
   const availableTertiaryCategories = selectedSecondaryCategory
-    ? CategoriesMap.TERTIARY.filter(
-        (category) => category.secondaryCategoryId === selectedSecondaryCategory
-      )
+    ? (() => {
+        const tertiaryIds = getTertiaryCategories(selectedSecondaryCategory as SecondaryCategoryID);
+        const result: { id: string; name: string }[] = [];
+        for (const id of tertiaryIds) {
+          // Find the tertiary category by searching the tree
+          for (const primary of Categories) {
+            for (const secondary of primary.children) {
+              if ("children" in secondary && secondary.children) {
+                const tertiary = secondary.children.find((t) => t.id === id);
+                if (tertiary) {
+                  result.push({ id: tertiary.id, name: tertiary.name });
+                  break;
+                }
+              }
+            }
+          }
+        }
+        return result;
+      })()
     : [];
 
   // Add tag
@@ -552,7 +567,7 @@ export const ProductInfoSection = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {CategoriesMap.PRIMARY.map((category) => (
+                {Categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>

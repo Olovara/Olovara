@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CategoriesMap } from "@/data/categories";
+import { Categories, getTertiaryCategories } from "@/data/categories";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FONTS } from "@/lib/fonts";
 
 export function NavbarLinks() {
   const location = usePathname();
-  const primaryCategories = CategoriesMap.PRIMARY;
+  const primaryCategories = Categories;
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [lastOpenedCategory, setLastOpenedCategory] = useState<string | null>(
     null
@@ -52,9 +52,7 @@ export function NavbarLinks() {
           }}
         >
           {primaryCategories.map((category) => {
-            const secondaryCategories = CategoriesMap.SECONDARY.filter(
-              (sec) => sec.primaryCategoryId === category.id
-            );
+            const secondaryCategories = category.children;
 
             return (
               <div
@@ -113,19 +111,15 @@ export function NavbarLinks() {
           >
             <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
               {(() => {
-                const category = CategoriesMap.PRIMARY.find(
+                const category = Categories.find(
                   (c) => c.id === activeCategory
                 );
-                const secondaryCategories = CategoriesMap.SECONDARY.filter(
-                  (sec) => sec.primaryCategoryId === activeCategory
-                );
+                const secondaryCategories = category?.children || [];
 
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     {secondaryCategories.map((secondary) => {
-                      const tertiaryCategories = CategoriesMap.TERTIARY.filter(
-                        (ter) => ter.secondaryCategoryId === secondary.id
-                      );
+                      const tertiaryCategories = ("children" in secondary && secondary.children) ? secondary.children : [];
 
                       return (
                         <div key={secondary.id} className="space-y-3">
@@ -164,7 +158,7 @@ export function NavbarLinks() {
                   className="inline-flex items-center text-primary hover:underline font-medium"
                 >
                   View all{" "}
-                  {CategoriesMap.PRIMARY.find(
+                  {Categories.find(
                     (c) => c.id === activeCategory
                   )?.name.toUpperCase()}
                   <svg

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { CategoriesMap } from "@/data/categories";
+import { Categories } from "@/data/categories";
 
 interface MobileMenuProps {
   userInfo?: {
@@ -55,14 +55,21 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
     }
   };
 
-  const getCurrentPrimary = () => CategoriesMap.PRIMARY.find(c => c.id === selectedPrimary);
-  const getCurrentSecondary = () => CategoriesMap.SECONDARY.find(s => s.id === selectedSecondary);
+  const getCurrentPrimary = () => Categories.find(c => c.id === selectedPrimary);
+  const getCurrentSecondary = () => {
+    if (!selectedSecondary) return null;
+    for (const primary of Categories) {
+      const secondary = primary.children.find(s => s.id === selectedSecondary);
+      if (secondary) return secondary;
+    }
+    return null;
+  };
 
   const renderMainView = () => (
     <div className="space-y-4">
       <h3 className="font-semibold text-lg text-gray-900">Categories</h3>
       <div className="space-y-2">
-        {CategoriesMap.PRIMARY.map((category) => (
+        {Categories.map((category) => (
           <button
             key={category.id}
             onClick={() => handlePrimaryClick(category.id)}
@@ -78,9 +85,7 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
 
   const renderSecondaryView = () => {
     const primary = getCurrentPrimary();
-    const secondaryCategories = CategoriesMap.SECONDARY.filter(
-      sec => sec.primaryCategoryId === selectedPrimary
-    );
+    const secondaryCategories = primary?.children || [];
 
     return (
       <div className="space-y-4">
@@ -95,9 +100,7 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
         
         <div className="space-y-2">
           {secondaryCategories.map((secondary) => {
-            const tertiaryCategories = CategoriesMap.TERTIARY.filter(
-              ter => ter.secondaryCategoryId === secondary.id
-            );
+            const tertiaryCategories = ("children" in secondary && secondary.children) ? secondary.children : [];
             
             return (
               <button
@@ -130,9 +133,7 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
   const renderTertiaryView = () => {
     const primary = getCurrentPrimary();
     const secondary = getCurrentSecondary();
-    const tertiaryCategories = CategoriesMap.TERTIARY.filter(
-      ter => ter.secondaryCategoryId === selectedSecondary
-    );
+    const tertiaryCategories = (secondary && "children" in secondary && secondary.children) ? secondary.children : [];
 
     return (
       <div className="space-y-4">

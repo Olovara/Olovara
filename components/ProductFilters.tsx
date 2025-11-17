@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { CategoriesMap } from "@/data/categories";
+import { Categories, PrimaryCategoryID, SecondaryCategoryID, TertiaryCategoryID, getSecondaryCategories, getTertiaryCategories } from "@/data/categories";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -40,9 +40,7 @@ const values = [
   },
 ];
 
-type PrimaryCategoryID = (typeof CategoriesMap.PRIMARY)[number]["id"];
-type SecondaryCategoryID = (typeof CategoriesMap.SECONDARY)[number]["id"];
-type TertiaryCategoryID = (typeof CategoriesMap.TERTIARY)[number]["id"];
+// Types are now imported from categories.ts
 
 export function ProductFilters() {
   const router = useRouter();
@@ -164,7 +162,7 @@ export function ProductFilters() {
     
     if (level === 'primary') {
       // For primary categories, we need to handle both the primary and its subcategories
-      const subcategories = CategoriesMap.MAPPING[categoryId as PrimaryCategoryID];
+      const subcategories = getSecondaryCategories(categoryId as PrimaryCategoryID);
       const newCategories = new Set(selectedCategories);
       
       if (newCategories.has(categoryId)) {
@@ -248,7 +246,7 @@ export function ProductFilters() {
       <div>
         <h3 className="text-lg font-semibold mb-4">Categories</h3>
         <div className="space-y-0 divide-y divide-border">
-          {CategoriesMap.PRIMARY.map((primaryCategory) => (
+          {Categories.map((primaryCategory) => (
             <Collapsible
               key={primaryCategory.id}
               open={openCategories.has(primaryCategory.id)}
@@ -277,10 +275,8 @@ export function ProductFilters() {
               </div>
               <CollapsibleContent className="pl-6">
                 <div className="space-y-0 divide-y divide-border mt-4">
-                  {CategoriesMap.SECONDARY.filter(
-                    (sub) => sub.primaryCategoryId === primaryCategory.id
-                  ).map((subcategory) => {
-                    const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                  {primaryCategory.children.map((subcategory) => {
+                    const tertiaryCategories = getTertiaryCategories(subcategory.id);
                     return (
                       <div key={subcategory.id} className="py-2">
                         <Collapsible
@@ -314,7 +310,10 @@ export function ProductFilters() {
                             <CollapsibleContent className="pl-6">
                               <div className="space-y-2 mt-2 pt-2 border-t border-border ml-4">
                                 {tertiaryCategories.map((tertiaryId) => {
-                                  const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                                  // Find tertiary category in tree
+                                  const tertiaryCategory = ("children" in subcategory && subcategory.children) 
+                                    ? subcategory.children.find(t => t.id === tertiaryId)
+                                    : undefined;
                                   return tertiaryCategory ? (
                                     <div key={tertiaryId} className="flex items-center space-x-2">
                                       <Checkbox

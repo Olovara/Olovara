@@ -1,3 +1,392 @@
+// Type definitions for the hierarchical category structure
+export interface TertiaryCategoryNode {
+  id: string;
+  name: string;
+}
+
+export interface SecondaryCategoryNode {
+  id: string;
+  name: string;
+  children?: TertiaryCategoryNode[];
+}
+
+export interface PrimaryCategoryNode {
+  id: string;
+  name: string;
+  children: SecondaryCategoryNode[];
+}
+
+// The single source of truth - hierarchical category tree
+export const Categories = [
+  {
+    id: "ART",
+    name: "Art & Collectibles",
+    children: [
+      {
+        id: "PAINTINGS",
+        name: "Paintings",
+        children: [
+          { id: "ACRYLIC", name: "Acrylic" },
+          { id: "OIL", name: "Oil" },
+          { id: "GOUACHE", name: "Gouache" },
+          { id: "INK", name: "Ink" },
+          { id: "SPRAY_PAINT", name: "Spray Paint" },
+        ],
+      },
+      {
+        id: "PRINTS",
+        name: "Prints",
+        children: [
+          { id: "WOOD_AND_LINOCUT", name: "Wood and Linocut" },
+          { id: "DIGITAL_ART", name: "Digital Art" },
+          { id: "GICLEE", name: "Giclee" },
+          { id: "SCREENPRINTS", name: "Screenprints" },
+          { id: "LETTERPRESS", name: "Letterpress" },
+        ],
+      },
+      {
+        id: "PHOTOGRAPHY",
+        name: "Photography",
+      },
+      {
+        id: "SCULPTURES",
+        name: "Sculptures",
+        children: [
+          { id: "CERAMIC", name: "Ceramic" },
+          { id: "GLASS", name: "Glass" },
+          { id: "METAL", name: "Metal" },
+          { id: "WOOD", name: "Wood" },
+        ],
+      },
+      {
+        id: "COLLECTIBLES",
+        name: "Collectibles",
+      },
+    ],
+  },
+  {
+    id: "BATH",
+    name: "Bath & Beauty",
+    children: [
+      {
+        id: "SOAP",
+        name: "Soaps and Washes",
+        children: [
+          { id: "BAR_SOAP", name: "Bar Soap" },
+          { id: "LIQUID_SOAP", name: "Liquid Soap" },
+          { id: "BATH_BOMBS", name: "Bath Bombs" },
+          { id: "SHOWER_GELS", name: "Shower Gels" },
+          { id: "BATH_SALTS_AND_SCRUBS", name: "Bath Salts and Scrubs" },
+          { id: "BATH_OILS", name: "Bath Oils" },
+        ],
+      },
+      {
+        id: "SKIN",
+        name: "Skin Care",
+        children: [
+          { id: "FACIAL_CARE", name: "Facial Care" },
+          { id: "MOISTURIZERS", name: "Moisturizers" },
+          { id: "BALMS_AND_SALVES", name: "Balms and Salves" },
+          { id: "EXFOLIATION", name: "Exfoliation" },
+          { id: "EYE_TREATMENTS", name: "Eye Treatments" },
+        ],
+      },
+      {
+        id: "SPA",
+        name: "Spa and Relaxation",
+        children: [
+          { id: "AROMATHERAPY", name: "Aromatherapy" },
+          { id: "HEAT_AND_COLD_PACKS", name: "Heat and Cold Packs" },
+          { id: "MASSAGE", name: "Massage" },
+          { id: "ESSENTIAL_OILS", name: "Essential Oils" },
+          { id: "SPA_KITS", name: "Spa Kits" },
+        ],
+      },
+      {
+        id: "COSMETICS",
+        name: "Cosmetics",
+        children: [
+          { id: "EYES", name: "Eyes" },
+          { id: "LIPS", name: "Lips" },
+          { id: "FACE", name: "Face" },
+          { id: "NAILS_AND_NAIL_CARE", name: "Nails and Nail Care" },
+          { id: "MAKEUP_TOOLS_BRUSHES", name: "Makeup Tools and Brushes" },
+        ],
+      },
+      {
+        id: "HAIR",
+        name: "Hair Care",
+        children: [
+          { id: "SHAMPOOS", name: "Shampoos" },
+          {
+            id: "CONDITIONERS_AND_TREATMENTS",
+            name: "Conditioners and Treatments",
+          },
+          { id: "BRUSHES_AND_COMBS", name: "Brushes and Combs" },
+          { id: "WAXES_AND_GELS", name: "Waxes and Gels" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "BOOKS",
+    name: "Books & Media",
+    children: [
+      {
+        id: "COMICS",
+        name: "Books and Comics",
+      },
+      {
+        id: "AUDIO",
+        name: "Music and Audio",
+      },
+    ],
+  },
+  {
+    id: "CLOTHING",
+    name: "Clothing & Accessories",
+    children: [
+      {
+        id: "TOPS",
+        name: "Tops",
+      },
+      {
+        id: "BOTTOMS",
+        name: "Bottoms",
+      },
+      {
+        id: "DRESSES",
+        name: "Dresses",
+      },
+      {
+        id: "ACCESSORIES",
+        name: "Accessories",
+      },
+      {
+        id: "WOMENS",
+        name: "Women's",
+      },
+      {
+        id: "MENS",
+        name: "Men's",
+      },
+      {
+        id: "UNISEX",
+        name: "Unisex",
+      },
+      {
+        id: "BAGS",
+        name: "Bags and Purses",
+      },
+    ],
+  },
+  {
+    id: "CRAFT_SUPPLIES",
+    name: "Handmade Craft Supplies",
+    children: [
+      {
+        id: "YARN",
+        name: "Yarn",
+        children: [
+          { id: "COTTON_YARN", name: "Cotton Yarn" },
+          { id: "WOOL_YARN", name: "Wool Yarn" },
+          { id: "ACRYLIC_YARN", name: "Acrylic Yarn" },
+          { id: "MERINO_WOOL", name: "Merino Wool" },
+          { id: "BULKY_YARN", name: "Bulky Yarn" },
+          { id: "FINGERING_YARN", name: "Fingering Yarn" },
+          { id: "POLYESTER_YARN", name: "Polyester Yarn" },
+        ],
+      },
+      {
+        id: "FABRIC",
+        name: "Fabric",
+      },
+      {
+        id: "TOOLS",
+        name: "Tools & Equipment",
+      },
+      {
+        id: "BEADS",
+        name: "Beads & Jewelry Making",
+      },
+      {
+        id: "FIBER",
+        name: "Fiber and Sewing",
+      },
+      {
+        id: "PAPER",
+        name: "Paper Supplies",
+      },
+      {
+        id: "PAINT",
+        name: "Paint, Stain, and Dye",
+      },
+    ],
+  },
+  {
+    id: "HOME",
+    name: "Home & Living",
+    children: [
+      {
+        id: "DECOR",
+        name: "Home Decor",
+        children: [
+          { id: "WALL_ART", name: "Wall Art" },
+          { id: "CANDLES", name: "Candles" },
+          { id: "VASES", name: "Vases" },
+          { id: "THROW_PILLOWS", name: "Throw Pillows" },
+          { id: "RUGS", name: "Rugs" },
+        ],
+      },
+      {
+        id: "KITCHEN",
+        name: "Kitchen & Dining",
+        children: [
+          { id: "DRINKWARE", name: "Drinkware" },
+          { id: "TABLEWARE", name: "Tableware" },
+          { id: "COOKING_AND_BAKING", name: "Cooking and Baking" },
+          { id: "TRAYS_AND_PLATTERS", name: "Trays and Platters" },
+          { id: "CUTTING_BOARDS", name: "Cutting Boards" },
+        ],
+      },
+      {
+        id: "FURNITURE",
+        name: "Furniture",
+        children: [
+          { id: "CHAIRS", name: "Chairs" },
+          { id: "TABLES", name: "Tables" },
+          { id: "STOOLS", name: "Stools" },
+          { id: "DESKS", name: "Desks" },
+          { id: "BENCHES", name: "Benches" },
+        ],
+      },
+      {
+        id: "GARDEN",
+        name: "Garden & Outdoor",
+      },
+      {
+        id: "WALLDECOR",
+        name: "Wall Decor",
+      },
+      {
+        id: "KIDS",
+        name: "Baby and Kids",
+      },
+      {
+        id: "PETS",
+        name: "Pets",
+      },
+      {
+        id: "CHILD",
+        name: "Kids and Baby",
+      },
+    ],
+  },
+  {
+    id: "JEWELRY",
+    name: "Jewelry",
+    children: [
+      {
+        id: "NECKLACES",
+        name: "Necklaces",
+        children: [
+          { id: "CHOKERS", name: "Chokers" },
+          { id: "BEADED_NECKLACES", name: "Beaded Necklaces" },
+          { id: "PENDANT_NECKLACES", name: "Pendant Necklaces" },
+          { id: "LAYERED_NECKLACES", name: "Layered Necklaces" },
+          { id: "STATEMENT_NECKLACES", name: "Statement Necklaces" },
+        ],
+      },
+      {
+        id: "RINGS",
+        name: "Rings",
+        children: [
+          { id: "ENGAGEMENT_RINGS", name: "Engagement Rings" },
+          { id: "WEDDING_RINGS", name: "Wedding Rings" },
+          { id: "STACKING_RINGS", name: "Stacking Rings" },
+          { id: "COCKTAIL_RINGS", name: "Cocktail Rings" },
+        ],
+      },
+      {
+        id: "EARRINGS",
+        name: "Earrings",
+        children: [
+          { id: "STUDS", name: "Studs" },
+          { id: "HOOPS", name: "Hoops" },
+          { id: "DANGLES", name: "Dangles" },
+          { id: "CHANDELIER", name: "Chandelier" },
+        ],
+      },
+      {
+        id: "BRACELETS",
+        name: "Bracelets",
+        children: [
+          { id: "BEADED", name: "Beaded" },
+          { id: "BANGLES", name: "Bangles" },
+          { id: "CUFF", name: "Cuff" },
+          { id: "CHARM", name: "Charm" },
+          { id: "CHAIN_AND_LINK", name: "Chain and Link" },
+        ],
+      },
+      {
+        id: "PINS",
+        name: "Pins and Brooches",
+        children: [
+          { id: "ENAMEL_PINS", name: "Enamel Pins" },
+          { id: "NOVELTY_PINS", name: "Novelty Pins" },
+          { id: "BROOCHES", name: "Brooches" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "TOYS",
+    name: "Toys & Games",
+    children: [
+      {
+        id: "TODDLER",
+        name: "Baby and Toddler Toys",
+      },
+      {
+        id: "KID",
+        name: "Big Kid Toys",
+      },
+      {
+        id: "GAMES",
+        name: "Games and Puzzles",
+      },
+      {
+        id: "STUFFED",
+        name: "Stuffed Animals, Dolls, and Plushies",
+        children: [
+          { id: "TEDDY_BEARS", name: "Teddy Bears" },
+          { id: "ANIMALS", name: "Animals" },
+          { id: "DOLLS", name: "Dolls" },
+          { id: "PLUSHIES", name: "Plushies" },
+        ],
+      },
+      {
+        id: "SENSORY",
+        name: "Sensory Toys",
+      },
+    ],
+  },
+] as const;
+
+// Extract types from the hierarchical structure
+export type PrimaryCategoryID = (typeof Categories)[number]["id"];
+export type SecondaryCategoryID =
+  (typeof Categories)[number]["children"][number]["id"];
+export type TertiaryCategoryID =
+  (typeof Categories)[number]["children"][number] extends {
+    children: readonly (infer T)[];
+  }
+    ? T extends { id: infer ID }
+      ? ID
+      : never
+    : never;
+
+// Legacy interfaces (kept for type compatibility if needed elsewhere)
 export interface PrimaryCategory {
   id: string;
   name: string;
@@ -9,249 +398,97 @@ export interface SecondaryCategory {
   primaryCategoryId: string;
 }
 
-export const PrimaryCategories = [
-  { id: "ART", name: "Art & Collectibles" },
-  { id: "BATH", name: "Bath & Beauty" },
-  { id: "BOOKS", name: "Books & Media" },
-  { id: "CLOTHING", name: "Clothing & Accessories" },
-  { id: "CRAFT_SUPPLIES", name: "Handmade Craft Supplies" },
-  { id: "HOME", name: "Home & Living" },
-  { id: "JEWELRY", name: "Jewelry" },
-  { id: "TOYS", name: "Toys & Games" },
-] as const;
-
-export const SecondaryCategories = [
-  { id: "NECKLACES", name: "Necklaces", primaryCategoryId: "JEWELRY" },
-  { id: "RINGS", name: "Rings", primaryCategoryId: "JEWELRY" },
-  { id: "EARRINGS", name: "Earrings", primaryCategoryId: "JEWELRY" },
-  { id: "BRACELETS", name: "Bracelets", primaryCategoryId: "JEWELRY" },
-  { id: "TOPS", name: "Tops", primaryCategoryId: "CLOTHING" },
-  { id: "BOTTOMS", name: "Bottoms", primaryCategoryId: "CLOTHING" },
-  { id: "DRESSES", name: "Dresses", primaryCategoryId: "CLOTHING" },
-  { id: "ACCESSORIES", name: "Accessories", primaryCategoryId: "CLOTHING" },
-  { id: "DECOR", name: "Home Decor", primaryCategoryId: "HOME" },
-  { id: "KITCHEN", name: "Kitchen & Dining", primaryCategoryId: "HOME" },
-  { id: "FURNITURE", name: "Furniture", primaryCategoryId: "HOME" },
-  { id: "GARDEN", name: "Garden & Outdoor", primaryCategoryId: "HOME" },
-  { id: "PAINTINGS", name: "Paintings", primaryCategoryId: "ART" },
-  { id: "PRINTS", name: "Prints", primaryCategoryId: "ART" },
-  { id: "PHOTOGRAPHY", name: "Photography", primaryCategoryId: "ART" },
-  { id: "SCULPTURES", name: "Sculptures", primaryCategoryId: "ART" },
-  { id: "COLLECTIBLES", name: "Collectibles", primaryCategoryId: "ART" },
-  { id: "YARN", name: "Yarn", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "FABRIC", name: "Fabric", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "TOOLS", name: "Tools & Equipment", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "BEADS", name: "Beads & Jewelry Making", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "PINS", name: "Pins and Brooches", primaryCategoryId: "JEWELRY" },
-  { id: "WALLDECOR", name: "Wall Decor", primaryCategoryId: "HOME" },
-  { id: "KIDS", name: "Baby and Kids", primaryCategoryId: "HOME" },
-  { id: "PETS", name: "Pets", primaryCategoryId: "HOME" },
-  { id: "SOAP", name: "Soaps and Washes", primaryCategoryId: "BATH" },
-  { id: "SKIN", name: "Skin Care", primaryCategoryId: "BATH" },
-  { id: "SPA", name: "Spa and Relaxation", primaryCategoryId: "BATH" },
-  { id: "COSMETICS", name: "Cosmetics", primaryCategoryId: "BATH" },
-  { id: "HAIR", name: "Hair Care", primaryCategoryId: "BATH" },
-  { id: "PAINT", name: "Paint, Stain, and Dye", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "TODDLER", name: "Baby and Toddler Toys", primaryCategoryId: "TOYS" },
-  { id: "KID", name: "Big Kid Toys", primaryCategoryId: "TOYS" },
-  { id: "GAMES", name: "Games and Puzzles", primaryCategoryId: "TOYS" },
-  { id: "STUFFED", name: "Stuffed Animals, Dolls, and Plushies", primaryCategoryId: "TOYS" },
-  { id: "SENSORY", name: "Sensory Toys", primaryCategoryId: "TOYS" },
-  { id: "WOMENS", name: "Women's", primaryCategoryId: "CLOTHING" },
-  { id: "MENS", name: "Men's", primaryCategoryId: "CLOTHING" },
-  { id: "UNISEX", name: "Unisex", primaryCategoryId: "CLOTHING" },
-  { id: "CHILD", name: "Kids and Baby", primaryCategoryId: "HOME" },
-  { id: "BAGS", name: "Bags and Purses", primaryCategoryId: "CLOTHING" },
-  { id: "COMICS", name: "Books and Comics", primaryCategoryId: "BOOKS" },
-  { id: "AUDIO", name: "Music and Audio", primaryCategoryId: "BOOKS" },
-  { id: "FIBER", name: "Fiber and Sewing", primaryCategoryId: "CRAFT_SUPPLIES" },
-  { id: "PAPER", name: "Paper Supplies", primaryCategoryId: "CRAFT_SUPPLIES" },
-] as const;
-
-export const TertiaryCategories = [
-  // Jewelry - Necklaces
-  { id: "CHOKERS", name: "Chokers", secondaryCategoryId: "NECKLACES" },
-  { id: "BEADED_NECKLACES", name: "Beaded Necklaces", secondaryCategoryId: "NECKLACES" },
-  { id: "PENDANT_NECKLACES", name: "Pendant Necklaces", secondaryCategoryId: "NECKLACES" },
-  { id: "LAYERED_NECKLACES", name: "Layered Necklaces", secondaryCategoryId: "NECKLACES" },
-  { id: "STATEMENT_NECKLACES", name: "Statement Necklaces", secondaryCategoryId: "NECKLACES" },
-  
-  // Jewelry - Rings
-  { id: "ENGAGEMENT_RINGS", name: "Engagement Rings", secondaryCategoryId: "RINGS" },
-  { id: "WEDDING_RINGS", name: "Wedding Rings", secondaryCategoryId: "RINGS" },
-  { id: "STACKING_RINGS", name: "Stacking Rings", secondaryCategoryId: "RINGS" },
-  { id: "COCKTAIL_RINGS", name: "Cocktail Rings", secondaryCategoryId: "RINGS" },
-  
-  // Jewelry - Earrings
-  { id: "STUDS", name: "Studs", secondaryCategoryId: "EARRINGS" },
-  { id: "HOOPS", name: "Hoops", secondaryCategoryId: "EARRINGS" },
-  { id: "DANGLES", name: "Dangles", secondaryCategoryId: "EARRINGS" },
-  { id: "CHANDELIER", name: "Chandelier", secondaryCategoryId: "EARRINGS" },
-
-  // Jewelry - Bracelets
-  { id: "BEADED", name: "Beaded", secondaryCategoryId: "BRACELETS" },
-  { id: "BANGLES", name: "Bangles", secondaryCategoryId: "BRACELETS" },
-  { id: "CUFF", name: "Cuff", secondaryCategoryId: "BRACELETS" },
-  { id: "CHARM", name: "Charm", secondaryCategoryId: "BRACELETS" },
-  { id: "CHAIN_AND_LINK", name: "Chain and Link", secondaryCategoryId: "BRACELETS" },
-
-  // Jewelry - Pins and Brooches
-  { id: "ENAMEL_PINS", name: "Enamel Pins", secondaryCategoryId: "PINS" },
-  { id: "NOVELTY_PINS", name: "Novelty Pins", secondaryCategoryId: "PINS" },
-  { id: "BROOCHES", name: "Brooches", secondaryCategoryId: "PINS" },
-  
-  // Craft Supplies - Yarn
-  { id: "COTTON_YARN", name: "Cotton Yarn", secondaryCategoryId: "YARN" },
-  { id: "WOOL_YARN", name: "Wool Yarn", secondaryCategoryId: "YARN" },
-  { id: "ACRYLIC_YARN", name: "Acrylic Yarn", secondaryCategoryId: "YARN" },
-  { id: "MERINO_WOOL", name: "Merino Wool", secondaryCategoryId: "YARN" },
-  { id: "BULKY_YARN", name: "Bulky Yarn", secondaryCategoryId: "YARN" },
-  { id: "FINGERING_YARN", name: "Fingering Yarn", secondaryCategoryId: "YARN" },
-  { id: "POLYESTER_YARN", name: "Polyester Yarn", secondaryCategoryId: "YARN" },
-  
-  // Home - Decor
-  { id: "WALL_ART", name: "Wall Art", secondaryCategoryId: "DECOR" },
-  { id: "CANDLES", name: "Candles", secondaryCategoryId: "DECOR" },
-  { id: "VASES", name: "Vases", secondaryCategoryId: "DECOR" },
-  { id: "THROW_PILLOWS", name: "Throw Pillows", secondaryCategoryId: "DECOR" },
-  { id: "RUGS", name: "Rugs", secondaryCategoryId: "DECOR" },
-
-  // Home - Kitchen and Dining
-  { id: "DRINKWARE", name: "Drinkware", secondaryCategoryId: "KITCHEN" },
-  { id: "TABLEWARE", name: "Tableware", secondaryCategoryId: "KITCHEN" },
-  { id: "COOKING_AND_BAKING", name: "Cooking and Baking", secondaryCategoryId: "KITCHEN" },
-  { id: "TRAYS_AND_PLATTERS", name: "Trays and Platters", secondaryCategoryId: "KITCHEN" },
-  { id: "CUTTING_BOARDS", name: "Cutting Boards", secondaryCategoryId: "KITCHEN" },
-
-  // Home - Furniture
-  { id: "CHAIRS", name: "Chairs", secondaryCategoryId: "FURNITURE" },
-  { id: "TABLES", name: "Tables", secondaryCategoryId: "FURNITURE" },
-  { id: "STOOLS", name: "Stools", secondaryCategoryId: "FURNITURE" },
-  { id: "DESKS", name: "Desks", secondaryCategoryId: "FURNITURE" },
-  { id: "BENCHES", name: "Benches", secondaryCategoryId: "FURNITURE" },
-
-  // Bath - Soap
-  { id: "BAR_SOAP", name: "Bar Soap", secondaryCategoryId: "SOAP" },
-  { id: "LIQUID_SOAP", name: "Liquid Soap", secondaryCategoryId: "SOAP" },
-  { id: "BATH_BOMBS", name: "Bath Bombs", secondaryCategoryId: "SOAP" },
-  { id: "SHOWER_GELS", name: "Shower Gels", secondaryCategoryId: "SOAP" },
-  { id: "BATH_SALTS_AND_SCRUBS", name: "Bath Salts and Scrubs", secondaryCategoryId: "SOAP" },
-  { id: "BATH_OILS", name: "Bath Oils", secondaryCategoryId: "SOAP" },
-  
-  // Bath - Skin Care
-  { id: "FACIAL_CARE", name: "Facial Care", secondaryCategoryId: "SKIN" },
-  { id: "MOISTURIZERS", name: "Moisturizers", secondaryCategoryId: "SKIN" },
-  { id: "BALMS_AND_SALVES", name: "Balms and Salves", secondaryCategoryId: "SKIN" },
-  { id: "EXFOLIATION", name: "Exfoliation", secondaryCategoryId: "SKIN" },
-  { id: "EYE_TREATMENTS", name: "Eye Treatments", secondaryCategoryId: "SKIN" },
-
-  // Bath - Spa and Relaxation
-  { id: "AROMATHERAPY", name: "Aromatherapy", secondaryCategoryId: "SPA" },
-  { id: "HEAT_AND_COLD_PACKS", name: "Heat and Cold Packs", secondaryCategoryId: "SPA" },
-  { id: "MASSAGE", name: "Massage", secondaryCategoryId: "SPA" },
-  { id: "ESSENTIAL_OILS", name: "Essential Oils", secondaryCategoryId: "SPA" },
-  { id: "SPA_KITS", name: "Spa Kits", secondaryCategoryId: "SPA" },
-
-  // Bath - Cosmetics
-  { id: "EYES", name: "Eyes", secondaryCategoryId: "COSMETICS" },
-  { id: "LIPS", name: "Lips", secondaryCategoryId: "COSMETICS" },
-  { id: "FACE", name: "Face", secondaryCategoryId: "COSMETICS" },
-  { id: "NAILS_AND_NAIL_CARE", name: "Nails and Nail Care", secondaryCategoryId: "COSMETICS" },
-  { id: "MAKEUP_TOOLS_BRUSHES", name: "Makeup Tools and Brushes", secondaryCategoryId: "COSMETICS" },
-
-  // Bath - Hair Care
-  { id: "SHAMPOOS", name: "Shampoos", secondaryCategoryId: "HAIR" },
-  { id: "CONDITIONERS_AND_TREATMENTS", name: "Conditioners and Treatments", secondaryCategoryId: "HAIR" },
-  { id: "BRUSHES_AND_COMBS", name: "Brushes and Combs", secondaryCategoryId: "HAIR" },
-  { id: "WAXES_AND_GELS", name: "Waxes and Gels", secondaryCategoryId: "HAIR" },
-  
-  // Toys - Stuffed Animals
-  { id: "TEDDY_BEARS", name: "Teddy Bears", secondaryCategoryId: "STUFFED" },
-  { id: "ANIMALS", name: "Animals", secondaryCategoryId: "STUFFED" },
-  { id: "DOLLS", name: "Dolls", secondaryCategoryId: "STUFFED" },
-  { id: "PLUSHIES", name: "Plushies", secondaryCategoryId: "STUFFED" },
-
-  // Art - Prints
-  { id: "WOOD_AND_LINOCUT", name: "Wood and Linocut", secondaryCategoryId: "PRINTS" },
-  { id: "DIGITAL_ART", name: "Digital Art", secondaryCategoryId: "PRINTS" },
-  { id: "GICLEE", name: "Giclee", secondaryCategoryId: "PRINTS" },
-  { id: "SCREENPRINTS", name: "Screenprints", secondaryCategoryId: "PRINTS" },
-  { id: "LETTERPRESS", name: "Letterpress", secondaryCategoryId: "PRINTS" },
-
-  // Art - Painting
-  { id: "ACRYLIC", name: "Acrylic", secondaryCategoryId: "PAINTINGS" },
-  { id: "OIL", name: "Oil", secondaryCategoryId: "PAINTINGS" },
-  { id: "GOUACHE", name: "Gouache", secondaryCategoryId: "PAINTINGS" },
-  { id: "INK", name: "Ink", secondaryCategoryId: "PAINTINGS" },
-  { id: "SPRAY_PAINT", name: "Spray Paint", secondaryCategoryId: "PAINTINGS" },
-
-  // Art - Sculptures
-  { id: "CERAMIC", name: "Ceramic", secondaryCategoryId: "SCULPTURES" },
-  { id: "GLASS", name: "Glass", secondaryCategoryId: "SCULPTURES" },
-  { id: "METAL", name: "Metal", secondaryCategoryId: "SCULPTURES" },
-  { id: "WOOD", name: "Wood", secondaryCategoryId: "SCULPTURES" },
-] as const;
-
-// Extract IDs for strict typing
-type PrimaryCategoryID = (typeof PrimaryCategories)[number]["id"];
-type SecondaryCategoryID = (typeof SecondaryCategories)[number]["id"];
-
-/**
- * Map Secondary Categories to Primary Categories
- */
-export const CategoryMapping: Record<PrimaryCategoryID, SecondaryCategoryID[]> = {
-  ART: ["PAINTINGS", "PRINTS", "PHOTOGRAPHY", "SCULPTURES", "COLLECTIBLES"],
-  BATH: ["SOAP", "SKIN", "SPA", "COSMETICS", "HAIR"],
-  BOOKS: ["COMICS", "AUDIO"],
-  CLOTHING: ["TOPS", "BOTTOMS", "DRESSES", "ACCESSORIES", "WOMENS", "MENS", "UNISEX", "CHILD", "BAGS"],
-  CRAFT_SUPPLIES: ["YARN", "FABRIC", "TOOLS", "BEADS", "FIBER", "PAPER", "PAINT"],
-  HOME: ["DECOR", "KITCHEN", "FURNITURE", "GARDEN", "WALLDECOR", "KIDS", "PETS"],
-  JEWELRY: ["NECKLACES", "RINGS", "EARRINGS", "BRACELETS", "PINS"],
-  TOYS: ["TODDLER", "KID", "GAMES", "STUFFED", "SENSORY"],
-};
+export interface TertiaryCategory {
+  id: string;
+  name: string;
+  secondaryCategoryId: string;
+}
 
 /**
  * Helper function to get secondary categories for a primary category
  */
-export const getSecondaryCategories = (primaryId: PrimaryCategoryID): SecondaryCategoryID[] =>
-  CategoryMapping[primaryId] || [];
-
-/**
- * Map Tertiary Categories to Secondary Categories
- */
-export const TertiaryCategoryMapping: Record<string, string[]> = {
-  NECKLACES: ["CHOKERS", "BEADED_NECKLACES", "PENDANT_NECKLACES", "LAYERED_NECKLACES", "STATEMENT_NECKLACES"],
-  RINGS: ["ENGAGEMENT_RINGS", "WEDDING_RINGS", "STACKING_RINGS", "COCKTAIL_RINGS"],
-  EARRINGS: ["STUDS", "HOOPS", "DANGLES", "CHANDELIER"],
-  BRACELETS: ["BEADED", "BANGLES", "CUFF", "CHARM", "CHAIN_AND_LINK"],
-  PINS: ["ENAMEL_PINS", "NOVELTY_PINS", "BROOCHES"],
-  YARN: ["COTTON_YARN", "WOOL_YARN", "ACRYLIC_YARN", "MERINO_WOOL", "BULKY_YARN", "FINGERING_YARN", "POLYESTER_YARN"],
-  DECOR: ["WALL_ART", "CANDLES", "VASES", "THROW_PILLOWS", "RUGS"],
-  KITCHEN: ["DRINKWARE", "TABLEWARE", "COOKING_AND_BAKING", "TRAYS_AND_PLATTERS", "CUTTING_BOARDS"],
-  FURNITURE: ["CHAIRS", "TABLES", "STOOLS", "DESKS", "BENCHES"],
-  SOAP: ["BAR_SOAP", "LIQUID_SOAP", "BATH_BOMBS", "SHOWER_GELS", "BATH_SALTS_AND_SCRUBS", "BATH_OILS"],
-  SKIN: ["FACIAL_CARE", "MOISTURIZERS", "BALMS_AND_SALVES", "EXFOLIATION", "EYE_TREATMENTS"],
-  SPA: ["AROMATHERAPY", "HEAT_AND_COLD_PACKS", "MASSAGE", "ESSENTIAL_OILS", "SPA_KITS"],
-  HAIR: ["SHAMPOOS", "CONDITIONERS_AND_TREATMENTS", "BRUSHES_AND_COMBS", "WAXES_AND_GELS"],
-  COSMETICS: ["EYES", "LIPS", "FACE", "NAILS_AND_NAIL_CARE", "MAKEUP_TOOLS_BRUSHES"],
-  STUFFED: ["TEDDY_BEARS", "ANIMALS", "DOLLS", "PLUSHIES"],
-  PRINTS: ["WOOD_AND_LINOCUT", "DIGITAL_ART", "GICLEE", "SCREENPRINTS", "LETTERPRESS"],
-  PAINTINGS: ["ACRYLIC", "OIL", "GOUACHE", "INK", "SPRAY_PAINT"],
-  SCULPTURES: ["CERAMIC", "GLASS", "METAL", "WOOD",]
+export const getSecondaryCategories = (
+  primaryId: PrimaryCategoryID
+): SecondaryCategoryID[] => {
+  const primary = Categories.find((c) => c.id === primaryId);
+  return primary ? primary.children.map((c) => c.id) : [];
 };
 
 /**
  * Helper function to get tertiary categories for a secondary category
  */
-export const getTertiaryCategories = (secondaryId: string): string[] =>
-  TertiaryCategoryMapping[secondaryId] || [];
-
-export const CategoriesMap = {
-  PRIMARY: PrimaryCategories,
-  SECONDARY: SecondaryCategories,
-  TERTIARY: TertiaryCategories,
-  MAPPING: CategoryMapping,
-  TERTIARY_MAPPING: TertiaryCategoryMapping,
-  getSecondaryCategories,
-  getTertiaryCategories,
+export const getTertiaryCategories = (
+  secondaryId: SecondaryCategoryID | string
+): string[] => {
+  for (const primary of Categories) {
+    const secondary = primary.children.find((c) => c.id === secondaryId);
+    if (
+      secondary &&
+      "children" in secondary &&
+      secondary.children &&
+      secondary.children.length > 0
+    ) {
+      return secondary.children.map((c) => c.id);
+    }
+  }
+  return [];
 };
+
+/**
+ * Helper function to get full category path (for breadcrumbs and filters)
+ * Returns [primaryId, secondaryId?, tertiaryId?]
+ */
+export const getCategoryPath = (id: string): string[] => {
+  for (const primary of Categories) {
+    if (primary.id === id) return [primary.id];
+
+    for (const secondary of primary.children) {
+      if (secondary.id === id) return [primary.id, secondary.id];
+
+      if ("children" in secondary && secondary.children) {
+        for (const tertiary of secondary.children) {
+          if (tertiary.id === id)
+            return [primary.id, secondary.id, tertiary.id];
+        }
+      }
+    }
+  }
+  return [];
+};
+
+/**
+ * Helper function to find a category by ID at any level
+ */
+export const findCategoryById = (
+  id: string
+): PrimaryCategory | SecondaryCategory | TertiaryCategory | null => {
+  for (const primary of Categories) {
+    if (primary.id === id) {
+      return { id: primary.id, name: primary.name };
+    }
+
+    for (const secondary of primary.children) {
+      if (secondary.id === id) {
+        return {
+          id: secondary.id,
+          name: secondary.name,
+          primaryCategoryId: primary.id,
+        };
+      }
+
+      if ("children" in secondary && secondary.children) {
+        for (const tertiary of secondary.children) {
+          if (tertiary.id === id) {
+            return {
+              id: tertiary.id,
+              name: tertiary.name,
+              secondaryCategoryId: secondary.id,
+            };
+          }
+        }
+      }
+    }
+  }
+  return null;
+};
+

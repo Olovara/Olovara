@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "./ui/skeleton";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { CategoriesMap } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import ImageSlider from "./ImageSlider";
 import { CountdownTimer } from "./CountdownTimer";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -221,21 +221,33 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
   if (!product || !isVisible) return <ProductPlaceholder />;
 
-  const primaryCategories = CategoriesMap.PRIMARY;
-  const secondaryCategories = CategoriesMap.SECONDARY;
-  const tertiaryCategories = CategoriesMap.TERTIARY;
-
-  const primaryLabel = primaryCategories.find(
+  // Find category labels from the tree structure
+  const primaryLabel = Categories.find(
     ({ id }) => id === product.primaryCategory
   )?.name;
 
   const secondaryLabel = product.secondaryCategory
-    ? secondaryCategories.find(({ id }) => id === product.secondaryCategory)
-        ?.name
+    ? (() => {
+        for (const primary of Categories) {
+          const secondary = primary.children.find(({ id }) => id === product.secondaryCategory);
+          if (secondary) return secondary.name;
+        }
+        return null;
+      })()
     : null;
 
   const tertiaryLabel = product.tertiaryCategory
-    ? tertiaryCategories.find(({ id }) => id === product.tertiaryCategory)?.name
+    ? (() => {
+        for (const primary of Categories) {
+          for (const secondary of primary.children) {
+            if ("children" in secondary && secondary.children) {
+              const tertiary = secondary.children.find(({ id }) => id === product.tertiaryCategory);
+              if (tertiary) return tertiary.name;
+            }
+          }
+        }
+        return null;
+      })()
     : null;
 
   // Build category display string

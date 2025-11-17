@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 import { db } from '@/lib/db'
-import { CategoriesMap } from '@/data/categories'
+import { Categories } from '@/data/categories'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yarnnu.com'
@@ -79,22 +79,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   // Category pages
-  const categoryPages = CategoriesMap.PRIMARY.flatMap(primaryCat => {
+  const categoryPages = Categories.flatMap(primaryCat => {
     const primaryUrl = `${baseUrl}/categories/${primaryCat.id.toLowerCase()}`
     
-    const secondaryPages = CategoriesMap.SECONDARY
-      .filter(secCat => secCat.primaryCategoryId === primaryCat.id)
+    const secondaryPages = primaryCat.children
       .map(secCat => {
         const secondaryUrl = `${primaryUrl}/${secCat.id.toLowerCase()}`
         
-        const tertiaryPages = CategoriesMap.TERTIARY
-          .filter(tertCat => tertCat.secondaryCategoryId === secCat.id)
-          .map(tertCat => ({
-            url: `${secondaryUrl}/${tertCat.id.toLowerCase()}`,
-            lastModified: currentDate,
-            changeFrequency: 'weekly' as const,
-            priority: 0.6,
-          }))
+        const tertiaryPages = ("children" in secCat && secCat.children) 
+          ? secCat.children.map(tertCat => ({
+              url: `${secondaryUrl}/${tertCat.id.toLowerCase()}`,
+              lastModified: currentDate,
+              changeFrequency: 'weekly' as const,
+              priority: 0.6,
+            }))
+          : []
 
         return [
           {

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CategoriesMap } from "@/data/categories";
+import { Categories, getTertiaryCategories } from "@/data/categories";
 import { FilterBar } from "@/components/filter-bar";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -27,7 +27,7 @@ interface PrimaryCategoryPageProps {
 export async function generateMetadata({
   params,
 }: PrimaryCategoryPageProps): Promise<Metadata> {
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
   );
 
@@ -56,7 +56,7 @@ export default async function PrimaryCategoryPage({
   // Get centralized filter configuration
   const filterConfig = await getProductFilterConfig(userCountryCode || undefined);
 
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (cat) => cat.id.toLowerCase() === params.primaryCategoryId.toLowerCase()
   );
 
@@ -65,9 +65,7 @@ export default async function PrimaryCategoryPage({
   }
 
   // Get subcategories for this primary category
-  const subcategories = CategoriesMap.SECONDARY.filter(
-    (cat) => cat.primaryCategoryId === params.primaryCategoryId
-  );
+  const subcategories = primaryCategory.children;
 
   const { primaryCategoryId } = params;
   const { q, minPrice, maxPrice, sort, page, values } = searchParams;
@@ -202,7 +200,7 @@ export default async function PrimaryCategoryPage({
               <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
               <ul className="space-y-2">
                 {subcategories.map((subcategory) => {
-                  const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                  const tertiaryCategories = getTertiaryCategories(subcategory.id);
                   return (
                     <li key={subcategory.id}>
                       <a
@@ -214,7 +212,9 @@ export default async function PrimaryCategoryPage({
                       {tertiaryCategories.length > 0 && (
                         <ul className="ml-4 mt-1 space-y-1">
                           {tertiaryCategories.map((tertiaryId) => {
-                            const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                            const tertiaryCategory = ("children" in subcategory && subcategory.children) 
+                              ? subcategory.children.find(t => t.id === tertiaryId)
+                              : undefined;
                             return tertiaryCategory ? (
                               <li key={tertiaryId}>
                                 <a

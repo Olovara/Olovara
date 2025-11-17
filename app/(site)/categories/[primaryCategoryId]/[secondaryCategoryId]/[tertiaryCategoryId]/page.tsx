@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { CategoriesMap } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Filters } from "@/components/filters";
@@ -20,15 +20,15 @@ interface TertiaryCategoryPageProps {
 export async function generateMetadata({
   params,
 }: TertiaryCategoryPageProps): Promise<Metadata> {
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (c) => c.id === params.primaryCategoryId
   );
-  const secondaryCategory = CategoriesMap.SECONDARY.find(
+  const secondaryCategory = primaryCategory?.children.find(
     (c) => c.id === params.secondaryCategoryId
   );
-  const tertiaryCategory = CategoriesMap.TERTIARY.find(
-    (c) => c.id === params.tertiaryCategoryId
-  );
+  const tertiaryCategory = (secondaryCategory && "children" in secondaryCategory && secondaryCategory.children) 
+    ? secondaryCategory.children.find((c) => c.id === params.tertiaryCategoryId)
+    : undefined;
 
   if (!primaryCategory || !secondaryCategory || !tertiaryCategory) {
     return {
@@ -60,15 +60,15 @@ export default async function TertiaryCategoryPage({
 
   const { primaryCategoryId, secondaryCategoryId, tertiaryCategoryId } = params;
 
-  const primaryCategory = CategoriesMap.PRIMARY.find(
+  const primaryCategory = Categories.find(
     (c) => c.id.toLowerCase() === primaryCategoryId.toLowerCase()
   );
-  const secondaryCategory = CategoriesMap.SECONDARY.find(
+  const secondaryCategory = primaryCategory?.children.find(
     (c) => c.id.toLowerCase() === secondaryCategoryId.toLowerCase()
   );
-  const tertiaryCategory = CategoriesMap.TERTIARY.find(
-    (c) => c.id.toLowerCase() === tertiaryCategoryId.toLowerCase()
-  );
+  const tertiaryCategory = (secondaryCategory && "children" in secondaryCategory && secondaryCategory.children) 
+    ? secondaryCategory.children.find((c) => c.id.toLowerCase() === tertiaryCategoryId.toLowerCase())
+    : undefined;
 
   if (!primaryCategory || !secondaryCategory || !tertiaryCategory) {
     notFound();

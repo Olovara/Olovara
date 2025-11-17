@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 import usePaginationStore from "./use-pagination-store";
 import useFilterStore from "./use-filter-store";
-import { CategoriesMap } from "@/data/categories";
+import { Categories } from "@/data/categories";
 
 interface UseFiltersProps {
   initialCategory?: string; // Optional initial category for category pages
@@ -71,7 +71,7 @@ export const useFilters = ({
     { label: "Price (High to Low)", value: "price_desc" },
   ];
 
-  const categoryList = CategoriesMap.PRIMARY.map((category) => ({
+  const categoryList = Categories.map((category) => ({
     value: category.id,
     label: category.name,
   }));

@@ -1,4 +1,4 @@
-import { CategoriesMap } from "@/data/categories";
+import { Categories, getTertiaryCategories } from "@/data/categories";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -25,7 +25,7 @@ export default function CategoriesPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {CategoriesMap.PRIMARY.map((category) => (
+          {Categories.map((category) => (
             <div
               key={category.id}
               className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
@@ -33,10 +33,8 @@ export default function CategoriesPage() {
               <h2 className="text-2xl font-semibold mb-4">{category.name}</h2>
               
               <div className="space-y-2">
-                {CategoriesMap.SECONDARY.filter(
-                  (sub) => sub.primaryCategoryId === category.id
-                ).map((subcategory) => {
-                  const tertiaryCategories = CategoriesMap.getTertiaryCategories(subcategory.id);
+                {category.children.map((subcategory) => {
+                  const tertiaryCategories = getTertiaryCategories(subcategory.id);
                   return (
                     <div key={subcategory.id} className="ml-2">
                       <Link
@@ -48,7 +46,9 @@ export default function CategoriesPage() {
                       {tertiaryCategories.length > 0 && (
                         <div className="ml-4 mt-1 space-y-1">
                           {tertiaryCategories.map((tertiaryId) => {
-                            const tertiaryCategory = CategoriesMap.TERTIARY.find(t => t.id === tertiaryId);
+                            const tertiaryCategory = ("children" in subcategory && subcategory.children) 
+                              ? subcategory.children.find(t => t.id === tertiaryId)
+                              : undefined;
                             return tertiaryCategory ? (
                               <Link
                                 key={tertiaryId}
