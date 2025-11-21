@@ -22,8 +22,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { X, HelpCircle } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-import { Categories, getSecondaryCategories, getTertiaryCategories, SecondaryCategoryID } from "@/data/categories";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Categories, getSecondaryCategories, getTertiaryCategories, SecondaryCategoryID, getCategoryChain, CategoryChain } from "@/data/categories";
+import { CategoryKeywords } from "@/data/category-keywords";
+import Fuse from "fuse.js";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { z } from "zod";
@@ -144,6 +146,116 @@ export const ProductInfoSection = ({
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
   const [bulletInput, setBulletInput] = useState("");
+  const [categorySuggestions, setCategorySuggestions] = useState<CategoryChain[]>([]);
+  const productName = watch("name");
+
+  // Initialize Fuse.js for category keyword search
+  const fuse = useMemo(() => {
+    return new Fuse(CategoryKeywords, {
+      keys: ["keywords", "name"],
+      threshold: 0.5, // Slightly more lenient for multi-word queries
+      minMatchCharLength: 2,
+      includeScore: true,
+      findAllMatches: true, // Find matches across all words, not just the first
+      ignoreLocation: true, // Don't penalize matches based on position in string
+    });
+  }, []);
+
+  // Search for category suggestions based on product name
+  useEffect(() => {
+    if (!productName || productName.trim().length < 2) {
+      setCategorySuggestions([]);
+      return;
+    }
+
+    // Search with the full product name
+    const fullResults = fuse.search(productName, { limit: 10 });
+    
+    // Also search individual words to catch cases like "pumpkin plushie" -> "plushie"
+    const words = productName.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+    const wordResults: typeof fullResults = [];
+    
+    if (words.length > 1) {
+      // Search each word individually and combine results
+      for (const word of words) {
+        const wordSearch = fuse.search(word, { limit: 5 });
+        wordResults.push(...wordSearch);
+      }
+    }
+
+    // Combine and deduplicate results, prioritizing full matches
+    const allResults = [...fullResults, ...wordResults];
+    
+    // Sort by score (lower is better) and remove duplicates
+    const uniqueResults = new Map<string, typeof fullResults[0]>();
+    for (const result of allResults) {
+      const key = result.item.id;
+      if (!uniqueResults.has(key) || (uniqueResults.get(key)?.score ?? 1) > (result.score ?? 1)) {
+        uniqueResults.set(key, result);
+      }
+    }
+
+    // Sort by score and take top results
+    const sortedResults = Array.from(uniqueResults.values())
+      .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
+      .slice(0, 5);
+
+    const suggestions: CategoryChain[] = [];
+
+    // Convert search results to category chains
+    for (const result of sortedResults) {
+      const categoryId = result.item.id;
+      const chain = getCategoryChain(categoryId);
+      if (chain) {
+        // Avoid duplicates
+        const isDuplicate = suggestions.some(
+          (s) =>
+            s.primary.id === chain.primary.id &&
+            s.secondary?.id === chain.secondary?.id &&
+            s.tertiary?.id === chain.tertiary?.id
+        );
+        if (!isDuplicate) {
+          suggestions.push(chain);
+        }
+      }
+    }
+
+    setCategorySuggestions(suggestions.slice(0, 5));
+  }, [productName, fuse]);
+
+  // Handle category suggestion click
+  const handleCategorySuggestionClick = (chain: CategoryChain) => {
+    // Set primary category first
+    setValue("primaryCategory", chain.primary.id);
+    
+    // Clear suggestions immediately for better UX
+    setCategorySuggestions([]);
+    
+    if (chain.secondary) {
+      // Wait for secondary options to update, then set secondary
+      setTimeout(() => {
+        setValue("secondaryCategory", chain.secondary!.id);
+        
+        if (chain.tertiary) {
+          // Wait for tertiary options to update, then set tertiary
+          setTimeout(() => {
+            setValue("tertiaryCategory", chain.tertiary!.id);
+          }, 50);
+        } else {
+          // Clear tertiary if not needed
+          setTimeout(() => {
+            setValue("tertiaryCategory", "");
+          }, 50);
+        }
+      }, 50);
+    } else {
+      // Clear secondary and tertiary if no secondary category
+      setTimeout(() => {
+        setValue("secondaryCategory", "");
+        setValue("tertiaryCategory", "");
+      }, 50);
+    }
+  };
 
   // Watch the primary and secondary category values
   const selectedPrimaryCategory = watch("primaryCategory");
@@ -249,15 +361,49 @@ export const ProductInfoSection = ({
           <FormItem>
             <FormLabel>Product Name</FormLabel>
             <FormControl>
-              <Input
-                placeholder="Product name"
-                {...field}
-                className={
-                  fieldState.error
-                    ? "border-red-500 focus-visible:ring-red-500"
-                    : ""
-                }
-              />
+              <div className="space-y-2">
+                <Input
+                  placeholder="Product name"
+                  {...field}
+                  className={
+                    fieldState.error
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
+                />
+                {/* Category Suggestions */}
+                {categorySuggestions.length > 0 && (
+                  <div className="space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                    <p className="text-sm font-medium text-purple-900">
+                      Suggested Categories:
+                    </p>
+                    <div className="space-y-1">
+                      {categorySuggestions.map((chain, index) => {
+                        const chainText = [
+                          chain.primary.name,
+                          chain.secondary?.name,
+                          chain.tertiary?.name,
+                        ]
+                          .filter(Boolean)
+                          .join(" > ");
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => handleCategorySuggestionClick(chain)}
+                            className="w-full text-left px-3 py-2 text-sm bg-white hover:bg-purple-100 border border-purple-300 rounded-md transition-colors"
+                          >
+                            <span className="text-purple-800">{chainText}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      Click a suggestion to auto-fill the category fields below
+                    </p>
+                  </div>
+                )}
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -555,7 +701,7 @@ export const ProductInfoSection = ({
             <FormLabel>Primary Category</FormLabel>
             <Select
               onValueChange={field.onChange}
-              defaultValue={field.value || ""}
+              value={field.value || ""}
             >
               <FormControl>
                 <SelectTrigger
@@ -592,7 +738,7 @@ export const ProductInfoSection = ({
                 // Clear tertiary category when secondary changes
                 setValue("tertiaryCategory", "");
               }}
-              defaultValue={field.value || ""}
+              value={field.value || ""}
               disabled={!selectedPrimaryCategory}
             >
               <FormControl>

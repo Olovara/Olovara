@@ -492,3 +492,44 @@ export const findCategoryById = (
   return null;
 };
 
+/**
+ * Helper function to get category chain with names
+ * Returns an object with primary, secondary (optional), and tertiary (optional) category info
+ */
+export interface CategoryChain {
+  primary: { id: string; name: string };
+  secondary?: { id: string; name: string };
+  tertiary?: { id: string; name: string };
+}
+
+export const getCategoryChain = (categoryId: string): CategoryChain | null => {
+  const path = getCategoryPath(categoryId);
+  if (path.length === 0) return null;
+
+  const primary = Categories.find((c) => c.id === path[0]);
+  if (!primary) return null;
+
+  const result: CategoryChain = {
+    primary: { id: primary.id, name: primary.name },
+  };
+
+  if (path.length >= 2) {
+    const secondary = primary.children.find((c) => c.id === path[1]);
+    if (secondary) {
+      result.secondary = { id: secondary.id, name: secondary.name };
+    }
+  }
+
+  if (path.length >= 3 && result.secondary) {
+    const secondary = primary.children.find((c) => c.id === path[1]);
+    if (secondary && "children" in secondary && secondary.children) {
+      const tertiary = secondary.children.find((c) => c.id === path[2]);
+      if (tertiary) {
+        result.tertiary = { id: tertiary.id, name: tertiary.name };
+      }
+    }
+  }
+
+  return result;
+};
+
