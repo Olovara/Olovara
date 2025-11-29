@@ -164,7 +164,8 @@ export async function PATCH(
         return new Response(
           JSON.stringify({
             success: false,
-            error: "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
+            error:
+              "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
             approvalRequired: true,
           }),
           { status: 403 }
@@ -175,7 +176,8 @@ export async function PATCH(
         return new Response(
           JSON.stringify({
             success: false,
-            error: "You must complete your seller onboarding before setting products to Active status.",
+            error:
+              "You must complete your seller onboarding before setting products to Active status.",
             onboardingIncomplete: true,
           }),
           { status: 403 }
@@ -387,6 +389,8 @@ export async function PATCH(
     const basicFields = {
       name: updateData.name,
       sku: updateData.sku,
+      shortDescription: updateData.shortDescription ?? "",
+      shortDescriptionBullets: updateData.shortDescriptionBullets ?? [],
       description: updateData.description,
       price: updateData.price,
       currency: updateData.currency,

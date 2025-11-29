@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     // Determine if this is a draft or active product
     const isDraft = status === "DRAFT";
-    
+
     // If trying to create an active product, check seller approval and onboarding completion
     if (!isDraft && status === "ACTIVE") {
       // Check seller approval first
@@ -120,24 +120,26 @@ export async function POST(req: NextRequest) {
         return new Response(
           JSON.stringify({
             success: false,
-            error: "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
+            error:
+              "Your seller application must be approved before you can set products to Active status. You can still create products as Draft or Hidden while waiting for approval.",
             approvalRequired: true,
           }),
           { status: 403 }
         );
       }
-      
+
       // Check onboarding completion
       if (!seller.isFullyActivated) {
         return new Response(
           JSON.stringify({
             success: false,
-            error: "You must complete your seller onboarding before creating active products. Please complete all onboarding steps first.",
+            error:
+              "You must complete your seller onboarding before creating active products. Please complete all onboarding steps first.",
             onboardingIncomplete: true,
             onboardingStatus: {
               isFullyActivated: seller.isFullyActivated,
-              steps: onboardingSteps
-            }
+              steps: onboardingSteps,
+            },
           }),
           { status: 403 }
         );
@@ -221,7 +223,10 @@ export async function POST(req: NextRequest) {
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
       dropTime,
-      discountEndDate: discountEndDate && discountEndDate !== null ? new Date(discountEndDate) : undefined,
+      discountEndDate:
+        discountEndDate && discountEndDate !== null
+          ? new Date(discountEndDate)
+          : undefined,
       discountEndTime: data.discountEndTime,
       metaTitle,
       metaDescription,
@@ -269,6 +274,7 @@ export async function POST(req: NextRequest) {
         ...validatedData,
         userId: session.user.id, // Add userId back since it's not in the schema
         description: validatedData.description || { html: "", text: "" }, // Ensure description is never undefined
+        shortDescription: validatedData.shortDescription || "", // Ensure shortDescription is never undefined
         stock: validatedData.stock ?? undefined, // Convert null to undefined for Prisma
       },
     });
@@ -281,7 +287,7 @@ export async function POST(req: NextRequest) {
         const batchNumber = await generateBatchNumber(product.id);
         await db.product.update({
           where: { id: product.id },
-          data: { batchNumber }
+          data: { batchNumber },
         });
         console.log("[BATCH NUMBER] Generated:", batchNumber);
       } catch (error) {
@@ -294,8 +300,8 @@ export async function POST(req: NextRequest) {
       JSON.stringify({
         success: true,
         productId: product.id,
-        message: isDraft 
-          ? "Product draft saved successfully! Complete the required fields to make it active." 
+        message: isDraft
+          ? "Product draft saved successfully! Complete the required fields to make it active."
           : "Product created successfully!",
         isDraft,
       }),

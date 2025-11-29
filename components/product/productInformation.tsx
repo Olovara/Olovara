@@ -28,7 +28,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Categories, getSecondaryCategories, getTertiaryCategories, SecondaryCategoryID, getCategoryChain, CategoryChain } from "@/data/categories";
+import {
+  Categories,
+  getSecondaryCategories,
+  getTertiaryCategories,
+  SecondaryCategoryID,
+  getCategoryChain,
+  CategoryChain,
+} from "@/data/categories";
 import { CategoryKeywords } from "@/data/category-keywords";
 import Fuse from "fuse.js";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
@@ -151,7 +158,9 @@ export const ProductInfoSection = ({
   const [tagInput, setTagInput] = useState("");
   const [materialTagInput, setMaterialTagInput] = useState("");
   const [bulletInput, setBulletInput] = useState("");
-  const [categorySuggestions, setCategorySuggestions] = useState<CategoryChain[]>([]);
+  const [categorySuggestions, setCategorySuggestions] = useState<
+    CategoryChain[]
+  >([]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const productName = watch("name");
 
@@ -176,11 +185,15 @@ export const ProductInfoSection = ({
 
     // Search with the full product name
     const fullResults = fuse.search(productName, { limit: 10 });
-    
+
     // Also search individual words to catch cases like "pumpkin plushie" -> "plushie"
-    const words = productName.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+    const words = productName
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 2);
     const wordResults: typeof fullResults = [];
-    
+
     if (words.length > 1) {
       // Search each word individually and combine results
       for (const word of words) {
@@ -191,12 +204,15 @@ export const ProductInfoSection = ({
 
     // Combine and deduplicate results, prioritizing full matches
     const allResults = [...fullResults, ...wordResults];
-    
+
     // Sort by score (lower is better) and remove duplicates
-    const uniqueResults = new Map<string, typeof fullResults[0]>();
+    const uniqueResults = new Map<string, (typeof fullResults)[0]>();
     for (const result of allResults) {
       const key = result.item.id;
-      if (!uniqueResults.has(key) || (uniqueResults.get(key)?.score ?? 1) > (result.score ?? 1)) {
+      if (
+        !uniqueResults.has(key) ||
+        (uniqueResults.get(key)?.score ?? 1) > (result.score ?? 1)
+      ) {
         uniqueResults.set(key, result);
       }
     }
@@ -233,15 +249,15 @@ export const ProductInfoSection = ({
   const handleCategorySuggestionClick = (chain: CategoryChain) => {
     // Set primary category first
     setValue("primaryCategory", chain.primary.id);
-    
+
     // Clear suggestions immediately for better UX
     setCategorySuggestions([]);
-    
+
     if (chain.secondary) {
       // Wait for secondary options to update, then set secondary
       setTimeout(() => {
         setValue("secondaryCategory", chain.secondary!.id);
-        
+
         if (chain.tertiary) {
           // Wait for tertiary options to update, then set tertiary
           setTimeout(() => {
@@ -270,15 +286,24 @@ export const ProductInfoSection = ({
   // Get secondary categories based on selected primary category
   const availableSecondaryCategories = selectedPrimaryCategory
     ? (() => {
-        const primary = Categories.find((cat) => cat.id === selectedPrimaryCategory);
-        return primary ? primary.children.map((child) => ({ id: child.id, name: child.name })) : [];
+        const primary = Categories.find(
+          (cat) => cat.id === selectedPrimaryCategory
+        );
+        return primary
+          ? primary.children.map((child) => ({
+              id: child.id,
+              name: child.name,
+            }))
+          : [];
       })()
     : [];
 
   // Get tertiary categories based on selected secondary category
   const availableTertiaryCategories = selectedSecondaryCategory
     ? (() => {
-        const tertiaryIds = getTertiaryCategories(selectedSecondaryCategory as SecondaryCategoryID);
+        const tertiaryIds = getTertiaryCategories(
+          selectedSecondaryCategory as SecondaryCategoryID
+        );
         const result: { id: string; name: string }[] = [];
         for (const id of tertiaryIds) {
           // Find the tertiary category by searching the tree
@@ -367,55 +392,20 @@ export const ProductInfoSection = ({
           <FormItem>
             <FormLabel>Product Name</FormLabel>
             <FormControl>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Product name"
-                  {...field}
-                  className={
-                    fieldState.error
-                      ? "border-red-500 focus-visible:ring-red-500"
-                      : ""
-                  }
-                />
-                {/* Category Suggestions */}
-                {categorySuggestions.length > 0 && (
-                  <div className="space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
-                    <p className="text-sm font-medium text-purple-900">
-                      Suggested Categories:
-                    </p>
-                    <div className="space-y-1">
-                      {categorySuggestions.map((chain, index) => {
-                        const chainText = [
-                          chain.primary.name,
-                          chain.secondary?.name,
-                          chain.tertiary?.name,
-                        ]
-                          .filter(Boolean)
-                          .join(" > ");
-                        return (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleCategorySuggestionClick(chain)}
-                            className="w-full text-left px-3 py-2 text-sm bg-white hover:bg-purple-100 border border-purple-300 rounded-md transition-colors"
-                          >
-                            <span className="text-purple-800">{chainText}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="text-xs text-purple-700">
-                      Click a suggestion to auto-fill the category fields below
-                    </p>
-                  </div>
-                )}
-              </div>
+              <Input
+                placeholder="Product name"
+                {...field}
+                className={
+                  fieldState.error
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
 
       {/* Product Description */}
       <FormField
@@ -484,6 +474,39 @@ export const ProductInfoSection = ({
         )}
       />
 
+      {/* Category Suggestions */}
+      {categorySuggestions.length > 0 && (
+        <div className="space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
+          <p className="text-sm font-medium text-purple-900">
+            Suggested Categories:
+          </p>
+          <div className="space-y-1">
+            {categorySuggestions.map((chain, index) => {
+              const chainText = [
+                chain.primary.name,
+                chain.secondary?.name,
+                chain.tertiary?.name,
+              ]
+                .filter(Boolean)
+                .join(" > ");
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleCategorySuggestionClick(chain)}
+                  className="w-full text-left px-3 py-2 text-sm bg-white hover:bg-purple-100 border border-purple-300 rounded-md transition-colors"
+                >
+                  <span className="text-purple-800">{chainText}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-purple-700">
+            Click a suggestion to auto-fill the category fields below
+          </p>
+        </div>
+      )}
+
       {/* Primary Category */}
       <FormField
         control={control}
@@ -491,10 +514,7 @@ export const ProductInfoSection = ({
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Primary Category</FormLabel>
-            <Select
-              onValueChange={field.onChange}
-              value={field.value || ""}
-            >
+            <Select onValueChange={field.onChange} value={field.value || ""}>
               <FormControl>
                 <SelectTrigger
                   className={
@@ -777,7 +797,9 @@ export const ProductInfoSection = ({
             name="sku"
             render={({ field }) => (
               <div className="flex flex-col gap-y-3 pb-6">
-                <Label className="text-sm font-medium">SKU (Stock Keeping Unit)</Label>
+                <Label className="text-sm font-medium">
+                  SKU (Stock Keeping Unit)
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     placeholder="Leave blank to auto-generate"
@@ -801,7 +823,9 @@ export const ProductInfoSection = ({
                               if (!productName) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                toast.error("Please enter a product name first");
+                                toast.error(
+                                  "Please enter a product name first"
+                                );
                                 return;
                               }
 
@@ -866,8 +890,8 @@ export const ProductInfoSection = ({
                   </TooltipProvider>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  SKU helps you track inventory. Leave blank to auto-generate, or
-                  enter your own.
+                  SKU helps you track inventory. Leave blank to auto-generate,
+                  or enter your own.
                 </p>
               </div>
             )}
@@ -909,7 +933,9 @@ export const ProductInfoSection = ({
             name="shortDescription"
             render={({ field, fieldState }) => (
               <FormItem className="space-y-3 pb-6">
-                <FormLabel className="text-sm font-medium">Short Description</FormLabel>
+                <FormLabel className="text-sm font-medium">
+                  Short Description
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Brief description about your product"
@@ -922,8 +948,8 @@ export const ProductInfoSection = ({
                   />
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
-                  A short description that will appear under your shop name on the
-                  product page.
+                  A short description that will appear under your shop name on
+                  the product page.
                 </p>
                 <FormMessage />
               </FormItem>
@@ -932,7 +958,9 @@ export const ProductInfoSection = ({
 
           {/* Short Description Bullet Points */}
           <div className="flex flex-col gap-y-3 pb-6">
-            <Label className="text-sm font-medium">Bullet Points (Optional)</Label>
+            <Label className="text-sm font-medium">
+              Bullet Points (Optional)
+            </Label>
             <div className="flex space-x-2">
               <Input
                 value={bulletInput}
@@ -952,8 +980,8 @@ export const ProductInfoSection = ({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Add up to 5 bullet points to highlight key features. These will appear
-              below the short description on the product page.
+              Add up to 5 bullet points to highlight key features. These will
+              appear below the short description on the product page.
             </p>
             {shortDescriptionBullets.length > 0 && (
               <div className="space-y-2">
@@ -994,7 +1022,11 @@ export const ProductInfoSection = ({
                 onChange={(e) => setTagInput(e.target.value)}
                 placeholder="Enter a tag..."
               />
-              <Button onClick={addTag} type="button" disabled={!tagInput.trim()}>
+              <Button
+                onClick={addTag}
+                type="button"
+                disabled={!tagInput.trim()}
+              >
                 Add
               </Button>
             </div>
@@ -1061,13 +1093,14 @@ export const ProductInfoSection = ({
 
           {/* Tax Settings */}
           <div className="space-y-6 pb-2">
-
             <FormField
               control={control}
               name="taxCategory"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-sm font-medium">Tax Category</FormLabel>
+                  <FormLabel className="text-sm font-medium">
+                    Tax Category
+                  </FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -1079,8 +1112,12 @@ export const ProductInfoSection = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="PHYSICAL_GOODS">Physical Goods</SelectItem>
-                      <SelectItem value="DIGITAL_GOODS">Digital Goods</SelectItem>
+                      <SelectItem value="PHYSICAL_GOODS">
+                        Physical Goods
+                      </SelectItem>
+                      <SelectItem value="DIGITAL_GOODS">
+                        Digital Goods
+                      </SelectItem>
                       <SelectItem value="SERVICES">Services</SelectItem>
                       <SelectItem value="SHIPPING">Shipping</SelectItem>
                       <SelectItem value="HANDLING">Handling</SelectItem>
@@ -1109,10 +1146,12 @@ export const ProductInfoSection = ({
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel className="text-sm font-medium">Tax Exempt</FormLabel>
+                    <FormLabel className="text-sm font-medium">
+                      Tax Exempt
+                    </FormLabel>
                     <p className="text-xs text-muted-foreground">
-                      Check this if your product is tax exempt (e.g., educational
-                      materials, certain medical supplies)
+                      Check this if your product is tax exempt (e.g.,
+                      educational materials, certain medical supplies)
                     </p>
                   </div>
                 </FormItem>
