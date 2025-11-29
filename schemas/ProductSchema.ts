@@ -54,7 +54,7 @@ const baseProductSchema = z.object({
     message: "Please enter your product's name, required.",
   }),
   sku: z.string().optional(), // Optional SKU - will be auto-generated if not provided
-  shortDescription: z.string().min(1, "Short description is required"), // Short description with bullet points for product overview
+  shortDescription: z.string().optional(), // Short description with bullet points for product overview (optional)
   shortDescriptionBullets: z.array(z.string()).max(5, "Maximum 5 bullet points allowed").default([]), // Array of bullet points for short description
   description: descriptionJsonSchema,
   options: z

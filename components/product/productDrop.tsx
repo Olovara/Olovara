@@ -34,21 +34,21 @@ export function ProductDropSection({ form }: DropSectionProps) {
   };
 
   return (
-    <>
+    <div className="mt-6">
       {/* Check if it's a Product Drop */}
       <FormField
         control={form.control}
         name="productDrop"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={(value) => field.onChange(value)}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel>Is this a product drop?</FormLabel>
+          <FormItem>
+            <div className="flex items-center space-x-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(value) => field.onChange(value)}
+                />
+              </FormControl>
+              <FormLabel className="!mt-0">Is this a product drop?</FormLabel>
             </div>
           </FormItem>
         )}
@@ -116,6 +116,6 @@ export function ProductDropSection({ form }: DropSectionProps) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -29,8 +29,13 @@ import { z } from "zod";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck } from "lucide-react";
+import { Plus, Truck, ChevronDown, ChevronUp } from "lucide-react";
 import ShippingOptionModal from "@/components/onboarding/ShippingOptionModal";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type ProductFormValues = z.infer<typeof ProductSchema>;
 
@@ -63,6 +68,7 @@ export const ProductShippingSection = ({
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const selectedOptionId = watch("shippingOptionId");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Fetch shipping options when component mounts
   const fetchShippingOptions = useCallback(
@@ -104,6 +110,7 @@ export const ProductShippingSection = ({
 
   return (
     <div className="space-y-6">
+      {/* Free Shipping Checkbox - Always visible */}
       <div className="flex items-center space-x-2">
         <Checkbox
           id="freeShipping"
@@ -119,6 +126,7 @@ export const ProductShippingSection = ({
         <Label htmlFor="freeShipping">Free Shipping</Label>
       </div>
 
+      {/* Shipping Option Select - Visible when free shipping is not selected */}
       {!freeShipping && (
         <div className="space-y-4">
           <FormField
@@ -184,267 +192,295 @@ export const ProductShippingSection = ({
         onSuccess={fetchShippingOptions}
       />
 
-      <FormField
-        control={control}
-        name="handlingFee"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Handling Fee (Optional)</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Enter handling fee"
-                {...field}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+      {/* Advanced Options - Collapsible Section */}
+      <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+        <CollapsibleTrigger className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
+          <span className="text-sm font-medium text-gray-700">
+            Advanced Options
+          </span>
+          {isAdvancedOpen ? (
+            <ChevronUp className="h-4 w-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          )}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-10 mt-6 px-1">
+          {/* Handling Fee */}
+          <FormField
+            control={control}
+            name="handlingFee"
+            render={({ field }) => (
+              <FormItem className="flex flex-col gap-y-3 pb-6">
+                <FormLabel className="text-sm font-medium">
+                  Handling Fee (Optional)
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter handling fee"
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Product Dimensions */}
+          <div className="space-y-4 pb-6">
+            <Label className="text-sm font-medium">Product Dimensions</Label>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={control}
+                name="itemWeight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">
+                      Weight
+                    </FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter weight"
+                          {...field}
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? 0
+                                : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
+                        />
+                      </FormControl>
+                      <Select
+                        onValueChange={(value) =>
+                          setValue("itemWeightUnit", value as WeightUnit)
+                        }
+                        defaultValue={watch("itemWeightUnit")}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_WEIGHT_UNITS.map((unit) => (
+                            <SelectItem key={unit.code} value={unit.code}>
+                              {unit.name} ({unit.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormItem>
+                )}
               />
-            </FormControl>
-          </FormItem>
-        )}
-      />
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Product Dimensions</h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={control}
-            name="itemWeight"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Weight</FormLabel>
-                <div className="flex gap-2">
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Enter weight"
-                      {...field}
-                      onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value);
-                        field.onChange(isNaN(value) ? 0 : value);
-                      }}
-                    />
-                  </FormControl>
-                  <Select
-                    onValueChange={(value) =>
-                      setValue("itemWeightUnit", value as WeightUnit)
-                    }
-                    defaultValue={watch("itemWeightUnit")}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_WEIGHT_UNITS.map((unit) => (
-                        <SelectItem key={unit.code} value={unit.code}>
-                          {unit.name} ({unit.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="itemLength"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Length</FormLabel>
-                <div className="flex gap-2">
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Enter length"
-                      {...field}
-                      onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value);
-                        field.onChange(isNaN(value) ? 0 : value);
-                      }}
-                    />
-                  </FormControl>
-                  <Select
-                    onValueChange={(value) =>
-                      setValue("itemDimensionUnit", value as DimensionUnit)
-                    }
-                    defaultValue={watch("itemDimensionUnit")}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_DIMENSION_UNITS.map((unit) => (
-                        <SelectItem key={unit.code} value={unit.code}>
-                          {unit.name} ({unit.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="itemWidth"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Width</FormLabel>
-                <div className="flex gap-2">
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Enter width"
-                      {...field}
-                      onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value);
-                        field.onChange(isNaN(value) ? 0 : value);
-                      }}
-                    />
-                  </FormControl>
-                  <Select
-                    onValueChange={(value) =>
-                      setValue("itemDimensionUnit", value as DimensionUnit)
-                    }
-                    defaultValue={watch("itemDimensionUnit")}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_DIMENSION_UNITS.map((unit) => (
-                        <SelectItem key={unit.code} value={unit.code}>
-                          {unit.name} ({unit.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="itemHeight"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Height</FormLabel>
-                <div className="flex gap-2">
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Enter height"
-                      {...field}
-                      onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value);
-                        field.onChange(isNaN(value) ? 0 : value);
-                      }}
-                    />
-                  </FormControl>
-                  <Select
-                    onValueChange={(value) =>
-                      setValue("itemDimensionUnit", value as DimensionUnit)
-                    }
-                    defaultValue={watch("itemDimensionUnit")}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_DIMENSION_UNITS.map((unit) => (
-                        <SelectItem key={unit.code} value={unit.code}>
-                          {unit.name} ({unit.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </FormItem>
-            )}
-          />
-        </div>
-      </div>
-
-      <FormField
-        control={control}
-        name="shippingNotes"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Shipping Notes (Optional)</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="Add any special shipping instructions or notes"
-                {...field}
+              <FormField
+                control={control}
+                name="itemLength"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">
+                      Length
+                    </FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter length"
+                          {...field}
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? 0
+                                : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
+                        />
+                      </FormControl>
+                      <Select
+                        onValueChange={(value) =>
+                          setValue("itemDimensionUnit", value as DimensionUnit)
+                        }
+                        defaultValue={watch("itemDimensionUnit")}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_DIMENSION_UNITS.map((unit) => (
+                            <SelectItem key={unit.code} value={unit.code}>
+                              {unit.name} ({unit.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormItem>
+                )}
               />
-            </FormControl>
-          </FormItem>
-        )}
-      />
 
-      {/* GPSR Compliance Notice for EU Shipping */}
-      {(() => {
-        const hasEUShipping = shippingOptions.some((option) =>
-          option.rates.some((rate) => rate.zone === "EUROPE")
-        );
+              <FormField
+                control={control}
+                name="itemWidth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Width</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter width"
+                          {...field}
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? 0
+                                : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
+                        />
+                      </FormControl>
+                      <Select
+                        onValueChange={(value) =>
+                          setValue("itemDimensionUnit", value as DimensionUnit)
+                        }
+                        defaultValue={watch("itemDimensionUnit")}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_DIMENSION_UNITS.map((unit) => (
+                            <SelectItem key={unit.code} value={unit.code}>
+                              {unit.name} ({unit.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormItem>
+                )}
+              />
 
-        if (hasEUShipping) {
-          return (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-blue-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-blue-800">
-                    Selling to EU buyers?
-                  </h4>
-                  <p className="mt-1 text-sm text-blue-700">
-                    You&apos;ll need to provide GPSR product safety details
-                    before your products can go live in those countries. You can
-                    still sell elsewhere without this step.
-                  </p>
-                </div>
-              </div>
+              <FormField
+                control={control}
+                name="itemHeight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">
+                      Height
+                    </FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter height"
+                          {...field}
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? 0
+                                : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
+                        />
+                      </FormControl>
+                      <Select
+                        onValueChange={(value) =>
+                          setValue("itemDimensionUnit", value as DimensionUnit)
+                        }
+                        defaultValue={watch("itemDimensionUnit")}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_DIMENSION_UNITS.map((unit) => (
+                            <SelectItem key={unit.code} value={unit.code}>
+                              {unit.name} ({unit.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormItem>
+                )}
+              />
             </div>
-          );
-        }
-        return null;
-      })()}
+          </div>
+
+          {/* Shipping Notes */}
+          <FormField
+            control={control}
+            name="shippingNotes"
+            render={({ field }) => (
+              <FormItem className="flex flex-col gap-y-3 pb-6">
+                <FormLabel className="text-sm font-medium">
+                  Shipping Notes (Optional)
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Add any special shipping instructions or notes"
+                    {...field}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* GPSR Compliance Notice for EU Shipping */}
+          {(() => {
+            const hasEUShipping = shippingOptions.some((option) =>
+              option.rates.some((rate) => rate.zone === "EUROPE")
+            );
+
+            if (hasEUShipping) {
+              return (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg pb-2">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="h-5 w-5 text-blue-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-blue-800">
+                        Selling to EU buyers?
+                      </h4>
+                      <p className="mt-1 text-sm text-blue-700">
+                        You&apos;ll need to provide GPSR product safety details
+                        before your products can go live in those countries. You
+                        can still sell elsewhere without this step.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

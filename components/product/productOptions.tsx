@@ -24,10 +24,13 @@ export function ProductOptionsSection({
 }: ProductOptionsSectionProps) {
   const { watch } = useFormContext();
   const selectedCurrency = watch("currency") || "USD";
-  
+
   // Get currency info for the selected currency
   const getCurrencyInfo = (currencyCode: string) => {
-    return SUPPORTED_CURRENCIES.find(c => c.code === currencyCode) || SUPPORTED_CURRENCIES[0];
+    return (
+      SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode) ||
+      SUPPORTED_CURRENCIES[0]
+    );
   };
 
   const currencyInfo = getCurrencyInfo(selectedCurrency);
@@ -46,7 +49,10 @@ export function ProductOptionsSection({
         i === index
           ? {
               ...option,
-              values: [...option.values, { name: "", price: undefined, stock: 0 }],
+              values: [
+                ...option.values,
+                { name: "", price: undefined, stock: 0 },
+              ],
             }
           : option
       )
@@ -80,24 +86,32 @@ export function ProductOptionsSection({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       <div>
-        <Label className="text-base font-medium">Product Options / Variations</Label>
-        <p className="text-sm text-gray-600 mt-1">
-          Create different variations of your product (e.g., sizes, colors) with individual pricing and stock levels.
+        <Label className="text-sm font-medium">
+          Product Options / Variations
+        </Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Create different variations of your product (e.g., sizes, colors) with
+          individual pricing and stock levels.
         </p>
       </div>
-      
+
       <Button variant="outline" type="button" onClick={addDropdownOption}>
         Add Option Group
       </Button>
 
       {dropdownOptions.map((option, index) => (
-        <div key={index} className="space-y-4 mt-4 p-4 border rounded-lg bg-white">
+        <div
+          key={index}
+          className="space-y-4 mt-4 p-4 border rounded-lg bg-white"
+        >
           {/* Dropdown Label */}
           <div className="flex items-center gap-x-4">
             <div className="flex-1">
-              <Label className="text-sm font-medium text-gray-700">Option Group Name</Label>
+              <Label className="text-sm font-medium text-gray-700">
+                Option Group Name
+              </Label>
               <Input
                 placeholder="e.g., Size, Color, Material"
                 value={option.label}
@@ -119,7 +133,10 @@ export function ProductOptionsSection({
 
           {/* Dropdown Values with Price and Stock */}
           {option.values.map((value, valueIndex) => (
-            <div key={valueIndex} className="space-y-2 mt-2 p-3 bg-gray-50 rounded-md">
+            <div
+              key={valueIndex}
+              className="space-y-2 mt-2 p-3 bg-gray-50 rounded-md"
+            >
               <div className="flex items-center gap-x-4">
                 {/* Option Name */}
                 <div className="flex-1">
@@ -134,10 +151,12 @@ export function ProductOptionsSection({
                     }}
                   />
                 </div>
-                
+
                 {/* Price */}
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-600">Price (Optional)</Label>
+                  <Label className="text-xs text-gray-600">
+                    Price (Optional)
+                  </Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                       {currencyInfo.symbol}
@@ -150,7 +169,9 @@ export function ProductOptionsSection({
                       value={value.price || ""}
                       onChange={(e) => {
                         const newValues = [...option.values];
-                        newValues[valueIndex].price = e.target.value ? parseFloat(e.target.value) : undefined;
+                        newValues[valueIndex].price = e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined;
                         updateDropdownOption(index, "values", newValues);
                       }}
                       className="pl-8"
@@ -160,7 +181,7 @@ export function ProductOptionsSection({
                     Leave empty to use base product price
                   </p>
                 </div>
-                
+
                 {/* Stock */}
                 <div className="flex-1">
                   <Label className="text-xs text-gray-600">Stock</Label>
@@ -171,19 +192,22 @@ export function ProductOptionsSection({
                     value={value.stock}
                     onChange={(e) => {
                       const newValues = [...option.values];
-                      newValues[valueIndex].stock = parseInt(e.target.value) || 0;
+                      newValues[valueIndex].stock =
+                        parseInt(e.target.value) || 0;
                       updateDropdownOption(index, "values", newValues);
                     }}
                   />
                 </div>
-                
+
                 {/* Remove Value Button */}
                 <Button
                   variant="outline"
                   size="sm"
                   type="button"
                   onClick={() => {
-                    const newValues = option.values.filter((_, i) => i !== valueIndex);
+                    const newValues = option.values.filter(
+                      (_, i) => i !== valueIndex
+                    );
                     updateDropdownOption(index, "values", newValues);
                   }}
                   className="text-red-600 hover:text-red-700"

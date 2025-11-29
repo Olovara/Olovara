@@ -46,15 +46,15 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
         control={control}
         name="onSale"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={(value) => field.onChange(value)}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel>Is this product on Sale?</FormLabel>
+          <FormItem>
+            <div className="flex items-center space-x-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(value) => field.onChange(value)}
+                />
+              </FormControl>
+              <FormLabel className="!mt-0">Is this product on sale?</FormLabel>
             </div>
           </FormItem>
         )}
@@ -112,11 +112,7 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
               control={control}
               name="discountEndTime"
               render={({ field }) => (
-                <Input
-                  type="time"
-                  className="w-[280px]"
-                  {...field}
-                />
+                <Input type="time" className="w-[280px]" {...field} />
               )}
             />
           </div>

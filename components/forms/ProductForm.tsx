@@ -23,8 +23,7 @@ import { ProductInfoSection } from "../product/productInformation";
 import { ProductPhotosSection } from "../product/productPhotos";
 import { ProductOptionsSection } from "../product/productOptions";
 import { ProductShippingSection } from "../product/productShipping";
-import { ProductDiscountSection } from "../product/productDiscount";
-import { ProductDropSection } from "../product/productDrop";
+import { ProductPromotionsSection } from "../product/productPromotions";
 import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
@@ -271,79 +270,79 @@ export function ProductForm({ initialData }: ProductFormProps) {
     if (isDraft) {
       return [];
     }
-    
+
     const errors: string[] = [];
     const formValues = form.getValues();
     const freeShipping = formValues.freeShipping as boolean;
     const isDigital = formValues.isDigital as boolean;
-    
+
     fieldNames.forEach((fieldName) => {
       const error =
         formState.errors[fieldName as keyof typeof formState.errors];
       const value = formValues[fieldName as keyof typeof formValues];
-      
+
       // Skip shippingOptionId if free shipping is selected
       if (fieldName === "shippingOptionId" && freeShipping) {
         return;
       }
-      
+
       // Skip shipping fields if product is digital
       if (fieldName === "shippingOptionId" && isDigital) {
         return;
       }
-      
+
       // Special handling for description field (Quill editor)
       if (fieldName === "description") {
         // Check the actual description state, not just the form value
         // This ensures we're checking the most up-to-date value
         const currentDescription = description; // Use the state variable directly
-        
+
         let isEmpty = false;
-        
+
         if (!currentDescription || currentDescription.trim() === "") {
           isEmpty = true;
         } else {
           // Strip HTML tags and check if there's actual text content
           const plainText = currentDescription.replace(/<[^>]*>/g, "").trim();
-          
+
           // Check if content is empty or only contains empty HTML tags
-          isEmpty = 
+          isEmpty =
             plainText === "" ||
-            currentDescription.trim() === "<p><br></p>" || 
+            currentDescription.trim() === "<p><br></p>" ||
             currentDescription.trim() === "<p></p>" ||
             currentDescription.trim() === "<br>" ||
             currentDescription.trim() === "<br/>";
         }
-        
+
         if (error || isEmpty) {
           errors.push(fieldName);
         }
         return;
       }
-      
+
       // Special handling for shippingOptionId - check if it's empty string or null
       if (fieldName === "shippingOptionId") {
-        const isEmpty = 
-          value === undefined || 
-          value === null || 
-          value === "" || 
+        const isEmpty =
+          value === undefined ||
+          value === null ||
+          value === "" ||
           (typeof value === "string" && value.trim() === "");
         if (error || isEmpty) {
           errors.push(fieldName);
         }
         return;
       }
-      
+
       // Check if there's a validation error OR if the field is empty/null
-      // For select fields (primaryCategory, secondaryCategory), 
+      // For select fields (primaryCategory, secondaryCategory),
       // empty string means not selected
       // For numeric fields, 0 is a valid value, so we only check for undefined/null
-      const isEmpty = 
-        value === undefined || 
-        value === null || 
-        value === "" || 
+      const isEmpty =
+        value === undefined ||
+        value === null ||
+        value === "" ||
         (typeof value === "string" && value.trim() === "");
-      
+
       if (error || isEmpty) {
         errors.push(fieldName);
       }
@@ -455,10 +454,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
     // Always update the form value, even if description is empty
     // Only validate if status is not DRAFT
     const shouldValidate = !isDraft;
-    form.setValue("description", {
-      html: description || "",
-      text: description ? description.replace(/<[^>]*>?/gm, "") : "",
-    }, { shouldValidate });
+    form.setValue(
+      "description",
+      {
+        html: description || "",
+        text: description ? description.replace(/<[^>]*>?/gm, "") : "",
+      },
+      { shouldValidate }
+    );
   }, [description, form, isDraft]);
 
   // Update the form watch for description
@@ -924,12 +927,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     )}
                 </div>
                 <div className="p-6 space-y-6">
-                  <ProductInventorySection form={form} />
-
-                  <ProductOptionsSection
-                    dropdownOptions={dropdownOptions}
-                    setDropdownOptions={setDropdownOptions}
-                  />
+                  <ProductInventorySection form={form}>
+                    <ProductOptionsSection
+                      dropdownOptions={dropdownOptions}
+                      setDropdownOptions={setDropdownOptions}
+                    />
+                  </ProductInventorySection>
                 </div>
               </div>
 
@@ -983,10 +986,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     Story & Details
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Optional Section. Tell customers about your product and how it&apos;s made
+                    Optional Section. Tell customers about your product and how
+                    it&apos;s made
                   </p>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6">
                   <ProductHowItsMadeSection form={form} />
                 </div>
               </div>
@@ -1002,9 +1006,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     Optional section. Discounts, sales, and product drops
                   </p>
                 </div>
-                <div className="p-6 space-y-6">
-                  <ProductDiscountSection form={form} />
-                  <ProductDropSection form={form} />
+                <div className="p-6">
+                  <ProductPromotionsSection form={form} />
                 </div>
               </div>
             </div>
@@ -1019,10 +1022,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     SEO & Marketing
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Optional Section. Optimize your product for search and social media
+                    Optional Section. Optimize your product for search and
+                    social media
                   </p>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6">
                   <ProductSEOSection
                     metaTitle={metaTitle}
                     setMetaTitle={setMetaTitle}

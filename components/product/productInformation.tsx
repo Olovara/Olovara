@@ -21,7 +21,12 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { X, HelpCircle } from "lucide-react";
+import { X, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Categories, getSecondaryCategories, getTertiaryCategories, SecondaryCategoryID, getCategoryChain, CategoryChain } from "@/data/categories";
 import { CategoryKeywords } from "@/data/category-keywords";
@@ -147,6 +152,7 @@ export const ProductInfoSection = ({
   const [materialTagInput, setMaterialTagInput] = useState("");
   const [bulletInput, setBulletInput] = useState("");
   const [categorySuggestions, setCategorySuggestions] = useState<CategoryChain[]>([]);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const productName = watch("name");
 
   // Initialize Fuse.js for category keyword search
@@ -410,189 +416,6 @@ export const ProductInfoSection = ({
         )}
       />
 
-      {/* SKU */}
-      <FormField
-        control={control}
-        name="sku"
-        render={({ field }) => (
-          <div className="flex flex-col gap-y-2">
-            <Label>SKU (Stock Keeping Unit)</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Leave blank to auto-generate"
-                {...register("sku")}
-                className="flex-1"
-              />
-              <TooltipProvider delayDuration={300} skipDelayDuration={0}>
-                <Tooltip
-                  open={tooltipOpen && !watch("name")}
-                  onOpenChange={setTooltipOpen}
-                  disableHoverableContent
-                >
-                  <TooltipTrigger asChild>
-                    <div>
-                      <Button
-                        ref={buttonRef}
-                        type="button"
-                        variant="outline"
-                        onClick={async (e) => {
-                          const productName = watch("name");
-                          if (!productName) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toast.error("Please enter a product name first");
-                            return;
-                          }
-
-                          try {
-                            const response = await fetch(
-                              "/api/products/generate-sku",
-                              {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({ productName }),
-                              }
-                            );
-
-                            if (!response.ok) {
-                              const errorData = await response.json();
-                              throw new Error(
-                                errorData.error || "Failed to generate SKU"
-                              );
-                            }
-
-                            const data = await response.json();
-                            setValue("sku", data.sku);
-                            toast.success("SKU generated successfully!");
-                          } catch (error) {
-                            console.error("Error generating SKU:", error);
-                            toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : "Failed to generate SKU"
-                            );
-                          }
-                        }}
-                        disabled={!watch("name")}
-                        onMouseEnter={() => {
-                          if (!watch("name")) {
-                            setTooltipOpen(true);
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          setTooltipOpen(false);
-                        }}
-                      >
-                        Generate
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className="max-w-xs"
-                    side="top"
-                    sideOffset={8}
-                    align="start"
-                    avoidCollisions={true}
-                    collisionPadding={8}
-                  >
-                    <p className="text-sm">
-                      Please enter a product name first to generate a SKU
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              SKU helps you track inventory. Leave blank to auto-generate, or
-              enter your own.
-            </p>
-          </div>
-        )}
-      />
-
-      {/* Short Description */}
-      <FormField
-        control={control}
-        name="shortDescription"
-        render={({ field, fieldState }) => (
-          <FormItem>
-            <FormLabel>Short Description</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="Brief description about your product"
-                {...field}
-                className={
-                  fieldState.error
-                    ? "border-red-500 focus-visible:ring-red-500"
-                    : ""
-                }
-              />
-            </FormControl>
-            <p className="text-xs text-muted-foreground">
-              A short description that will appear under your shop name on the
-              product page.
-            </p>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Short Description Bullet Points */}
-      <div className="flex flex-col gap-y-2">
-        <Label>Bullet Points (Optional)</Label>
-        <div className="flex space-x-2">
-          <Input
-            value={bulletInput}
-            onChange={(e) => setBulletInput(e.target.value)}
-            placeholder="Enter a bullet point..."
-            disabled={shortDescriptionBullets.length >= 5}
-          />
-          <Button
-            onClick={addBulletPoint}
-            type="button"
-            disabled={
-              !bulletInput.trim() || shortDescriptionBullets.length >= 5
-            }
-            variant="outline"
-          >
-            Add
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Add up to 5 bullet points to highlight key features. These will appear
-          below the short description on the product page.
-        </p>
-        {shortDescriptionBullets.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">
-              Current bullet points:
-            </p>
-            <div className="space-y-1">
-              {shortDescriptionBullets.map((bullet, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-md border"
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-500 text-sm">•</span>
-                    <span className="text-sm text-gray-800">{bullet}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeBulletPoint(bullet)}
-                    aria-label={`Remove bullet point: ${bullet}`}
-                    className="text-red-500 hover:text-red-700 p-1"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Product Description */}
       <FormField
@@ -623,74 +446,43 @@ export const ProductInfoSection = ({
         }}
       />
 
-      {/* Price and Currency */}
-      <div className="space-y-4">
-        <div className="flex flex-col gap-y-2">
-          <Label>Currency</Label>
-          <FormField
-            control={control}
-            name="currency"
-            render={({ field }) => (
-              <FormItem>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value || "USD"}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {SUPPORTED_CURRENCIES.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code}>
-                        {currency.code} - {currency.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={control}
-          name="price"
-          render={({ field, fieldState }) => (
-            <FormItem>
-              <FormLabel>Price</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                    {currencyInfo.symbol}
-                  </span>
-                  <Input
-                    type="number"
-                    step={1 / Math.pow(10, currencyInfo.decimals)}
-                    min={1 / Math.pow(10, currencyInfo.decimals)}
-                    placeholder="Price"
-                    className={`pl-8 ${fieldState.error ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    {...field}
-                    value={field.value || ""}
-                    onChange={(e) =>
-                      field.onChange(
-                        e.target.value ? parseFloat(e.target.value) : 0
-                      )
-                    }
-                  />
-                </div>
-              </FormControl>
-              <p className="text-sm text-muted-foreground">
-                {currencyInfo.decimals === 0
-                  ? "Enter whole numbers only (no decimal places)"
-                  : `Enter price with up to ${currencyInfo.decimals} decimal places`}
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+      {/* Price */}
+      <FormField
+        control={control}
+        name="price"
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel>Price</FormLabel>
+            <FormControl>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  {currencyInfo.symbol}
+                </span>
+                <Input
+                  type="number"
+                  step={1 / Math.pow(10, currencyInfo.decimals)}
+                  min={1 / Math.pow(10, currencyInfo.decimals)}
+                  placeholder="Price"
+                  className={`pl-8 ${fieldState.error ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  {...field}
+                  value={field.value || ""}
+                  onChange={(e) =>
+                    field.onChange(
+                      e.target.value ? parseFloat(e.target.value) : 0
+                    )
+                  }
+                />
+              </div>
+            </FormControl>
+            <p className="text-sm text-muted-foreground">
+              {currencyInfo.decimals === 0
+                ? "Enter whole numbers only (no decimal places)"
+                : `Enter price with up to ${currencyInfo.decimals} decimal places`}
+            </p>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       {/* Primary Category */}
       <FormField
@@ -945,158 +737,390 @@ export const ProductInfoSection = ({
         control={control}
         name="isDigital"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={(checked) => {
-                  field.onChange(checked === true);
-                  // Automatically update tax category based on isDigital
-                  form.setValue(
-                    "taxCategory",
-                    checked ? "DIGITAL_GOODS" : "PHYSICAL_GOODS"
-                  );
-                }}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel>Is this product digital?</FormLabel>
+          <FormItem>
+            <div className="flex items-center space-x-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => {
+                    field.onChange(checked === true);
+                    // Automatically update tax category based on isDigital
+                    form.setValue(
+                      "taxCategory",
+                      checked ? "DIGITAL_GOODS" : "PHYSICAL_GOODS"
+                    );
+                  }}
+                />
+              </FormControl>
+              <FormLabel className="!mt-0">Is this product digital?</FormLabel>
             </div>
           </FormItem>
         )}
       />
 
-      {/* Product Tags */}
-      <div className="flex flex-col gap-y-2">
-        <Label>Product Tags</Label>
-        <div className="flex space-x-2">
-          <Input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            placeholder="Enter a tag..."
-          />
-          <Button onClick={addTag} type="button" disabled={!tagInput.trim()}>
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {tags.map((tag) => (
-            <div
-              key={tag}
-              className="flex items-center px-2 py-1 text-sm bg-gray-100 rounded-full"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => removeTag(tag)}
-                aria-label={`Remove tag ${tag}`}
-                className="ml-2 text-red-500 hover:text-red-700"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Material Tags */}
-      <div className="flex flex-col gap-y-2">
-        <Label>Material Tags</Label>
-        <div className="flex space-x-2">
-          <Input
-            value={materialTagInput}
-            onChange={(e) => setMaterialTagInput(e.target.value)}
-            placeholder="Enter a material tag..."
-          />
-          <Button
-            onClick={addMaterialTag}
-            type="button"
-            disabled={!materialTagInput.trim()}
-          >
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {materialTags.map((tag) => (
-            <div
-              key={tag}
-              className="flex items-center px-2 py-1 text-sm bg-gray-100 rounded-full"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => removeMaterialTag(tag)}
-                aria-label={`Remove material tag ${tag}`}
-                className="ml-2 text-red-500 hover:text-red-700"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tax Settings */}
-      <div className="space-y-4">
-        <Label className="text-lg font-semibold">Tax Settings</Label>
-
-        <FormField
-          control={control}
-          name="taxCategory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tax Category</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tax category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="PHYSICAL_GOODS">Physical Goods</SelectItem>
-                  <SelectItem value="DIGITAL_GOODS">Digital Goods</SelectItem>
-                  <SelectItem value="SERVICES">Services</SelectItem>
-                  <SelectItem value="SHIPPING">Shipping</SelectItem>
-                  <SelectItem value="HANDLING">Handling</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground mt-1">
-                {watch("isDigital")
-                  ? "Automatically set to Digital Goods based on product type"
-                  : "Automatically set to Physical Goods based on product type"}
-              </p>
-            </FormItem>
+      {/* Advanced Options - Collapsible Section */}
+      <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+        <CollapsibleTrigger className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
+          <span className="text-sm font-medium text-gray-700">
+            Advanced Options
+          </span>
+          {isAdvancedOpen ? (
+            <ChevronUp className="h-4 w-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-500" />
           )}
-        />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-10 mt-6 px-1">
+          {/* SKU */}
+          <FormField
+            control={control}
+            name="sku"
+            render={({ field }) => (
+              <div className="flex flex-col gap-y-3 pb-6">
+                <Label className="text-sm font-medium">SKU (Stock Keeping Unit)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Leave blank to auto-generate"
+                    {...register("sku")}
+                    className="flex-1"
+                  />
+                  <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+                    <Tooltip
+                      open={tooltipOpen && !watch("name")}
+                      onOpenChange={setTooltipOpen}
+                      disableHoverableContent
+                    >
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            ref={buttonRef}
+                            type="button"
+                            variant="outline"
+                            onClick={async (e) => {
+                              const productName = watch("name");
+                              if (!productName) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toast.error("Please enter a product name first");
+                                return;
+                              }
 
-        <FormField
-          control={control}
-          name="taxExempt"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={(checked) =>
-                    field.onChange(checked === true)
-                  }
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Tax Exempt</FormLabel>
-                <p className="text-sm text-muted-foreground">
-                  Check this if your product is tax exempt (e.g., educational
-                  materials, certain medical supplies)
+                              try {
+                                const response = await fetch(
+                                  "/api/products/generate-sku",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({ productName }),
+                                  }
+                                );
+
+                                if (!response.ok) {
+                                  const errorData = await response.json();
+                                  throw new Error(
+                                    errorData.error || "Failed to generate SKU"
+                                  );
+                                }
+
+                                const data = await response.json();
+                                setValue("sku", data.sku);
+                                toast.success("SKU generated successfully!");
+                              } catch (error) {
+                                console.error("Error generating SKU:", error);
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Failed to generate SKU"
+                                );
+                              }
+                            }}
+                            disabled={!watch("name")}
+                            onMouseEnter={() => {
+                              if (!watch("name")) {
+                                setTooltipOpen(true);
+                              }
+                            }}
+                            onMouseLeave={() => {
+                              setTooltipOpen(false);
+                            }}
+                          >
+                            Generate
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        className="max-w-xs"
+                        side="top"
+                        sideOffset={8}
+                        align="start"
+                        avoidCollisions={true}
+                        collisionPadding={8}
+                      >
+                        <p className="text-sm">
+                          Please enter a product name first to generate a SKU
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  SKU helps you track inventory. Leave blank to auto-generate, or
+                  enter your own.
                 </p>
               </div>
-            </FormItem>
-          )}
-        />
-      </div>
+            )}
+          />
+
+          {/* Currency */}
+          <div className="flex flex-col gap-y-3 pb-6">
+            <Label className="text-sm font-medium">Currency</Label>
+            <FormField
+              control={control}
+              name="currency"
+              render={({ field }) => (
+                <FormItem>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value || "USD"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SUPPORTED_CURRENCIES.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Short Description */}
+          <FormField
+            control={control}
+            name="shortDescription"
+            render={({ field, fieldState }) => (
+              <FormItem className="space-y-3 pb-6">
+                <FormLabel className="text-sm font-medium">Short Description</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Brief description about your product"
+                    {...field}
+                    className={
+                      fieldState.error
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  A short description that will appear under your shop name on the
+                  product page.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Short Description Bullet Points */}
+          <div className="flex flex-col gap-y-3 pb-6">
+            <Label className="text-sm font-medium">Bullet Points (Optional)</Label>
+            <div className="flex space-x-2">
+              <Input
+                value={bulletInput}
+                onChange={(e) => setBulletInput(e.target.value)}
+                placeholder="Enter a bullet point..."
+                disabled={shortDescriptionBullets.length >= 5}
+              />
+              <Button
+                onClick={addBulletPoint}
+                type="button"
+                disabled={
+                  !bulletInput.trim() || shortDescriptionBullets.length >= 5
+                }
+                variant="outline"
+              >
+                Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Add up to 5 bullet points to highlight key features. These will appear
+              below the short description on the product page.
+            </p>
+            {shortDescriptionBullets.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">
+                  Current bullet points:
+                </p>
+                <div className="space-y-1">
+                  {shortDescriptionBullets.map((bullet, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-md border"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-500 text-sm">•</span>
+                        <span className="text-sm text-gray-800">{bullet}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeBulletPoint(bullet)}
+                        aria-label={`Remove bullet point: ${bullet}`}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Product Tags */}
+          <div className="flex flex-col gap-y-3 pb-6">
+            <Label className="text-sm font-medium">Product Tags</Label>
+            <div className="flex space-x-2">
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="Enter a tag..."
+              />
+              <Button onClick={addTag} type="button" disabled={!tagInput.trim()}>
+                Add
+              </Button>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <div
+                    key={tag}
+                    className="flex items-center px-2 py-1 text-sm bg-gray-100 rounded-full"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      aria-label={`Remove tag ${tag}`}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Material Tags */}
+          <div className="flex flex-col gap-y-3 pb-6">
+            <Label className="text-sm font-medium">Material Tags</Label>
+            <div className="flex space-x-2">
+              <Input
+                value={materialTagInput}
+                onChange={(e) => setMaterialTagInput(e.target.value)}
+                placeholder="Enter a material tag..."
+              />
+              <Button
+                onClick={addMaterialTag}
+                type="button"
+                disabled={!materialTagInput.trim()}
+              >
+                Add
+              </Button>
+            </div>
+            {materialTags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {materialTags.map((tag) => (
+                  <div
+                    key={tag}
+                    className="flex items-center px-2 py-1 text-sm bg-gray-100 rounded-full"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeMaterialTag(tag)}
+                      aria-label={`Remove material tag ${tag}`}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tax Settings */}
+          <div className="space-y-6 pb-2">
+
+            <FormField
+              control={control}
+              name="taxCategory"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-sm font-medium">Tax Category</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tax category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="PHYSICAL_GOODS">Physical Goods</SelectItem>
+                      <SelectItem value="DIGITAL_GOODS">Digital Goods</SelectItem>
+                      <SelectItem value="SERVICES">Services</SelectItem>
+                      <SelectItem value="SHIPPING">Shipping</SelectItem>
+                      <SelectItem value="HANDLING">Handling</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {watch("isDigital")
+                      ? "Automatically set to Digital Goods based on product type"
+                      : "Automatically set to Physical Goods based on product type"}
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="taxExempt"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="text-sm font-medium">Tax Exempt</FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Check this if your product is tax exempt (e.g., educational
+                      materials, certain medical supplies)
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

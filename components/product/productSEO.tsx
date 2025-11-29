@@ -6,7 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 
 interface ProductSEOSectionProps {
@@ -58,14 +63,19 @@ export const ProductSEOSection = ({
     form.setValue("keywords", updatedKeywords);
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="space-y-8">
-      {/* Search Engine Optimization */}
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Search Engine Optimization</h3>
-          <p className="text-sm text-gray-600">Optimize your product for search engines and improve discoverability.</p>
-        </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="space-y-4">
+        <CollapsibleContent className="overflow-hidden">
+          <div className="space-y-8">
+            {/* Search Engine Optimization */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Search Engine Optimization</h3>
+                <p className="text-sm text-gray-600">Optimize your product for search engines and improve discoverability.</p>
+              </div>
 
         {/* Meta Title */}
         <div className="space-y-2">
@@ -220,5 +230,21 @@ export const ProductSEOSection = ({
         </div>
       </div>
     </div>
+        </CollapsibleContent>
+
+        <CollapsibleTrigger className="w-full flex items-center justify-center py-2 hover:bg-gray-50 rounded-md transition-colors group">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 group-hover:text-gray-900">
+              {isOpen ? "Hide" : "Show"} SEO & Marketing
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+        </CollapsibleTrigger>
+      </div>
+    </Collapsible>
   );
 }; 
