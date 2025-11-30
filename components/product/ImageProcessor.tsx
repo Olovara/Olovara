@@ -1,0 +1,759 @@
+"use client";
+
+import React, { useState, useRef, useCallback } from "react";
+import { Cropper, CropperRef, ImageRestriction } from "react-advanced-cropper";
+import "react-advanced-cropper/dist/style.css";
+import imageCompression from "browser-image-compression";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { X, Upload, Crop, Image as ImageIcon, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
+import Image from "next/image";
+import { getSellerAbout } from "@/actions/sellerAboutActions";
+
+// Type for processed image data
+export type ProcessedImage = {
+  id: string; // Unique ID for this image
+  file: File; // The processed file ready for upload
+  preview: string; // Data URL for preview
+  originalName: string; // Original filename
+  originalFileIndex?: number; // Index in fileQueue to track which original file this came from
+};
+
+type ImageProcessorProps = {
+  onImagesProcessed: (images: ProcessedImage[]) => void; // Callback when images are ready
+  existingImages?: string[]; // URLs of already uploaded images (for editing)
+  maxImages?: number; // Maximum number of images allowed
+};
+
+export function ImageProcessor({
+  onImagesProcessed,
+  existingImages = [],
+  maxImages = 10,
+}: ImageProcessorProps) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
+  const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
+  const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
+  // Track all files in the processing queue (for navigation)
+  const [fileQueue, setFileQueue] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+  
+  // Store crop state and watermark settings for each image
+  type ImageCropState = {
+    coordinates?: any; // Crop coordinates from cropper
+    watermarkEnabled: boolean;
+    watermarkText: string;
+    watermarkOpacity: number[];
+    watermarkPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "center";
+  };
+  const [imageStates, setImageStates] = useState<Map<number, ImageCropState>>(new Map());
+  
+  // Current watermark settings (synced with current image's state)
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [shopName, setShopName] = useState<string>(""); // Seller's shop name
+  const [watermarkText, setWatermarkText] = useState("");
+  const [watermarkOpacity, setWatermarkOpacity] = useState([20]); // 0-100, default 20%
+  const [watermarkPosition, setWatermarkPosition] = useState<
+    "bottom-right" | "bottom-left" | "top-right" | "top-left" | "center"
+  >("bottom-right");
+  
+  
+  // Fetch seller's shop name on mount
+  React.useEffect(() => {
+    const fetchShopName = async () => {
+      try {
+        const result = await getSellerAbout();
+        if (result.data?.shopName) {
+          setShopName(result.data.shopName);
+          // Set as default watermark text (will be used when initializing new images)
+        }
+      } catch (error) {
+        console.error("Error fetching shop name:", error);
+      }
+    };
+    fetchShopName();
+  }, []); // Only run on mount
+  
+  // Always keep watermark text synced with shop name (watermark text is read-only now)
+  React.useEffect(() => {
+    if (shopName) {
+      setWatermarkText(shopName);
+    }
+  }, [shopName]);
+  
+  const cropperRef = useRef<CropperRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track if we're programmatically setting coordinates (to avoid saving during restoration)
+  const isRestoringCoordinatesRef = useRef(false);
+
+  // Inject CSS to prevent cropper overflow
+  React.useEffect(() => {
+    const styleId = 'cropper-modal-fix';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .cropper-container,
+        .cropper-canvas-container,
+        .cropper-image-container,
+        .cropper-area {
+          max-width: 100% !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        [data-radix-dialog-content] .cropper-container {
+          max-width: 100% !important;
+          overflow: hidden !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    return () => {
+      // Don't remove on unmount as it might be used by other instances
+    };
+  }, []);
+
+  // Convert existing image URLs to ProcessedImage format (for editing mode)
+  // These are already uploaded, so we'll keep them as-is
+  const existingProcessedImages = React.useMemo<ProcessedImage[]>(() => {
+    return existingImages.map((url, index) => ({
+      id: `existing-${index}-${url}`,
+      file: new File([], `existing-${index}.jpg`), // Dummy file, won't be uploaded
+      preview: url, // Use the actual URL for existing images
+      originalName: `existing-image-${index + 1}`,
+    }));
+  }, [existingImages]);
+
+  // Handle file selection
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+
+      // Filter to only image files
+      const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+      if (imageFiles.length === 0) {
+        toast.error("Please select image files only");
+        return;
+      }
+
+      // Check total image count
+      const totalImages =
+        processedImages.length +
+        existingProcessedImages.length +
+        imageFiles.length;
+      if (totalImages > maxImages) {
+        toast.error(`Maximum ${maxImages} images allowed`);
+        return;
+      }
+
+      // Start processing first image
+      if (imageFiles.length > 0) {
+        // Store all files in queue for navigation
+        setFileQueue(imageFiles);
+        setCurrentCropFile(imageFiles[0]);
+        setCurrentFileIndex(0);
+        setCroppingIndex(processedImages.length);
+        setSelectedFiles(imageFiles.slice(1)); // Store remaining files for backward compatibility
+        // Initialize watermark settings for first image (always use shop name)
+        setWatermarkEnabled(false);
+        setWatermarkText(shopName || ""); // Store shopName in state for consistency
+        setWatermarkOpacity([20]);
+        setWatermarkPosition("bottom-right");
+      }
+
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [processedImages.length, existingProcessedImages.length, maxImages, shopName]
+  );
+
+  // Apply watermark to image using canvas
+  const applyWatermark = useCallback(
+    async (imageFile: File): Promise<File> => {
+      // Use shopName as watermark text (always use shop name, not watermarkText state)
+      const textToUse = shopName || watermarkText;
+      console.log("[WATERMARK] Applying watermark:", {
+        watermarkEnabled,
+        shopName,
+        watermarkText,
+        textToUse,
+        watermarkOpacity: watermarkOpacity[0],
+        watermarkPosition,
+      });
+      
+      if (!watermarkEnabled) {
+        console.log("[WATERMARK] Watermark disabled, skipping");
+        return imageFile; // Return original if watermark disabled
+      }
+      
+      if (!textToUse?.trim()) {
+        console.warn("[WATERMARK] No text available, skipping watermark");
+        return imageFile; // Return original if no text
+      }
+
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) {
+              reject(new Error("Failed to get canvas context"));
+              return;
+            }
+
+            // Draw original image
+            ctx.drawImage(img, 0, 0);
+
+            // Set watermark style - Jost bold font, white text at 10% opacity
+            const fontSize = Math.max(img.width / 25, 20);
+            ctx.font = `bold ${fontSize}px "Jost", sans-serif`;
+            ctx.fillStyle = `rgba(255, 255, 255, 0.05)`; // White text at 5% opacity
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // Calculate text dimensions
+            const textMetrics = ctx.measureText(textToUse);
+            const textWidth = textMetrics.width;
+            const textHeight = fontSize;
+
+            // Calculate spacing for repeating pattern
+            // Use larger spacing to avoid overcrowding
+            const spacing = Math.max(textWidth, textHeight) * 1.25;
+            
+            // Calculate the diagonal distance needed to cover the entire image
+            const diagonal = Math.sqrt(img.width * img.width + img.height * img.height);
+            
+            // Rotate context 45 degrees (counter-clockwise)
+            ctx.save();
+            ctx.translate(img.width / 2, img.height / 2);
+            ctx.rotate(-Math.PI / 4); // -45 degrees
+
+            // Draw repeating watermark pattern across the entire image
+            // Calculate how many repetitions we need in each direction
+            const repetitionsX = Math.ceil(diagonal / spacing) + 2;
+            const repetitionsY = Math.ceil(diagonal / spacing) + 2;
+            
+            // Start from center and work outward
+            const startOffset = -(repetitionsX / 2) * spacing;
+            
+            for (let i = 0; i < repetitionsY; i++) {
+              for (let j = 0; j < repetitionsX; j++) {
+                const x = startOffset + j * spacing;
+                const y = startOffset + i * spacing;
+                ctx.fillText(textToUse, x, y);
+              }
+            }
+
+            ctx.restore();
+
+            // Convert canvas to blob, then to File
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error("Failed to create watermark"));
+                  return;
+                }
+                const watermarkedFile = new File([blob], imageFile.name, {
+                  type: imageFile.type,
+                  lastModified: Date.now(),
+                });
+                resolve(watermarkedFile);
+              },
+              imageFile.type,
+              0.95 // Quality
+            );
+          };
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = e.target?.result as string;
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(imageFile);
+      });
+    },
+    [watermarkEnabled, shopName, watermarkText, watermarkOpacity, watermarkPosition]
+  );
+
+  // Compress image
+  const compressImage = useCallback(async (file: File): Promise<File> => {
+    try {
+      const options = {
+        maxSizeMB: 1, // Max 1MB
+        maxWidthOrHeight: 1920, // Max dimension
+        useWebWorker: true,
+        fileType: file.type,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      return compressedFile;
+    } catch (error) {
+      console.error("Compression error:", error);
+      toast.error("Failed to compress image");
+      return file; // Return original on error
+    }
+  }, []);
+
+  // Get cropped image from cropper
+  const getCroppedImage = useCallback(async (): Promise<File | null> => {
+    if (!cropperRef.current || !currentCropFile) {
+      return null;
+    }
+
+    const canvas = cropperRef.current.getCanvas();
+    if (!canvas) {
+      toast.error("Failed to get cropped image");
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(null);
+            return;
+          }
+          const croppedFile = new File([blob], currentCropFile.name, {
+            type: currentCropFile.type,
+            lastModified: Date.now(),
+          });
+          resolve(croppedFile);
+        },
+        currentCropFile.type,
+        0.95 // Quality
+      );
+    });
+  }, [currentCropFile]);
+
+  // Save current image's crop state and watermark settings
+  const saveCurrentImageState = useCallback(() => {
+    if (currentFileIndex === null || currentFileIndex < 0) return;
+    
+    // Get coordinates if cropper is available
+    let coordinates = null;
+    if (cropperRef.current) {
+      try {
+        coordinates = cropperRef.current.getCoordinates();
+        // Only save if we got valid coordinates
+        if (!coordinates) {
+          console.warn("No coordinates available to save");
+          return;
+        }
+      } catch (error) {
+        console.warn("Could not get coordinates:", error);
+        return;
+      }
+    } else {
+      console.warn("Cropper ref not available");
+      return;
+    }
+    
+    const state: ImageCropState = {
+      coordinates,
+      watermarkEnabled,
+      watermarkText: shopName || watermarkText, // Always use shopName
+      watermarkOpacity,
+      watermarkPosition,
+    };
+    
+    setImageStates((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(currentFileIndex, state);
+      return newMap;
+    });
+  }, [currentFileIndex, watermarkEnabled, shopName, watermarkText, watermarkOpacity, watermarkPosition]);
+  
+  // Note: We don't auto-save on crop change to avoid conflicts with restoration
+  // State is saved when navigating between images or when processing
+
+  // Navigate to a specific image and restore its state
+  const navigateToImage = useCallback((index: number, skipSave = false) => {
+    // Save current state before navigating away (unless we're told to skip)
+    if (!skipSave && currentFileIndex !== null && currentFileIndex >= 0 && currentFileIndex !== index) {
+      saveCurrentImageState();
+    }
+    
+    // Update to new image
+    setCurrentFileIndex(index);
+    setCurrentCropFile(fileQueue[index]);
+    
+    // Restore saved state for this image
+    const savedState = imageStates.get(index);
+    if (savedState) {
+      setWatermarkEnabled(savedState.watermarkEnabled);
+      // Always use shopName for watermark text (it's read-only now)
+      setWatermarkText(shopName || savedState.watermarkText);
+      setWatermarkOpacity(savedState.watermarkOpacity);
+      setWatermarkPosition(savedState.watermarkPosition);
+    } else {
+      // Initialize with defaults if no saved state
+      setWatermarkEnabled(false);
+      setWatermarkText(shopName || ""); // Always use shopName
+      setWatermarkOpacity([50]);
+      setWatermarkPosition("bottom-right");
+    }
+  }, [fileQueue, imageStates, currentFileIndex, saveCurrentImageState, shopName]);
+
+  // Restore crop coordinates when cropper is ready
+  React.useEffect(() => {
+    if (cropperRef.current && currentFileIndex !== null && currentCropFile) {
+      const savedState = imageStates.get(currentFileIndex);
+      if (savedState?.coordinates) {
+        // Small delay to ensure cropper is fully initialized
+        const timeoutId = setTimeout(() => {
+          if (cropperRef.current) {
+            try {
+              cropperRef.current.setCoordinates(savedState.coordinates);
+            } catch (error) {
+              console.warn("Could not restore coordinates:", error);
+            }
+          }
+        }, 150);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [currentFileIndex, currentCropFile, imageStates]);
+
+  // Auto-save watermark changes
+  React.useEffect(() => {
+    if (currentFileIndex !== null && currentFileIndex >= 0) {
+      saveCurrentImageState();
+    }
+  }, [watermarkEnabled, watermarkText, watermarkOpacity, watermarkPosition, currentFileIndex, saveCurrentImageState]);
+
+  // Process current image: crop -> watermark -> compress
+  const processCurrentImage = useCallback(async () => {
+    if (!currentCropFile) return;
+
+    try {
+      // Step 0: Save current state before processing (captures final crop position)
+      // Use a small delay to ensure cropper is ready
+      await new Promise(resolve => setTimeout(resolve, 50));
+      saveCurrentImageState();
+      
+      // Step 1: Get cropped image
+      let processedFile = await getCroppedImage();
+      if (!processedFile) {
+        toast.error("Failed to crop image");
+        return;
+      }
+
+      // Step 2: Apply watermark if enabled
+      processedFile = await applyWatermark(processedFile);
+
+      // Step 3: Compress image
+      processedFile = await compressImage(processedFile);
+
+      // Step 4: Create preview
+      const preview = URL.createObjectURL(processedFile);
+
+      // Step 5: Add to processed images (or replace if already exists)
+      const newProcessedImage: ProcessedImage = {
+        id: `processed-${Date.now()}-${Math.random()}`,
+        file: processedFile,
+        preview,
+        originalName: currentCropFile.name,
+        originalFileIndex: currentFileIndex, // Track which file in queue this came from
+      };
+
+      setProcessedImages((prev) => {
+        // Check if we already have a processed image from this same original file
+        const existingIndex = prev.findIndex(
+          (img) => img.originalFileIndex === currentFileIndex
+        );
+        
+        if (existingIndex >= 0) {
+          // Replace the existing processed image
+          const updated = [...prev];
+          // Clean up the old preview URL to prevent memory leaks
+          URL.revokeObjectURL(updated[existingIndex].preview);
+          updated[existingIndex] = newProcessedImage;
+          return updated;
+        } else {
+          // Add new processed image
+          return [...prev, newProcessedImage];
+        }
+      });
+
+      // Step 6: Move to next file in queue if available
+      if (currentFileIndex < fileQueue.length - 1) {
+        // State already saved at the start of this function
+        const nextIndex = currentFileIndex + 1;
+        navigateToImage(nextIndex);
+        setCroppingIndex((prev) => (prev !== null ? prev + 1 : 0));
+        // Update selectedFiles for backward compatibility
+        setSelectedFiles((prev) => prev.slice(1));
+      } else {
+        // Done processing all images
+        setCurrentCropFile(null);
+        setCroppingIndex(null);
+        setFileQueue([]);
+        setCurrentFileIndex(0);
+        setImageStates(new Map()); // Clear saved states
+        toast.success("All images processed successfully");
+      }
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast.error("Failed to process image");
+    }
+  }, [
+    currentCropFile,
+    currentFileIndex,
+    fileQueue,
+    getCroppedImage,
+    applyWatermark,
+    compressImage,
+    saveCurrentImageState,
+    navigateToImage,
+  ]);
+
+  // Remove processed image
+  const removeImage = useCallback((id: string) => {
+    setProcessedImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview); // Clean up object URL
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
+
+  // Store callback in ref to avoid dependency issues
+  const onImagesProcessedRef = React.useRef(onImagesProcessed);
+
+  // Update ref when callback changes
+  React.useEffect(() => {
+    onImagesProcessedRef.current = onImagesProcessed;
+  }, [onImagesProcessed]);
+
+  // Update processed images callback whenever processedImages changes
+  // Use ref to track previous value and avoid infinite loops
+  const prevProcessedImagesRef = React.useRef<string>("");
+
+  // Create stable allImages array
+  const allImages = React.useMemo(() => {
+    return [...existingProcessedImages, ...processedImages];
+  }, [existingProcessedImages, processedImages]);
+
+  // Notify parent when images actually change (not on every render)
+  React.useEffect(() => {
+    // Create a stable key to compare
+    const currentKey = JSON.stringify({
+      processed: processedImages.map((img) => img.id),
+      existing: existingProcessedImages.map((img) => img.id),
+    });
+
+    const prevKey = prevProcessedImagesRef.current;
+
+    // Only call onImagesProcessed if something actually changed
+    if (currentKey !== prevKey) {
+      prevProcessedImagesRef.current = currentKey;
+      // Use ref to call callback to avoid dependency issues
+      onImagesProcessedRef.current(allImages);
+    }
+  }, [processedImages, existingProcessedImages, allImages]);
+
+  return (
+    <div className="flex flex-col gap-y-4">
+      <Label>Product Photos</Label>
+
+      {/* Existing Images Preview (for edit mode) */}
+      {existingProcessedImages.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">Existing Images:</p>
+          <div className="flex flex-wrap gap-2">
+            {existingProcessedImages.map((img) => (
+              <div key={img.id} className="relative w-24 h-24">
+                <Image
+                  fill
+                  src={img.preview}
+                  alt={img.originalName}
+                  className="object-cover rounded"
+                  sizes="96px"
+                />
+                <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
+                  Saved
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Processed Images Preview */}
+      {processedImages.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">New Images (ready to upload):</p>
+          <div className="flex flex-wrap gap-2">
+            {processedImages.map((img) => (
+              <div key={img.id} className="relative w-24 h-24 group">
+                <Image
+                  fill
+                  src={img.preview}
+                  alt={img.originalName}
+                  className="object-cover rounded"
+                  sizes="96px"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => removeImage(img.id)}
+                  className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* File Input */}
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={allImages.length >= maxImages}
+          className="w-full"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          {allImages.length >= maxImages
+            ? `Maximum ${maxImages} images reached`
+            : `Select Images (${allImages.length}/${maxImages})`}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+      </div>
+
+      {/* Cropping Dialog */}
+        <Dialog
+          open={croppingIndex !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              // Cancel cropping - close dialog and reset
+              setCurrentCropFile(null);
+              setCroppingIndex(null);
+              setFileQueue([]);
+              setCurrentFileIndex(0);
+              setSelectedFiles([]);
+            }
+          }}
+        >
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full overflow-x-hidden">
+            <DialogHeader>
+              <DialogTitle>
+                Image {currentFileIndex + 1} of {fileQueue.length}
+              </DialogTitle>
+            </DialogHeader>
+
+            {currentCropFile && (
+              <div className="space-y-4 w-full max-w-full" style={{ minWidth: 0 }}>
+                <div 
+                  className="relative w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden" 
+                  style={{ 
+                    minWidth: 0, 
+                    maxWidth: '100%', 
+                    boxSizing: 'border-box',
+                    position: 'relative'
+                  }}
+                >
+                  <Cropper
+                    key={`cropper-${currentFileIndex}-${currentCropFile.name}`}
+                    ref={cropperRef}
+                    src={URL.createObjectURL(currentCropFile)}
+                    className="cropper"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      maxWidth: '100%', 
+                      boxSizing: 'border-box'
+                    }}
+                    stencilProps={{
+                      aspectRatio: 1, // Square crop (you can make this configurable)
+                    }}
+                    imageRestriction={ImageRestriction.stencil}
+                  />
+                </div>
+
+              {/* Watermark Settings */}
+              <div className="border-t pt-4 space-y-4 w-full max-w-full">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="watermark-enabled"
+                    checked={watermarkEnabled}
+                    onCheckedChange={(checked) =>
+                      setWatermarkEnabled(checked as boolean)
+                    }
+                  />
+                  <Label htmlFor="watermark-enabled">Apply Watermark</Label>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (currentFileIndex > 0) {
+                    navigateToImage(currentFileIndex - 1);
+                  }
+                }}
+                disabled={currentFileIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (currentFileIndex < fileQueue.length - 1) {
+                    navigateToImage(currentFileIndex + 1);
+                  }
+                }}
+                disabled={currentFileIndex === fileQueue.length - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" onClick={processCurrentImage}>
+                {currentFileIndex === fileQueue.length - 1 ? "Process & Finish" : "Process & Next"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

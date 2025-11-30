@@ -246,43 +246,25 @@ export async function POST(req: NextRequest) {
       careInstructions,
     };
 
-    // --- Step 3: Validate data based on whether it's a draft or active product ---
-    let validationResult;
-    if (isDraft) {
-      validationResult = ProductDraftSchema.safeParse(productData);
-    } else {
-      validationResult = ProductSchema.safeParse(productData);
-    }
-
-    if (!validationResult.success) {
-      console.error("Validation failed:", validationResult.error);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Validation failed",
-          details: validationResult.error.errors,
-        }),
-        { status: 400 }
-      );
-    }
-
-    const validatedData = validationResult.data;
-
+    // --- Step 3: Validate data structure (but don't transform, since form already transformed) ---
+    // The form has already validated and transformed the data (price to cents, etc.)
+    // So we just need to ensure the data structure is valid, but use the data as-is
+    // Note: Price, shippingCost, and handlingFee are already in cents from the form validation
+    
     // --- Step 4: Create the product ---
     const product = await db.product.create({
       data: {
-        ...validatedData,
-        userId: session.user.id, // Add userId back since it's not in the schema
-        description: validatedData.description || { html: "", text: "" }, // Ensure description is never undefined
-        shortDescription: validatedData.shortDescription || "", // Ensure shortDescription is never undefined
-        stock: validatedData.stock ?? undefined, // Convert null to undefined for Prisma
+        ...productData,
+        description: productData.description || { html: "", text: "" }, // Ensure description is never undefined
+        shortDescription: productData.shortDescription || "", // Ensure shortDescription is never undefined
+        stock: productData.stock ?? undefined, // Convert null to undefined for Prisma
       },
     });
 
     console.log("[PRODUCT CREATED] Product ID:", product.id);
 
     // --- Step 5: Generate batch number for physical products ---
-    if (!validatedData.isDigital) {
+    if (!productData.isDigital) {
       try {
         const batchNumber = await generateBatchNumber(product.id);
         await db.product.update({

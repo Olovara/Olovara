@@ -131,13 +131,18 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   const [convertedShippingCost, setConvertedShippingCost] =
     useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<string, string>
+  >({});
   const [optionAdjustedPrice, setOptionAdjustedPrice] = useState(data.price);
 
   const { formatPrice } = useCurrency();
 
   // Handle option selection changes
-  const handleOptionSelectionChange = (options: Record<string, string>, totalPrice: number) => {
+  const handleOptionSelectionChange = (
+    options: Record<string, string>,
+    totalPrice: number
+  ) => {
     setSelectedOptions(options);
     setOptionAdjustedPrice(totalPrice);
   };
@@ -168,12 +173,13 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
 
         // Convert shipping cost if it exists
         if (data.shippingCost || data.handlingFee) {
-          const totalShipping = (data.shippingCost || 0) + (data.handlingFee || 0);
+          const totalShipping =
+            (data.shippingCost || 0) + (data.handlingFee || 0);
           const shippingFormatted = await formatPrice(totalShipping, true);
           setConvertedShippingCost(shippingFormatted);
         }
       } catch (error) {
-        console.error('Error updating prices:', error);
+        console.error("Error updating prices:", error);
       }
     };
 
@@ -245,10 +251,12 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
             <ImageSlider urls={data.images} />
           </div>
-          
+
           {/* Product Description Section */}
           <div className="mt-8">
-            <h3 className="font-medium text-gray-700 mb-4">PRODUCT DESCRIPTION</h3>
+            <h3 className="font-medium text-gray-700 mb-4">
+              PRODUCT DESCRIPTION
+            </h3>
             <div className="text-gray-800">
               <ProtectedProductDescription
                 content={data.description}
@@ -260,12 +268,18 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           {/* Reviews Section */}
           <div className="mt-8">
             <h3 className="font-medium text-gray-700 mb-4">
-              REVIEWS {data.reviews && data.reviews.length > 0 ? `(${data.reviews.length})` : "(0)"}
+              REVIEWS{" "}
+              {data.reviews && data.reviews.length > 0
+                ? `(${data.reviews.length})`
+                : "(0)"}
             </h3>
             {data.reviews && data.reviews.length > 0 ? (
               <div className="space-y-6">
                 {data.reviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
+                  <div
+                    key={review.id}
+                    className="border-b border-gray-200 pb-6 last:border-b-0"
+                  >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
                         {review.reviewer.image ? (
@@ -321,7 +335,9 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                   <Star className="h-12 w-12 mx-auto" />
                 </div>
                 <p className="text-gray-500 text-sm">No reviews yet</p>
-                <p className="text-gray-400 text-xs mt-1">Be the first to review this product!</p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Be the first to review this product!
+                </p>
               </div>
             )}
           </div>
@@ -342,26 +358,67 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
               </Link>
             </p>
           )}
-          <div className="text-gray-700 text-medium">
-            <p className="whitespace-pre-line">{data.shortDescription}</p>
-            {data.shortDescriptionBullets && data.shortDescriptionBullets.length > 0 && (
-              <ul className="mt-3 space-y-1">
-                {data.shortDescriptionBullets.map((bullet, index) => (
-                  <li key={index} className="flex items-start space-x-2">
-                    <span className="text-gray-500 mt-1">•</span>
-                    <span className="text-sm">{bullet}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Only show short description if it exists and is not empty/zero */}
+          {(() => {
+            // Explicitly check for non-empty string (not "", null, undefined, or "0")
+            const hasDescription =
+              data.shortDescription &&
+              typeof data.shortDescription === "string" &&
+              data.shortDescription.trim().length > 0 &&
+              data.shortDescription.trim() !== "0";
+
+            // Check bullets with proper type narrowing
+            const bullets = data.shortDescriptionBullets;
+            const hasBullets =
+              bullets &&
+              Array.isArray(bullets) &&
+              bullets.length > 0 &&
+              bullets.some(
+                (bullet) =>
+                  bullet &&
+                  typeof bullet === "string" &&
+                  bullet.trim().length > 0 &&
+                  bullet.trim() !== "0"
+              );
+
+            if (!hasDescription && !hasBullets) return null;
+
+            return (
+              <div className="text-gray-700 text-medium">
+                {hasDescription && (
+                  <p className="whitespace-pre-line">{data.shortDescription}</p>
+                )}
+                {hasBullets && bullets && (
+                  <ul className="mt-3 space-y-1">
+                    {bullets
+                      .filter(
+                        (bullet) =>
+                          bullet &&
+                          typeof bullet === "string" &&
+                          bullet.trim().length > 0 &&
+                          bullet.trim() !== "0"
+                      )
+                      .map((bullet, index) => (
+                        <li key={index} className="flex items-start space-x-2">
+                          <span className="text-gray-500 mt-1">•</span>
+                          <span className="text-sm">{bullet}</span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
+          {!data.isDigital &&
+            data.stock > 0 &&
+            data.inStockProcessingTime &&
+            data.inStockProcessingTime > 0 && (
+              <div>
+                <p className="text-sm text-gray-500">
+                  Ships in {data.inStockProcessingTime} days.
+                </p>
+              </div>
             )}
-          </div>
-          {!data.isDigital && data.stock > 0 && data.inStockProcessingTime && (
-            <div>
-              <p className="text-sm text-gray-500">
-                Ships in {data.inStockProcessingTime} days.
-              </p>
-            </div>
-          )}
 
           {/* Sale Badge */}
           {isOnSale && (
@@ -442,11 +499,11 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           {data.howItsMade && <CollapsibleHowItsMade data={data} />}
 
           {/* Collapsible Behind the Hands Section */}
-          {data.seller?.behindTheHands && <CollapsibleBehindTheHands data={data} />}
-
+          {data.seller?.behindTheHands && (
+            <CollapsibleBehindTheHands data={data} />
+          )}
         </div>
       </div>
-
 
       {/* GPSR Compliance Information - Only for physical products */}
       {!data.isDigital && (
@@ -493,7 +550,11 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
 }
 
 // Collapsible Product Details Component
-function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data'] }) {
+function CollapsibleProductDetails({
+  data,
+}: {
+  data: ProductDetailsProps["data"];
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -510,14 +571,14 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
           <ChevronDown className="h-4 w-4" />
         )}
       </Button>
-      
+
       {isOpen && (
         <div className="mt-4 text-sm">
           <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             {/* Product Information */}
             <span className="font-bold text-gray-600">Product ID</span>
             <span className="text-gray-800">{data.id}</span>
-            
+
             {data.sku && (
               <>
                 <span className="font-bold text-gray-600">SKU</span>
@@ -528,26 +589,66 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
             {/* Categories */}
             <span className="font-bold text-gray-600">Categories</span>
             <span className="text-gray-800">
-              {data.primaryCategory} {data.secondaryCategory && `> ${data.secondaryCategory}`} {data.tertiaryCategory && `> ${data.tertiaryCategory}`}
+              {data.primaryCategory}{" "}
+              {data.secondaryCategory && `> ${data.secondaryCategory}`}{" "}
+              {data.tertiaryCategory && `> ${data.tertiaryCategory}`}
             </span>
 
             {/* Physical Product Details */}
             {!data.isDigital && (
               <>
-                {/* Weight */}
-                {data.itemWeight && (
+                {/* Weight - Only show if weight exists and is greater than 0 */}
+                {data.itemWeight && data.itemWeight > 0 && (
                   <>
                     <span className="font-bold text-gray-600">Weight</span>
-                    <span className="text-gray-800">{data.itemWeight.toFixed(2)} {data.itemWeightUnit}</span>
+                    <span className="text-gray-800">
+                      {data.itemWeight.toFixed(2)} {data.itemWeightUnit}
+                    </span>
                   </>
                 )}
 
-                {/* Dimensions */}
-                {(data.itemLength || data.itemWidth || data.itemHeight) && (
+                {/* Dimensions - Only show if at least one dimension exists and is greater than 0 */}
+                {(() => {
+                  const dimensions = [];
+                  if (data.itemLength && data.itemLength > 0) {
+                    dimensions.push(
+                      `${data.itemLength}${data.itemDimensionUnit}`
+                    );
+                  }
+                  if (data.itemWidth && data.itemWidth > 0) {
+                    dimensions.push(
+                      `${data.itemWidth}${data.itemDimensionUnit}`
+                    );
+                  }
+                  if (data.itemHeight && data.itemHeight > 0) {
+                    dimensions.push(
+                      `${data.itemHeight}${data.itemDimensionUnit}`
+                    );
+                  }
+                  return dimensions.length > 0;
+                })() && (
                   <>
                     <span className="font-bold text-gray-600">Dimensions</span>
                     <span className="text-gray-800">
-                      {data.itemLength || 0}{data.itemDimensionUnit} × {data.itemWidth || 0}{data.itemDimensionUnit} × {data.itemHeight || 0}{data.itemDimensionUnit}
+                      {(() => {
+                        const dimensions = [];
+                        if (data.itemLength && data.itemLength > 0) {
+                          dimensions.push(
+                            `${data.itemLength}${data.itemDimensionUnit}`
+                          );
+                        }
+                        if (data.itemWidth && data.itemWidth > 0) {
+                          dimensions.push(
+                            `${data.itemWidth}${data.itemDimensionUnit}`
+                          );
+                        }
+                        if (data.itemHeight && data.itemHeight > 0) {
+                          dimensions.push(
+                            `${data.itemHeight}${data.itemDimensionUnit}`
+                          );
+                        }
+                        return dimensions.join(" × ");
+                      })()}
                     </span>
                   </>
                 )}
@@ -567,10 +668,12 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
             )}
 
             {/* Processing Time */}
-            {data.inStockProcessingTime && (
+            {data.inStockProcessingTime && data.inStockProcessingTime > 0 && (
               <>
                 <span className="font-bold text-gray-600">Processing Time</span>
-                <span className="text-gray-800">{data.inStockProcessingTime} days</span>
+                <span className="text-gray-800">
+                  {data.inStockProcessingTime} days
+                </span>
               </>
             )}
           </div>
@@ -581,7 +684,11 @@ function CollapsibleProductDetails({ data }: { data: ProductDetailsProps['data']
 }
 
 // Collapsible Shipping Notes Component
-function CollapsibleShippingNotes({ data }: { data: ProductDetailsProps['data'] }) {
+function CollapsibleShippingNotes({
+  data,
+}: {
+  data: ProductDetailsProps["data"];
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -598,7 +705,7 @@ function CollapsibleShippingNotes({ data }: { data: ProductDetailsProps['data'] 
           <ChevronDown className="h-4 w-4" />
         )}
       </Button>
-      
+
       {isOpen && (
         <div className="mt-4 text-sm">
           <div className="text-gray-800 leading-relaxed">
@@ -611,7 +718,11 @@ function CollapsibleShippingNotes({ data }: { data: ProductDetailsProps['data'] 
 }
 
 // Collapsible How It's Made Component
-function CollapsibleHowItsMade({ data }: { data: ProductDetailsProps['data'] }) {
+function CollapsibleHowItsMade({
+  data,
+}: {
+  data: ProductDetailsProps["data"];
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -628,12 +739,10 @@ function CollapsibleHowItsMade({ data }: { data: ProductDetailsProps['data'] }) 
           <ChevronDown className="h-4 w-4" />
         )}
       </Button>
-      
+
       {isOpen && (
         <div className="mt-4 text-sm">
-          <div className="text-gray-800 leading-relaxed">
-            {data.howItsMade}
-          </div>
+          <div className="text-gray-800 leading-relaxed">{data.howItsMade}</div>
         </div>
       )}
     </div>
@@ -641,7 +750,11 @@ function CollapsibleHowItsMade({ data }: { data: ProductDetailsProps['data'] }) 
 }
 
 // Collapsible Behind the Hands Component
-function CollapsibleBehindTheHands({ data }: { data: ProductDetailsProps['data'] }) {
+function CollapsibleBehindTheHands({
+  data,
+}: {
+  data: ProductDetailsProps["data"];
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -658,7 +771,7 @@ function CollapsibleBehindTheHands({ data }: { data: ProductDetailsProps['data']
           <ChevronDown className="h-4 w-4" />
         )}
       </Button>
-      
+
       {isOpen && (
         <div className="mt-4 text-sm">
           <div className="text-gray-800 leading-relaxed">
@@ -669,4 +782,3 @@ function CollapsibleBehindTheHands({ data }: { data: ProductDetailsProps['data']
     </div>
   );
 }
-

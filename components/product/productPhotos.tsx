@@ -1,12 +1,9 @@
 "use client";
 
-import { UploadDropzone } from "@/lib/uploadthing";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import Image from "next/image";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useCallback, useRef } from "react";
+import { ImageProcessor, ProcessedImage } from "./ImageProcessor";
+import React from "react";
 
 type ProductPhotosProps = {
   images: string[];
@@ -15,6 +12,8 @@ type ProductPhotosProps = {
   setTempImages: Dispatch<SetStateAction<string[]>>;
   form: any;
   setTempUploadsCreated?: (created: boolean) => void;
+  // New prop to store processed images before upload
+  setProcessedImages?: Dispatch<SetStateAction<ProcessedImage[]>>;
 };
 
 export function ProductPhotosSection({
@@ -24,116 +23,88 @@ export function ProductPhotosSection({
   setTempImages,
   form,
   setTempUploadsCreated,
+  setProcessedImages,
 }: ProductPhotosProps) {
-  const imageArray = Array.isArray(images) ? images : [];
+  // Track initial existing images (already uploaded HTTP URLs) - stable reference
+  // This prevents infinite loops by keeping existingImages stable
+  const existingImagesRef = React.useRef<string[]>([]);
+  const prevImagesRef = React.useRef<string>("");
 
-  const handleRemoveImage = (index: number) => {
-    const removedImage = imageArray[index];
-    const newImages = imageArray.filter((_, i) => i !== index);
+  // Extract existing images (HTTP URLs) - only update when images prop changes externally
+  // We detect external changes by checking if all images are HTTP URLs (not blob URLs)
+  React.useEffect(() => {
+    const currentKey = JSON.stringify(images.sort());
+    const prevKey = prevImagesRef.current;
 
-    setImages(newImages);
-    form.setValue("images", newImages, { shouldValidate: true }); // <-- critical
-
-    if (tempImages.includes(removedImage)) {
-      const updatedTempImages = tempImages.filter(
-        (img: string) => img !== removedImage
+    // Check if this is an external update (all HTTP URLs, no blob URLs)
+    const allHttp =
+      images.length > 0 &&
+      images.every(
+        (img) => img.startsWith("http://") || img.startsWith("https://")
       );
-      setTempImages(updatedTempImages);
+
+    // Only update existing images if:
+    // 1. Images changed AND
+    // 2. All images are HTTP URLs (external update, not from our processing)
+    if (currentKey !== prevKey && allHttp) {
+      existingImagesRef.current = [...images];
+      prevImagesRef.current = currentKey;
+    } else if (currentKey !== prevKey) {
+      // Images changed but not all HTTP - update the tracking key
+      prevImagesRef.current = currentKey;
     }
+  }, [images]);
 
-    // Force form to recognize change and mark as dirty
-    form.setValue("images", newImages, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
-  };
+  const existingImages = existingImagesRef.current;
 
-  const onRemove = (urlToRemove: string) => {
-    setImages(images.filter((url) => url !== urlToRemove));
-    // Remove from tempImages if it's a temporary image
-    setTempImages(tempImages.filter(url => url !== urlToRemove));
-  };
+  // Use ref to track previous processed images to avoid infinite loops
+  const prevProcessedRef = React.useRef<string>("");
 
-  const onUploadSuccess = (url: string) => {
-    setImages(prev => [...prev, url]);
-    setTempImages(prev => [...prev, url]);
-    toast.success("Image uploaded successfully");
-  };
+  // Handle when images are processed (but not yet uploaded)
+  const handleImagesProcessed = useCallback(
+    (processed: ProcessedImage[]) => {
+      // Create a stable key to compare
+      const currentKey = JSON.stringify(
+        processed.map((img) => ({ id: img.id, preview: img.preview }))
+      );
+      const prevKey = prevProcessedRef.current;
 
-  const onUploadError = (error: Error) => {
-    toast.error(`Error uploading image: ${error.message}`);
-  };
+      // Only update if something actually changed
+      if (currentKey === prevKey) {
+        return;
+      }
+
+      prevProcessedRef.current = currentKey;
+
+      // Update form with all image URLs (existing + new previews)
+      // New images will have blob: URLs, existing will have http URLs
+      const allImageUrls = processed.map((img) => img.preview);
+
+      // Only update if URLs actually changed
+      const currentUrls = JSON.stringify(images.sort());
+      const newUrls = JSON.stringify(allImageUrls.sort());
+      if (currentUrls !== newUrls) {
+        setImages(allImageUrls);
+        form.setValue("images", allImageUrls, {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
+      }
+
+      // Store processed images for later upload
+      if (setProcessedImages) {
+        setProcessedImages(processed);
+      }
+    },
+    [setImages, form, setProcessedImages, images]
+  );
 
   return (
-    <div className="flex flex-col gap-y-4">
-      <Label>Product Photos</Label>
-
-      {/* Preview Images */}
-      {imageArray.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-4">
-          {imageArray.map((url, index) => (
-            <div key={url} className="relative w-24 h-24">
-              <Image
-                fill
-                loading="eager"
-                className="-z-10 h-full w-full object-cover object-center"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                src={url}
-                alt={`Product image ${index + 1}`}
-              />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={() => handleRemoveImage(index)}
-                className="absolute top-0 right-0 w-5 h-5"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Upload Section */}
-      <UploadDropzone
-        endpoint="imageUploader"
-        onClientUploadComplete={(res) => {
-          if (!res || res.length === 0) {
-            toast.error("Image upload failed.");
-            return;
-          }
-
-          const fileUrls = res.map(file => file.url || file.ufsUrl);
-          const updatedImages = [...images, ...fileUrls];
-          setImages(updatedImages);
-          form.setValue("images", updatedImages, {
-            shouldValidate: true,
-          });
-
-          // Track uploaded files as temp
-          const updatedTempImages = [...tempImages, ...fileUrls];
-          setTempImages(updatedTempImages);
-
-          // Mark that temporary uploads have been created
-          if (setTempUploadsCreated) {
-            setTempUploadsCreated(true);
-          }
-
-          // Force form to recognize change
-          form.setValue("images", updatedImages, {
-            shouldDirty: true,
-            shouldTouch: true,
-            shouldValidate: true,
-          });
-
-          toast.success("Your images have been uploaded!");
-        }}
-        onUploadError={(error: Error) => {
-          toast.error("Something went wrong, try again");
-        }}
-      />
-    </div>
+    <ImageProcessor
+      onImagesProcessed={handleImagesProcessed}
+      existingImages={existingImages}
+      maxImages={10}
+    />
   );
 }

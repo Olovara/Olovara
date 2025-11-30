@@ -21,6 +21,8 @@ import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
 import { ProductInfoSection } from "../product/productInformation";
 import { ProductPhotosSection } from "../product/productPhotos";
+import { ProcessedImage } from "../product/ImageProcessor";
+import { uploadProcessedImages } from "@/lib/upload-images";
 import { ProductOptionsSection } from "../product/productOptions";
 import { ProductShippingSection } from "../product/productShipping";
 import { ProductPromotionsSection } from "../product/productPromotions";
@@ -91,6 +93,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [ogImage, setOgImage] = useState<string>(initialData?.ogImage || "");
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Store processed images (before upload)
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
 
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
@@ -605,9 +610,55 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
+      // Upload processed images first (if any)
+      let finalImageUrls = [...images];
+
+      // Separate existing images (already uploaded URLs) from new processed images (File objects)
+      const existingImageUrls = processedImages
+        .filter((img) => img.preview.startsWith("http"))
+        .map((img) => img.preview);
+
+      const newProcessedImages = processedImages.filter(
+        (img) =>
+          img.preview.startsWith("blob:") && img.file && img.file.size > 0
+      );
+
+      if (newProcessedImages.length > 0) {
+        setIsUploading(true);
+        toast.loading("Uploading images...");
+        try {
+          // Upload only new processed images
+          const filesToUpload = newProcessedImages.map((img) => img.file);
+          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+
+          // Combine existing URLs with newly uploaded URLs
+          finalImageUrls = [...existingImageUrls, ...uploadedUrls];
+
+          // Update images state
+          setImages(finalImageUrls);
+          toast.dismiss();
+        } catch (uploadError) {
+          console.error("Error uploading images:", uploadError);
+          toast.dismiss();
+          toast.error("Failed to upload images. Please try again.");
+          setIsLoading(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        // No new images to upload, just use existing URLs
+        finalImageUrls =
+          existingImageUrls.length > 0
+            ? existingImageUrls
+            : images.filter((url) => url.startsWith("http"));
+      }
+
       // The schema already handles the conversion to cents
       const formData = {
         ...data,
+        images: finalImageUrls, // Use uploaded URLs
         status: isDraft ? "DRAFT" : data.status,
         options:
           dropdownOptions.length > 0
@@ -887,6 +938,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     tempImages={tempImages}
                     form={form}
                     setTempUploadsCreated={setTempUploadsCreated}
+                    setProcessedImages={setProcessedImages}
                   />
 
                   <ProductFileSection
