@@ -19,6 +19,9 @@ import {
 import { Ellipsis } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -39,6 +42,44 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ products }: ProductTableProps) {
+  const router = useRouter();
+  const [duplicatingProductId, setDuplicatingProductId] = useState<string | null>(null);
+
+  // Handler function to duplicate a product
+  const handleDuplicate = async (productId: string) => {
+    // Prevent duplicate requests
+    if (duplicatingProductId === productId) return;
+
+    setDuplicatingProductId(productId);
+    
+    try {
+      const response = await fetch(`/api/products/${productId}/duplicate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to duplicate product");
+      }
+
+      toast.success("Product duplicated successfully!");
+      
+      // Redirect to the edit page of the new product
+      router.push(`/seller/dashboard/products/edit/${data.productId}`);
+      router.refresh(); // Refresh to show the new product in the list
+    } catch (error) {
+      console.error("Error duplicating product:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to duplicate product. Please try again."
+      );
+    } finally {
+      setDuplicatingProductId(null);
+    }
+  };
+
   // Helper function to format date
   const formatDate = (date: Date | string) => {
     try {
@@ -175,6 +216,14 @@ export function ProductTable({ products }: ProductTableProps) {
                       <Link href={`/seller/dashboard/products/edit/${product.id}`}>
                         Edit
                       </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleDuplicate(product.id)}
+                      disabled={duplicatingProductId === product.id}
+                    >
+                      {duplicatingProductId === product.id
+                        ? "Duplicating..."
+                        : "Duplicate"}
                     </DropdownMenuItem>
                     {/*TODO readd when analytics are added<DropdownMenuItem asChild>
                       <Link href={`/seller/dashboard/products/${product.id}/analytics`}>

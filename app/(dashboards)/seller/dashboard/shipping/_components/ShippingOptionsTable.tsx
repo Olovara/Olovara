@@ -10,9 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useState } from "react";
 import { SHIPPING_ZONES } from "@/data/shipping";
 import { getCountryByCode } from "@/data/countries";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
@@ -48,6 +49,7 @@ export default function ShippingOptionsTable({
   options,
 }: ShippingOptionsTableProps) {
   const router = useRouter();
+  const [duplicatingOptionId, setDuplicatingOptionId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     try {
@@ -66,6 +68,40 @@ export default function ShippingOptionsTable({
     }
   };
 
+  // Handler function to duplicate a shipping option
+  const handleDuplicate = async (optionId: string) => {
+    // Prevent duplicate requests
+    if (duplicatingOptionId === optionId) return;
+
+    setDuplicatingOptionId(optionId);
+    
+    try {
+      const response = await fetch(`/api/shipping-options/${optionId}/duplicate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to duplicate shipping option");
+      }
+
+      toast.success("Shipping option duplicated successfully!");
+      
+      // Refresh to show the new shipping option in the list
+      router.refresh();
+    } catch (error) {
+      console.error("Error duplicating shipping option:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to duplicate shipping option. Please try again."
+      );
+    } finally {
+      setDuplicatingOptionId(null);
+    }
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -77,7 +113,7 @@ export default function ShippingOptionsTable({
                 <TableHead>Name</TableHead>
                 <TableHead>Rates</TableHead>
                 <TableHead>Default</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,8 +210,8 @@ export default function ShippingOptionsTable({
                     </ul>
                   </TableCell>
                   <TableCell>{option.isDefault ? "Yes" : "No"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
                       <Link
                         href={`/seller/dashboard/shipping/${option.id}/edit`}
                       >
@@ -183,6 +219,15 @@ export default function ShippingOptionsTable({
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDuplicate(option.id)}
+                        disabled={duplicatingOptionId === option.id}
+                        title="Duplicate shipping option"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
