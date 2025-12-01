@@ -312,7 +312,7 @@ const SellerInfoForm = () => {
           </div>
         </div>
 
-        <Submitbutton title="Save Location Information" isPending={isPending} />
+        <Submitbutton title="Save Shop Information" isPending={isPending} />
       </CardContent>
     </form>
   );

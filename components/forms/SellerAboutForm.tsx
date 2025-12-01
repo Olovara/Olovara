@@ -23,11 +23,11 @@ import {
 } from "@/actions/sellerAboutActions";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Upload, X } from "lucide-react";
-import { UploadButton } from "@uploadthing/react";
-import { ourFileRouter } from "@/app/api/uploadthing/core";
-import Image from "next/image";
+import {
+  SingleImageProcessor,
+  SingleProcessedImage,
+} from "@/components/seller/SingleImageProcessor";
+import { uploadProcessedImages } from "@/lib/upload-images";
 import { useSession } from "next-auth/react";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 
@@ -42,6 +42,15 @@ const SellerAboutForm = () => {
   // Add state to track temporary uploads
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
+
+  // Add state to track processed images (before upload)
+  const [processedSellerImage, setProcessedSellerImage] =
+    useState<SingleProcessedImage | null>(null);
+  const [processedBannerImage, setProcessedBannerImage] =
+    useState<SingleProcessedImage | null>(null);
+  const [processedLogoImage, setProcessedLogoImage] =
+    useState<SingleProcessedImage | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Add a ref to track if form was submitted successfully
   const formSubmittedRef = useRef(false);
@@ -135,7 +144,78 @@ const SellerAboutForm = () => {
       setError("");
       setSuccess("");
 
-      const result = await updateSellerAbout(values);
+      // Upload processed images if any
+      let finalSellerImage = values.sellerImage;
+      let finalBannerImage = values.shopBannerImage;
+      let finalLogoImage = values.shopLogoImage;
+
+      // Collect all new processed images to upload
+      const imagesToUpload: File[] = [];
+      const imageTypes: string[] = [];
+
+      if (processedSellerImage && processedSellerImage.file.size > 0) {
+        imagesToUpload.push(processedSellerImage.file);
+        imageTypes.push("seller");
+      }
+      if (processedBannerImage && processedBannerImage.file.size > 0) {
+        imagesToUpload.push(processedBannerImage.file);
+        imageTypes.push("banner");
+      }
+      if (processedLogoImage && processedLogoImage.file.size > 0) {
+        imagesToUpload.push(processedLogoImage.file);
+        imageTypes.push("logo");
+      }
+
+      // Upload new images if any
+      if (imagesToUpload.length > 0) {
+        setIsUploading(true);
+        toast.loading("Uploading images...");
+        try {
+          const uploadedUrls = await uploadProcessedImages(imagesToUpload);
+
+          // Map uploaded URLs to their respective fields
+          let sellerIndex = -1;
+          let bannerIndex = -1;
+          let logoIndex = -1;
+
+          imageTypes.forEach((type, index) => {
+            if (type === "seller") sellerIndex = index;
+            if (type === "banner") bannerIndex = index;
+            if (type === "logo") logoIndex = index;
+          });
+
+          if (sellerIndex >= 0) {
+            finalSellerImage = uploadedUrls[sellerIndex];
+          }
+          if (bannerIndex >= 0) {
+            finalBannerImage = uploadedUrls[bannerIndex];
+          }
+          if (logoIndex >= 0) {
+            finalLogoImage = uploadedUrls[logoIndex];
+          }
+
+          toast.dismiss();
+        } catch (uploadError) {
+          console.error("Error uploading images:", uploadError);
+          toast.dismiss();
+          toast.error("Failed to upload images. Please try again.");
+          setIsPending(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      // Prepare form data with uploaded image URLs
+      const formData = {
+        ...values,
+        sellerImage: finalSellerImage,
+        shopBannerImage: finalBannerImage,
+        shopLogoImage: finalLogoImage,
+      };
+
+      const result = await updateSellerAbout(formData);
       console.log("Form submission result:", result);
 
       if (result.error) {
@@ -145,6 +225,11 @@ const SellerAboutForm = () => {
 
       // Set the flag to indicate successful submission
       formSubmittedRef.current = true;
+
+      // Clear processed images after successful upload
+      setProcessedSellerImage(null);
+      setProcessedBannerImage(null);
+      setProcessedLogoImage(null);
 
       // Clean up temporary uploads after successful submission
       if (tempImages.length > 0) {
@@ -177,31 +262,39 @@ const SellerAboutForm = () => {
     }
   };
 
-  const removeImage = (field: keyof z.infer<typeof SellerAboutSchema>) => {
-    const currentImage = form.getValues(field);
-    if (currentImage) {
-      // If it's a temporary image, remove it from temp tracking
-      if (tempImages.includes(currentImage)) {
-        const updatedTempImages = tempImages.filter(
-          (img) => img !== currentImage
-        );
-        setTempImages(updatedTempImages);
+  // Handle processed images from SingleImageProcessor
+  const handleSellerImageProcessed = useCallback(
+    (image: SingleProcessedImage | null) => {
+      setProcessedSellerImage(image);
+      // Update form field - if image is null, clear the field
+      if (!image) {
+        form.setValue("sellerImage", undefined);
       }
-    }
-    form.setValue(field, undefined);
-  };
+    },
+    [form]
+  );
 
-  // Helper function to handle image upload success
-  const handleImageUploadSuccess = (
-    field: keyof z.infer<typeof SellerAboutSchema>,
-    fileUrl: string
-  ) => {
-    form.setValue(field, fileUrl);
-    // Track as temporary upload
-    setTempImages((prev) => [...prev, fileUrl]);
-    setTempUploadsCreated(true);
-    toast.success("Image uploaded successfully!");
-  };
+  const handleBannerImageProcessed = useCallback(
+    (image: SingleProcessedImage | null) => {
+      setProcessedBannerImage(image);
+      // Update form field - if image is null, clear the field
+      if (!image) {
+        form.setValue("shopBannerImage", undefined);
+      }
+    },
+    [form]
+  );
+
+  const handleLogoImageProcessed = useCallback(
+    (image: SingleProcessedImage | null) => {
+      setProcessedLogoImage(image);
+      // Update form field - if image is null, clear the field
+      if (!image) {
+        form.setValue("shopLogoImage", undefined);
+      }
+    },
+    [form]
+  );
 
   if (!isClient || isLoading) return <Spinner />;
 
@@ -318,170 +411,35 @@ const SellerAboutForm = () => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Shop Images</h3>
 
-          {/* Seller Image */}
-          <div className="flex flex-col gap-y-2">
-            <Label>Seller Profile Image</Label>
-            <div className="flex items-center gap-4">
-              {(() => {
-                const sellerImage = form.watch("sellerImage");
-                return sellerImage ? (
-                  <div className="relative">
-                    <Image
-                      src={sellerImage}
-                      alt="Seller profile"
-                      width={80}
-                      height={80}
-                      className="w-20 h-20 rounded-full object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-2 -right-2 w-6 h-6 p-0"
-                      onClick={() => removeImage("sellerImage")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
-                    <Upload className="h-6 w-6 text-gray-400" />
-                  </div>
-                );
-              })()}
+          {/* Seller Image - Round (1:1 aspect ratio) */}
+          <SingleImageProcessor
+            onImageProcessed={handleSellerImageProcessed}
+            existingImage={form.watch("sellerImage")}
+            aspectRatio={1}
+            label="Seller Profile Image"
+            description="Upload a profile image for your shop (will be displayed as round)"
+            previewClassName="w-20 h-20 rounded-full object-cover"
+          />
 
-              <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, "singleImageUploader">
-                  endpoint="singleImageUploader"
-                  onClientUploadComplete={(res) => {
-                    if (res && res[0]) {
-                      const fileUrl = res[0].url || res[0].ufsUrl;
-                      handleImageUploadSuccess("sellerImage", fileUrl);
-                    }
-                  }}
-                  onUploadError={(error) => {
-                    toast.error(error.message);
-                  }}
-                  appearance={{
-                    button: "w-full mt-2",
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload a profile image for your shop
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Shop Banner Image - Wide (16:9 aspect ratio) */}
+          <SingleImageProcessor
+            onImageProcessed={handleBannerImageProcessed}
+            existingImage={form.watch("shopBannerImage")}
+            aspectRatio={16 / 9}
+            label="Shop Banner Image"
+            description="Upload a banner image for your shop page (wide format)"
+            previewClassName="w-32 h-20 rounded object-cover"
+          />
 
-          {/* Shop Banner Image */}
-          <div className="flex flex-col gap-y-2">
-            <Label>Shop Banner Image</Label>
-            <div className="flex items-center gap-4">
-              {(() => {
-                const shopBannerImage = form.watch("shopBannerImage");
-                return shopBannerImage ? (
-                  <div className="relative">
-                    <Image
-                      src={shopBannerImage}
-                      alt="Shop banner"
-                      width={128}
-                      height={80}
-                      className="w-32 h-20 rounded object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-2 -right-2 w-6 h-6 p-0"
-                      onClick={() => removeImage("shopBannerImage")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-32 h-20 border-2 border-dashed border-gray-300 rounded flex items-center justify-center">
-                    <Upload className="h-6 w-6 text-gray-400" />
-                  </div>
-                );
-              })()}
-
-              <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, "singleImageUploader">
-                  endpoint="singleImageUploader"
-                  onClientUploadComplete={(res) => {
-                    if (res && res[0]) {
-                      const fileUrl = res[0].url || res[0].ufsUrl;
-                      handleImageUploadSuccess("shopBannerImage", fileUrl);
-                    }
-                  }}
-                  onUploadError={(error) => {
-                    toast.error(error.message);
-                  }}
-                  appearance={{
-                    button: "w-full mt-2",
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload a banner image for your shop page
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Shop Logo Image */}
-          <div className="flex flex-col gap-y-2">
-            <Label>Shop Logo Image</Label>
-            <div className="flex items-center gap-4">
-              {(() => {
-                const shopLogoImage = form.watch("shopLogoImage");
-                return shopLogoImage ? (
-                  <div className="relative">
-                    <Image
-                      src={shopLogoImage}
-                      alt="Shop logo"
-                      width={64}
-                      height={64}
-                      className="w-16 h-16 rounded object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-2 -right-2 w-6 h-6 p-0"
-                      onClick={() => removeImage("shopLogoImage")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center">
-                    <Upload className="h-6 w-6 text-gray-400" />
-                  </div>
-                );
-              })()}
-
-              <div className="flex-1">
-                <UploadButton<typeof ourFileRouter, "singleImageUploader">
-                  endpoint="singleImageUploader"
-                  onClientUploadComplete={(res) => {
-                    if (res && res[0]) {
-                      const fileUrl = res[0].url || res[0].ufsUrl;
-                      handleImageUploadSuccess("shopLogoImage", fileUrl);
-                    }
-                  }}
-                  onUploadError={(error) => {
-                    toast.error(error.message);
-                  }}
-                  appearance={{
-                    button: "w-full mt-2",
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload a logo for your shop
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Shop Logo Image - Square (1:1 aspect ratio, small) */}
+          <SingleImageProcessor
+            onImageProcessed={handleLogoImageProcessed}
+            existingImage={form.watch("shopLogoImage")}
+            aspectRatio={1}
+            label="Shop Logo Image"
+            description="Upload a logo for your shop (square format)"
+            previewClassName="w-16 h-16 rounded object-cover"
+          />
         </div>
 
         <Submitbutton title="Save Shop Information" isPending={isPending} />

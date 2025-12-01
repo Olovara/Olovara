@@ -108,7 +108,7 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
           Profile
         </CardTitle>
         <CardDescription>
-          Update your personal information and bio. This information will be visible on your blog posts and profile.
+          Update your personal information and bio. This information will be visible on your profile.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -122,9 +122,9 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
               placeholder="Enter your first name"
               maxLength={50}
             />
-            <p className="text-sm text-muted-foreground">
+            {/*<p className="text-sm text-muted-foreground">
               Your first name will be displayed as the author on your blog posts
-            </p>
+            </p>*/}
           </div>
 
           <Separator />

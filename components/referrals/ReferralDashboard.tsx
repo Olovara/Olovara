@@ -223,9 +223,9 @@ export default function ReferralDashboard({ userId }: ReferralDashboardProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Approved Sellers</p>
-                <p className="text-3xl font-bold text-green-600">{stats.referralCount}</p>
+                <p className="text-3xl font-bold text-purple-600">{stats.referralCount}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-400" />
+              <TrendingUp className="h-8 w-8 text-purple-400" />
             </div>
           </CardContent>
         </Card>
@@ -236,11 +236,11 @@ export default function ReferralDashboard({ userId }: ReferralDashboardProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Commission Discount</p>
-                <p className="text-3xl font-bold text-orange-600">
+                <p className="text-3xl font-bold text-purple-600">
                   {stats.activeRewards.filter(r => r.isActive && r.type === "DISCOUNT").length > 0 ? "Active" : "None"}
                 </p>
               </div>
-              <Gift className="h-8 w-8 text-orange-400" />
+              <Gift className="h-8 w-8 text-purple-400" />
             </div>
           </CardContent>
         </Card>
@@ -486,7 +486,7 @@ export default function ReferralDashboard({ userId }: ReferralDashboardProps) {
                   </div>
                 </div>
                 <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                  <h5 className="font-semibold text-blue-800 mb-1">🎁 Applicant Bonus</h5>
+                  <h5 className="font-semibold text-blue-800 mb-1">Applicant Bonus</h5>
                   <p className="text-xs text-blue-700">
                     When you use a referral code during your seller application, you automatically get 1 month of 2% commission discount!
                   </p>
