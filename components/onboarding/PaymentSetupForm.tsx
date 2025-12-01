@@ -108,18 +108,18 @@ export default function PaymentSetupForm() {
           <CardContent className="space-y-6">
             {/* Security Features */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                <Shield className="h-6 w-6 text-green-600" />
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                <Shield className="h-6 w-6 text-purple-600" />
                 <div>
-                  <h4 className="font-semibold text-green-800">Secure</h4>
-                  <p className="text-sm text-green-700">Bank-level security</p>
+                  <h4 className="font-semibold text-purple-800">Secure</h4>
+                  <p className="text-sm text-purple-700">Bank-level security</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <Zap className="h-6 w-6 text-blue-600" />
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                <Zap className="h-6 w-6 text-purple-600" />
                 <div>
-                  <h4 className="font-semibold text-blue-800">Fast</h4>
-                  <p className="text-sm text-blue-700">Instant transfers</p>
+                  <h4 className="font-semibold text-purple-800">Fast</h4>
+                  <p className="text-sm text-purple-700">Instant transfers</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-200">
@@ -154,24 +154,24 @@ export default function PaymentSetupForm() {
                 {/* What You&apos;ll Need */}
                 <div className="bg-gray-50 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <Lightbulb className="h-5 w-5 mr-2 text-yellow-600" />
+                    <Lightbulb className="h-5 w-5 mr-2 text-purple-600" />
                     What You&apos;ll Need
                   </h3>
                   <ul className="space-y-2 text-gray-700">
                     <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      <CheckCircle className="h-4 w-4 text-purple-600 mr-2" />
                       Government-issued ID (driver&apos;s license, passport, etc.)
                     </li>
                     <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      <CheckCircle className="h-4 w-4 text-purple-600 mr-2" />
                       Bank account information
                     </li>
                     <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      <CheckCircle className="h-4 w-4 text-purple-600 mr-2" />
                       Business information (if applicable)
                     </li>
                     <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      <CheckCircle className="h-4 w-4 text-purple-600 mr-2" />
                       Social Security Number (US) or Tax ID
                     </li>
                   </ul>

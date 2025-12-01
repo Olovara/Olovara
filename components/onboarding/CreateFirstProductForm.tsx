@@ -271,7 +271,7 @@ export default function CreateFirstProductForm() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {/* Step Indicator */}
       <div className="w-full max-w-4xl mx-auto">
         <StepIndicator currentStep="create-first-product" className="mb-8" />
@@ -283,7 +283,7 @@ export default function CreateFirstProductForm() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-4xl mx-auto"
       >
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm w-full max-w-full min-w-0 overflow-hidden">
           <CardHeader className="text-center pb-8">
             <div className="flex items-center justify-center mb-4">
               <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full">
@@ -299,14 +299,14 @@ export default function CreateFirstProductForm() {
             </CardDescription>
           </CardHeader>
 
-                     <CardContent className="space-y-8">
+                     <CardContent className="space-y-8 w-full min-w-0 max-w-full">
              <FormProvider {...form}>
                <form
                  onSubmit={form.handleSubmit(handleSubmit)}
-                 className="space-y-8"
+                 className="space-y-8 w-full min-w-0 max-w-full"
                >
               {/* Basic Information Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden w-full min-w-0">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -316,7 +316,7 @@ export default function CreateFirstProductForm() {
                     Essential product details that customers will see first
                   </p>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 w-full min-w-0 max-w-full">
                   <ProductInfoSection
                     form={form as any}
                     description={description}
@@ -327,6 +327,7 @@ export default function CreateFirstProductForm() {
                     setMaterialTags={setMaterialTags}
                     shortDescriptionBullets={shortDescriptionBullets}
                     setShortDescriptionBullets={setShortDescriptionBullets}
+                    showAdvancedOptions={false}
                   />
                 </div>
               </div>
@@ -361,48 +362,51 @@ export default function CreateFirstProductForm() {
                 </div>
               </div>
 
-              {/* Inventory & Options Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Inventory & Options
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Stock levels, variants, and product options
-                  </p>
+              {/* Inventory & Options Section - Hidden for digital products */}
+              {!isDigital && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Inventory & Options
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Stock levels, variants, and product options
+                    </p>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <ProductInventorySection 
+                      form={form as any} 
+                      showAdvancedOptions={false}
+                    />
+                  </div>
                 </div>
-                <div className="p-6 space-y-6">
-                  <ProductInventorySection form={form as any} />
+              )}
 
-                  <ProductOptionsSection
-                    dropdownOptions={dropdownOptions}
-                    setDropdownOptions={setDropdownOptions}
-                  />
+              {/* Shipping & Dimensions Section - Hidden for digital products */}
+              {!isDigital && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Shipping & Dimensions
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Shipping costs, dimensions, and handling information
+                    </p>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <ProductShippingSection
+                      form={form as any}
+                      freeShipping={freeShipping}
+                      showAdvancedOptions={false}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Shipping & Dimensions Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Shipping & Dimensions
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Shipping costs, dimensions, and handling information
-                  </p>
-                </div>
-                <div className="p-6 space-y-6">
-                  <ProductShippingSection
-                    form={form as any}
-                    freeShipping={freeShipping}
-                  />
-                </div>
-              </div>
-
-              {/* Story & Details Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              {/* Story & Details Section - Hidden in onboarding */}
+              {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -415,7 +419,7 @@ export default function CreateFirstProductForm() {
                 <div className="p-6 space-y-6">
                   <ProductHowItsMadeSection form={form as any} />
                 </div>
-              </div>
+              </div> */}
 
               {/* EU Compliance Alert */}
               {isSellerInEU && (
@@ -445,10 +449,6 @@ export default function CreateFirstProductForm() {
                   <li>• Set a realistic processing time</li>
                   <li>
                     • Price competitively but don&apos;t undervalue your work
-                  </li>
-                  <li>
-                    • Tell your story - customers love to know how things are
-                    made
                   </li>
                 </ul>
               </div>

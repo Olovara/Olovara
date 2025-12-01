@@ -72,6 +72,7 @@ type ProductInfoSectionProps = {
   setMaterialTags: (tags: string[]) => void;
   shortDescriptionBullets: string[];
   setShortDescriptionBullets: (bullets: string[]) => void;
+  showAdvancedOptions?: boolean;
 };
 
 export const ProductInfoSection = ({
@@ -84,6 +85,7 @@ export const ProductInfoSection = ({
   setMaterialTags,
   shortDescriptionBullets,
   setShortDescriptionBullets,
+  showAdvancedOptions = true,
 }: ProductInfoSectionProps) => {
   const { register, control, setValue, watch } = form;
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(
@@ -383,7 +385,7 @@ export const ProductInfoSection = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* Product Name */}
       <FormField
         control={control}
@@ -476,11 +478,11 @@ export const ProductInfoSection = ({
 
       {/* Category Suggestions */}
       {categorySuggestions.length > 0 && (
-        <div className="space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
-          <p className="text-sm font-medium text-purple-900">
+        <div className="w-full min-w-0 max-w-full space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
+          <p className="text-sm font-medium text-purple-900 break-words">
             Suggested Categories:
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1 w-full min-w-0 max-w-full">
             {categorySuggestions.map((chain, index) => {
               const chainText = [
                 chain.primary.name,
@@ -494,14 +496,16 @@ export const ProductInfoSection = ({
                   key={index}
                   type="button"
                   onClick={() => handleCategorySuggestionClick(chain)}
-                  className="w-full text-left px-3 py-2 text-sm bg-white hover:bg-purple-100 border border-purple-300 rounded-md transition-colors"
+                  className="block w-full min-w-0 max-w-full text-left px-3 py-2 text-sm bg-white hover:bg-purple-100 border border-purple-300 rounded-md transition-colors"
                 >
-                  <span className="text-purple-800">{chainText}</span>
+                  <span className="text-purple-800 block truncate w-full" title={chainText}>
+                    {chainText}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <p className="text-xs text-purple-700">
+          <p className="text-xs text-purple-700 break-words">
             Click a suggestion to auto-fill the category fields below
           </p>
         </div>
@@ -779,6 +783,7 @@ export const ProductInfoSection = ({
       />
 
       {/* Advanced Options - Collapsible Section */}
+      {showAdvancedOptions && (
       <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
         <CollapsibleTrigger className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
           <span className="text-sm font-medium text-gray-700">
@@ -1160,6 +1165,7 @@ export const ProductInfoSection = ({
           </div>
         </CollapsibleContent>
       </Collapsible>
+      )}
     </div>
   );
 };

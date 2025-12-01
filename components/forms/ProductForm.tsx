@@ -401,7 +401,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   // Define field groups for each card section
   const basicInfoFields = [
     "name",
-    "shortDescription",
     "description",
     "price",
     "primaryCategory",
@@ -876,7 +875,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                           .map((field) => {
                             const fieldLabels: Record<string, string> = {
                               name: "Product Name",
-                              shortDescription: "Short Description",
                               description: "Description",
                               price: "Price",
                               primaryCategory: "Primary Category",
@@ -950,85 +948,89 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 </div>
               </div>
 
-              {/* Inventory & Options Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Inventory & Options
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Stock levels, variants, and product options
-                  </p>
-                  {!isDraft &&
-                    !form.watch("isDigital") &&
-                    getCardErrors(inventoryFields).length > 0 && (
-                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                        <p className="text-sm font-medium text-red-800">
-                          Missing required fields:{" "}
-                          {getCardErrors(inventoryFields)
-                            .map((field) => {
-                              const fieldLabels: Record<string, string> = {
-                                stock: "Stock",
-                              };
-                              return fieldLabels[field] || field;
-                            })
-                            .join(", ")}
-                        </p>
-                      </div>
-                    )}
+              {/* Inventory & Options Section - Hidden for digital products */}
+              {!form.watch("isDigital") && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Inventory & Options
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Stock levels, variants, and product options
+                    </p>
+                    {!isDraft &&
+                      !form.watch("isDigital") &&
+                      getCardErrors(inventoryFields).length > 0 && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm font-medium text-red-800">
+                            Missing required fields:{" "}
+                            {getCardErrors(inventoryFields)
+                              .map((field) => {
+                                const fieldLabels: Record<string, string> = {
+                                  stock: "Stock",
+                                };
+                                return fieldLabels[field] || field;
+                              })
+                              .join(", ")}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <ProductInventorySection form={form}>
+                      <ProductOptionsSection
+                        dropdownOptions={dropdownOptions}
+                        setDropdownOptions={setDropdownOptions}
+                      />
+                    </ProductInventorySection>
+                  </div>
                 </div>
-                <div className="p-6 space-y-6">
-                  <ProductInventorySection form={form}>
-                    <ProductOptionsSection
-                      dropdownOptions={dropdownOptions}
-                      setDropdownOptions={setDropdownOptions}
-                    />
-                  </ProductInventorySection>
-                </div>
-              </div>
+              )}
 
-              {/* Shipping & Dimensions Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Shipping & Dimensions
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Shipping costs, dimensions, and handling information
-                  </p>
-                  {!isDraft &&
-                    !form.watch("isDigital") &&
-                    !form.watch("freeShipping") &&
-                    getCardErrors(shippingFields).length > 0 && (
-                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                        <p className="text-sm font-medium text-red-800">
-                          Missing required fields:{" "}
-                          {getCardErrors(shippingFields)
-                            .map((field) => {
-                              const fieldLabels: Record<string, string> = {
-                                shippingCost: "Shipping Cost",
-                                shippingOptionId: "Shipping Option",
-                                itemWeight: "Item Weight",
-                                itemLength: "Item Length",
-                                itemWidth: "Item Width",
-                                itemHeight: "Item Height",
-                              };
-                              return fieldLabels[field] || field;
-                            })
-                            .join(", ")}
-                        </p>
-                      </div>
-                    )}
+              {/* Shipping & Dimensions Section - Hidden for digital products */}
+              {!form.watch("isDigital") && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Shipping & Dimensions
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Shipping costs, dimensions, and handling information
+                    </p>
+                    {!isDraft &&
+                      !form.watch("isDigital") &&
+                      !form.watch("freeShipping") &&
+                      getCardErrors(shippingFields).length > 0 && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm font-medium text-red-800">
+                            Missing required fields:{" "}
+                            {getCardErrors(shippingFields)
+                              .map((field) => {
+                                const fieldLabels: Record<string, string> = {
+                                  shippingCost: "Shipping Cost",
+                                  shippingOptionId: "Shipping Option",
+                                  itemWeight: "Item Weight",
+                                  itemLength: "Item Length",
+                                  itemWidth: "Item Width",
+                                  itemHeight: "Item Height",
+                                };
+                                return fieldLabels[field] || field;
+                              })
+                              .join(", ")}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <ProductShippingSection
+                      form={form}
+                      freeShipping={freeShipping}
+                    />
+                  </div>
                 </div>
-                <div className="p-6 space-y-6">
-                  <ProductShippingSection
-                    form={form}
-                    freeShipping={freeShipping}
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Story & Details Section */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

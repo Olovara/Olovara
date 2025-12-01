@@ -10,8 +10,10 @@ export default async function CreateFirstProductPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <CreateFirstProductForm />
+    <div className="flex items-center justify-center min-h-[80vh] w-full">
+      <div className="w-full max-w-4xl">
+        <CreateFirstProductForm />
+      </div>
     </div>
   );
 } 

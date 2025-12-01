@@ -244,7 +244,7 @@ const Footer = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-gray-200 hover:bg-purple-300 rounded-full transition-colors"
-                        aria-label="Follow us on Pinterest"
+                        aria-label="Follow us on Instagram"
                       >
                         <InstagramIcon className="w-4 h-4" />
                       </a>

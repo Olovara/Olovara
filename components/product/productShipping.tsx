@@ -57,11 +57,13 @@ interface ShippingOption {
 interface ProductShippingSectionProps {
   form: UseFormReturn<ProductFormValues>;
   freeShipping: boolean;
+  showAdvancedOptions?: boolean;
 }
 
 export const ProductShippingSection = ({
   form,
   freeShipping,
+  showAdvancedOptions = true,
 }: ProductShippingSectionProps) => {
   const { control, watch, setValue } = form;
   const isDigital = watch("isDigital");
@@ -193,6 +195,7 @@ export const ProductShippingSection = ({
       />
 
       {/* Advanced Options - Collapsible Section */}
+      {showAdvancedOptions && (
       <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
         <CollapsibleTrigger className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
           <span className="text-sm font-medium text-gray-700">
@@ -481,6 +484,7 @@ export const ProductShippingSection = ({
           })()}
         </CollapsibleContent>
       </Collapsible>
+      )}
     </div>
   );
 };

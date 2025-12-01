@@ -44,24 +44,30 @@ export default function FirstNameModal({ isOpen, onClose }: FirstNameModalProps)
 
       if (result.error) {
         toast.error(result.error);
+        setIsSubmitting(false);
         return;
       }
 
+      // Close modal immediately for better UX
+      onClose();
+      
+      // Show success toast
       toast.success("Welcome to Yarnnu!");
       
-      // Redirect to welcome page
-      router.push("/onboarding/welcome");
+      // Redirect to welcome page (use replace to avoid adding to history)
+      router.replace("/onboarding/welcome");
     } catch (error) {
       console.error("Error saving first name:", error);
       toast.error("Failed to save your name");
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSkip = () => {
+    // Close modal first
+    onClose();
     // Redirect to welcome page without saving first name
-    router.push("/onboarding/welcome");
+    router.replace("/onboarding/welcome");
   };
 
   return (
