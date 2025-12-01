@@ -121,6 +121,21 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // Only create seller if it doesn't exist
       if (!seller) {
+        // Check founding seller eligibility using transaction's db instance
+        // Count how many "NEW" founding sellers already exist
+        const newFoundingSellerCount = await tx.seller.count({
+          where: {
+            isFoundingSeller: true,
+            foundingSellerType: "NEW"
+          }
+        });
+
+        // Determine founding seller status based on availability (max 50)
+        const isFoundingSeller = newFoundingSellerCount < 50;
+        const foundingSellerType = isFoundingSeller ? "NEW" : null;
+        const foundingSellerNumber = isFoundingSeller ? newFoundingSellerCount + 1 : null;
+        const foundingSellerBenefits = isFoundingSeller ? FOUNDING_SELLER_BENEFITS : null;
+
         seller = await tx.seller.create({
           data: {
             shopName: tempShopName,
@@ -131,13 +146,11 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
             shopCountry: "US", // Default to US, can be updated later
             // Use unique temporary connectedAccountId to avoid constraint issues
             connectedAccountId: uniqueConnectedAccountId,
-            // Founding Seller Program - TEMPORARY: Mark all new sellers as legacy
-            // TODO: Remove this after campaign launch and implement proper founding seller logic
-            // When ready to track signups: remove these lines and implement checkFoundingSellerEligibility
-            isFoundingSeller: true,
-            foundingSellerType: "LEGACY",
-            foundingSellerNumber: null, // Legacy sellers don't get numbers
-            foundingSellerBenefits: FOUNDING_SELLER_BENEFITS,
+            // Founding Seller Program - Assign status based on availability (max 50)
+            isFoundingSeller,
+            foundingSellerType,
+            foundingSellerNumber,
+            foundingSellerBenefits,
             user: {
               connect: {
                 id: userId
@@ -145,6 +158,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
             }
           },
         });
+
+        // Log the founding seller assignment
+        if (isFoundingSeller) {
+          console.log(`Assigned founding seller status to seller ${seller.id} as #${foundingSellerNumber} during signup (${newFoundingSellerCount + 1}/50)`);
+        } else {
+          console.log(`Founding seller program is full (${newFoundingSellerCount}/50). Seller ${seller.id} did not receive founding seller status.`);
+        }
       }
 
       // Get the STARTER plan (free plan)

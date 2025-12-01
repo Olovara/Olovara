@@ -304,4 +304,98 @@ export async function isFoundingSellerProgramOpen(): Promise<boolean> {
     console.error("Error checking founding seller program status:", error);
     return false;
   }
+}
+
+/**
+ * Check if a new seller signup is eligible for founding seller status
+ * This is used during the seller application process (before products are created)
+ */
+export async function checkFoundingSellerEligibilityAtSignup(): Promise<{
+  eligible: boolean;
+  currentCount: number;
+  nextNumber: number | null;
+}> {
+  try {
+    // Count how many "NEW" founding sellers already exist
+    const newFoundingSellerCount = await db.seller.count({
+      where: {
+        isFoundingSeller: true,
+        foundingSellerType: "NEW"
+      }
+    });
+
+    const eligible = newFoundingSellerCount < 50;
+    const nextNumber = eligible ? newFoundingSellerCount + 1 : null;
+
+    return {
+      eligible,
+      currentCount: newFoundingSellerCount,
+      nextNumber
+    };
+  } catch (error) {
+    console.error("Error checking founding seller eligibility at signup:", error);
+    return {
+      eligible: false,
+      currentCount: 0,
+      nextNumber: null
+    };
+  }
+}
+
+/**
+ * Assign founding seller status during seller signup
+ * This should be called when a seller submits their application
+ */
+export async function assignFoundingSellerStatusAtSignup(
+  sellerId: string
+): Promise<{
+  success: boolean;
+  isFoundingSeller: boolean;
+  foundingSellerType: "NEW" | "LEGACY" | null;
+  foundingSellerNumber: number | null;
+  error?: string;
+}> {
+  try {
+    // Check eligibility
+    const eligibility = await checkFoundingSellerEligibilityAtSignup();
+
+    if (!eligibility.eligible) {
+      // Program is full, don't assign founding seller status
+      return {
+        success: true,
+        isFoundingSeller: false,
+        foundingSellerType: null,
+        foundingSellerNumber: null
+      };
+    }
+
+    // Update the seller with founding seller status
+    await db.seller.update({
+      where: { userId: sellerId },
+      data: {
+        isFoundingSeller: true,
+        foundingSellerType: "NEW",
+        foundingSellerNumber: eligibility.nextNumber!,
+        foundingSellerBenefits: FOUNDING_SELLER_BENEFITS
+      }
+    });
+
+    console.log(`Assigned founding seller status to seller ${sellerId} as #${eligibility.nextNumber} during signup`);
+
+    return {
+      success: true,
+      isFoundingSeller: true,
+      foundingSellerType: "NEW",
+      foundingSellerNumber: eligibility.nextNumber!
+    };
+  } catch (error) {
+    console.error("Error assigning founding seller status at signup:", error);
+    return {
+      success: false,
+      isFoundingSeller: false,
+      foundingSellerType: null,
+      foundingSellerNumber: null,
+      error: "Failed to assign founding seller status"
+    };
+  }
 } 
