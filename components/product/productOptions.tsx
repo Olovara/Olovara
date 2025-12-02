@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useFormContext } from "react-hook-form";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { Trash2 } from "lucide-react";
 
 type DropdownOption = {
   label: string;
@@ -135,11 +136,28 @@ export function ProductOptionsSection({
           {option.values.map((value, valueIndex) => (
             <div
               key={valueIndex}
-              className="space-y-2 mt-2 p-3 bg-gray-50 rounded-md"
+              className="space-y-3 mt-2 p-3 bg-gray-50 rounded-md relative"
             >
-              <div className="flex items-center gap-x-4">
+              {/* Remove Value Button - positioned at top right */}
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  const newValues = option.values.filter(
+                    (_, i) => i !== valueIndex
+                  );
+                  updateDropdownOption(index, "values", newValues);
+                }}
+                className="absolute top-2 right-2 h-8 w-8 p-0 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+
+              {/* Stacked fields vertically */}
+              <div className="space-y-3 pr-16">
                 {/* Option Name */}
-                <div className="flex-1">
+                <div>
                   <Label className="text-xs text-gray-600">Option Value</Label>
                   <Input
                     placeholder="e.g., Small, Medium, Large"
@@ -149,13 +167,14 @@ export function ProductOptionsSection({
                       newValues[valueIndex].name = e.target.value;
                       updateDropdownOption(index, "values", newValues);
                     }}
+                    className="mt-1"
                   />
                 </div>
 
                 {/* Price */}
-                <div className="flex-1">
+                <div>
                   <Label className="text-xs text-gray-600">
-                    Price (Optional)
+                    Additional Price (Optional)
                   </Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
@@ -174,16 +193,17 @@ export function ProductOptionsSection({
                           : undefined;
                         updateDropdownOption(index, "values", newValues);
                       }}
-                      className="pl-8"
+                      className="pl-8 mt-1"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Leave empty to use base product price
+                    Additional cost above base product price. Leave empty to use
+                    base price only.
                   </p>
                 </div>
 
                 {/* Stock */}
-                <div className="flex-1">
+                <div>
                   <Label className="text-xs text-gray-600">Stock</Label>
                   <Input
                     type="number"
@@ -196,24 +216,9 @@ export function ProductOptionsSection({
                         parseInt(e.target.value) || 0;
                       updateDropdownOption(index, "values", newValues);
                     }}
+                    className="mt-1"
                   />
                 </div>
-
-                {/* Remove Value Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => {
-                    const newValues = option.values.filter(
-                      (_, i) => i !== valueIndex
-                    );
-                    updateDropdownOption(index, "values", newValues);
-                  }}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Remove
-                </Button>
               </div>
             </div>
           ))}
