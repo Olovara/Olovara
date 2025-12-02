@@ -10,15 +10,15 @@ export async function POST(req: NextRequest) {
     const {
       searchId,
       clickedResult,
-      clickedProductId,
+      clickProductId, // Fixed: use clickProductId (not clickedProductId)
       clickedSellerId,
       timeToClick
     } = body;
 
     // Validate required fields
-    if (!searchId || !clickedResult) {
+    if (!searchId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: searchId is required" },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const updatedSearch = await SearchAnalyticsService.trackSearchClick({
       searchId,
       clickedResult,
-      clickedProductId,
+      clickProductId, // Fixed: use clickProductId (not clickedProductId)
       clickedSellerId,
       timeToClick,
     });

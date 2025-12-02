@@ -35,8 +35,61 @@ class RateLimiter {
   }
 }
 
+// In-memory cache for exchange rates with TTL
+class ExchangeRateCache {
+  private cache: Map<string, { rates: Record<string, number>; timestamp: number }> = new Map();
+  private readonly ttl: number; // Time to live in milliseconds
+
+  constructor(ttl: number = 60 * 60 * 1000) { // Default 1 hour
+    this.ttl = ttl;
+  }
+
+  // Get cached rates for a base currency
+  get(baseCurrency: string): Record<string, number> | null {
+    const key = baseCurrency.toLowerCase();
+    const cached = this.cache.get(key);
+    
+    if (!cached) {
+      return null;
+    }
+
+    // Check if cache is still valid
+    const now = Date.now();
+    if (now - cached.timestamp > this.ttl) {
+      // Cache expired, remove it
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.rates;
+  }
+
+  // Set rates in cache
+  set(baseCurrency: string, rates: Record<string, number>): void {
+    const key = baseCurrency.toLowerCase();
+    this.cache.set(key, {
+      rates,
+      timestamp: Date.now()
+    });
+  }
+
+  // Clear cache for a specific base currency
+  clear(baseCurrency: string): void {
+    const key = baseCurrency.toLowerCase();
+    this.cache.delete(key);
+  }
+
+  // Clear all cache
+  clearAll(): void {
+    this.cache.clear();
+  }
+}
+
 // Create a rate limiter instance (8 requests per minute)
 const rateLimiter = new RateLimiter(8, 60 * 1000);
+
+// Create in-memory cache for exchange rates (1 hour TTL)
+const exchangeRateCache = new ExchangeRateCache(60 * 60 * 1000);
 
 // Get exchange rates from FreeCurrencyAPI
 async function getExchangeRatesFromAPI(baseCurrency: string) {
@@ -102,10 +155,18 @@ async function retryOperation<T>(
   throw lastError;
 }
 
-// Get exchange rates from database or fetch new ones
+// Get exchange rates from cache, database, or fetch new ones
 async function getExchangeRates(baseCurrency: string) {
   try {
-    // Check if we have recent rates in the database (within last hour)
+    const normalizedBase = baseCurrency.toLowerCase();
+
+    // First, check in-memory cache (fastest)
+    const cachedRates = exchangeRateCache.get(normalizedBase);
+    if (cachedRates) {
+      return cachedRates;
+    }
+
+    // Second, check database (within last hour)
     const recentRates = await db.exchangeRate.findMany({
       where: {
         baseCurrency: baseCurrency.toUpperCase(),
@@ -130,17 +191,22 @@ async function getExchangeRates(baseCurrency: string) {
       currency => !existingRates[currency.code.toLowerCase()]
     );
 
-    // If we have all rates, return them
+    // If we have all rates from database, cache them and return
     if (missingCurrencies.length === 0) {
+      exchangeRateCache.set(normalizedBase, existingRates);
       return existingRates;
     }
 
-    // If we have some rates but not all, we'll update the missing ones
+    // If we have some rates but not all, fetch new ones from API
     let newRates: Record<string, number>;
     try {
       newRates = await getExchangeRatesFromAPI(baseCurrency);
     } catch (error) {
       console.error('Failed to get rates from FreeCurrencyAPI:', error);
+      // If API fails but we have some rates, return what we have
+      if (Object.keys(existingRates).length > 0) {
+        return existingRates;
+      }
       throw error;
     }
 
@@ -180,11 +246,16 @@ async function getExchangeRates(baseCurrency: string) {
       });
     }, 5, 1000); // Increase retries to 5 and delay to 1 second
 
-    // Return combined rates (existing + new)
-    return {
+    // Combine existing and new rates
+    const combinedRates = {
       ...existingRates,
       ...newRates
     };
+
+    // Cache the combined rates in memory
+    exchangeRateCache.set(normalizedBase, combinedRates);
+
+    return combinedRates;
   } catch (error) {
     console.error('Error in getExchangeRates:', error);
     throw error;
@@ -231,35 +302,141 @@ async function convertPrice(
   }
 }
 
-export async function POST(req: Request) {
+// Batch convert multiple prices efficiently
+async function batchConvertPrices(
+  conversions: Array<{ amount: number; fromCurrency: string; toCurrency: string; isCents?: boolean }>
+): Promise<number[]> {
   try {
-    const { amount, fromCurrency, toCurrency, isCents } = await req.json();
+    // Group conversions by fromCurrency to minimize API calls
+    // Since all products on a page use the same toCurrency, we can optimize further
+    const currencyGroups = new Map<string, Array<{ amount: number; toCurrency: string; isCents?: boolean; index: number }>>();
+    
+    conversions.forEach((conv, index) => {
+      const fromCurrency = conv.fromCurrency.toLowerCase();
+      if (!currencyGroups.has(fromCurrency)) {
+        currencyGroups.set(fromCurrency, []);
+      }
+      currencyGroups.get(fromCurrency)!.push({
+        amount: conv.amount,
+        toCurrency: conv.toCurrency.toLowerCase(),
+        isCents: conv.isCents ?? false,
+        index
+      });
+    });
 
-    if (!amount || !fromCurrency || !toCurrency) {
-      return NextResponse.json(
-        { error: "Missing required parameters" },
-        { status: 400 }
-      );
-    }
-
-    // Validate currencies
-    const supportedCurrencies = SUPPORTED_CURRENCIES.map(c => c.code.toLowerCase());
-    if (!supportedCurrencies.includes(fromCurrency.toLowerCase()) || 
-        !supportedCurrencies.includes(toCurrency.toLowerCase())) {
-      return NextResponse.json(
-        { error: "Unsupported currency" },
-        { status: 400 }
-      );
-    }
-
-    const convertedAmount = await convertPrice(
-      amount,
-      fromCurrency,
-      toCurrency,
-      isCents
+    // Fetch exchange rates for all unique base currencies in parallel
+    const baseCurrencies = Array.from(currencyGroups.keys());
+    const ratesMap = new Map<string, Record<string, number>>();
+    
+    await Promise.all(
+      baseCurrencies.map(async (baseCurrency) => {
+        const rates = await getExchangeRates(baseCurrency);
+        ratesMap.set(baseCurrency, rates);
+      })
     );
 
-    return NextResponse.json({ convertedAmount });
+    // Convert all prices using cached rates
+    const results = new Array(conversions.length);
+    
+    currencyGroups.forEach((convs, fromCurrency) => {
+      const rates = ratesMap.get(fromCurrency)!;
+      
+      convs.forEach(({ amount, toCurrency, isCents, index }) => {
+        // If currencies are the same, return the amount
+        if (fromCurrency === toCurrency) {
+          results[index] = isCents ? amount : amount * 100;
+          return;
+        }
+
+        // Convert from cents to dollars if needed
+        const amountInDollars = isCents ? amount / 100 : amount;
+
+        // Get the exchange rate
+        const rate = rates[toCurrency];
+        if (!rate) {
+          throw new Error(`No exchange rate found for ${toCurrency}`);
+        }
+
+        // Convert using the rate
+        const finalAmount = amountInDollars * rate;
+        results[index] = isCents ? Math.round(finalAmount * 100) : finalAmount;
+      });
+    });
+
+    return results;
+  } catch (error) {
+    console.error("Error in batch conversion:", error);
+    throw error;
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    // Check if this is a batch request
+    if (Array.isArray(body.conversions)) {
+      // Batch conversion request
+      const { conversions } = body;
+
+      if (!conversions || conversions.length === 0) {
+        return NextResponse.json(
+          { error: "Missing or empty conversions array" },
+          { status: 400 }
+        );
+      }
+
+      // Validate all conversions
+      const supportedCurrencies = SUPPORTED_CURRENCIES.map(c => c.code.toLowerCase());
+      for (const conv of conversions) {
+        if (!conv.amount || !conv.fromCurrency || !conv.toCurrency) {
+          return NextResponse.json(
+            { error: "Missing required parameters in conversion" },
+            { status: 400 }
+          );
+        }
+
+        if (!supportedCurrencies.includes(conv.fromCurrency.toLowerCase()) || 
+            !supportedCurrencies.includes(conv.toCurrency.toLowerCase())) {
+          return NextResponse.json(
+            { error: `Unsupported currency in conversion: ${conv.fromCurrency} -> ${conv.toCurrency}` },
+            { status: 400 }
+          );
+        }
+      }
+
+      const convertedAmounts = await batchConvertPrices(conversions);
+      return NextResponse.json({ convertedAmounts });
+    } else {
+      // Single conversion request (backward compatible)
+      const { amount, fromCurrency, toCurrency, isCents } = body;
+
+      if (!amount || !fromCurrency || !toCurrency) {
+        return NextResponse.json(
+          { error: "Missing required parameters" },
+          { status: 400 }
+        );
+      }
+
+      // Validate currencies
+      const supportedCurrencies = SUPPORTED_CURRENCIES.map(c => c.code.toLowerCase());
+      if (!supportedCurrencies.includes(fromCurrency.toLowerCase()) || 
+          !supportedCurrencies.includes(toCurrency.toLowerCase())) {
+        return NextResponse.json(
+          { error: "Unsupported currency" },
+          { status: 400 }
+        );
+      }
+
+      const convertedAmount = await convertPrice(
+        amount,
+        fromCurrency,
+        toCurrency,
+        isCents
+      );
+
+      return NextResponse.json({ convertedAmount });
+    }
   } catch (error) {
     console.error("Error in currency conversion API:", error);
     return NextResponse.json(

@@ -980,36 +980,50 @@ export class UserBehaviorService {
 export class SearchAnalyticsService {
   static async trackSearch(data: {
     userId?: string;
-    sessionId: string;
-    query: string;
-    searchType: string;
+    sessionId?: string;
+    searchQuery: string; // Required - raw search query
+    normalizedQuery?: string; // Optional - will be generated if not provided
+    searchType?: string;
     filters?: any;
     sortBy?: string;
     resultsCount: number;
-    resultsShown: number;
+    resultsShown?: number;
     searchTime?: number;
-    deviceId?: string;
+    deviceId: string; // Required - must have device ID
+    deviceType?: string;
     ipAddress?: string;
     userAgent?: string;
     location?: any;
+    searchContext?: string;
   }) {
     try {
+      // Generate normalized query if not provided
+      const normalizedQuery = data.normalizedQuery || data.searchQuery
+        .toLowerCase()
+        .trim()
+        .replace(/[.,!?;:'"()\[\]{}]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
       const searchAnalytics = await db.searchAnalytics.create({
         data: {
           userId: data.userId,
           sessionId: data.sessionId,
-          query: data.query,
-          queryLength: data.query.length,
-          searchType: data.searchType,
+          searchQuery: data.searchQuery.trim(),
+          normalizedQuery,
+          queryLength: data.searchQuery.trim().length,
+          searchType: data.searchType || "PRODUCT",
           filters: data.filters,
           sortBy: data.sortBy,
-          resultsCount: data.resultsCount,
+          resultCount: data.resultsCount,
           resultsShown: data.resultsShown,
           searchTime: data.searchTime,
-          deviceId: data.deviceId,
+          deviceId: data.deviceId, // Required field
+          deviceType: data.deviceType,
           ipAddress: data.ipAddress,
           userAgent: data.userAgent,
           location: data.location,
+          searchContext: data.searchContext,
         }
       });
 
@@ -1022,8 +1036,8 @@ export class SearchAnalyticsService {
 
   static async trackSearchClick(data: {
     searchId: string;
-    clickedResult: number;
-    clickedProductId?: string;
+    clickedResult?: number;
+    clickProductId?: string; // Matches schema field name
     clickedSellerId?: string;
     timeToClick?: number;
   }) {
@@ -1032,7 +1046,7 @@ export class SearchAnalyticsService {
         where: { id: data.searchId },
         data: {
           clickedResult: data.clickedResult,
-          clickedProductId: data.clickedProductId,
+          clickProductId: data.clickProductId, // Fixed: use clickProductId (not clickedProductId)
           clickedSellerId: data.clickedSellerId,
           timeToClick: data.timeToClick,
         }
@@ -1051,30 +1065,30 @@ export class SearchAnalyticsService {
       startDate.setDate(startDate.getDate() - days);
 
       const searches = await db.searchAnalytics.groupBy({
-        by: ['query'],
+        by: ['normalizedQuery'], // Use normalizedQuery to group similar searches
         where: {
           timestamp: { gte: startDate }
         },
         _count: {
-          query: true
+          normalizedQuery: true
         },
         _avg: {
           timeToClick: true,
-          resultsCount: true
+          resultCount: true
         },
         orderBy: {
           _count: {
-            query: 'desc'
+            normalizedQuery: 'desc'
           }
         },
         take: 20
       });
 
       return searches.map(search => ({
-        query: search.query,
-        count: search._count.query,
-        avgTimeToClick: search._avg.timeToClick,
-        avgResultsCount: search._avg.resultsCount
+        query: search.normalizedQuery,
+        count: search._count?.normalizedQuery || 0,
+        avgTimeToClick: search._avg?.timeToClick,
+        avgResultsCount: search._avg?.resultCount
       }));
     } catch (error) {
       console.error('Error getting popular searches:', error);
