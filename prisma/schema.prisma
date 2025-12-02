@@ -1459,45 +1459,48 @@ model UserBehaviorEvent {
 
 model SearchAnalytics {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String?  // Optional for guest users
+  userId            String?  // Optional for guest users (only when logged in)
   user              User?    @relation(fields: [userId], references: [id])
-  sessionId         String   // Session identifier
+  sessionId         String?  // Session identifier (optional for advanced analytics)
   
-  // Search details
-  query             String   // Search query
-  queryLength       Int      // Length of search query
-  searchType        String   // "PRODUCT", "CATEGORY", "SELLER", "GENERAL"
-  filters           Json?    // Applied filters (category, price, location, etc.)
+  // Core search fields (minimum tracking)
+  searchQuery       String   // The raw string the user typed
+  normalizedQuery   String   // Cleaned-up version: lowercase, trimmed, punctuation removed
+  resultCount       Int      // Total results your search engine returned
+  clickProductId    String?  // If they clicked something immediately after the search (product ID only)
+  
+  // Device and location (minimum tracking)
+  deviceId          String   // UUID cookie + fallback to localStorage (must have)
+  deviceType        String?  // "desktop", "mobile", "tablet"
+  ipAddress         String?  // IP address (truncate to /24 if privacy-respectful)
+  location          Json?    // { country, region/state } - NOTHING more detailed
+  
+  // Context and metadata (minimum tracking)
+  timestamp         DateTime @default(now())
+  searchContext     String?  // What page they searched from: "homepage", "category-page", "seller-shop", "global search bar"
+  
+  // Advanced fields (for future use - keep in model but optional)
+  queryLength       Int?     // Length of search query
+  searchType        String?  // "PRODUCT", "CATEGORY", "SELLER", "GENERAL"
+  filters           Json?    // Applied filters (category, price, location, etc.) - searchFilters
   sortBy            String?  // Sort method used
-  
-  // Results
-  resultsCount      Int      // Number of results returned
-  resultsShown      Int      // Number of results displayed
+  resultsShown      Int?     // Number of results displayed
   clickedResult     Int?     // Position of clicked result (1-based)
-  clickedProductId  String?  // ID of clicked product
   clickedSellerId   String?  // ID of clicked seller
-  
-  // User behavior
   timeToClick       Int?     // Time from search to first click in milliseconds
   searchRefinement  Boolean  @default(false) // Whether user refined the search
   originalQuery     String?  // Original query if refined
-  
-  // Performance
   searchTime        Int?     // Time taken for search in milliseconds
-  timestamp         DateTime @default(now())
-  
-  // Device and location
-  deviceId          String?  // Device fingerprint ID
-  ipAddress         String?
-  userAgent         String?
-  location          Json?    // Geographic location data
+  userAgent         String?  // User agent string
 
   @@index([userId])
   @@index([sessionId])
-  @@index([query])
+  @@index([searchQuery])
+  @@index([normalizedQuery])
   @@index([searchType])
   @@index([timestamp])
   @@index([deviceId])
+  @@index([searchContext])
 }
 
 model ProductInteraction {

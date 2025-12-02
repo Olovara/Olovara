@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "./ui/skeleton";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Categories } from "@/data/categories";
 import ImageSlider from "./ImageSlider";
@@ -59,6 +60,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const [convertedDiscountedPrice, setConvertedDiscountedPrice] =
     useState<string>("");
   const { formatPrice } = useCurrency();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q");
 
   // Use the sync system for wishlist state
   const isInWishlist = useIsInWishlist(product?.id || "");
@@ -262,12 +265,47 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
   const isDropProduct = product.dropDate && product.dropTime;
 
+  // Track product click if this is from a search results page
+  const handleProductClick = async () => {
+    if (searchQuery && product?.id) {
+      try {
+        // Get device ID
+        const getDeviceId = (): string => {
+          const cookies = document.cookie.split(';');
+          const deviceCookie = cookies.find(c => c.trim().startsWith('deviceId='));
+          if (deviceCookie) return deviceCookie.split('=')[1];
+          const stored = localStorage.getItem('deviceId');
+          if (stored) return stored;
+          return '';
+        };
+
+        const deviceId = getDeviceId();
+        if (deviceId) {
+          // Update search analytics with click data
+          await fetch('/api/analytics/search', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clickProductId: product.id,
+              deviceId,
+              searchQuery: searchQuery.trim(),
+            }),
+          });
+        }
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+        console.warn('Failed to track product click:', error);
+      }
+    }
+  };
+
   return (
     <Link
       className={cn("invisible h-full w-full cursor-pointer group/main", {
         "visible animate-in fade-in-5": isVisible,
       })}
       href={`/product/${product.id}`}
+      onClick={handleProductClick}
     >
       <div className="flex flex-col w-full">
         <div className="relative aspect-square w-full overflow-hidden rounded-lg">

@@ -20,6 +20,7 @@ import { LocationFilterInfo } from "@/components/LocationFilterNotice";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { auth } from "@/auth";
 import { getFollowedSellersFeed } from "@/actions/followActions";
+import { SearchAnalyticsTracker } from "@/components/SearchAnalyticsTracker";
 
 export async function generateMetadata({
   searchParams,
@@ -353,8 +354,22 @@ export default async function ProductsPage({
 
   const products = filteredProducts.slice(0, pageSize);
 
+  // Determine search context
+  const searchContext = searchParams.q 
+    ? "global search bar" 
+    : categories.length > 0 
+    ? "category-page" 
+    : "homepage";
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-[2000px]">
+      {/* Search Analytics Tracker - tracks searches when query parameter is present */}
+      {searchParams.q && (
+        <SearchAnalyticsTracker 
+          resultCount={totalProducts}
+          searchContext={searchContext}
+        />
+      )}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Mobile Filters Button */}
         <div className="lg:hidden flex justify-end">

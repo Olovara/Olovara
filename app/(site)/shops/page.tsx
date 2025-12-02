@@ -118,6 +118,14 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
       {
         applicationAccepted: true, // Only show accepted sellers
       },
+      {
+        // Exclude temporary shops that haven't been set up yet
+        NOT: {
+          shopName: {
+            contains: "Temporary Shop",
+          },
+        },
+      },
       ...(validValues.length > 0
         ? validValues.map((value) => ({
             [value]: true,
