@@ -14,7 +14,8 @@ export async function getSellerSubscription(sellerId: string) {
 
   if (!subscription) {
     // This should not happen for new sellers, but handle legacy sellers
-    console.warn(`No subscription found for seller ${sellerId}. This is a legacy seller.`)
+    // Removed sellerId from log for security
+    console.warn(`No subscription found for seller. This is a legacy seller.`)
     
     // Get the STARTER plan as fallback
     const starterPlan = await db.subscriptionPlan.findUnique({

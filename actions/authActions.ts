@@ -5,10 +5,9 @@ import { Role } from "@/data/roles-and-permissions";
 export async function getAuthUserId() {
     try {
         const session = await auth();
+        // Removed sensitive data (userId, email) from logs for security
         console.log("Auth session:", {
-            exists: !!session,
-            userId: session?.user?.id,
-            email: session?.user?.email
+            exists: !!session
         });
 
         if (!session) {
@@ -37,6 +36,7 @@ export async function getAuthUserId() {
             }
         });
         
+        // Removed userId from logs for security
         console.log("Database user check:", {
             exists: !!dbUser,
             role: dbUser?.role,
@@ -44,10 +44,9 @@ export async function getAuthUserId() {
             sellerApplicationAccepted: dbUser?.seller?.applicationAccepted
         });
 
-        // Log the role from database
+        // Removed userId from logs for security
         console.log("User role from database:", {
-            dbRole: dbUser?.role,
-            userId: userId
+            dbRole: dbUser?.role
         });
 
         return userId;
@@ -60,10 +59,9 @@ export async function getAuthUserId() {
 export async function getUserRole(): Promise<Role> {
     try {
         const session = await auth();
+        // Removed sensitive data (userId, email) from logs for security
         console.log("getUserRole session:", {
-            exists: !!session,
-            userId: session?.user?.id,
-            email: session?.user?.email
+            exists: !!session
         });
 
         if (!session?.user) {

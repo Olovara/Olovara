@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
     
     try {
       // Try to create first (will fail if exists due to unique constraint)
-      console.log(`[DEBUG] Attempting to create new device fingerprint:`, { deviceId, userId: userId || null });
+      // Removed deviceId and userId from logs for security
+      //console.log(`[DEBUG] Attempting to create new device fingerprint`);
       
       // Prepare the create data
       const createData: any = {
@@ -156,16 +157,16 @@ export async function POST(req: NextRequest) {
         include: includeData,
       });
 
-      console.log(`[DEBUG] Device fingerprint created successfully:`, {
-        deviceId,
-        userId: userId || null,
+      // Removed deviceId and userId from logs for security
+      {/*console.log(`[DEBUG] Device fingerprint created successfully:`, {
         action: 'created',
         id: deviceRecord.id
-      });
+      });*/}
     } catch (createError: any) {
       // If creation fails due to unique constraint, try to update
       if (createError.code === 'P2002') {
-        console.log(`[DEBUG] Device fingerprint already exists, attempting update:`, { deviceId, userId: userId || null });
+        // Removed deviceId and userId from logs for security
+        //console.log(`[DEBUG] Device fingerprint already exists, attempting update`);
         
         // Find the existing record
         const existingDevice = await db.deviceFingerprint.findFirst({
@@ -188,7 +189,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (existingDevice) {
-          console.log(`[DEBUG] Updating existing device fingerprint:`, existingDevice.id);
+          //console.log(`[DEBUG] Updating existing device fingerprint:`, existingDevice.id);
           deviceRecord = await db.deviceFingerprint.update({
             where: { id: existingDevice.id },
             data: {
@@ -217,12 +218,11 @@ export async function POST(req: NextRequest) {
             } : {},
           });
 
-          console.log(`[DEBUG] Device fingerprint updated successfully:`, {
-            deviceId,
-            userId: userId || null,
+          // Removed deviceId and userId from logs for security
+          {/*console.log(`[DEBUG] Device fingerprint updated successfully:`, {
             action: 'updated',
             id: deviceRecord.id
-          });
+          });*/}
         } else {
           throw createError; // Re-throw if we can't find the existing device
         }

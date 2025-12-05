@@ -199,8 +199,10 @@ export async function removeFromWishlist(data: {
 export async function getUserWishlists() {
   try {
     const session = await auth();
+    // Return empty wishlists for non-logged-in users instead of throwing error
+    // This prevents errors when public pages try to check wishlist status
     if (!session?.user?.id) {
-      throw new Error("Unauthorized");
+      return { success: true, wishlists: [] };
     }
 
     const wishlists = await db.wishlist.findMany({
@@ -226,8 +228,8 @@ export async function getUserWishlists() {
 
     return { success: true, wishlists };
   } catch (error) {
-    console.error("Error getting wishlists:", error);
-    return { success: false, error: "Failed to get wishlists" };
+    // Return empty array instead of error for better UX
+    return { success: true, wishlists: [] };
   }
 }
 
