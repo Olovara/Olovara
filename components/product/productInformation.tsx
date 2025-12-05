@@ -3,6 +3,7 @@
 import { useFormContext, UseFormReturn } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { QuillEditor } from "../QuillEditor";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import {
@@ -394,9 +395,10 @@ export const ProductInfoSection = ({
           <FormItem>
             <FormLabel>Product Name</FormLabel>
             <FormControl>
-              <Input
+              <Textarea
                 placeholder="Product name"
                 {...field}
+                rows={2}
                 className={
                   fieldState.error
                     ? "border-red-500 focus-visible:ring-red-500"

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { X, Upload, Crop, Image as ImageIcon, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Upload, Crop, Image as ImageIcon, Download, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { getSellerAbout } from "@/actions/sellerAboutActions";
@@ -225,7 +225,7 @@ export function ImageProcessor({
             // Set watermark style - Jost bold font, white text at 10% opacity
             const fontSize = Math.max(img.width / 25, 20);
             ctx.font = `bold ${fontSize}px "Jost", sans-serif`;
-            ctx.fillStyle = `rgba(255, 255, 255, 0.05)`; // White text at 5% opacity
+            ctx.fillStyle = `rgba(255, 255, 255, 0.20)`; // White text at 20% opacity
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
@@ -552,6 +552,69 @@ export function ImageProcessor({
     return [...existingProcessedImages, ...processedImages];
   }, [existingProcessedImages, processedImages]);
 
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Handle drag start
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  // Handle drag over
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  // Handle drag leave
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  // Handle drop to reorder images
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    // Reorder images
+    const reorderedImages = [...allImages];
+    const [draggedImage] = reorderedImages.splice(draggedIndex, 1);
+    reorderedImages.splice(dropIndex, 0, draggedImage);
+
+    // Separate back into existing and processed images while preserving order
+    const newExistingImages: ProcessedImage[] = [];
+    const newProcessedImages: ProcessedImage[] = [];
+
+    reorderedImages.forEach((img) => {
+      if (img.id.startsWith("existing-")) {
+        newExistingImages.push(img);
+      } else {
+        newProcessedImages.push(img);
+      }
+    });
+
+    // Update processed images directly
+    setProcessedImages(newProcessedImages);
+
+    // Notify parent with the new order (this will update existing images in parent)
+    // The parent will handle updating the existing images array
+    onImagesProcessedRef.current(reorderedImages);
+
+    setDraggedIndex(null);
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   // Notify parent when images actually change (not on every render)
   React.useEffect(() => {
     // Create a stable key to compare
@@ -574,54 +637,67 @@ export function ImageProcessor({
     <div className="flex flex-col gap-y-4">
       <Label>Product Photos</Label>
 
-      {/* Existing Images Preview (for edit mode) */}
-      {existingProcessedImages.length > 0 && (
+      {/* All Images Preview with Drag and Drop */}
+      {allImages.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">Existing Images:</p>
+          <p className="text-sm text-gray-600">
+            Product Photos (drag to reorder - first image will be the main photo):
+          </p>
           <div className="flex flex-wrap gap-2">
-            {existingProcessedImages.map((img) => (
-              <div key={img.id} className="relative w-24 h-24">
-                <Image
-                  fill
-                  src={img.preview}
-                  alt={img.originalName}
-                  className="object-cover rounded"
-                  sizes="96px"
-                />
-                <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
-                  Saved
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Processed Images Preview */}
-      {processedImages.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-600">New Images (ready to upload):</p>
-          <div className="flex flex-wrap gap-2">
-            {processedImages.map((img) => (
-              <div key={img.id} className="relative w-24 h-24 group">
-                <Image
-                  fill
-                  src={img.preview}
-                  alt={img.originalName}
-                  className="object-cover rounded"
-                  sizes="96px"
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => removeImage(img.id)}
-                  className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+            {allImages.map((img, index) => {
+              const isExisting = img.id.startsWith("existing-");
+              const isDragging = draggedIndex === index;
+              const isDragOver = dragOverIndex === index;
+              
+              return (
+                <div
+                  key={img.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`relative w-24 h-24 group cursor-move ${
+                    isDragging ? "opacity-50" : ""
+                  } ${
+                    isDragOver ? "ring-2 ring-purple-500 ring-offset-2" : ""
+                  } transition-all`}
                 >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
+                  <Image
+                    fill
+                    src={img.preview}
+                    alt={img.originalName}
+                    className="object-cover rounded"
+                    sizes="96px"
+                  />
+                  {/* Drag handle indicator */}
+                  <div className="absolute top-1 left-1 bg-black/50 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-3 h-3" />
+                  </div>
+                  {/* Image number indicator */}
+                  <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+                    {index + 1}
+                  </div>
+                  {/* Status badge */}
+                  {isExisting ? (
+                    <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
+                      Saved
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => removeImage(img.id)}
+                      className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

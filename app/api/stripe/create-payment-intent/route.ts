@@ -40,6 +40,7 @@ export async function POST(req: Request) {
         description: true,
         currency: true,
         shippingCost: true,
+        shippingOptionId: true,
         handlingFee: true,
         isDigital: true,
         onSale: true,
@@ -62,9 +63,9 @@ export async function POST(req: Request) {
               select: { encryptedCountry: true, countryIV: true, countrySalt: true }
             },
             shippingOptions: {
-              where: { isDefault: true },
               select: {
                 id: true,
+                isDefault: true,
                 countryOfOrigin: true,
                 defaultShipping: true,
                 defaultShippingCurrency: true,
@@ -120,10 +121,21 @@ export async function POST(req: Request) {
         // Get user's country from shipping address or fallback
         const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
         
+        // Use the product's selected shipping option, or fall back to default
+        let selectedOption = product.seller.shippingOptions.find(
+          (option) => option.id === product.shippingOptionId
+        );
+        
+        // If product doesn't have a selected shipping option, use default
+        if (!selectedOption) {
+          selectedOption = product.seller.shippingOptions.find(
+            (option) => option.isDefault
+          ) || product.seller.shippingOptions[0];
+        }
+        
         // Calculate shipping cost based on origin and destination
-        const defaultOption = product.seller.shippingOptions[0];
         const shippingCalculation = calculateShippingCost(
-          defaultOption.rates.map(rate => {
+          selectedOption.rates.map(rate => {
             // For country type, determine zone from country code if zone is not set
             let zoneValue = rate.zone;
             if (!zoneValue && rate.countryCode) {
@@ -133,7 +145,7 @@ export async function POST(req: Request) {
             return {
               zone: zoneValue || "NORTH_AMERICA", // Ensure zone is always set
               price: rate.price,
-              currency: defaultOption.defaultShippingCurrency || "USD", // Use shipping option currency
+              currency: selectedOption.defaultShippingCurrency || "USD", // Use shipping option currency
               additionalItem: rate.additionalItem,
               isFreeShipping: rate.isFreeShipping,
               type: (rate.type || "zone") as "zone" | "country",
@@ -143,13 +155,16 @@ export async function POST(req: Request) {
           sellerOriginCountry,
           userCountry,
           parseInt(quantity.toString()),
-          defaultOption.defaultShipping ?? null,
-          defaultOption.defaultShippingCurrency || "USD"
+          selectedOption.defaultShipping ?? null,
+          selectedOption.defaultShippingCurrency || "USD"
         );
         
         if (shippingCalculation) {
           finalShippingCost = shippingCalculation.price;
-          console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry}`);
+          console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry} using shipping option ${selectedOption.id}`);
+        } else {
+          // Fallback to static shipping cost if calculation fails
+          console.warn(`Shipping calculation failed for product ${productId}, using static shipping cost`);
         }
       }
     } else if (product.isDigital) {

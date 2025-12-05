@@ -33,7 +33,8 @@ export function ProductPhotosSection({
   // Extract existing images (HTTP URLs) - only update when images prop changes externally
   // We detect external changes by checking if all images are HTTP URLs (not blob URLs)
   React.useEffect(() => {
-    const currentKey = JSON.stringify(images.sort());
+    // Don't sort - preserve order
+    const currentKey = JSON.stringify(images);
     const prevKey = prevImagesRef.current;
 
     // Check if this is an external update (all HTTP URLs, no blob URLs)
@@ -63,7 +64,7 @@ export function ProductPhotosSection({
   // Handle when images are processed (but not yet uploaded)
   const handleImagesProcessed = useCallback(
     (processed: ProcessedImage[]) => {
-      // Create a stable key to compare
+      // Create a stable key to compare (preserve order)
       const currentKey = JSON.stringify(
         processed.map((img) => ({ id: img.id, preview: img.preview }))
       );
@@ -77,12 +78,13 @@ export function ProductPhotosSection({
       prevProcessedRef.current = currentKey;
 
       // Update form with all image URLs (existing + new previews)
+      // Preserve the order from the processed array
       // New images will have blob: URLs, existing will have http URLs
       const allImageUrls = processed.map((img) => img.preview);
 
-      // Only update if URLs actually changed
-      const currentUrls = JSON.stringify(images.sort());
-      const newUrls = JSON.stringify(allImageUrls.sort());
+      // Update images state with the new order (don't sort, preserve order)
+      const currentUrls = JSON.stringify(images);
+      const newUrls = JSON.stringify(allImageUrls);
       if (currentUrls !== newUrls) {
         setImages(allImageUrls);
         form.setValue("images", allImageUrls, {
@@ -93,8 +95,27 @@ export function ProductPhotosSection({
       }
 
       // Store processed images for later upload
+      // Separate existing from new processed images
+      const newProcessedImages = processed.filter(
+        (img) => !img.id.startsWith("existing-")
+      );
       if (setProcessedImages) {
-        setProcessedImages(processed);
+        setProcessedImages(newProcessedImages);
+      }
+
+      // Update existing images ref if the order changed
+      // Extract existing image URLs in the new order
+      const newExistingImageUrls = processed
+        .filter((img) => img.id.startsWith("existing-"))
+        .map((img) => img.preview);
+      
+      // Only update if the order actually changed
+      if (newExistingImageUrls.length > 0) {
+        const currentExistingUrls = JSON.stringify(existingImagesRef.current);
+        const newExistingUrls = JSON.stringify(newExistingImageUrls);
+        if (currentExistingUrls !== newExistingUrls) {
+          existingImagesRef.current = newExistingImageUrls;
+        }
       }
     },
     [setImages, form, setProcessedImages, images]

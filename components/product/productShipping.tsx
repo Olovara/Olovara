@@ -43,6 +43,8 @@ interface ShippingOption {
   id: string;
   name: string;
   isDefault: boolean;
+  defaultShipping: number | null; // Price in cents
+  defaultShippingCurrency: string;
   rates: {
     zone: string;
     price: number;
@@ -105,6 +107,37 @@ export const ProductShippingSection = ({
       setValue("shippingCost", 0);
     }
   }, [freeShipping, setValue]);
+
+  // Populate shipping cost when a shipping option is selected
+  useEffect(() => {
+    if (selectedOptionId && !freeShipping) {
+      // Find the selected shipping option
+      const selectedOption = shippingOptions.find(
+        (option) => option.id === selectedOptionId
+      );
+      
+      if (selectedOption) {
+        // Use defaultShipping if available (convert from cents to dollars)
+        // Otherwise use the first rate's price as fallback
+        let defaultShippingCost = 0;
+        
+        if (selectedOption.defaultShipping !== null && selectedOption.defaultShipping !== undefined) {
+          // Convert from cents to dollars based on currency decimals
+          // For now, assume 2 decimals (most currencies)
+          defaultShippingCost = selectedOption.defaultShipping / 100;
+        } else if (selectedOption.rates && selectedOption.rates.length > 0) {
+          // Fallback to first rate's price (already in cents, convert to dollars)
+          defaultShippingCost = selectedOption.rates[0].price / 100;
+        }
+        
+        // Only set if shippingCost is currently 0 or undefined
+        const currentShippingCost = watch("shippingCost");
+        if (!currentShippingCost || currentShippingCost === 0) {
+          setValue("shippingCost", defaultShippingCost);
+        }
+      }
+    }
+  }, [selectedOptionId, shippingOptions, freeShipping, setValue, watch]);
 
   if (isDigital) {
     return null;

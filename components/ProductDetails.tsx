@@ -361,11 +361,15 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
           {/* Only show short description if it exists and is not empty/zero */}
           {(() => {
             // Explicitly check for non-empty string (not "", null, undefined, or "0")
+            // Also handle edge cases where value might be coerced to number 0
+            const shortDesc = data.shortDescription;
             const hasDescription =
-              data.shortDescription &&
-              typeof data.shortDescription === "string" &&
-              data.shortDescription.trim().length > 0 &&
-              data.shortDescription.trim() !== "0";
+              shortDesc != null &&
+              shortDesc !== "" &&
+              shortDesc !== "0" &&
+              typeof shortDesc === "string" &&
+              shortDesc.trim().length > 0 &&
+              shortDesc.trim() !== "0";
 
             // Check bullets with proper type narrowing
             const bullets = data.shortDescriptionBullets;
@@ -378,17 +382,21 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                   bullet &&
                   typeof bullet === "string" &&
                   bullet.trim().length > 0 &&
-                  bullet.trim() !== "0"
+                  bullet.trim() !== "0" &&
+                  bullet !== "0"
               );
 
-            if (!hasDescription && !hasBullets) return null;
+            // Don't render anything if no description and no bullets
+            if (!hasDescription && !hasBullets) {
+              return null;
+            }
 
             return (
               <div className="text-gray-700 text-medium">
-                {hasDescription && (
+                {hasDescription ? (
                   <p className="whitespace-pre-line">{data.shortDescription}</p>
-                )}
-                {hasBullets && bullets && (
+                ) : null}
+                {hasBullets && bullets ? (
                   <ul className="mt-3 space-y-1">
                     {bullets
                       .filter(
@@ -396,7 +404,8 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                           bullet &&
                           typeof bullet === "string" &&
                           bullet.trim().length > 0 &&
-                          bullet.trim() !== "0"
+                          bullet.trim() !== "0" &&
+                          bullet !== "0"
                       )
                       .map((bullet, index) => (
                         <li key={index} className="flex items-start space-x-2">
@@ -405,20 +414,20 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
                         </li>
                       ))}
                   </ul>
-                )}
+                ) : null}
               </div>
             );
           })()}
           {!data.isDigital &&
-            data.stock > 0 &&
-            data.inStockProcessingTime &&
-            data.inStockProcessingTime > 0 && (
-              <div>
-                <p className="text-sm text-gray-500">
-                  Ships in {data.inStockProcessingTime} days.
-                </p>
-              </div>
-            )}
+          data.stock > 0 &&
+          data.inStockProcessingTime != null &&
+          data.inStockProcessingTime > 0 ? (
+            <div>
+              <p className="text-sm text-gray-500">
+                Ships in {data.inStockProcessingTime} days.
+              </p>
+            </div>
+          ) : null}
 
           {/* Sale Badge */}
           {isOnSale && (
@@ -444,12 +453,13 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             )}
           </p>
 
-          {/* Combined Shipping and Handling Fee */}
-          {!data.freeShipping && (data.shippingCost || data.handlingFee) && (
+          {/* Combined Shipping and Handling Fee TODO Potentially add dynamic shipping cost calculation */}
+          {/*{!data.freeShipping && (data.shippingCost || data.handlingFee) && (
             <p className="text-sm text-gray-600">
               Shipping & Handling: {convertedShippingCost}
             </p>
-          )}
+          )}*/}
+          {/* Shipping information - only show free shipping, actual cost calculated at checkout */}
           {data.freeShipping && (
             <p className="text-sm text-green-600">Free Shipping Available</p>
           )}
@@ -597,30 +607,44 @@ function CollapsibleProductDetails({
             {/* Physical Product Details */}
             {!data.isDigital && (
               <>
-                {/* Weight - Only show if weight exists and is greater than 0 */}
-                {data.itemWeight && data.itemWeight > 0 && (
+                {/* Weight - Only show if weight exists, is greater than 0, and is not null/undefined */}
+                {data.itemWeight != null &&
+                data.itemWeight > 0 &&
+                data.itemWeightUnit ? (
                   <>
                     <span className="font-bold text-gray-600">Weight</span>
                     <span className="text-gray-800">
                       {data.itemWeight.toFixed(2)} {data.itemWeightUnit}
                     </span>
                   </>
-                )}
+                ) : null}
 
                 {/* Dimensions - Only show if at least one dimension exists and is greater than 0 */}
                 {(() => {
                   const dimensions = [];
-                  if (data.itemLength && data.itemLength > 0) {
+                  if (
+                    data.itemLength != null &&
+                    data.itemLength > 0 &&
+                    data.itemDimensionUnit
+                  ) {
                     dimensions.push(
                       `${data.itemLength}${data.itemDimensionUnit}`
                     );
                   }
-                  if (data.itemWidth && data.itemWidth > 0) {
+                  if (
+                    data.itemWidth != null &&
+                    data.itemWidth > 0 &&
+                    data.itemDimensionUnit
+                  ) {
                     dimensions.push(
                       `${data.itemWidth}${data.itemDimensionUnit}`
                     );
                   }
-                  if (data.itemHeight && data.itemHeight > 0) {
+                  if (
+                    data.itemHeight != null &&
+                    data.itemHeight > 0 &&
+                    data.itemDimensionUnit
+                  ) {
                     dimensions.push(
                       `${data.itemHeight}${data.itemDimensionUnit}`
                     );
@@ -632,17 +656,29 @@ function CollapsibleProductDetails({
                     <span className="text-gray-800">
                       {(() => {
                         const dimensions = [];
-                        if (data.itemLength && data.itemLength > 0) {
+                        if (
+                          data.itemLength != null &&
+                          data.itemLength > 0 &&
+                          data.itemDimensionUnit
+                        ) {
                           dimensions.push(
                             `${data.itemLength}${data.itemDimensionUnit}`
                           );
                         }
-                        if (data.itemWidth && data.itemWidth > 0) {
+                        if (
+                          data.itemWidth != null &&
+                          data.itemWidth > 0 &&
+                          data.itemDimensionUnit
+                        ) {
                           dimensions.push(
                             `${data.itemWidth}${data.itemDimensionUnit}`
                           );
                         }
-                        if (data.itemHeight && data.itemHeight > 0) {
+                        if (
+                          data.itemHeight != null &&
+                          data.itemHeight > 0 &&
+                          data.itemDimensionUnit
+                        ) {
                           dimensions.push(
                             `${data.itemHeight}${data.itemDimensionUnit}`
                           );
@@ -668,14 +704,15 @@ function CollapsibleProductDetails({
             )}
 
             {/* Processing Time */}
-            {data.inStockProcessingTime && data.inStockProcessingTime > 0 && (
+            {data.inStockProcessingTime != null &&
+            data.inStockProcessingTime > 0 ? (
               <>
                 <span className="font-bold text-gray-600">Processing Time</span>
                 <span className="text-gray-800">
                   {data.inStockProcessingTime} days
                 </span>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       )}

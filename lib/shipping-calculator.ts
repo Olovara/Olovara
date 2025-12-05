@@ -69,6 +69,24 @@ export function calculateShippingCost(
   defaultShipping: number | null = null,
   defaultShippingCurrency: string = "USD"
 ): ShippingCalculation | null {
+  // If seller and buyer are from the same country, use default shipping cost
+  // This takes precedence over zone exceptions (e.g., US seller to US buyer uses default,
+  // even if there's a North America zone exception)
+  if (originCountry === destinationCountry) {
+    if (defaultShipping !== null && defaultShipping !== undefined) {
+      return {
+        zone: "DOMESTIC",
+        price: defaultShipping,
+        currency: defaultShippingCurrency,
+        additionalItem: null,
+        serviceLevel: null,
+        isFreeShipping: false,
+      };
+    }
+    // If no default shipping but same country, still return null to fall through
+    // This allows the rest of the logic to handle it if needed
+  }
+
   // Determine the appropriate zone
   const { zone } = determineShippingZone(
     originCountry,
@@ -149,6 +167,21 @@ export function getBestShippingRate(
   defaultShipping: number | null = null,
   defaultShippingCurrency: string = "USD"
 ): ShippingCalculation | null {
+  // If seller and buyer are from the same country, use default shipping cost
+  // This takes precedence over zone exceptions
+  if (originCountry === destinationCountry) {
+    if (defaultShipping !== null && defaultShipping !== undefined) {
+      return {
+        zone: "DOMESTIC",
+        price: defaultShipping,
+        currency: defaultShippingCurrency,
+        additionalItem: null,
+        serviceLevel: null,
+        isFreeShipping: false,
+      };
+    }
+  }
+
   const { zone } = determineShippingZone(
     originCountry,
     destinationCountry
