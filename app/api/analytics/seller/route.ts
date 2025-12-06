@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { PlatformAnalyticsService } from "@/lib/analytics";
+import { PlatformAnalyticsService, ProductInteractionService } from "@/lib/analytics";
 import { hasPermission } from "@/lib/permissions";
+import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,13 +27,27 @@ export async function GET(req: NextRequest) {
 
     const sellerId = session.user.id;
 
+    // Get seller's preferred currency
+    const seller = await db.seller.findUnique({
+      where: { userId: sellerId },
+      select: { preferredCurrency: true }
+    });
+    const preferredCurrency = seller?.preferredCurrency || "USD";
+
     // Get seller metrics using the unified service
     const metrics = await PlatformAnalyticsService.getSellerAnalytics(sellerId, start, end);
+
+    // Get total product view count for this seller
+    const totalViews = await ProductInteractionService.getSellerTotalViewCount(sellerId);
+    
+    // Get view counts per product
+    const productViewCounts = await ProductInteractionService.getSellerProductViewCounts(sellerId);
 
     // Calculate summary metrics
     const summary = {
       totalOrders: metrics.reduce((sum: number, m: any) => sum + m.totalOrders, 0),
       totalRevenue: metrics.reduce((sum: number, m: any) => sum + m.totalRevenue, 0),
+      totalViews: totalViews, // Add total product views
       averageOrderValue: 0,
       conversionRate: 0,
       customerRetentionRate: 0,
@@ -61,6 +76,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       summary,
+      preferredCurrency, // Include seller's preferred currency
       metrics: metrics.map((m: any) => ({
         date: m.date,
         totalOrders: m.totalOrders,
@@ -73,7 +89,8 @@ export async function GET(req: NextRequest) {
         totalReviews: m.totalReviews,
         chargebacks: m.chargebacks,
         disputes: m.disputes
-      }))
+      })),
+      productViewCounts // Include per-product view counts
     });
 
   } catch (error) {

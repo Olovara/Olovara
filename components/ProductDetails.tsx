@@ -11,6 +11,7 @@ import GPSRComplianceDisplay from "@/components/product/GPSRComplianceDisplay";
 import ProductOptionSelector from "@/components/ProductOptionSelector";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
 
 // Dynamically import the ImageSlider component
 const ImageSlider = dynamic(() => import("@/components/ImageSlider"), {
@@ -137,6 +138,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
   const [optionAdjustedPrice, setOptionAdjustedPrice] = useState(data.price);
 
   const { formatPrice } = useCurrency();
+  const { trackProductInteraction } = useAnalyticsTracking();
 
   // Handle option selection changes
   const handleOptionSelectionChange = (
@@ -146,6 +148,16 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
     setSelectedOptions(options);
     setOptionAdjustedPrice(totalPrice);
   };
+
+  // Track product view when component mounts
+  useEffect(() => {
+    // Track product view - this will be sent via the analytics queue
+    trackProductInteraction({
+      productId: data.id,
+      interactionType: "VIEW",
+      sourceType: typeof window !== "undefined" ? (document.referrer ? "DIRECT" : "SEARCH") : undefined,
+    });
+  }, [data.id, trackProductInteraction]);
 
   // Update current time every minute for countdown
   useEffect(() => {

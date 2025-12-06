@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Star, AlertTriangle, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Star, AlertTriangle, Package, Eye } from 'lucide-react';
+import { getCurrencyDecimals } from '@/data/units';
 
 interface SellerMetrics {
   totalOrders: number;
   totalRevenue: number;
+  totalViews: number;
   averageOrderValue: number;
   conversionRate: number;
   customerRetentionRate: number;
@@ -19,6 +21,12 @@ interface SellerMetrics {
   disputes: number;
   period: string;
   dataPoints: number;
+}
+
+interface ProductViewCount {
+  productId: string;
+  views: number;
+  productName: string;
 }
 
 interface DailyMetric {
@@ -38,6 +46,8 @@ interface DailyMetric {
 export function SellerAnalyticsDashboard() {
   const [metrics, setMetrics] = useState<SellerMetrics | null>(null);
   const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([]);
+  const [productViewCounts, setProductViewCounts] = useState<ProductViewCount[]>([]);
+  const [preferredCurrency, setPreferredCurrency] = useState<string>('USD');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');
   const [generating, setGenerating] = useState(false);
@@ -57,6 +67,8 @@ export function SellerAnalyticsDashboard() {
         const data = await response.json();
         setMetrics(data.summary);
         setDailyMetrics(data.metrics);
+        setProductViewCounts(data.productViewCounts || []);
+        setPreferredCurrency(data.preferredCurrency || 'USD');
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -88,11 +100,18 @@ export function SellerAnalyticsDashboard() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, currency: string = preferredCurrency) => {
+    // Get the number of decimal places for this currency
+    const decimals = getCurrencyDecimals(currency);
+    // Only divide by 100 if the currency uses cents (has decimal places)
+    const amountToFormat = decimals > 0 ? amount / 100 : amount;
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount / 100); // Convert from cents
+      currency: currency,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    }).format(amountToFormat);
   };
 
   const formatPercentage = (value: number) => {
@@ -171,7 +190,22 @@ export function SellerAnalyticsDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics ? metrics.totalViews.toLocaleString() : '--'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Product views
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -311,6 +345,43 @@ export function SellerAnalyticsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Product View Counts */}
+      {productViewCounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Eye className="h-5 w-5" />
+              <span>Product Views</span>
+            </CardTitle>
+            <CardDescription>View counts for all your products</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Product Name</th>
+                    <th className="text-right p-2">Total Views</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productViewCounts
+                    .sort((a, b) => b.views - a.views)
+                    .map((product) => (
+                      <tr key={product.productId} className="border-b hover:bg-muted/50">
+                        <td className="p-2">{product.productName}</td>
+                        <td className="text-right p-2 font-medium">
+                          {product.views.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Daily Performance Table */}
       <Card>

@@ -1310,6 +1310,173 @@ export class ProductInteractionService {
       throw error;
     }
   }
+
+  /**
+   * Get total view count for a specific product
+   * @param productId - The product ID
+   * @returns Total number of views for the product
+   */
+  static async getProductViewCount(productId: string): Promise<number> {
+    try {
+      const count = await db.productInteraction.count({
+        where: {
+          productId,
+          interactionType: 'VIEW'
+        }
+      });
+      return count;
+    } catch (error) {
+      console.error('Error getting product view count:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get view counts for all products belonging to a seller
+   * @param sellerId - The seller's user ID
+   * @returns Array of products with their view counts
+   */
+  static async getSellerProductViewCounts(sellerId: string): Promise<Array<{ productId: string; views: number; productName: string }>> {
+    try {
+      // First get all products for this seller
+      const products = await db.product.findMany({
+        where: { userId: sellerId },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+
+      if (products.length === 0) {
+        return [];
+      }
+
+      const productIds = products.map(p => p.id);
+
+      // Get view counts for all products
+      const viewCounts = await db.productInteraction.groupBy({
+        by: ['productId'],
+        where: {
+          productId: { in: productIds },
+          interactionType: 'VIEW'
+        },
+        _count: {
+          productId: true
+        }
+      });
+
+      // Map results to include product names
+      const productViewMap = new Map(
+        viewCounts.map(v => [v.productId, v._count.productId])
+      );
+
+      return products.map(product => ({
+        productId: product.id,
+        views: productViewMap.get(product.id) || 0,
+        productName: product.name
+      }));
+    } catch (error) {
+      console.error('Error getting seller product view counts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get total view count for all products belonging to a seller
+   * @param sellerId - The seller's user ID
+   * @returns Total view count across all seller's products
+   */
+  static async getSellerTotalViewCount(sellerId: string): Promise<number> {
+    try {
+      // Get all product IDs for this seller
+      const products = await db.product.findMany({
+        where: { userId: sellerId },
+        select: { id: true }
+      });
+
+      if (products.length === 0) {
+        return 0;
+      }
+
+      const productIds = products.map(p => p.id);
+
+      // Count all views for these products
+      const count = await db.productInteraction.count({
+        where: {
+          productId: { in: productIds },
+          interactionType: 'VIEW'
+        }
+      });
+
+      return count;
+    } catch (error) {
+      console.error('Error getting seller total view count:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get view counts for all products (admin function)
+   * @param limit - Optional limit for top products
+   * @returns Array of products with their view counts, sorted by views descending
+   */
+  static async getAllProductViewCounts(limit?: number): Promise<Array<{ productId: string; views: number; productName: string; sellerName: string }>> {
+    try {
+      // Get view counts grouped by product
+      const viewCounts = await db.productInteraction.groupBy({
+        by: ['productId'],
+        where: {
+          interactionType: 'VIEW'
+        },
+        _count: {
+          productId: true
+        },
+        orderBy: {
+          _count: {
+            productId: 'desc'
+          }
+        },
+        ...(limit ? { take: limit } : {})
+      });
+
+      if (viewCounts.length === 0) {
+        return [];
+      }
+
+      // Get product details
+      const productIds = viewCounts.map(v => v.productId);
+      const products = await db.product.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          name: true,
+          seller: {
+            select: {
+              shopName: true
+            }
+          }
+        }
+      });
+
+      // Map results
+      const productMap = new Map(
+        products.map(p => [p.id, { name: p.name, sellerName: p.seller?.shopName || 'Unknown' }])
+      );
+
+      return viewCounts.map(view => {
+        const product = productMap.get(view.productId);
+        return {
+          productId: view.productId,
+          views: view._count.productId,
+          productName: product?.name || 'Unknown',
+          sellerName: product?.sellerName || 'Unknown'
+        };
+      });
+    } catch (error) {
+      console.error('Error getting all product view counts:', error);
+      throw error;
+    }
+  }
 }
 
 export class UserSessionService {

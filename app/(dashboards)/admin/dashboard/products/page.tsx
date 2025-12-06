@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import PermissionGate from "@/components/auth/permission-gate";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
 import { db } from "@/lib/db";
+import { ProductInteractionService } from "@/lib/analytics";
 
 export const metadata = {
   title: "Admin - All Products",
@@ -46,6 +47,12 @@ export default async function AdminProducts({
       createdAt: 'desc',
     },
   });
+
+  // Get view counts for all products
+  const productViewCounts = await ProductInteractionService.getAllProductViewCounts();
+  const viewCountMap = new Map(
+    productViewCounts.map(v => [v.productId, v.views])
+  );
 
   // Filter products based on active tab
   const filteredProducts = products.filter(product => {
@@ -150,6 +157,7 @@ export default async function AdminProducts({
                         <TableHead>Seller</TableHead>
                         <TableHead>Price</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="hidden md:table-cell">Views</TableHead>
                         <TableHead className="hidden md:table-cell">Stock</TableHead>
                         <TableHead className="hidden md:table-cell">Created</TableHead>
                       </TableRow>
@@ -176,6 +184,9 @@ export default async function AdminProducts({
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{product.status}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {viewCountMap.get(product.id)?.toLocaleString() || '0'}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             {product.stock}
