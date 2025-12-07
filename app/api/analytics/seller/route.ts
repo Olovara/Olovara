@@ -27,6 +27,14 @@ export async function GET(req: NextRequest) {
 
     const sellerId = session.user.id;
 
+    // Check if request was aborted before starting heavy operations
+    if (req.signal?.aborted) {
+      return NextResponse.json(
+        { error: "Request cancelled" },
+        { status: 499 }
+      );
+    }
+
     // Get seller's preferred currency
     const seller = await db.seller.findUnique({
       where: { userId: sellerId },
@@ -34,11 +42,35 @@ export async function GET(req: NextRequest) {
     });
     const preferredCurrency = seller?.preferredCurrency || "USD";
 
+    // Check again after first query
+    if (req.signal?.aborted) {
+      return NextResponse.json(
+        { error: "Request cancelled" },
+        { status: 499 }
+      );
+    }
+
     // Get seller metrics using the unified service
     const metrics = await PlatformAnalyticsService.getSellerAnalytics(sellerId, start, end);
 
+    // Check if request was aborted during analytics fetch
+    if (req.signal?.aborted) {
+      return NextResponse.json(
+        { error: "Request cancelled" },
+        { status: 499 }
+      );
+    }
+
     // Get total product view count for this seller
     const totalViews = await ProductInteractionService.getSellerTotalViewCount(sellerId);
+    
+    // Check again before final query
+    if (req.signal?.aborted) {
+      return NextResponse.json(
+        { error: "Request cancelled" },
+        { status: 499 }
+      );
+    }
     
     // Get view counts per product
     const productViewCounts = await ProductInteractionService.getSellerProductViewCounts(sellerId);
@@ -93,7 +125,16 @@ export async function GET(req: NextRequest) {
       productViewCounts // Include per-product view counts
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    // Handle connection reset errors gracefully - these are common when clients timeout
+    if (error?.code === 'ECONNRESET' || error?.message?.includes('aborted')) {
+      // Don't log these as errors - they're expected when clients close connections
+      return NextResponse.json(
+        { error: "Request cancelled by client" },
+        { status: 499 }
+      );
+    }
+    
     console.error('Error fetching seller analytics:', error);
     return NextResponse.json(
       { error: "Failed to fetch analytics" },
@@ -129,7 +170,15 @@ export async function POST(req: NextRequest) {
       metrics
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    // Handle connection reset errors gracefully
+    if (error?.code === 'ECONNRESET' || error?.message?.includes('aborted')) {
+      return NextResponse.json(
+        { error: "Request cancelled by client" },
+        { status: 499 }
+      );
+    }
+    
     console.error('Error generating seller analytics:', error);
     return NextResponse.json(
       { error: "Failed to generate analytics" },

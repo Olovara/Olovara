@@ -203,6 +203,21 @@ app.prepare().then(() => {
 
   // Handle all other requests with Next.js
   httpServer.on('request', async (req, res) => {
+    // Handle connection errors gracefully (client closing connection)
+    req.on('error', (error) => {
+      // Don't log ECONNRESET errors - these are normal when clients timeout/close connections
+      if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+        console.error('Request error:', error);
+      }
+    });
+
+    res.on('error', (error) => {
+      // Don't log ECONNRESET errors - these are normal when clients timeout/close connections
+      if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+        console.error('Response error:', error);
+      }
+    });
+
     try {
       // Ensure proper handling of static files in development
       if (dev && req.url && req.url.startsWith('/_next/static/')) {
@@ -213,15 +228,35 @@ app.prepare().then(() => {
       
       await handler(req, res);
     } catch (error) {
+      // Handle connection reset errors gracefully
+      if (error?.code === 'ECONNRESET' || error?.code === 'EPIPE') {
+        // Client closed connection - this is normal, don't log as error
+        return;
+      }
       console.error('Error handling request:', error);
-      res.statusCode = 500;
-      res.end('Internal Server Error');
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end('Internal Server Error');
+      }
     }
+  });
+
+  // Handle server-level connection errors gracefully
+  httpServer.on('clientError', (err, socket) => {
+    // Don't log ECONNRESET errors - these are normal when clients close connections
+    if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
+      console.error('Client error:', err);
+    }
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
   });
 
   httpServer
     .once("error", (err) => {
-      console.error(err);
+      // Only exit on critical errors, not connection resets
+      if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+        return;
+      }
+      console.error('Server error:', err);
       process.exit(1);
     })
     .listen(port, () => {

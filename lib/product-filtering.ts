@@ -66,8 +66,10 @@ export async function createProductFilterWhereClause(
 }
 
 /**
- * Debug function to log product query results
- * This helps identify why test products might not be showing up
+ * Query products with filtering for active sellers
+ * This filters out products from inactive/suspended sellers
+ * Debug logging is only enabled when DEBUG_PRODUCT_QUERY env var is set
+ * TODO add this env var
  */
 export async function debugProductQuery(where: Prisma.ProductWhereInput) {
   try {
@@ -100,17 +102,22 @@ export async function debugProductQuery(where: Prisma.ProductWhereInput) {
       }
     });
 
-    console.log('[DEBUG] Products returned by query:', products.length);
-    products.forEach(product => {
-      console.log(`- ${product.name} (ID: ${product.id})`);
-      console.log(`  Status: ${product.status}`);
-      console.log(`  isTestProduct: ${product.isTestProduct}`);
-      console.log(`  Seller Status: ${product.seller?.user?.status || 'No seller'}`);
-      console.log(`  Shop Name: ${product.seller?.shopName || 'No shop name'}`);
-    });
+    // Only log debug info if explicitly enabled via environment variable
+    const shouldDebug = process.env.DEBUG_PRODUCT_QUERY === 'true';
+    
+    if (shouldDebug) {
+      console.log('[DEBUG] Products returned by query:', products.length);
+      products.forEach(product => {
+        console.log(`- ${product.name} (ID: ${product.id})`);
+        console.log(`  Status: ${product.status}`);
+        console.log(`  isTestProduct: ${product.isTestProduct}`);
+        console.log(`  Seller Status: ${product.seller?.user?.status || 'No seller'}`);
+        console.log(`  Shop Name: ${product.seller?.shopName || 'No shop name'}`);
+      });
 
-    const testProducts = products.filter(p => p.isTestProduct);
-    console.log(`[DEBUG] Test products in results: ${testProducts.length}`);
+      const testProducts = products.filter(p => p.isTestProduct);
+      console.log(`[DEBUG] Test products in results: ${testProducts.length}`);
+    }
     
     // Filter out products from inactive sellers (since we can't do this in the DB query)
     const productsWithActiveSellers = products.filter(product => {
@@ -118,13 +125,18 @@ export async function debugProductQuery(where: Prisma.ProductWhereInput) {
       return product.seller.user?.status === 'ACTIVE';
     });
     
-    console.log(`[DEBUG] Products with active sellers: ${productsWithActiveSellers.length}`);
-    const testProductsWithActiveSellers = productsWithActiveSellers.filter(p => p.isTestProduct);
-    console.log(`[DEBUG] Test products with active sellers: ${testProductsWithActiveSellers.length}`);
+    if (shouldDebug) {
+      console.log(`[DEBUG] Products with active sellers: ${productsWithActiveSellers.length}`);
+      const testProductsWithActiveSellers = productsWithActiveSellers.filter(p => p.isTestProduct);
+      console.log(`[DEBUG] Test products with active sellers: ${testProductsWithActiveSellers.length}`);
+    }
     
     return productsWithActiveSellers; // Return the filtered results
   } catch (error) {
-    console.error('[DEBUG] Error in debugProductQuery:', error);
+    // Only log errors in debug mode
+    if (process.env.DEBUG_PRODUCT_QUERY === 'true') {
+      console.error('[DEBUG] Error in debugProductQuery:', error);
+    }
     return [];
   }
 }
