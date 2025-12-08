@@ -21,13 +21,28 @@ export async function GET(request: NextRequest) {
       getUserPermissions(session.user.id),
       db.user.findUnique({
         where: { id: session.user.id },
-        select: { role: true }
+        select: { 
+          role: true,
+          seller: {
+            select: {
+              id: true
+            }
+          }
+        }
       })
     ]);
+
+    // Determine role: if user has a seller profile, they're a SELLER
+    // even if role field hasn't been updated yet
+    const userRole = user?.role === 'SELLER' || user?.seller 
+      ? 'SELLER' 
+      : (user?.role || 'MEMBER');
 
     console.log("Permissions API - Retrieved user data:", {
       userId: session.user.id,
       role: user?.role,
+      hasSellerProfile: !!user?.seller,
+      determinedRole: userRole,
       permissionsCount: permissions.length,
       permissions: permissions,
       timestamp: new Date().toISOString()
@@ -35,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      role: user?.role || 'MEMBER',
+      role: userRole,
       permissions: permissions,
       userId: session.user.id,
       fetchedAt: new Date().toISOString()

@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
+import { usePermissions } from "@/components/providers/PermissionProvider";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Spinner from "../spinner";
 
@@ -33,9 +35,29 @@ const SellerOnboardingDashboard = () => {
     isLoading,
     refreshSteps,
   } = useOnboarding();
+  const { refreshPermissions } = usePermissions();
+  const router = useRouter();
 
   const handleRefreshStatus = async () => {
     await refreshSteps();
+  };
+
+  // Handle navigation to dashboard with cache clearing
+  const handleGoToDashboard = async () => {
+    // Clear permission cache to force fresh role fetch
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('yarnnu_user_permissions');
+      localStorage.removeItem('yarnnu_user_role');
+      localStorage.removeItem('yarnnu_permissions_timestamp');
+    }
+    // Refresh permissions to get latest role
+    await refreshPermissions();
+    // Navigate to dashboard
+    router.push("/seller/dashboard");
+    // Force a page reload to ensure fresh data
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   if (isLoading) {
@@ -221,11 +243,9 @@ const SellerOnboardingDashboard = () => {
           );
         }
         return (
-          <Button asChild size="sm" className="mt-2">
-            <Link href="/seller/dashboard">
-              Go to Dashboard
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
+          <Button size="sm" className="mt-2" onClick={handleGoToDashboard}>
+            Go to Dashboard
+            <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         );
       default:

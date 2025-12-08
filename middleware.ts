@@ -31,7 +31,14 @@ function getRateLimit(
 
   // Get or create rate limit entry
   let entry = rateLimitStore.get(identifier);
-  if (!entry) {
+  
+  // If entry exists but window has expired, reset it
+  if (entry && entry.resetTime < now) {
+    // Window expired, reset the counter
+    entry = { count: 0, resetTime: now + windowMs };
+    rateLimitStore.set(identifier, entry);
+  } else if (!entry) {
+    // No entry exists, create new one
     entry = { count: 0, resetTime: now + windowMs };
     rateLimitStore.set(identifier, entry);
   }
@@ -41,7 +48,9 @@ function getRateLimit(
 
   // Check if rate limit exceeded
   if (entry.count > limit) {
-    return { success: false, limit, remaining: 0, reset: entry.resetTime };
+    // Ensure reset time is in the future
+    const resetTime = entry.resetTime > now ? entry.resetTime : now + windowMs;
+    return { success: false, limit, remaining: 0, reset: resetTime };
   }
 
   return {
@@ -56,32 +65,57 @@ export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
 
-  // Rate limiting for all requests
-  const clientIP =
-    req.headers.get("x-forwarded-for") ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
-  const rateLimitResult = getRateLimit(clientIP, 200, 60 * 1000); // 200 requests per minute per IP
+  // Check route types before rate limiting
+  const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
+  const isPublicRoute = publicRoutes.some((route) =>
+    nextUrl.pathname.startsWith(route)
+  );
+  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+  const isStripeWebhook = nextUrl.pathname.startsWith("/api/stripe/webhooks");
+  const isPermissionsApi = nextUrl.pathname === "/api/auth/permissions";
+  const isClearCacheApi = nextUrl.pathname === "/api/auth/clear-cache";
 
-  if (!rateLimitResult.success) {
-    return new NextResponse(
-      JSON.stringify({
-        error: "Too many requests",
-        retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
-      }),
-      {
-        status: 429,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": Math.ceil(
-            (rateLimitResult.reset - Date.now()) / 1000
-          ).toString(),
-          "X-RateLimit-Limit": rateLimitResult.limit.toString(),
-          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-          "X-RateLimit-Reset": rateLimitResult.reset.toString(),
-        },
-      }
-    );
+  // Skip rate limiting for auth routes, API auth routes, and critical APIs
+  // These routes are hit frequently during login/authentication flow
+  const shouldSkipRateLimit = 
+    isApiAuthRoute || 
+    isAuthRoute || 
+    isStripeWebhook || 
+    isPermissionsApi || 
+    isClearCacheApi;
+
+  // Rate limiting for all other requests
+  if (!shouldSkipRateLimit) {
+    const clientIP =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    
+    // Higher limit for authenticated users (they're less likely to be bots)
+    const rateLimit = isAuthorized ? 300 : 200;
+    const rateLimitResult = getRateLimit(clientIP, rateLimit, 60 * 1000);
+
+    if (!rateLimitResult.success) {
+      // Calculate retryAfter, ensuring it's never negative
+      const retryAfter = Math.max(0, Math.ceil((rateLimitResult.reset - Date.now()) / 1000));
+      
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too many requests",
+          retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString(),
+            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
+      );
+    }
   }
 
   // Add security headers to all responses
@@ -101,12 +135,6 @@ export default auth(async (req) => {
     "max-age=31536000; includeSubDomains"
   );
 
-  const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.some((route) =>
-    nextUrl.pathname.startsWith(route)
-  );
-  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-  const isStripeWebhook = nextUrl.pathname.startsWith("/api/stripe/webhooks");
   const isLogoutRedirect =
     nextUrl.pathname === "/login" &&
     nextUrl.searchParams.get("callbackUrl")?.includes("/login");
@@ -134,7 +162,33 @@ export default auth(async (req) => {
 
   // Handle auth routes
   if (isAuthRoute) {
-    if (isAuthorized) {
+    if (isAuthorized && req.auth?.user?.id) {
+      // If user is already authenticated, redirect to their role-based dashboard
+      // Fetch role from database to determine correct redirect
+      try {
+        const { db } = await import("@/lib/db");
+        const dbUser = await db.user.findUnique({
+          where: { id: req.auth.user.id },
+          select: { 
+            role: true,
+            seller: {
+              select: { id: true, applicationAccepted: true }
+            }
+          }
+        });
+
+        // Redirect based on role
+        if (dbUser?.role === "SELLER" || dbUser?.seller) {
+          return Response.redirect(new URL("/seller/dashboard", nextUrl));
+        } else if (dbUser?.role === "ADMIN" || dbUser?.role === "SUPER_ADMIN") {
+          return Response.redirect(new URL("/admin/dashboard", nextUrl));
+        } else if (dbUser?.role === "MEMBER") {
+          return Response.redirect(new URL("/member/dashboard", nextUrl));
+        }
+      } catch (error) {
+        console.error("Error fetching user role in middleware:", error);
+        // Fall back to default redirect if there's an error
+      }
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
     return response;

@@ -29,6 +29,7 @@ export default function PaymentSetupForm() {
   const router = useRouter();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
@@ -63,16 +64,47 @@ export default function PaymentSetupForm() {
     }
   };
 
-  const handleContinue = () => {
-    router.push("/seller/dashboard");
+  const handleContinue = async () => {
+    // Clear permissions cache before redirecting
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('yarnnu_user_permissions');
+      localStorage.removeItem('yarnnu_user_role');
+      localStorage.removeItem('yarnnu_permissions_timestamp');
+    }
+    // Force a full page reload to ensure fresh permissions
+    window.location.href = "/seller/dashboard";
   };
 
   const handleBack = () => {
     router.push("/onboarding/create-first-product");
   };
 
-  const handleSkip = () => {
-    router.push("/seller/dashboard");
+  const handleSkip = async () => {
+    setIsSkipping(true);
+    
+    try {
+      // Clear permissions cache
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('yarnnu_user_permissions');
+        localStorage.removeItem('yarnnu_user_role');
+        localStorage.removeItem('yarnnu_permissions_timestamp');
+      }
+      
+      // Call clear-cache API to ensure server-side cache is cleared
+      try {
+        await fetch('/api/auth/clear-cache', { method: 'POST' });
+      } catch (error) {
+        console.error('Error clearing cache:', error);
+        // Continue anyway - client cache is cleared
+      }
+      
+      // Force a full page reload to ensure fresh permissions are fetched
+      window.location.href = "/seller/dashboard";
+    } catch (error) {
+      console.error('Error skipping payment setup:', error);
+      toast.error('Failed to skip payment setup');
+      setIsSkipping(false);
+    }
   };
 
   return (
@@ -206,10 +238,11 @@ export default function PaymentSetupForm() {
                 <div className="text-center">
                   <Button
                     onClick={handleSkip}
+                    disabled={isSkipping}
                     variant="ghost"
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    Skip for now
+                    {isSkipping ? "Loading..." : "Skip for now"}
                   </Button>
                 </div>
               </div>

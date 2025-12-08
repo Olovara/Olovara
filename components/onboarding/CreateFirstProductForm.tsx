@@ -41,11 +41,17 @@ import { ProductFileSection } from "@/components/product/productFile";
 const FirstProductSchema = z.object({
   name: z.string().min(1, "Product name is required").max(100),
   sku: z.string().optional(),
-  shortDescription: z.string(),
+  shortDescription: z.string().optional().default(""),
   description: z.object({
-    html: z.string(),
-    text: z.string(),
-  }),
+    html: z.string().optional().default(""),
+    text: z.string().optional().default(""),
+  }).refine(
+    (data) => data.html?.trim() || data.text?.trim(),
+    {
+      message: "Description is required",
+      path: ["text"], // Show error on text field
+    }
+  ),
   options: z
     .array(
       z.object({
@@ -71,8 +77,8 @@ const FirstProductSchema = z.object({
   stock: z.number().int().min(1).optional(),
   productFile: z.string().nullable().optional(),
   numberSold: z.number().int().optional().default(0),
-  primaryCategory: z.string(),
-  secondaryCategory: z.string(),
+  primaryCategory: z.string().min(1, "Primary category is required"),
+  secondaryCategory: z.string().min(1, "Secondary category is required"),
   tertiaryCategory: z.string().optional(),
   tags: z.array(z.string()).default([]),
   materialTags: z.array(z.string()).default([]),
@@ -100,7 +106,7 @@ const FirstProductSchema = z.object({
   inStockProcessingTime: z.number().optional(),
   outStockLeadTime: z.number().optional(),
   productDrop: z.boolean().default(false),
-  dropDate: z.string().nullable(),
+  dropDate: z.string().nullable().optional(),
   dropTime: z.string().optional(),
   discountEndDate: z.string().optional(),
   discountEndTime: z.string().optional(),
@@ -198,12 +204,42 @@ export default function CreateFirstProductForm() {
       skillLevel: "",
       freeShipping: false,
       shippingOptionId: "",
+      productDrop: false,
+      dropDate: null,
+      dropTime: "",
+      discountEndDate: "",
+      discountEndTime: "",
+      isTestProduct: false,
+      taxCategory: "PHYSICAL_GOODS",
+      taxExempt: false,
+      onSale: false,
+      NSFW: false,
+      chokingHazard: false,
+      smallPartsWarning: false,
     },
   });
 
-  const { watch } = form;
+  const { watch, setValue } = form;
   const isDigital = watch("isDigital");
   const freeShipping = watch("freeShipping");
+
+  // Sync description state to form (similar to ProductForm)
+  useEffect(() => {
+    // Always update the form value with both html and text versions
+    form.setValue(
+      "description",
+      {
+        html: description || "",
+        text: description ? description.replace(/<[^>]*>?/gm, "") : "",
+      },
+      { shouldValidate: false } // Don't trigger validation on sync
+    );
+  }, [description, form, setValue]);
+
+  // Sync images to form
+  useEffect(() => {
+    form.setValue("images", images, { shouldValidate: false });
+  }, [images, form, setValue]);
 
   // Fetch seller's country
   useEffect(() => {
@@ -227,13 +263,16 @@ export default function CreateFirstProductForm() {
     sellerCountry && EEA_COUNTRIES.includes(sellerCountry.toUpperCase());
 
   const handleSubmit = async (data: any) => {
+    console.log("[CreateFirstProduct] Form submitted with data:", data);
+    console.log("[CreateFirstProduct] Form values:", form.getValues());
+    console.log("[CreateFirstProduct] Form errors:", form.formState.errors);
     setIsSubmitting(true);
 
     try {
       const result = await createFirstProduct({
         name: data.name.trim(),
         category: data.primaryCategory, // Keep using category for backward compatibility
-        description: data.description.text || data.description.html || "",
+        description: data.description?.text || data.description?.html || "",
         shortDescription: data.shortDescription || "",
         shortDescriptionBullets: shortDescriptionBullets,
         price: data.price,
@@ -247,18 +286,56 @@ export default function CreateFirstProductForm() {
         shippingOptionId: data.shippingOptionId,
       });
 
+      console.log("[CreateFirstProduct] Result:", result);
+
       if (result.error) {
         toast.error(result.error);
+        setIsSubmitting(false);
         return;
       }
 
-      toast.success("Success!");
+      // Show appropriate message based on product status
+      if (result.isDraft) {
+        toast.success("Product created as draft! Complete onboarding to activate it.");
+      } else {
+        toast.success("Product created successfully!");
+      }
+      
       router.push("/onboarding/payment-setup");
     } catch (error) {
       console.error("Error creating first product:", error);
-      toast.error("Failed to create product");
+      toast.error(error instanceof Error ? error.message : "Failed to create product");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle form validation errors
+  const handleSubmitError = (errors: any) => {
+    console.error("[CreateFirstProduct] Form validation errors:", errors);
+    
+    // Get all error messages
+    const errorMessages: string[] = [];
+    Object.entries(errors).forEach(([field, error]: [string, any]) => {
+      if (error?.message) {
+        // Format field name to be more readable
+        const fieldName = field
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (str) => str.toUpperCase())
+          .trim();
+        errorMessages.push(`${fieldName}: ${error.message}`);
+      }
+    });
+
+    if (errorMessages.length > 0) {
+      // Show first error, or all if there are multiple
+      if (errorMessages.length === 1) {
+        toast.error(errorMessages[0]);
+      } else {
+        toast.error(`Please fix the following: ${errorMessages.join(", ")}`);
+      }
+    } else {
+      toast.error("Please fill in all required fields");
     }
   };
 
@@ -302,7 +379,7 @@ export default function CreateFirstProductForm() {
                      <CardContent className="space-y-8 w-full min-w-0 max-w-full">
              <FormProvider {...form}>
                <form
-                 onSubmit={form.handleSubmit(handleSubmit)}
+                 onSubmit={form.handleSubmit(handleSubmit, handleSubmitError)}
                  className="space-y-8 w-full min-w-0 max-w-full"
                >
               {/* Basic Information Section */}
@@ -482,10 +559,28 @@ export default function CreateFirstProductForm() {
                       !form.watch("name")?.trim() ||
                       !form.watch("primaryCategory") ||
                       !form.watch("secondaryCategory") ||
-                      !form.watch("description")?.text?.trim() ||
+                      (!form.watch("description")?.text?.trim() && !form.watch("description")?.html?.trim()) ||
                       !form.watch("price") ||
                       images.length === 0
                     }
+                    onClick={(e) => {
+                      // Prevent double submission
+                      if (isSubmitting) {
+                        e.preventDefault();
+                        return;
+                      }
+                      // Log for debugging
+                      console.log("[CreateFirstProduct] Button clicked");
+                      console.log("[CreateFirstProduct] Form state:", {
+                        name: form.watch("name"),
+                        primaryCategory: form.watch("primaryCategory"),
+                        secondaryCategory: form.watch("secondaryCategory"),
+                        description: form.watch("description"),
+                        price: form.watch("price"),
+                        images: images.length,
+                        errors: form.formState.errors,
+                      });
+                    }}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2"
                   >
                     {isSubmitting ? (

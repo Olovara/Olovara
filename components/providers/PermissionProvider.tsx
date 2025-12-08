@@ -37,7 +37,7 @@ const PermissionContext = createContext<PermissionContextType | undefined>(
 const PERMISSIONS_STORAGE_KEY = "yarnnu_user_permissions";
 const ROLE_STORAGE_KEY = "yarnnu_user_role";
 const PERMISSIONS_TIMESTAMP_KEY = "yarnnu_permissions_timestamp";
-const PERMISSIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const PERMISSIONS_CACHE_DURATION = 1 * 60 * 1000; // 1 minute (reduced from 5 to prevent stale data)
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -199,8 +199,10 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
   // Function to manually refresh user data (useful after permission/role changes)
   const refreshPermissions = useCallback(async () => {
+    // Clear cache first to ensure fresh data
+    clearCachedData();
     await fetchUserData(true); // Force refresh
-  }, [fetchUserData]);
+  }, [fetchUserData, clearCachedData]);
 
   const value: PermissionContextType = {
     permissions,

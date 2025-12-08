@@ -3,6 +3,7 @@ import { PermissionProvider } from "@/components/providers/PermissionProvider";
 import { SellerDashboardContent } from "./SellerDashboardContent";
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,35 @@ export default async function SellerDashboardHome() {
   // Server-side auth check - redirect if not authenticated
   // This is the REAL security check - middleware just prevents redirect loops
   if (!session?.user?.id) {
+    redirect("/login?callbackUrl=/seller/dashboard");
+  }
+
+  // Fetch user role from database to verify seller access
+  // This prevents redirect loops by checking role server-side
+  const dbUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { 
+      role: true,
+      seller: {
+        select: {
+          id: true,
+          applicationAccepted: true
+        }
+      }
+    }
+  });
+
+  // If user is not a seller or doesn't have a seller profile, redirect appropriately
+  if (!dbUser) {
     redirect("/login");
+  }
+
+  // Check if user has seller role OR has a seller profile (in case role update is pending)
+  const isSeller = dbUser.role === "SELLER" || dbUser.seller !== null;
+
+  if (!isSeller) {
+    // User is authenticated but not a seller - redirect to seller application
+    redirect("/seller-application");
   }
 
   return (

@@ -7,11 +7,33 @@ import SellerOnboardingDashboard from "@/components/seller/SellerOnboardingDashb
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import { SessionRefreshButton } from "@/components/SessionRefreshButton";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { useEffect } from "react";
 
 export function SellerDashboardContent() {
   const { data: session } = useSession();
-  const { role, loading: permissionsLoading, error: permissionsError } = usePermissions();
+  const { role, loading: permissionsLoading, error: permissionsError, refreshPermissions } = usePermissions();
   const { steps, isFullyActivated, isLoading: onboardingLoading } = useOnboarding();
+
+  // Refresh permissions on mount to ensure we have the latest role
+  // This helps when user just completed onboarding
+  useEffect(() => {
+    if (session?.user?.id && !permissionsLoading) {
+      // Check if cache might be stale (older than 30 seconds)
+      if (typeof window !== 'undefined') {
+        const timestamp = localStorage.getItem('yarnnu_permissions_timestamp');
+        if (timestamp) {
+          const age = Date.now() - parseInt(timestamp);
+          // If cache is older than 30 seconds, refresh
+          if (age > 30000) {
+            refreshPermissions();
+          }
+        } else {
+          // No cache, fetch fresh
+          refreshPermissions();
+        }
+      }
+    }
+  }, [session?.user?.id, permissionsLoading, refreshPermissions]);
 
   // Debug logging
   console.log("SellerDashboardContent - Debug:", {

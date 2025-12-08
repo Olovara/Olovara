@@ -429,6 +429,9 @@ export const createFirstProduct = async (
     return { error: "User not authenticated." };
   }
 
+  // Extract userId to ensure TypeScript knows it's defined
+  const userId = session.user.id;
+
   try {
     // Validate the data
     const validatedData = FirstProductSchema.parse(data);
@@ -436,7 +439,13 @@ export const createFirstProduct = async (
     // Check if user has a seller account
     const seller = await db.seller.findUnique({
       where: {
-        userId: session.user.id,
+        userId: userId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        applicationAccepted: true,
+        isFullyActivated: true,
       },
     });
 
@@ -446,66 +455,95 @@ export const createFirstProduct = async (
       };
     }
 
-    // Create the product
-    const product = await db.product.create({
-      data: {
-        userId: session.user.id,
-        name: validatedData.name,
-        shortDescription: validatedData.shortDescription,
-        shortDescriptionBullets: validatedData.shortDescriptionBullets || [],
-        description: {
-          text: validatedData.description,
-          materials: validatedData.materials || "",
-          dimensions: validatedData.dimensions || "",
-          weight: validatedData.weight || "",
-          processingTime: validatedData.processingTime || "3-5 business days",
-        },
-        price: Math.round(validatedData.price * 100), // Convert to cents
-        currency: "USD", // Default currency
-        status: "ACTIVE", // Set as active for first product
-        primaryCategory: validatedData.category,
-        secondaryCategory: validatedData.category, // Use same category for secondary
-        isDigital: validatedData.isDigital || false,
-        stock: 1, // Default stock
-        images: [], // Empty array for now, can be updated later
-        tags: [], // Empty array for now
-        materialTags: validatedData.materials ? [validatedData.materials] : [],
-        inStockProcessingTime: validatedData.processingTime
-          ? parseInt(validatedData.processingTime.split("-")[0])
-          : 3,
-        itemWeightUnit: "lbs", // Default weight unit
-        itemDimensionUnit: "in", // Default dimension unit
-        taxCategory: validatedData.isDigital ? "DIGITAL_GOODS" : "PHYSICAL_GOODS",
-        freeShipping: validatedData.freeShipping || false,
-        shippingCost: Math.round((validatedData.shippingCost || 0) * 100), // Convert to cents
-        shippingOptionId: validatedData.shippingOptionId || null,
-      },
-    });
+    // Determine product status based on seller approval and activation
+    // Only allow ACTIVE status if seller is approved and fully activated
+    // Otherwise, create as DRAFT so seller can complete onboarding first
+    const productStatus = 
+      seller.applicationAccepted && seller.isFullyActivated 
+        ? "ACTIVE" 
+        : "DRAFT";
 
-    // Update seller's total products count
-    await db.seller.update({
-      where: {
-        userId: session.user.id,
-      },
-      data: {
-        totalProducts: {
-          increment: 1,
+    // Use transaction to ensure atomicity
+    const result = await db.$transaction(async (tx) => {
+      // Create the product
+      const product = await tx.product.create({
+        data: {
+          userId: userId,
+          name: validatedData.name,
+          shortDescription: validatedData.shortDescription,
+          shortDescriptionBullets: validatedData.shortDescriptionBullets || [],
+          description: {
+            text: validatedData.description,
+            materials: validatedData.materials || "",
+            dimensions: validatedData.dimensions || "",
+            weight: validatedData.weight || "",
+            processingTime: validatedData.processingTime || "3-5 business days",
+          },
+          price: Math.round(validatedData.price * 100), // Convert to cents
+          currency: "USD", // Default currency
+          status: productStatus, // Set status based on seller approval/activation
+          primaryCategory: validatedData.category,
+          secondaryCategory: validatedData.category, // Use same category for secondary
+          isDigital: validatedData.isDigital || false,
+          stock: 1, // Default stock
+          images: [], // Empty array for now, can be updated later
+          tags: [], // Empty array for now
+          materialTags: validatedData.materials ? [validatedData.materials] : [],
+          inStockProcessingTime: validatedData.processingTime
+            ? parseInt(validatedData.processingTime.split("-")[0])
+            : 3,
+          itemWeightUnit: "lbs", // Default weight unit
+          itemDimensionUnit: "in", // Default dimension unit
+          taxCategory: validatedData.isDigital ? "DIGITAL_GOODS" : "PHYSICAL_GOODS",
+          freeShipping: validatedData.freeShipping || false,
+          shippingCost: Math.round((validatedData.shippingCost || 0) * 100), // Convert to cents
+          shippingOptionId: validatedData.shippingOptionId || null,
         },
-        firstProductCreatedAt: new Date(),
-      },
+      });
+
+      // Update seller's total products count using seller.id for reliability
+      await tx.seller.update({
+        where: {
+          id: seller.id, // Use seller.id instead of userId for more reliable lookup
+        },
+        data: {
+          totalProducts: {
+            increment: 1,
+          },
+          firstProductCreatedAt: new Date(),
+        },
+      });
+
+      return product;
     });
 
     // Note: We don't mark first_product as completed since it's not a required step
     // Product creation is optional and sellers can create products whenever they want
 
-    console.log("First product created successfully:", product.id);
+    console.log("First product created successfully:", result.id, "Status:", productStatus);
+    
+    // Return appropriate message based on status
+    const message = productStatus === "DRAFT" 
+      ? "Product created as draft. Complete your onboarding to activate it."
+      : "First product created successfully!";
+
     return {
-      success: "First product created successfully!",
-      productId: product.id,
+      success: message,
+      productId: result.id,
+      status: productStatus,
+      isDraft: productStatus === "DRAFT",
     };
   } catch (error) {
     console.error("Error creating first product:", error);
-    return { error: "Failed to create first product." };
+    // Provide more detailed error message
+    if (error instanceof Error) {
+      console.error("Error details:", error.message, error.stack);
+    }
+    return { 
+      error: error instanceof Error 
+        ? `Failed to create first product: ${error.message}` 
+        : "Failed to create first product." 
+    };
   }
 };
 
