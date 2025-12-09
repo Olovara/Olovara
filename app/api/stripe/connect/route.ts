@@ -86,6 +86,25 @@ export async function POST(request: NextRequest) {
     // We'll log any database errors when they occur
     logContext.dbConnection = 'Will be tested during seller lookup';
     
+    // Check if this is a Stripe webhook/service request (should not be calling this endpoint)
+    const userAgent = request.headers.get('user-agent') || '';
+    const isStripeRequest = userAgent.includes('Stripe/') || userAgent.includes('stripe.com');
+    
+    if (isStripeRequest) {
+      const errorDetails = {
+        ...logContext,
+        userAgent,
+        error: 'Stripe service attempted to access user-only endpoint',
+        status: 'CONFIG_ERROR',
+        note: 'Stripe webhooks/services should use /api/stripe/webhooks, not /api/stripe/connect. Check Stripe webhook configuration in dashboard.'
+      };
+      console.error(`[STRIPE_CONNECT] Rejected Stripe service request`, errorDetails);
+      return NextResponse.json(
+        { error: "This endpoint is for authenticated users only. Stripe webhooks should use /api/stripe/webhooks" },
+        { status: 403 }
+      );
+    }
+    
     // Log request details for debugging authentication issues
     const cookies = request.headers.get('cookie');
     const hasAuthCookie = cookies?.includes('authjs') || cookies?.includes('__Secure-authjs') || cookies?.includes('next-auth');
@@ -93,6 +112,7 @@ export async function POST(request: NextRequest) {
     logContext.hasCookies = !!cookies;
     logContext.hasAuthCookie = hasAuthCookie;
     logContext.cookieCount = cookies?.split(';').length || 0;
+    logContext.userAgent = userAgent;
     
     const session = await auth();
     
@@ -102,7 +122,6 @@ export async function POST(request: NextRequest) {
         hasSession: !!session,
         sessionUserId: session?.user?.id || null,
         sessionUserEmail: session?.user?.email || null,
-        userAgent: request.headers.get('user-agent'),
         referer: request.headers.get('referer'),
         origin: request.headers.get('origin'),
         note: 'Session authentication failed - check if cookies are being sent and session is valid. This may indicate: expired session, missing cookies, or CORS issue.'
