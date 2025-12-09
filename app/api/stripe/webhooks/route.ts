@@ -252,7 +252,7 @@ export async function POST(req: Request) {
                 data: {
                   discountCodeId,
                   orderId: order.id,
-                  userId: session.metadata.userId || 'guest',
+                  userId: session.metadata.userId && session.metadata.userId !== "guest" ? session.metadata.userId : null, // Use null for guest checkouts
                   discountAmount,
                 },
               });
@@ -802,7 +802,7 @@ export async function POST(req: Request) {
           const finalOrderAmount = parseInt(paymentIntent.metadata.finalOrderAmount || "0");
 
           const preliminaryOrderData = {
-            userId: paymentIntent.metadata.userId || "",
+            userId: paymentIntent.metadata.userId && paymentIntent.metadata.userId !== "guest" ? paymentIntent.metadata.userId : null, // Use null for guest checkouts
             encryptedBuyerEmail,
             buyerEmailIV,
             buyerEmailSalt,
@@ -859,7 +859,7 @@ export async function POST(req: Request) {
                 data: {
                   discountCodeId,
                   orderId: order.id,
-                  userId: paymentIntent.metadata.userId || 'guest',
+                  userId: paymentIntent.metadata.userId && paymentIntent.metadata.userId !== "guest" ? paymentIntent.metadata.userId : null, // Use null for guest checkouts
                   discountAmount,
                 },
               });

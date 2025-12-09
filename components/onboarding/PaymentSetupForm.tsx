@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -30,14 +30,46 @@ export default function PaymentSetupForm() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
+  // Check if Stripe account is already connected when component loads
+  useEffect(() => {
+    const checkConnectionStatus = async () => {
+      try {
+        const response = await fetch('/api/seller/onboarding-status', {
+          method: 'GET',
+          credentials: 'include', // Required to send session cookies
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Update isConnected based on actual status from the database
+          setIsConnected(data.stripeConnected === true);
+        }
+      } catch (error) {
+        console.error("Error checking Stripe connection status:", error);
+        // If check fails, assume not connected (safer default)
+        setIsConnected(false);
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkConnectionStatus();
+  }, []);
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
 
     try {
       // Use the same API route as the billing page
+      // Include credentials to send session cookies for authentication
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
+        credentials: 'include', // Required to send session cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -164,7 +196,14 @@ export default function PaymentSetupForm() {
             </div>
 
             {/* Connection Status */}
-            {isConnected ? (
+            {isCheckingStatus ? (
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center space-x-2 text-gray-600">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                  <span className="font-semibold">Checking connection status...</span>
+                </div>
+              </div>
+            ) : isConnected ? (
               <div className="text-center space-y-4">
                 <div className="flex items-center justify-center space-x-2 text-green-600">
                   <CheckCircle className="h-6 w-6" />

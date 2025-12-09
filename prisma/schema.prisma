@@ -600,7 +600,7 @@ model DMCAComplaint {
 
 model Order {
   id                       String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId                   String
+  userId                   String? // Optional to support guest checkouts
   encryptedBuyerEmail      String
   buyerEmailIV             String
   buyerEmailSalt           String
@@ -652,7 +652,7 @@ model Order {
   completedAt              DateTime?
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt
-  user                     User          @relation(fields: [userId], references: [id])
+  user                     User?         @relation(fields: [userId], references: [id]) // Optional relation for guest checkouts
   seller                   Seller        @relation(fields: [sellerId], references: [userId])
   product                  Product       @relation(fields: [productId], references: [id])
   discountCodeUsage        DiscountCodeUsage?
@@ -1305,7 +1305,7 @@ model DiscountCodeUsage {
   discountCode   DiscountCode  @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
   orderId        String @unique
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId         String // Customer who used the code
+  userId         String? // Customer who used the code (optional for guest checkouts)
   discountAmount Int // Amount of discount applied in cents
   usedAt         DateTime @default(now())
 

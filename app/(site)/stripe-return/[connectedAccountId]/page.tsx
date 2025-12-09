@@ -39,6 +39,7 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
           // Check if the Stripe account is fully onboarded
           const response = await fetch('/api/stripe/check-onboarding-status', {
             method: 'POST',
+            credentials: 'include', // Required to send session cookies
             headers: {
               'Content-Type': 'application/json',
             },
