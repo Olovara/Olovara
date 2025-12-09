@@ -65,8 +65,46 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Validate Stripe configuration
+    if (!process.env.STRIPE_SECRET_KEY) {
+      const errorDetails = {
+        ...logContext,
+        error: 'STRIPE_SECRET_KEY environment variable is missing',
+        status: 'CONFIG_ERROR',
+        note: 'Server configuration issue - Stripe secret key not found'
+      };
+      console.error(`[STRIPE_CHECK] Configuration error - missing Stripe key`, errorDetails);
+      return NextResponse.json(
+        { error: "Server configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
+    
+    // Log environment checks (without exposing sensitive values)
+    logContext.envChecks = {
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'EXISTS' : 'MISSING',
+      stripeKeyType: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live') ? 'LIVE' : 
+                     process.env.STRIPE_SECRET_KEY?.startsWith('sk_test') ? 'TEST' : 'UNKNOWN'
+    };
+    
     // Check the Stripe account status with retry logic
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    let stripe;
+    try {
+      stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      logContext.stripeInitialized = true;
+    } catch (stripeInitError) {
+      const errorDetails = {
+        ...logContext,
+        error: stripeInitError instanceof Error ? stripeInitError.message : String(stripeInitError),
+        status: 'STRIPE_INIT_ERROR',
+        note: 'Failed to initialize Stripe SDK'
+      };
+      console.error(`[STRIPE_CHECK] Stripe initialization failed`, errorDetails);
+      return NextResponse.json(
+        { error: "Payment service configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
     
     let account;
     let retries = 3;
@@ -87,15 +125,25 @@ export async function POST(request: NextRequest) {
       } catch (stripeError: any) {
         lastError = stripeError;
         retries--;
+        
+        const stripeErrorDetails = {
+          ...logContext,
+          attemptsLeft: retries,
+          error: stripeError.message,
+          errorType: stripeError.type,
+          errorCode: stripeError.code,
+          statusCode: stripeError.statusCode,
+          requestId: stripeError.requestId,
+          stack: stripeError.stack,
+          note: retries > 0 ? 'Retrying...' : 'All retries exhausted'
+        };
+        
         if (retries > 0) {
-          console.warn(`[STRIPE_CHECK] Stripe API call failed, retrying...`, { 
-            ...logContext, 
-            attemptsLeft: retries,
-            error: stripeError.message,
-            errorType: stripeError.type
-          });
+          console.warn(`[STRIPE_CHECK] Stripe API call failed, retrying...`, stripeErrorDetails);
           // Exponential backoff: 1s, 2s, 4s
           await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+        } else {
+          console.error(`[STRIPE_CHECK] Stripe API call failed after all retries`, stripeErrorDetails);
         }
       }
     }
@@ -105,7 +153,11 @@ export async function POST(request: NextRequest) {
         ...logContext,
         error: lastError?.message || "Stripe API timeout",
         errorType: lastError?.type,
-        stack: lastError?.stack
+        errorCode: lastError?.code,
+        statusCode: lastError?.statusCode,
+        requestId: lastError?.requestId,
+        stack: lastError?.stack,
+        note: 'Failed to retrieve Stripe account after all retries. Check: Stripe API status, network connectivity, rate limits, invalid account ID, or API key issues.'
       };
       console.error(`[STRIPE_CHECK] Failed to retrieve Stripe account after retries`, errorDetails);
       return NextResponse.json({ 

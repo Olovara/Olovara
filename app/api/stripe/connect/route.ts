@@ -52,11 +52,66 @@ export async function POST(request: NextRequest) {
   };
 
   try {
+    // Infrastructure checks - validate environment and configuration
+    const envChecks = {
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'EXISTS' : 'MISSING',
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ? 'EXISTS' : 'MISSING',
+      NODE_ENV: process.env.NODE_ENV || 'MISSING',
+      stripeKeyType: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live') ? 'LIVE' : 
+                     process.env.STRIPE_SECRET_KEY?.startsWith('sk_test') ? 'TEST' : 'UNKNOWN'
+    };
+    
+    logContext.envChecks = envChecks;
+    
+    // Validate critical environment variables
+    if (!process.env.STRIPE_SECRET_KEY) {
+      const errorDetails = {
+        ...logContext,
+        error: 'STRIPE_SECRET_KEY environment variable is missing',
+        status: 'CONFIG_ERROR',
+        note: 'Server configuration issue - Stripe secret key not found'
+      };
+      console.error(`[STRIPE_CONNECT] Configuration error - missing Stripe key`, errorDetails);
+      return NextResponse.json(
+        { error: "Server configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
+    
+    if (!process.env.NEXT_PUBLIC_APP_URL) {
+      console.warn(`[STRIPE_CONNECT] NEXT_PUBLIC_APP_URL not set - return URLs may be incorrect`, logContext);
+    }
+    
+    // Note: Database connection will be tested when we query for seller
+    // We'll log any database errors when they occur
+    logContext.dbConnection = 'Will be tested during seller lookup';
+    
+    // Log request details for debugging authentication issues
+    const cookies = request.headers.get('cookie');
+    const hasAuthCookie = cookies?.includes('authjs') || cookies?.includes('__Secure-authjs') || cookies?.includes('next-auth');
+    
+    logContext.hasCookies = !!cookies;
+    logContext.hasAuthCookie = hasAuthCookie;
+    logContext.cookieCount = cookies?.split(';').length || 0;
+    
     const session = await auth();
     
     if (!session?.user?.id) {
-      console.error(`[STRIPE_CONNECT] Authentication failed`, logContext);
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      const authErrorDetails = {
+        ...logContext,
+        hasSession: !!session,
+        sessionUserId: session?.user?.id || null,
+        sessionUserEmail: session?.user?.email || null,
+        userAgent: request.headers.get('user-agent'),
+        referer: request.headers.get('referer'),
+        origin: request.headers.get('origin'),
+        note: 'Session authentication failed - check if cookies are being sent and session is valid. This may indicate: expired session, missing cookies, or CORS issue.'
+      };
+      console.error(`[STRIPE_CONNECT] Authentication failed`, authErrorDetails);
+      return NextResponse.json({ 
+        error: "Not authenticated. Please refresh the page and try again.",
+        requiresAuth: true
+      }, { status: 401 });
     }
 
     logContext.userId = session.user.id;
@@ -90,7 +145,27 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    // Initialize Stripe with validation
+    let stripe;
+    try {
+      stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      logContext.stripeInitialized = true;
+      // Key type already logged in envChecks above
+    } catch (stripeInitError) {
+      const errorDetails = {
+        ...logContext,
+        error: stripeInitError instanceof Error ? stripeInitError.message : String(stripeInitError),
+        stack: stripeInitError instanceof Error ? stripeInitError.stack : undefined,
+        status: 'STRIPE_INIT_ERROR',
+        note: 'Failed to initialize Stripe SDK - check if STRIPE_SECRET_KEY is valid'
+      };
+      console.error(`[STRIPE_CONNECT] Stripe initialization failed`, errorDetails);
+      return NextResponse.json(
+        { error: "Payment service configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
+    
     let connectedAccountId = seller.connectedAccountId;
 
     // If the seller has a temporary connectedAccountId, create a real Stripe account
@@ -117,6 +192,7 @@ export async function POST(request: NextRequest) {
       
       while (retries > 0) {
         try {
+          const accountStartTime = Date.now();
           account = await stripe.accounts.create({
             type: "express",
             country: countryCode,
@@ -126,17 +202,37 @@ export async function POST(request: NextRequest) {
               card_payments: { requested: true },
             },
           });
+          
+          const accountDuration = Date.now() - accountStartTime;
+          logContext.stripeAccountCreationMs = accountDuration;
+          logContext.stripeAccountId = account.id;
+          console.log(`[STRIPE_CONNECT] Stripe account created successfully`, { 
+            ...logContext, 
+            accountId: account.id,
+            durationMs: accountDuration
+          });
           break; // Success
         } catch (stripeError: any) {
           lastError = stripeError;
           retries--;
+          
+          const stripeErrorDetails = {
+            ...logContext,
+            attemptsLeft: retries,
+            error: stripeError.message,
+            errorType: stripeError.type,
+            errorCode: stripeError.code,
+            statusCode: stripeError.statusCode,
+            requestId: stripeError.requestId,
+            stack: stripeError.stack,
+            note: retries > 0 ? 'Retrying...' : 'All retries exhausted'
+          };
+          
           if (retries > 0) {
-            console.warn(`[STRIPE_CONNECT] Stripe account creation failed, retrying...`, { 
-              ...logContext, 
-              attemptsLeft: retries,
-              error: stripeError.message 
-            });
+            console.warn(`[STRIPE_CONNECT] Stripe account creation failed, retrying...`, stripeErrorDetails);
             await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries))); // Exponential backoff
+          } else {
+            console.error(`[STRIPE_CONNECT] Stripe account creation failed after all retries`, stripeErrorDetails);
           }
         }
       }
@@ -146,11 +242,15 @@ export async function POST(request: NextRequest) {
           ...logContext,
           error: lastError?.message || "Stripe API timeout",
           errorType: lastError?.type,
-          stack: lastError?.stack
+          errorCode: lastError?.code,
+          statusCode: lastError?.statusCode,
+          requestId: lastError?.requestId,
+          stack: lastError?.stack,
+          note: 'Failed to create Stripe account after all retries. Check: Stripe API status, network connectivity, rate limits, or invalid API key.'
         };
         console.error(`[STRIPE_CONNECT] Failed to create Stripe account after retries`, errorDetails);
         return NextResponse.json(
-          { error: "Failed to create Stripe account. Please try again." },
+          { error: "Failed to create Stripe account. Please try again or contact support if the issue persists." },
           { status: 500 }
         );
       }
@@ -162,6 +262,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Update the database with the real Stripe account ID
+      const dbUpdateStartTime = Date.now();
       try {
         await db.seller.update({
           where: { userId: session.user.id },
@@ -170,15 +271,24 @@ export async function POST(request: NextRequest) {
             stripeConnected: false // Will be set to true after onboarding completion via webhook
           }
         });
-        console.log(`[STRIPE_CONNECT] Database updated with Stripe account ID`, logContext);
+        const dbUpdateDuration = Date.now() - dbUpdateStartTime;
+        logContext.dbUpdateMs = dbUpdateDuration;
+        console.log(`[STRIPE_CONNECT] Database updated with Stripe account ID`, { 
+          ...logContext, 
+          durationMs: dbUpdateDuration 
+        });
       } catch (dbError) {
+        const dbUpdateDuration = Date.now() - dbUpdateStartTime;
         const errorDetails = {
           ...logContext,
           error: dbError instanceof Error ? dbError.message : String(dbError),
-          stack: dbError instanceof Error ? dbError.stack : undefined
+          errorType: dbError instanceof Error ? dbError.constructor.name : typeof dbError,
+          stack: dbError instanceof Error ? dbError.stack : undefined,
+          durationMs: dbUpdateDuration,
+          note: 'Database update failed - Stripe account was created but not saved. This may cause sync issues.'
         };
         console.error(`[STRIPE_CONNECT] Failed to update database`, errorDetails);
-        // Continue anyway - we'll try to create the link
+        // Continue anyway - we'll try to create the link, but this is a problem
       }
 
       connectedAccountId = account.id;
@@ -193,23 +303,45 @@ export async function POST(request: NextRequest) {
     
     while (linkRetries > 0) {
       try {
+        const linkStartTime = Date.now();
         accountLink = await stripe.accountLinks.create({
           account: connectedAccountId,
           refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard/billing`,
           return_url: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${connectedAccountId}`,
           type: 'account_onboarding',
         });
+        
+        const linkDuration = Date.now() - linkStartTime;
+        logContext.accountLinkCreationMs = linkDuration;
+        logContext.returnUrl = accountLink.url;
+        console.log(`[STRIPE_CONNECT] Account link created successfully`, { 
+          ...logContext, 
+          durationMs: linkDuration 
+        });
         break; // Success
       } catch (stripeError: any) {
         linkLastError = stripeError;
         linkRetries--;
+        
+        const linkErrorDetails = {
+          ...logContext,
+          attemptsLeft: linkRetries,
+          error: stripeError.message,
+          errorType: stripeError.type,
+          errorCode: stripeError.code,
+          statusCode: stripeError.statusCode,
+          requestId: stripeError.requestId,
+          stack: stripeError.stack,
+          returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${connectedAccountId}`,
+          refreshUrl: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard/billing`,
+          note: linkRetries > 0 ? 'Retrying...' : 'All retries exhausted'
+        };
+        
         if (linkRetries > 0) {
-          console.warn(`[STRIPE_CONNECT] Account link creation failed, retrying...`, { 
-            ...logContext, 
-            attemptsLeft: linkRetries,
-            error: stripeError.message 
-          });
+          console.warn(`[STRIPE_CONNECT] Account link creation failed, retrying...`, linkErrorDetails);
           await new Promise(resolve => setTimeout(resolve, 1000 * (4 - linkRetries))); // Exponential backoff
+        } else {
+          console.error(`[STRIPE_CONNECT] Account link creation failed after all retries`, linkErrorDetails);
         }
       }
     }
@@ -219,11 +351,15 @@ export async function POST(request: NextRequest) {
         ...logContext,
         error: linkLastError?.message || "Stripe API timeout",
         errorType: linkLastError?.type,
-        stack: linkLastError?.stack
+        errorCode: linkLastError?.code,
+        statusCode: linkLastError?.statusCode,
+        requestId: linkLastError?.requestId,
+        stack: linkLastError?.stack,
+        note: 'Failed to create account link after all retries. Check: Stripe API status, account validity, or URL configuration.'
       };
       console.error(`[STRIPE_CONNECT] Failed to create account link after retries`, errorDetails);
       return NextResponse.json(
-        { error: "Failed to create Stripe account link. Please try again." },
+        { error: "Failed to create Stripe account link. Please try again or contact support if the issue persists." },
         { status: 500 }
       );
     }
