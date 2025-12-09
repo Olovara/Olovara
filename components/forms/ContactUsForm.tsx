@@ -21,7 +21,7 @@ import Spinner from "@/components/spinner";
 import { contactUs } from "@/actions/contact-us";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { ReCaptcha } from "@/components/ui/recaptcha";
 import { toast } from "sonner";
 import { validateHoneypot } from "@/lib/recaptcha";
@@ -32,6 +32,9 @@ const ContactUsFormContent = () => {
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
   const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetryAttempt, setIsRetryAttempt] = useState(false);
 
   const Reason = [
     { id: "BILLING", name: "Billing Questions" },
@@ -60,9 +63,22 @@ const ContactUsFormContent = () => {
     // Step 1: Check honeypot first (before any reCAPTCHA calls)
     if (!validateHoneypot(values.website)) {
       // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
-      console.log("Bot detected via honeypot field");
+      console.warn("[CONTACT_US_FORM] Bot detected via honeypot field");
       return;
     }
+
+    // Reset retry state for new submission (not a retry)
+    setIsRetryAttempt(false);
+    setLastError(null);
+
+    // Log form submission attempt (without sensitive data)
+    console.log("[CONTACT_US_FORM] Form submission initiated", {
+      hasName: !!values.name,
+      hasEmail: !!values.email,
+      hasReason: !!values.reason,
+      hasDescription: !!values.helpDescription,
+      timestamp: new Date().toISOString(),
+    });
 
     // Step 2: Trigger reCAPTCHA verification
     setShouldTriggerRecaptcha(true);
@@ -75,6 +91,8 @@ const ContactUsFormContent = () => {
     
     // Step 3: Submit the form with the token
     const values = form.getValues();
+    const currentRetryCount = isRetryAttempt ? retryCount + 1 : 0;
+    
     startTransition(() => {
       contactUs({ 
         ...values, 
@@ -84,10 +102,72 @@ const ContactUsFormContent = () => {
           toast.success("Thank you! Your message has been sent successfully. We'll get back to you soon.");
           form.reset();
           setRecaptchaToken("");
+          setLastError(null);
+          setRetryCount(0);
+          setIsRetryAttempt(false);
         }
         if (data.error) {
-          toast.error(data.error);
+          const isRetryable = data.retryable !== false; // Default to true if not specified
+          
+          // Update retry count if this was a retry attempt
+          if (isRetryAttempt) {
+            setRetryCount(prev => prev + 1);
+            setIsRetryAttempt(false); // Reset for next time
+          }
+          
+          // Log error on client side for debugging
+          console.error("[CONTACT_US_FORM] Submission error:", {
+            error: data.error,
+            retryable: isRetryable,
+            retryCount: currentRetryCount,
+            isRetryAttempt,
+            formValues: {
+              hasName: !!values.name,
+              hasEmail: !!values.email,
+              hasReason: !!values.reason,
+              hasDescription: !!values.helpDescription,
+            },
+            timestamp: new Date().toISOString(),
+          });
+          
+          // Store error state for retry functionality
+          setLastError({ message: data.error, retryable: isRetryable });
+          
+          // Show clear error toast with actionable message
+          const toastDescription = isRetryable && retryCount < 2
+            ? "You can retry the submission using the button below."
+            : "If this problem persists, please try refreshing the page or contact support directly.";
+          
+          toast.error(data.error, {
+            description: toastDescription,
+            duration: isRetryable ? 8000 : 5000,
+          });
         }
+      }).catch((error) => {
+        // Handle unexpected errors (network issues, etc.)
+        console.error("[CONTACT_US_FORM] Unexpected error during submission:", {
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Update retry count if this was a retry attempt
+        if (isRetryAttempt) {
+          setRetryCount(prev => prev + 1);
+          setIsRetryAttempt(false);
+        }
+
+        // Network errors are retryable
+        setLastError({ 
+          message: "Failed to submit your message. Please check your internet connection and try again.",
+          retryable: true 
+        });
+
+        toast.error("Failed to submit your message. Please check your internet connection and try again.", {
+          description: "You can retry the submission using the button below.",
+          duration: 8000,
+        });
       });
     });
   };
@@ -95,7 +175,46 @@ const ContactUsFormContent = () => {
   const handleRecaptchaError = (error: string) => {
     setRecaptchaError(error);
     setShouldTriggerRecaptcha(false);
-    toast.error("Security verification failed. Please try again.");
+    
+    // Log reCAPTCHA error for debugging
+    console.error("[CONTACT_US_FORM] reCAPTCHA error:", {
+      error,
+      timestamp: new Date().toISOString(),
+    });
+
+    // reCAPTCHA errors are retryable
+    setLastError({ 
+      message: "Security verification failed. Please try again.",
+      retryable: true 
+    });
+
+    toast.error("Security verification failed. Please try again.", {
+      description: "You can retry the submission using the button below.",
+      duration: 8000,
+    });
+  };
+
+  // Handle retry button click
+  const handleRetry = () => {
+    if (retryCount >= 3) {
+      toast.error("Maximum retry attempts reached. Please refresh the page and try again.", {
+        duration: 5000,
+      });
+      return;
+    }
+
+    setLastError(null);
+    setRecaptchaError(null);
+    setRecaptchaToken("");
+    setIsRetryAttempt(true); // Mark this as a retry attempt
+    
+    // Trigger new reCAPTCHA verification
+    setShouldTriggerRecaptcha(true);
+    
+    console.log("[CONTACT_US_FORM] Retry initiated", {
+      retryCount: retryCount + 1,
+      timestamp: new Date().toISOString(),
+    });
   };
 
   if (!isClient) return <Spinner />;
@@ -122,19 +241,33 @@ const ContactUsFormContent = () => {
                 </FormItem>
               </div>
 
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Your Name" {...form.register("name")} disabled={isPending} />
-                </FormControl>
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your Name" {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="your@email.com" {...form.register("email")} disabled={isPending} />
-                </FormControl>
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="your@email.com" type="email" {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -156,16 +289,24 @@ const ContactUsFormContent = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormItem>
-                <FormLabel>How can we help you?</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Type your message here..." {...form.register("helpDescription")} disabled={isPending} />
-                </FormControl>
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="helpDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How can we help you?</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Type your message here..." {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Security Verification - Invisible reCAPTCHA v3 */}
               <div className="hidden">
@@ -178,11 +319,31 @@ const ContactUsFormContent = () => {
               </div>
             </CardContent>
             
-            <CardFooter>
-              <Submitbutton 
-                title={isPending ? "Submitting..." : "Submit"} 
-                isPending={isPending || shouldTriggerRecaptcha} 
-              />
+            <CardFooter className="flex flex-col gap-3">
+              <div className="flex gap-3 w-full">
+                <div className="flex-1">
+                  <Submitbutton 
+                    title={isPending ? "Submitting..." : "Submit"} 
+                    isPending={isPending || shouldTriggerRecaptcha} 
+                  />
+                </div>
+                {lastError?.retryable && retryCount < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRetry}
+                    disabled={isPending || shouldTriggerRecaptcha}
+                    className="flex-1"
+                  >
+                    {isPending || shouldTriggerRecaptcha ? "Retrying..." : `Retry (${retryCount}/3)`}
+                  </Button>
+                )}
+              </div>
+              {lastError && !lastError.retryable && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Please fix the errors above and try again.
+                </p>
+              )}
             </CardFooter>
           </form>
         </Card>
