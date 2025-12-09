@@ -33,13 +33,18 @@ const SellerOnboardingDashboard = () => {
     nextStep,
     isFullyActivated,
     isLoading,
+    isRefreshing,
     refreshSteps,
   } = useOnboarding();
   const { refreshPermissions } = usePermissions();
   const router = useRouter();
 
   const handleRefreshStatus = async () => {
-    await refreshSteps();
+    // Also refresh permissions when refreshing onboarding status
+    await Promise.all([
+      refreshSteps(),
+      refreshPermissions()
+    ]);
   };
 
   // Handle navigation to dashboard with cache clearing
@@ -266,10 +271,11 @@ const SellerOnboardingDashboard = () => {
               variant="outline"
               size="sm"
               onClick={handleRefreshStatus}
+              disabled={isRefreshing || isLoading}
               className="flex items-center gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
-              Refresh Status
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
             </Button>
           </div>
           <p className="text-muted-foreground mb-4">

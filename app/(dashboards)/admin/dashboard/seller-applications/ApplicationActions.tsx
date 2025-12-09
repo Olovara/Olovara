@@ -64,27 +64,103 @@ export function ApplicationActions({
     setError(null);
     setSuccess(null);
 
-    try {
-      const response = await fetch("/api/applications/approve", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ applicationId: application.id }),
-      });
+    const logContext = {
+      applicationId: application.id,
+      sellerEmail: application.email,
+      timestamp: new Date().toISOString(),
+    };
 
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || "Failed to approve application");
-      } else {
-        setSuccess(true);
-        setIsOpen(false);
+    console.log(`[CLIENT] Starting approval process`, logContext);
+
+    // Retry logic: attempt up to 3 times with exponential backoff
+    const maxRetries = 3;
+    let lastError: string | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[CLIENT] Approval attempt ${attempt}/${maxRetries}`, { ...logContext, attempt });
+        
+        const response = await fetch("/api/applications/approve", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ applicationId: application.id }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          lastError = data.error || "Failed to approve application";
+          
+          console.warn(`[CLIENT] Approval attempt ${attempt} failed`, { 
+            ...logContext, 
+            attempt,
+            status: response.status,
+            error: lastError
+          });
+          
+          // If it's a client error (4xx), don't retry - it's a permanent failure
+          if (response.status >= 400 && response.status < 500) {
+            console.error(`[CLIENT] Client error - not retrying`, { 
+              ...logContext, 
+              attempt,
+              status: response.status,
+              error: lastError
+            });
+            setError(lastError);
+            setLoading(false);
+            return;
+          }
+          
+          // For server errors (5xx) or network errors, retry
+          if (attempt < maxRetries) {
+            const backoffMs = Math.pow(2, attempt - 1) * 1000;
+            console.log(`[CLIENT] Retrying after ${backoffMs}ms`, { ...logContext, attempt, backoffMs });
+            // Exponential backoff: wait 1s, 2s, 4s
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            continue;
+          }
+        } else {
+          // Success!
+          console.log(`[CLIENT] Approval succeeded`, { ...logContext, attempt });
+          setSuccess(true);
+          setIsOpen(false);
+          setLoading(false);
+          // Refresh the page to show updated application status
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+          return;
+        }
+      } catch (error) {
+        lastError = "Network error during approval";
+        
+        console.error(`[CLIENT] Approval attempt ${attempt} exception`, { 
+          ...logContext, 
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        // Retry on network errors
+        if (attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt - 1) * 1000;
+          console.log(`[CLIENT] Retrying after ${backoffMs}ms`, { ...logContext, attempt, backoffMs });
+          // Exponential backoff: wait 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          continue;
+        }
       }
-    } catch (error) {
-      setError("Error during approval");
-    } finally {
-      setLoading(false);
     }
+
+    // If we get here, all retries failed
+    console.error(`[CLIENT] All approval attempts failed`, { 
+      ...logContext, 
+      maxRetries,
+      finalError: lastError
+    });
+    setError(lastError || "Failed to approve application after multiple attempts. Please try again.");
+    setLoading(false);
   };
 
   const handleReject = async () => {
@@ -92,32 +168,68 @@ export function ApplicationActions({
     setError(null);
     setSuccess(null);
 
-    try {
-      const response = await fetch("/api/applications/reject", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          applicationId: application.id,
-          rejectionReason: rejectionReason.trim() || undefined
-        }),
-      });
+    // Retry logic: attempt up to 3 times with exponential backoff
+    const maxRetries = 3;
+    let lastError: string | null = null;
 
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || "Failed to reject application");
-      } else {
-        setSuccess(false);
-        setIsOpen(false);
-        setIsRejectDialogOpen(false);
-        setRejectionReason("");
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch("/api/applications/reject", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            applicationId: application.id,
+            rejectionReason: rejectionReason.trim() || undefined
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          lastError = data.error || "Failed to reject application";
+          
+          // If it's a client error (4xx), don't retry - it's a permanent failure
+          if (response.status >= 400 && response.status < 500) {
+            setError(lastError);
+            setLoading(false);
+            return;
+          }
+          
+          // For server errors (5xx) or network errors, retry
+          if (attempt < maxRetries) {
+            // Exponential backoff: wait 1s, 2s, 4s
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+            continue;
+          }
+        } else {
+          // Success!
+          setSuccess(false);
+          setIsOpen(false);
+          setIsRejectDialogOpen(false);
+          setRejectionReason("");
+          setLoading(false);
+          // Refresh the page to show updated application status
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+          return;
+        }
+      } catch (error) {
+        lastError = "Network error during rejection";
+        
+        // Retry on network errors
+        if (attempt < maxRetries) {
+          // Exponential backoff: wait 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+          continue;
+        }
       }
-    } catch (error) {
-      setError("Error during rejection");
-    } finally {
-      setLoading(false);
     }
+
+    // If we get here, all retries failed
+    setError(lastError || "Failed to reject application after multiple attempts. Please try again.");
+    setLoading(false);
   };
 
   const openRejectDialog = () => {

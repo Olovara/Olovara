@@ -204,6 +204,11 @@ export const Categories = [
       {
         id: "TOOLS",
         name: "Tools & Equipment",
+        children: [
+          { id: "STITCH_MARKERS", name: "Stitch Markers" },
+          { id: "CROCHET_HOOKS", name: "Crochet Hooks" },
+          { id: "KNITTING_NEEDLES", name: "Knitting Needles" },
+        ],
       },
       {
         id: "BEADS",

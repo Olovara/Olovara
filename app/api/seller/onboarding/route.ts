@@ -49,6 +49,7 @@ export async function GET() {
     ]);
 
     // Return data in the format expected by useSellerOnboardingAPI
+    // Add cache headers to prevent stale data
     return NextResponse.json({
       success: true,
       data: {
@@ -67,6 +68,12 @@ export async function GET() {
         shopPreferencesCompleted: steps.some(step => step.stepKey === 'shop_preferences' && step.completed),
         shopNameCompleted: steps.some(step => step.stepKey === 'shop_naming' && step.completed),
         paymentSetupCompleted: steps.some(step => step.stepKey === 'payment_setup' && step.completed),
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       }
     });
 
@@ -147,6 +154,7 @@ export async function POST(request: NextRequest) {
     ]);
 
     // Return data in the format expected by useSellerOnboardingAPI
+    // Add cache headers to prevent stale data
     return NextResponse.json({
       success: true,
       data: {
@@ -165,6 +173,12 @@ export async function POST(request: NextRequest) {
         shopPreferencesCompleted: steps.some(step => step.stepKey === 'shop_preferences' && step.completed),
         shopNameCompleted: steps.some(step => step.stepKey === 'shop_naming' && step.completed),
         paymentSetupCompleted: steps.some(step => step.stepKey === 'payment_setup' && step.completed),
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       }
     });
 

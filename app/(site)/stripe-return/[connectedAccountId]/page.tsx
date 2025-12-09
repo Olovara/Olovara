@@ -20,37 +20,132 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
   useEffect(() => {
     // Handle Stripe connection completion
     const handleStripeConnection = async () => {
-      try {
-        // Check if the Stripe account is fully onboarded
-        const response = await fetch('/api/stripe/check-onboarding-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            connectedAccountId: params.connectedAccountId
-          })
-        });
+      const logContext = {
+        connectedAccountId: params.connectedAccountId,
+        timestamp: new Date().toISOString(),
+        action: 'stripe_return_handler'
+      };
 
-        if (response.ok) {
-          console.log("Stripe onboarding status checked successfully");
-        }
+      console.log(`[CLIENT] Handling Stripe return`, logContext);
 
-        // Clear any cached permissions to force fresh fetch
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('yarnnu_user_permissions');
-          localStorage.removeItem('yarnnu_user_role');
-          localStorage.removeItem('yarnnu_permissions_timestamp');
+      // Retry logic: attempt up to 3 times with exponential backoff
+      const maxRetries = 3;
+      let lastError: string | null = null;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[CLIENT] Checking onboarding status (attempt ${attempt}/${maxRetries})`, logContext);
+          
+          // Check if the Stripe account is fully onboarded
+          const response = await fetch('/api/stripe/check-onboarding-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              connectedAccountId: params.connectedAccountId
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            if (data.connected) {
+              console.log(`[CLIENT] Stripe account successfully connected`, { ...logContext, attempt });
+              toast.success("Stripe account connected successfully!");
+              
+              // Clear any cached permissions to force fresh fetch
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('yarnnu_user_permissions');
+                localStorage.removeItem('yarnnu_user_role');
+                localStorage.removeItem('yarnnu_permissions_timestamp');
+              }
+              
+              // Wait a bit longer to ensure database update completes, then refresh
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+              return; // Success, exit
+            } else {
+              console.log(`[CLIENT] Stripe account not fully onboarded yet`, { ...logContext, attempt });
+              toast.info("Stripe account setup in progress. This may take a few moments.");
+              
+              // Still clear cache and reload
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('yarnnu_user_permissions');
+                localStorage.removeItem('yarnnu_user_role');
+                localStorage.removeItem('yarnnu_permissions_timestamp');
+              }
+              
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+              return; // Not fully onboarded, but that's okay
+            }
+          } else {
+            lastError = data.error || data.message || "Failed to verify Stripe connection status";
+            console.warn(`[CLIENT] Status check failed (attempt ${attempt})`, { 
+              ...logContext, 
+              attempt,
+              error: lastError,
+              status: response.status
+            });
+            
+            // If it's a client error (4xx), don't retry
+            if (response.status >= 400 && response.status < 500) {
+              console.error(`[CLIENT] Client error - not retrying`, { ...logContext, attempt, error: lastError });
+              toast.error(lastError);
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+              return;
+            }
+            
+            // For server errors, retry
+            if (attempt < maxRetries) {
+              const backoffMs = Math.pow(2, attempt - 1) * 1000;
+              console.log(`[CLIENT] Retrying after ${backoffMs}ms`, { ...logContext, attempt, backoffMs });
+              await new Promise(resolve => setTimeout(resolve, backoffMs));
+              continue;
+            }
+          }
+        } catch (error) {
+          lastError = "Network error during status check";
+          console.error(`[CLIENT] Status check exception (attempt ${attempt})`, { 
+            ...logContext, 
+            attempt,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          
+          // Retry on network errors
+          if (attempt < maxRetries) {
+            const backoffMs = Math.pow(2, attempt - 1) * 1000;
+            console.log(`[CLIENT] Retrying after ${backoffMs}ms`, { ...logContext, attempt, backoffMs });
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            continue;
+          }
         }
-        
-        // Refresh the page to get updated session data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } catch (error) {
-        console.error("Error handling Stripe connection:", error);
-        toast.error("Failed to update onboarding status");
       }
+
+      // If we get here, all retries failed
+      console.error(`[CLIENT] All status check attempts failed`, { 
+        ...logContext, 
+        maxRetries,
+        finalError: lastError
+      });
+      toast.error(lastError || "Failed to verify Stripe connection status. Please refresh the page.");
+      
+      // Still clear cache and reload to show current state
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('yarnnu_user_permissions');
+        localStorage.removeItem('yarnnu_user_role');
+        localStorage.removeItem('yarnnu_permissions_timestamp');
+      }
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     };
 
     handleStripeConnection();

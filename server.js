@@ -203,17 +203,32 @@ app.prepare().then(() => {
 
   // Handle all other requests with Next.js
   httpServer.on('request', async (req, res) => {
+    // Set request timeout (60 seconds - Railway default is often 30s)
+    req.setTimeout(60000, () => {
+      if (!res.headersSent) {
+        res.statusCode = 408;
+        res.end('Request Timeout');
+      }
+      req.destroy();
+    });
+
     // Handle connection errors gracefully (client closing connection)
     req.on('error', (error) => {
-      // Don't log ECONNRESET errors - these are normal when clients timeout/close connections
-      if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+      // Log timeout errors - these indicate performance problems that need fixing
+      if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
+        console.warn(`[TIMEOUT] Request to ${req.url} timed out - this indicates a performance issue`);
+      } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+        // ECONNRESET/EPIPE are normal when clients close connections
         console.error('Request error:', error);
       }
     });
 
     res.on('error', (error) => {
-      // Don't log ECONNRESET errors - these are normal when clients timeout/close connections
-      if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+      // Log timeout errors - these indicate performance problems that need fixing
+      if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
+        console.warn(`[TIMEOUT] Response for ${req.url} timed out - this indicates a performance issue`);
+      } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+        // ECONNRESET/EPIPE are normal when clients close connections
         console.error('Response error:', error);
       }
     });
@@ -228,11 +243,22 @@ app.prepare().then(() => {
       
       await handler(req, res);
     } catch (error) {
-      // Handle connection reset errors gracefully
+      // Handle connection reset errors gracefully (normal client behavior)
       if (error?.code === 'ECONNRESET' || error?.code === 'EPIPE') {
-        // Client closed connection - this is normal, don't log as error
+        // Client closed connection - this is normal
         return;
       }
+      
+      // Log timeout errors - these indicate performance problems
+      if (error?.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
+        console.warn(`[TIMEOUT] Request to ${req.url} timed out - investigate slow queries or operations`);
+        if (!res.headersSent) {
+          res.statusCode = 504;
+          res.end('Gateway Timeout');
+        }
+        return;
+      }
+      
       console.error('Error handling request:', error);
       if (!res.headersSent) {
         res.statusCode = 500;
@@ -243,8 +269,8 @@ app.prepare().then(() => {
 
   // Handle server-level connection errors gracefully
   httpServer.on('clientError', (err, socket) => {
-    // Don't log ECONNRESET errors - these are normal when clients close connections
-    if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
+    // Don't log timeout/connection reset errors - these are normal
+    if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE' && err.code !== 'ERR_HTTP_REQUEST_TIMEOUT') {
       console.error('Client error:', err);
     }
     socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');

@@ -449,6 +449,9 @@ export async function POST(req: Request) {
         sellerOriginCountry: sellerOriginCountry,
         userCountry: shippingAddress?.country || req.headers.get('x-user-country') || 'US',
         dynamicShipping: (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0).toString(),
+        // Buyer information - store in metadata for webhook retrieval
+        buyerEmail: session?.user?.email || billingAddress?.email || shippingAddress?.email || '',
+        buyerName: shippingAddress?.name || billingAddress?.name || session?.user?.name || '',
         // Discount information
         discountCodeId: discountCodeId || '',
         discountCodeUsed: discountCodeUsed || '',

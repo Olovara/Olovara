@@ -8,6 +8,7 @@ interface UseOnboardingReturn {
   nextStep: OnboardingStepKey | null;
   isFullyActivated: boolean;
   isLoading: boolean;
+  isRefreshing: boolean;
   updateStep: (stepKey: OnboardingStepKey, completed: boolean) => Promise<void>;
   refreshSteps: () => Promise<void>;
 }
@@ -22,16 +23,29 @@ export function useOnboarding(): UseOnboardingReturn {
   const [nextStep, setNextStep] = useState<OnboardingStepKey | null>(null);
   const [isFullyActivated, setIsFullyActivated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch onboarding data
-  const fetchOnboardingData = useCallback(async () => {
+  const fetchOnboardingData = useCallback(async (showRefreshing = false) => {
     if (!session?.user?.id) {
       setIsLoading(false);
       return;
     }
 
+    if (showRefreshing) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const response = await fetch("/api/seller/onboarding");
+      // Add cache-busting query parameter to ensure fresh data
+      const response = await fetch(`/api/seller/onboarding?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      });
       if (response.ok) {
         const result = await response.json();
         
@@ -49,6 +63,7 @@ export function useOnboarding(): UseOnboardingReturn {
       console.error("Failed to fetch onboarding data:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [session?.user?.id]);
 
@@ -79,7 +94,7 @@ export function useOnboarding(): UseOnboardingReturn {
 
   // Refresh onboarding data
   const refreshSteps = useCallback(async () => {
-    await fetchOnboardingData();
+    await fetchOnboardingData(true); // Pass true to show refreshing state
   }, [fetchOnboardingData]);
 
   // Load data on mount and when session changes
@@ -87,12 +102,26 @@ export function useOnboarding(): UseOnboardingReturn {
     fetchOnboardingData();
   }, [fetchOnboardingData]);
 
+  // Optional: Auto-refresh every 60 seconds if not fully activated
+  // This helps catch updates from webhooks or admin actions
+  useEffect(() => {
+    if (!session?.user?.id || isFullyActivated) return;
+
+    const interval = setInterval(() => {
+      // Silently refresh in the background
+      fetchOnboardingData(false);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [session?.user?.id, isFullyActivated, fetchOnboardingData]);
+
   return {
     steps,
     progress,
     nextStep,
     isFullyActivated,
     isLoading,
+    isRefreshing,
     updateStep,
     refreshSteps,
   };

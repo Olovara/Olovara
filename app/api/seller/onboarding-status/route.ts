@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getSellerOnboardingSteps, getOnboardingProgress, getNextOnboardingStep } from "@/lib/onboarding";
+import { getSellerOnboardingSteps, getOnboardingProgress, getNextOnboardingStep, updateOnboardingStep } from "@/lib/onboarding";
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,7 +55,12 @@ export async function GET(request: NextRequest) {
             where: { id: seller.id },
             data: { stripeConnected: true }
           });
+          
+          // Mark payment_setup step as completed (this was missing!)
+          await updateOnboardingStep(seller.id, "payment_setup", true);
+          
           stripeConnected = true;
+          console.log(`✅ Updated Stripe connection status for seller ${seller.id} via onboarding-status check`);
         }
       } catch (error) {
         console.warn("Could not verify Stripe account status:", error);
@@ -70,6 +75,12 @@ export async function GET(request: NextRequest) {
       completionPercentage,
       nextStep,
       currentStep: nextStep || 'fully_activated',
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
     });
 
   } catch (error) {

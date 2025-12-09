@@ -386,6 +386,21 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["tool", "tools", "equipment", "craft tool", "sewing tool", "knitting tool", "crochet hook", "needle"]
   },
   {
+    id: "STITCH_MARKERS",
+    name: "Stitch Markers",
+    keywords: ["stitch", "marker", "stitch marker", "crochet tool", "knitting tool"]
+  },
+  {
+    id: "CROCHET_HOOKS",
+    name: "Crochet Hooks",
+    keywords: ["crochet", "hook", "crochet hook", "crochet tool"]
+  },
+  {
+    id: "KNITTING_NEEDLES",
+    name: "Knitting Needles",
+    keywords: ["knitting", "needle", "knitting needle", "knitting tool"]
+  },
+  {
     id: "BEADS",
     name: "Beads & Jewelry Making",
     keywords: ["bead", "beads", "jewelry making", "beading", "jewelry supply", "bead supply"]

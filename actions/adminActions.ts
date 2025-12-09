@@ -11,7 +11,7 @@ import {
 import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
-import { updateOnboardingStep } from "@/lib/onboarding";
+import { updateOnboardingStep, initializeOnboardingSteps } from "@/lib/onboarding";
 
 interface GetUsersParams {
   role?: string;
@@ -323,9 +323,19 @@ export async function getUnapprovedSellers() {
 }
 
 export async function approveApplication(applicationId: string) {
+  const startTime = Date.now();
+  const logContext: Record<string, any> = {
+    applicationId,
+    timestamp: new Date().toISOString(),
+    action: 'approve_application'
+  };
+
   try {
+    console.log(`[APPROVAL] Starting approval process`, logContext);
+
     // Validate that the applicationId is a valid ObjectID
     if (!ObjectId.isValid(applicationId)) {
+      console.error(`[APPROVAL] Invalid application ID format`, { ...logContext, error: 'Invalid ObjectID format' });
       throw new Error("Invalid application ID format");
     }
 
@@ -333,15 +343,31 @@ export async function approveApplication(applicationId: string) {
     const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
+      console.error(`[APPROVAL] Authentication failed`, { ...logContext, error: 'Not authenticated' });
       throw new Error("Not authenticated");
     }
+
+    // Don't log admin user details for security/privacy
+    // Only log that authentication succeeded
+    logContext.adminAuthenticated = true;
 
     // Check if user has APPROVE_SELLERS permission
     const hasApproveSellersPermission = currentUserData.permissions?.includes('APPROVE_SELLERS');
     
     if (!hasApproveSellersPermission) {
+      console.error(`[APPROVAL] Permission denied`, { 
+        ...logContext, 
+        error: 'Insufficient permissions'
+        // Don't log permissions array for security
+      });
       throw new Error("Forbidden: Insufficient permissions");
     }
+
+    // Log permission check without exposing admin details
+    console.log(`[APPROVAL] Admin authenticated and authorized`, { 
+      ...logContext,
+      hasApprovePermission: true
+    });
 
     // Retrieve the seller application to get the userId
     const sellerApplication = await db.sellerApplication.findUnique({
@@ -357,10 +383,18 @@ export async function approveApplication(applicationId: string) {
     });
 
     if (!sellerApplication) {
+      console.error(`[APPROVAL] Application not found`, { ...logContext });
       throw new Error("Seller application not found.");
     }
 
     const { userId } = sellerApplication;
+    // Don't log seller email/username for privacy - only log IDs for debugging
+    logContext.sellerUserId = userId;
+
+    console.log(`[APPROVAL] Application found`, { 
+      ...logContext,
+      applicationApproved: sellerApplication.applicationApproved 
+    });
 
     // Get the seller ID from the userId
     const seller = await db.seller.findUnique({
@@ -369,78 +403,209 @@ export async function approveApplication(applicationId: string) {
     });
 
     if (!seller) {
+      console.error(`[APPROVAL] Seller record not found`, { ...logContext });
       throw new Error("Seller record not found for user.");
     }
 
     const sellerId = seller.id;
+    logContext.sellerId = sellerId;
+
+    console.log(`[APPROVAL] Initializing onboarding steps`, { ...logContext });
+
+    // Initialize onboarding steps first (if not already initialized)
+    // This ensures the step exists before we try to update it
+    try {
+      await initializeOnboardingSteps(sellerId);
+      console.log(`[APPROVAL] Onboarding steps initialized`, { ...logContext });
+    } catch (initError) {
+      console.error(`[APPROVAL] Failed to initialize onboarding steps`, { 
+        ...logContext, 
+        error: initError instanceof Error ? initError.message : String(initError),
+        stack: initError instanceof Error ? initError.stack : undefined
+      });
+      throw initError;
+    }
 
     // Update application and seller in a transaction to ensure consistency
-    await db.$transaction(async (tx) => {
-      // Approve the seller application
-      await tx.sellerApplication.update({
-        where: { id: applicationId },
-        data: { applicationApproved: true },
-      });
-
-      // Update the existing seller document to mark application as accepted
-      await tx.seller.update({
-        where: { userId },
-        data: { applicationAccepted: true },
-      });
-
-      // Grant initial seller permissions (without product permissions)
-      const sellerPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
-        permission,
-        grantedAt: new Date(),
-        grantedBy: currentUserData.id,
-        reason: 'Application approved by admin - initial seller permissions',
-        expiresAt: null,
-      }));
-
-      // Get current user permissions and merge
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { permissions: true },
-      });
-
-      if (user) {
-        const currentPermissions = user.permissions as any[];
-        const existingPermissionValues = currentPermissions.map(p => p.permission);
-        const uniqueNewPermissions = sellerPermissions.filter(p => !existingPermissionValues.includes(p.permission));
-        const updatedPermissions = [...currentPermissions, ...uniqueNewPermissions];
-
-        await tx.user.update({
-          where: { id: userId },
-          data: { permissions: updatedPermissions },
+    console.log(`[APPROVAL] Starting database transaction`, { ...logContext });
+    
+    try {
+      await db.$transaction(async (tx) => {
+        // Approve the seller application
+        console.log(`[APPROVAL] Updating seller application`, { ...logContext });
+        await tx.sellerApplication.update({
+          where: { id: applicationId },
+          data: { applicationApproved: true },
         });
-      }
-    });
+
+        // Update the existing seller document to mark application as accepted
+        console.log(`[APPROVAL] Updating seller record`, { ...logContext });
+        await tx.seller.update({
+          where: { userId },
+          data: { applicationAccepted: true },
+        });
+
+        // Update the onboarding step inside the transaction for atomicity
+        console.log(`[APPROVAL] Updating onboarding step`, { ...logContext });
+        await tx.onboardingStep.upsert({
+          where: {
+            sellerId_stepKey: {
+              sellerId,
+              stepKey: "application_approved",
+            },
+          },
+          update: {
+            completed: true,
+            completedAt: new Date(),
+          },
+          create: {
+            sellerId,
+            stepKey: "application_approved",
+            completed: true,
+            completedAt: new Date(),
+          },
+        });
+
+        // Grant initial seller permissions (without product permissions)
+        const sellerPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
+          permission,
+          grantedAt: new Date(),
+          grantedBy: currentUserData.id,
+          reason: 'Application approved by admin - initial seller permissions',
+          expiresAt: null,
+        }));
+
+        console.log(`[APPROVAL] Granting seller permissions`, { 
+          ...logContext, 
+          permissionsCount: sellerPermissions.length 
+        });
+
+        // Get current user permissions and merge
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { permissions: true },
+        });
+
+        if (user) {
+          const currentPermissions = user.permissions as any[];
+          const existingPermissionValues = currentPermissions.map(p => p.permission);
+          const uniqueNewPermissions = sellerPermissions.filter(p => !existingPermissionValues.includes(p.permission));
+          const updatedPermissions = [...currentPermissions, ...uniqueNewPermissions];
+
+          console.log(`[APPROVAL] Updating user permissions`, { 
+            ...logContext, 
+            existingPermissionsCount: currentPermissions.length,
+            newPermissionsCount: uniqueNewPermissions.length,
+            totalPermissionsCount: updatedPermissions.length
+          });
+
+          await tx.user.update({
+            where: { id: userId },
+            data: { permissions: updatedPermissions },
+          });
+        } else {
+          console.warn(`[APPROVAL] User record not found for permission update`, { ...logContext });
+        }
+      });
+
+      const transactionDuration = Date.now() - startTime;
+      console.log(`[APPROVAL] Transaction completed successfully`, { 
+        ...logContext, 
+        durationMs: transactionDuration 
+      });
+    } catch (transactionError) {
+      const transactionDuration = Date.now() - startTime;
+      console.error(`[APPROVAL] Transaction failed`, { 
+        ...logContext, 
+        error: transactionError instanceof Error ? transactionError.message : String(transactionError),
+        stack: transactionError instanceof Error ? transactionError.stack : undefined,
+        durationMs: transactionDuration
+      });
+      throw transactionError;
+    }
+
+    // Recalculate isFullyActivated after transaction (this does additional queries)
+    // Use the full updateOnboardingStep function to ensure isFullyActivated is recalculated
+    console.log(`[APPROVAL] Recalculating isFullyActivated`, { ...logContext });
+    try {
+      await updateOnboardingStep(sellerId, "application_approved", true);
+      console.log(`[APPROVAL] isFullyActivated recalculated successfully`, { ...logContext });
+    } catch (stepError) {
+      console.error(`[APPROVAL] Failed to recalculate isFullyActivated (non-critical)`, { 
+        ...logContext, 
+        error: stepError instanceof Error ? stepError.message : String(stepError),
+        stack: stepError instanceof Error ? stepError.stack : undefined,
+        note: 'Step was already updated in transaction, this is just for recalculation'
+      });
+      // Don't fail the approval if this fails - the step was already updated in the transaction
+      // This just ensures isFullyActivated is recalculated
+    }
 
     // Send approval email to seller (outside of transaction to avoid blocking)
+    console.log(`[APPROVAL] Sending approval email`, { ...logContext });
     try {
       if (sellerApplication.user.email) {
         await sendSellerApplicationApprovedEmail(
           sellerApplication.user.email,
           sellerApplication.user.username || 'Seller'
         );
-        console.log(`Approval email sent to seller: ${sellerApplication.user.email}`);
+        console.log(`[APPROVAL] Approval email sent successfully`, { 
+          ...logContext, 
+          recipientEmail: sellerApplication.user.email 
+        });
+      } else {
+        console.warn(`[APPROVAL] No email address for seller, skipping email`, { ...logContext });
       }
     } catch (emailError) {
-      console.error("Error sending approval email:", emailError);
+      console.error(`[APPROVAL] Failed to send approval email (non-critical)`, { 
+        ...logContext, 
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+        stack: emailError instanceof Error ? emailError.stack : undefined,
+        recipientEmail: sellerApplication.user.email,
+        note: 'Approval succeeded, but email failed - seller should still be notified via dashboard'
+      });
       // Don't fail the approval process if email fails
     }
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
-    // Mark application_approved step as completed
-    await updateOnboardingStep(sellerId, "application_approved", true);
-
-    console.log(`Seller application approved for user ${userId}. User role and permissions updated.`);
+    const totalDuration = Date.now() - startTime;
+    console.log(`[APPROVAL] Approval completed successfully`, { 
+      ...logContext, 
+      totalDurationMs: totalDuration,
+      status: 'SUCCESS'
+    });
 
     return { success: true };
   } catch (error) {
-    console.error("Error approving application:", error);
-    return { success: false, error: "Failed to approve application." };
+    const totalDuration = Date.now() - startTime;
+    const errorDetails = {
+      ...logContext,
+      error: error instanceof Error ? error.message : String(error),
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
+      totalDurationMs: totalDuration,
+      status: 'FAILED'
+    };
+
+    console.error(`[APPROVAL] Approval failed`, errorDetails);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      // If it's a known error (validation, permission, etc.), return the specific message
+      if (error.message.includes("Invalid") || 
+          error.message.includes("Not authenticated") || 
+          error.message.includes("Forbidden") ||
+          error.message.includes("not found")) {
+        return { success: false, error: error.message };
+      }
+    }
+    
+    // For unknown errors, return a generic message but log the full error
+    return { 
+      success: false, 
+      error: "Failed to approve application. Please try again or contact support if the issue persists." 
+    };
   }
 }
 

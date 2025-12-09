@@ -600,7 +600,15 @@ export async function POST(req: Request) {
         }
         case "account.updated": {
           const account = event.data.object as Stripe.Account;
-          console.log(`🏦 Account updated: ${account.id}, charges_enabled: ${account.charges_enabled}, payouts_enabled: ${account.payouts_enabled}`);
+          const logContext: Record<string, any> = {
+            event: 'account.updated',
+            stripeAccountId: account.id,
+            chargesEnabled: account.charges_enabled,
+            payoutsEnabled: account.payouts_enabled,
+            timestamp: new Date().toISOString()
+          };
+
+          console.log(`[STRIPE_WEBHOOK] Account updated event received`, logContext);
 
           // Check if the account is fully onboarded (can accept charges and payouts)
           if (account.charges_enabled && account.payouts_enabled) {
@@ -611,21 +619,91 @@ export async function POST(req: Request) {
                 select: { id: true, userId: true, stripeConnected: true }
               });
 
-              if (seller && !seller.stripeConnected) {
-                // Update the seller's stripeConnected status
-                await db.seller.update({
-                  where: { id: seller.id },
-                  data: { stripeConnected: true }
+              if (!seller) {
+                console.warn(`[STRIPE_WEBHOOK] No seller found for account`, { 
+                  ...logContext, 
+                  note: 'Account may not be associated with a seller yet' 
                 });
+                return NextResponse.json({ received: true });
+              }
 
-                // Mark payment_setup step as completed
-                await updateOnboardingStep(seller.id, "payment_setup", true);
+              logContext.sellerId = seller.id;
+              logContext.sellerUserId = seller.userId;
+              logContext.currentStripeConnected = seller.stripeConnected;
 
-                console.log(`✅ Stripe account ${account.id} fully onboarded for seller ${seller.id}`);
+              if (!seller.stripeConnected) {
+                console.log(`[STRIPE_WEBHOOK] Updating seller stripe connection status`, logContext);
+                
+                // Update in a transaction to ensure consistency
+                try {
+                  await db.$transaction(async (tx) => {
+                    // Update the seller's stripeConnected status
+                    await tx.seller.update({
+                      where: { id: seller.id },
+                      data: { stripeConnected: true }
+                    });
+
+                    // Mark payment_setup step as completed
+                    await tx.onboardingStep.upsert({
+                      where: {
+                        sellerId_stepKey: {
+                          sellerId: seller.id,
+                          stepKey: "payment_setup",
+                        },
+                      },
+                      update: {
+                        completed: true,
+                        completedAt: new Date(),
+                      },
+                      create: {
+                        sellerId: seller.id,
+                        stepKey: "payment_setup",
+                        completed: true,
+                        completedAt: new Date(),
+                      },
+                    });
+                  });
+
+                  // Recalculate isFullyActivated (outside transaction)
+                  try {
+                    await updateOnboardingStep(seller.id, "payment_setup", true);
+                    console.log(`[STRIPE_WEBHOOK] isFullyActivated recalculated`, logContext);
+                  } catch (recalcError) {
+                    console.warn(`[STRIPE_WEBHOOK] Failed to recalculate isFullyActivated (non-critical)`, { 
+                      ...logContext, 
+                      error: recalcError instanceof Error ? recalcError.message : String(recalcError)
+                    });
+                  }
+
+                  console.log(`[STRIPE_WEBHOOK] Seller stripe connection updated successfully`, { 
+                    ...logContext, 
+                    status: 'SUCCESS'
+                  });
+                } catch (dbError) {
+                  const errorDetails = {
+                    ...logContext,
+                    error: dbError instanceof Error ? dbError.message : String(dbError),
+                    stack: dbError instanceof Error ? dbError.stack : undefined,
+                    status: 'FAILED'
+                  };
+                  console.error(`[STRIPE_WEBHOOK] Failed to update seller stripe connection`, errorDetails);
+                  // Don't throw - webhook should still return success to Stripe
+                }
+              } else {
+                console.log(`[STRIPE_WEBHOOK] Seller already marked as connected, skipping update`, logContext);
               }
             } catch (error) {
-              console.error("❌ Error updating seller stripeConnected status:", error);
+              const errorDetails = {
+                ...logContext,
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                status: 'FAILED'
+              };
+              console.error(`[STRIPE_WEBHOOK] Error processing account.updated event`, errorDetails);
+              // Don't throw - webhook should still return success to Stripe
             }
+          } else {
+            console.log(`[STRIPE_WEBHOOK] Account not fully onboarded yet`, logContext);
           }
 
           return NextResponse.json({ received: true });
@@ -657,11 +735,11 @@ export async function POST(req: Request) {
           }
 
           // Create preliminary order
-          // For payment intents, we need to get the customer email from the customer object
-          let buyerEmail = paymentIntent.receipt_email || "";
+          // Get buyer email from metadata first (most reliable), then fall back to other sources
+          let buyerEmail = paymentIntent.metadata.buyerEmail || paymentIntent.receipt_email || "";
           let buyerName = paymentIntent.metadata.buyerName || "";
           
-          // If no receipt email, try to get it from the customer
+          // If no email from metadata or receipt_email, try to get it from the customer
           if (!buyerEmail && paymentIntent.customer) {
             try {
               const customer = await stripeSecret.instance.customers.retrieve(paymentIntent.customer as string);
@@ -805,8 +883,9 @@ export async function POST(req: Request) {
           // Since we removed automatic transfer, we need to create the transfer manually
           // This ensures we transfer the correct amount after deducting both platform fee and Stripe fee
           
-          // Get the Stripe fee from the balance transaction
+          // Get the Stripe fee from the balance transaction and store charge ID for transfer
           let stripeFee = 0;
+          let chargeId: string | null = null;
           
           try {
             // Add a small delay to ensure balance transaction is available
@@ -820,6 +899,7 @@ export async function POST(req: Request) {
 
             if (charges.data.length > 0) {
               const charge = charges.data[0];
+              chargeId = charge.id; // Store charge ID for transfer
               console.log(`💰 Found charge: ${charge.id}`);
               
               // Get the balance transaction from the charge
@@ -872,12 +952,20 @@ export async function POST(req: Request) {
           console.log(`- Amount to seller: ${amountToSeller} cents`);
 
           // Create transfer to seller
+          // CRITICAL: Use source_transaction to transfer directly from the charge
+          // This prevents "insufficient funds" errors by transferring from the charge itself
+          // rather than requiring funds to be available in the platform balance first
           try {
-            const transfer = await stripeSecret.instance.transfers.create({
+            if (!chargeId) {
+              throw new Error("Charge ID not found - cannot create transfer without source_transaction");
+            }
+
+            const transferParams: Stripe.TransferCreateParams = {
               amount: amountToSeller,
               currency: paymentIntent.currency,
               destination: product.seller.connectedAccountId,
               transfer_group: paymentIntent.id,
+              source_transaction: chargeId, // CRITICAL: Transfer directly from charge
               metadata: {
                 orderId: order.id,
                 paymentIntentId: paymentIntent.id,
@@ -885,7 +973,9 @@ export async function POST(req: Request) {
                 stripeFee: stripeFee.toString(),
                 totalAmount: totalAmountInCents.toString(),
               },
-            });
+            };
+
+            const transfer = await stripeSecret.instance.transfers.create(transferParams);
 
             // Update order with transfer ID
             await db.order.update({

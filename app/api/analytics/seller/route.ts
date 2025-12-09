@@ -5,6 +5,8 @@ import { hasPermission } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     const session = await auth();
     
@@ -21,8 +23,15 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate');
     const type = searchParams.get('type') || 'DAILY';
 
-    // Parse dates
-    const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+    // Parse dates - limit to max 90 days to prevent slow queries
+    const maxDays = 90;
+    const defaultDays = 30;
+    const requestedDays = startDate && endDate 
+      ? Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      : defaultDays;
+    
+    const days = Math.min(requestedDays, maxDays);
+    const start = startDate ? new Date(startDate) : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
 
     const sellerId = session.user.id;
@@ -36,11 +45,13 @@ export async function GET(req: NextRequest) {
     }
 
     // Get seller's preferred currency
+    const sellerStartTime = Date.now();
     const seller = await db.seller.findUnique({
       where: { userId: sellerId },
       select: { preferredCurrency: true }
     });
     const preferredCurrency = seller?.preferredCurrency || "USD";
+    console.log(`[PERF] Seller query took ${Date.now() - sellerStartTime}ms`);
 
     // Check again after first query
     if (req.signal?.aborted) {
@@ -50,8 +61,27 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get seller metrics using the unified service
-    const metrics = await PlatformAnalyticsService.getSellerAnalytics(sellerId, start, end);
+    // Get seller metrics using the unified service with timeout protection
+    const metricsStartTime = Date.now();
+    let metrics;
+    try {
+      metrics = await Promise.race([
+        PlatformAnalyticsService.getSellerAnalytics(sellerId, start, end),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Analytics query timeout')), 30000) // 30 second timeout
+        )
+      ]) as any[];
+    } catch (error: any) {
+      if (error.message === 'Analytics query timeout') {
+        console.error(`[PERF] Analytics query timed out after ${Date.now() - metricsStartTime}ms`);
+        return NextResponse.json(
+          { error: "Analytics query took too long. Please try a shorter date range." },
+          { status: 504 }
+        );
+      }
+      throw error;
+    }
+    console.log(`[PERF] Analytics query took ${Date.now() - metricsStartTime}ms`);
 
     // Check if request was aborted during analytics fetch
     if (req.signal?.aborted) {
@@ -61,8 +91,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get total product view count for this seller
-    const totalViews = await ProductInteractionService.getSellerTotalViewCount(sellerId);
+    // Get total product view count for this seller with timeout
+    const viewsStartTime = Date.now();
+    let totalViews;
+    try {
+      totalViews = await Promise.race([
+        ProductInteractionService.getSellerTotalViewCount(sellerId),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('View count query timeout')), 10000) // 10 second timeout
+        )
+      ]) as number;
+    } catch (error: any) {
+      if (error.message === 'View count query timeout') {
+        console.error(`[PERF] View count query timed out after ${Date.now() - viewsStartTime}ms`);
+        totalViews = 0; // Fallback to 0 if query times out
+      } else {
+        throw error;
+      }
+    }
+    console.log(`[PERF] View count query took ${Date.now() - viewsStartTime}ms`);
     
     // Check again before final query
     if (req.signal?.aborted) {
@@ -72,8 +119,25 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Get view counts per product
-    const productViewCounts = await ProductInteractionService.getSellerProductViewCounts(sellerId);
+    // Get view counts per product with timeout
+    const productViewsStartTime = Date.now();
+    let productViewCounts;
+    try {
+      productViewCounts = await Promise.race([
+        ProductInteractionService.getSellerProductViewCounts(sellerId),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Product views query timeout')), 10000) // 10 second timeout
+        )
+      ]) as any[];
+    } catch (error: any) {
+      if (error.message === 'Product views query timeout') {
+        console.error(`[PERF] Product views query timed out after ${Date.now() - productViewsStartTime}ms`);
+        productViewCounts = []; // Fallback to empty array if query times out
+      } else {
+        throw error;
+      }
+    }
+    console.log(`[PERF] Product views query took ${Date.now() - productViewsStartTime}ms`);
 
     // Calculate summary metrics
     const summary = {
@@ -103,6 +167,14 @@ export async function GET(req: NextRequest) {
       summary.conversionRate = Math.round(avgConversion * 100) / 100;
       summary.customerRetentionRate = Math.round(avgRetention * 100) / 100;
       summary.averageRating = Math.round(avgRating * 100) / 100;
+    }
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[PERF] Total analytics request took ${totalTime}ms`);
+    
+    // Warn if request took too long
+    if (totalTime > 20000) {
+      console.warn(`[PERF] WARNING: Analytics request took ${totalTime}ms - consider optimizing queries`);
     }
 
     return NextResponse.json({
