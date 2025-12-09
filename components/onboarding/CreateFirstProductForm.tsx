@@ -241,14 +241,65 @@ export default function CreateFirstProductForm() {
     form.setValue("images", images, { shouldValidate: false });
   }, [images, form, setValue]);
 
-  // Fetch seller's country
+  // Helper function to retry API calls
+  const fetchWithRetry = async (
+    url: string,
+    options: RequestInit = {},
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<Response> => {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) {
+          return response;
+        }
+        // If response is not ok, throw to trigger retry
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // Don't retry on the last attempt
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt; // Exponential backoff
+          console.warn(
+            `Failed to fetch ${url} (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}ms...`,
+            error
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    // All retries failed, throw the last error
+    throw lastError || new Error("Failed to fetch after all retries");
+  };
+
+  // Fetch seller's country and preferences
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const countryResponse = await fetch("/api/seller/country");
-        if (countryResponse.ok) {
+        // Fetch seller country with retry
+        try {
+          const countryResponse = await fetchWithRetry("/api/seller/country");
           const countryData = await countryResponse.json();
           setSellerCountry(countryData.country);
+        } catch (error) {
+          console.error("Error fetching seller country after retries:", error);
+        }
+
+        // Fetch seller preferences to set default currency with retry
+        try {
+          const preferencesResponse = await fetchWithRetry("/api/seller/preferences");
+          const preferences = await preferencesResponse.json();
+          if (preferences?.preferredCurrency) {
+            form.setValue("currency", preferences.preferredCurrency);
+          }
+        } catch (error) {
+          console.error("Error fetching seller preferences after retries:", error);
+          console.warn("Using default currency (USD) due to fetch failure");
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -256,7 +307,7 @@ export default function CreateFirstProductForm() {
     };
 
     fetchData();
-  }, []);
+  }, [form]);
 
   // Check if seller is in EU/EEA
   const isSellerInEU =

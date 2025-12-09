@@ -914,7 +914,7 @@ export const ProductInfoSection = ({
                 <FormItem>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value || "USD"}
+                    value={field.value || "USD"}
                   >
                     <FormControl>
                       <SelectTrigger>

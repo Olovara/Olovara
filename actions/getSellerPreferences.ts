@@ -1,8 +1,24 @@
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 
 export async function getSellerPreferences() {
   try {
-    const seller = await db.seller.findFirst({
+    // Get the authenticated user's session
+    const session = await auth();
+    if (!session?.user?.id) {
+      // Return defaults if not authenticated
+      return {
+        preferredCurrency: "USD",
+        preferredWeightUnit: "lbs",
+        preferredDimensionUnit: "in",
+      };
+    }
+
+    // Find the seller record for the current authenticated user
+    const seller = await db.seller.findUnique({
+      where: {
+        userId: session.user.id,
+      },
       select: {
         preferredCurrency: true,
         preferredWeightUnit: true,

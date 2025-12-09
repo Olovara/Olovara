@@ -34,7 +34,6 @@ import { ProductSEOSection } from "../product/productSEO";
 import GPSRComplianceForm from "../product/GPSRComplianceForm";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
 import { checkSellerApproval } from "@/actions/check-seller-approval";
-import { getSellerPreferences } from "@/actions/getSellerPreferences";
 import { getCountryExclusions } from "@/actions/countryExclusionsActions";
 import { useTestEnvironment } from "@/hooks/useTestEnvironment";
 import { Label } from "@/components/ui/label";
@@ -167,6 +166,77 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const { canAccessTest, loading: testAccessLoading } = useTestEnvironment();
 
+  // Helper function to retry API calls
+  const fetchWithRetry = async (
+    url: string,
+    options: RequestInit = {},
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<Response> => {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) {
+          return response;
+        }
+        // If response is not ok, throw to trigger retry
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // Don't retry on the last attempt
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt; // Exponential backoff
+          console.warn(
+            `Failed to fetch ${url} (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}ms...`,
+            error
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    // All retries failed, throw the last error
+    throw lastError || new Error("Failed to fetch after all retries");
+  };
+
+  // Fetch seller preferences on mount
+  useEffect(() => {
+    const fetchSellerPreferences = async () => {
+      try {
+        const response = await fetchWithRetry("/api/seller/preferences");
+        const preferences = await response.json();
+        
+        if (preferences && preferences.preferredCurrency) {
+          setSellerPreferences({
+            preferredCurrency: (preferences.preferredCurrency || "USD") as CurrencyCode,
+            preferredWeightUnit: (preferences.preferredWeightUnit || "lbs") as WeightUnit,
+            preferredDimensionUnit: (preferences.preferredDimensionUnit || "in") as DimensionUnit,
+          });
+          
+          // For new products (no initialData), always use seller's preferred currency
+          // For existing products, only update if no currency was set
+          if (!initialData) {
+            // New product - always set to preferred currency
+            form.setValue("currency", preferences.preferredCurrency);
+          } else if (!initialData.currency) {
+            // Existing product but no currency set - use preferred currency
+            form.setValue("currency", preferences.preferredCurrency);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching seller preferences after retries:", error);
+        // Fallback to defaults if all retries fail
+        console.warn("Using default currency (USD) due to fetch failure");
+      }
+    };
+
+    fetchSellerPreferences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch excluded countries and determine GPSR requirements
   useEffect(() => {
     const fetchExcludedCountries = async () => {
@@ -233,7 +303,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       discountEndTime: initialData?.discountEndTime || "",
       howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
-      currency: initialData?.currency || sellerPreferences.preferredCurrency,
+      currency: initialData?.currency || "USD", // Will be updated by useEffect when preferences load
       isTestProduct: initialData?.isTestProduct || false,
       shippingOptionId: initialData?.shippingOptionId || null,
       taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
