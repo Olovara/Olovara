@@ -239,7 +239,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     phoneCode: "+350",
     isEU: false,
     status: "supported",
-    canOnboardSellers: false,
+    canOnboardSellers: true,
     zone: "EUROPE",
   },
   {
@@ -360,7 +360,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     phoneCode: "+423",
     isEU: false,
     status: "supported",
-    canOnboardSellers: false,
+    canOnboardSellers: true,
     zone: "EUROPE",
   },
   {
@@ -426,7 +426,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
     phoneCode: "+60",
     isEU: false,
     status: "supported",
-    canOnboardSellers: false,
+    canOnboardSellers: true,
     zone: "ASIA",
   },
   {

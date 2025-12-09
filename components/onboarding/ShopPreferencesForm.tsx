@@ -32,34 +32,51 @@ import {
 import { saveShopPreferences } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
+import { getOnboardingCountries, type Country } from "@/data/countries";
 
-// Define available countries with their currencies
-const countries = [
-  { code: "US", name: "United States", currency: "USD", flag: "🇺🇸" },
-  { code: "CA", name: "Canada", currency: "CAD", flag: "🇨🇦" },
-  { code: "GB", name: "United Kingdom", currency: "GBP", flag: "🇬🇧" },
-  { code: "AU", name: "Australia", currency: "AUD", flag: "🇦🇺" },
-  { code: "DE", name: "Germany", currency: "EUR", flag: "🇩🇪" },
-  { code: "FR", name: "France", currency: "EUR", flag: "🇫🇷" },
-  { code: "IT", name: "Italy", currency: "EUR", flag: "🇮🇹" },
-  { code: "ES", name: "Spain", currency: "EUR", flag: "🇪🇸" },
-  { code: "NL", name: "Netherlands", currency: "EUR", flag: "🇳🇱" },
-  { code: "JP", name: "Japan", currency: "JPY", flag: "🇯🇵" },
-  { code: "KR", name: "South Korea", currency: "KRW", flag: "🇰🇷" },
-  { code: "SG", name: "Singapore", currency: "SGD", flag: "🇸🇬" },
-];
+// Get countries that can onboard sellers (Stripe Connect supported)
+const countries = getOnboardingCountries();
 
-// Define currencies
-const currencies = [
-  { code: "USD", name: "US Dollar", symbol: "$" },
-  { code: "CAD", name: "Canadian Dollar", symbol: "C$" },
-  { code: "GBP", name: "British Pound", symbol: "£" },
-  { code: "EUR", name: "Euro", symbol: "€" },
-  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
-  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
-  { code: "KRW", name: "South Korean Won", symbol: "₩" },
-  { code: "SGD", name: "Singapore Dollar", symbol: "S$" },
-];
+// Get unique currencies from onboarding countries
+// Map currency codes to their display names
+const currencyNames: Record<string, string> = {
+  USD: "US Dollar",
+  CAD: "Canadian Dollar",
+  GBP: "British Pound",
+  EUR: "Euro",
+  AUD: "Australian Dollar",
+  JPY: "Japanese Yen",
+  SGD: "Singapore Dollar",
+  BGN: "Bulgarian Lev",
+  BRL: "Brazilian Real",
+  CHF: "Swiss Franc",
+  CZK: "Czech Koruna",
+  DKK: "Danish Krone",
+  HKD: "Hong Kong Dollar",
+  HUF: "Hungarian Forint",
+  MYR: "Malaysian Ringgit",
+  MXN: "Mexican Peso",
+  NZD: "New Zealand Dollar",
+  NOK: "Norwegian Krone",
+  PLN: "Polish Zloty",
+  RON: "Romanian Leu",
+  SEK: "Swedish Krona",
+  THB: "Thai Baht",
+  GIP: "Gibraltar Pound",
+};
+
+const currencies = Array.from(
+  new Map(
+    countries.map((country) => [
+      country.currency,
+      {
+        code: country.currency,
+        name: currencyNames[country.currency] || country.currency,
+        symbol: country.currencySymbol,
+      },
+    ])
+  ).values()
+).sort((a, b) => a.code.localeCompare(b.code));
 
 // Define languages (for future implementation)
 const languages = [
@@ -89,6 +106,22 @@ export default function ShopPreferencesForm() {
     if (country) {
       setSelectedCurrency(country.currency);
     }
+  };
+
+  // Helper function to get country flag emoji (simplified - you can enhance this later)
+  const getCountryFlag = (countryCode: string): string => {
+    // Basic flag mapping - you can enhance this with a proper library later
+    const flagMap: Record<string, string> = {
+      US: "🇺🇸", CA: "🇨🇦", GB: "🇬🇧", AU: "🇦🇺", DE: "🇩🇪", FR: "🇫🇷",
+      IT: "🇮🇹", ES: "🇪🇸", NL: "🇳🇱", JP: "🇯🇵", SG: "🇸🇬", AT: "🇦🇹",
+      BE: "🇧🇪", BR: "🇧🇷", BG: "🇧🇬", HR: "🇭🇷", CY: "🇨🇾", CZ: "🇨🇿",
+      DK: "🇩🇰", EE: "🇪🇪", FI: "🇫🇮", GH: "🇬🇭", GI: "🇬🇮", GR: "🇬🇷",
+      HK: "🇭🇰", HU: "🇭🇺", IE: "🇮🇪", KE: "🇰🇪", LV: "🇱🇻", LI: "🇱🇮",
+      LT: "🇱🇹", LU: "🇱🇺", MY: "🇲🇾", MT: "🇲🇹", MX: "🇲🇽", NZ: "🇳🇿",
+      NO: "🇳🇴", PL: "🇵🇱", PT: "🇵🇹", RO: "🇷🇴", SK: "🇸🇰", SI: "🇸🇮",
+      SE: "🇸🇪", CH: "🇨🇭", TH: "🇹🇭", AE: "🇦🇪",
+    };
+    return flagMap[countryCode] || "🌍";
   };
 
   const handleContinue = async () => {
@@ -178,7 +211,7 @@ export default function ShopPreferencesForm() {
                   {countries.map((country) => (
                     <SelectItem key={country.code} value={country.code}>
                       <div className="flex items-center gap-2">
-                        <span>{country.flag}</span>
+                        <span>{getCountryFlag(country.code)}</span>
                         <span>{country.name}</span>
                       </div>
                     </SelectItem>
@@ -262,14 +295,14 @@ export default function ShopPreferencesForm() {
                 <div className="space-y-1">
                   {selectedCountryData && (
                     <p className="text-sm text-purple-800">
-                      <strong>Country:</strong> {selectedCountryData.flag}{" "}
+                      <strong>Country:</strong> {getCountryFlag(selectedCountryData.code)}{" "}
                       {selectedCountryData.name}
                     </p>
                   )}
                   {selectedCurrencyData && (
                     <p className="text-sm text-purple-800">
                       <strong>Currency:</strong> {selectedCurrencyData.symbol}{" "}
-                      {selectedCurrencyData.name}
+                      {selectedCurrencyData.name} ({selectedCurrencyData.code})
                     </p>
                   )}
                 </div>
