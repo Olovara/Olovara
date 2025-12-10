@@ -14,6 +14,8 @@ type ProductPhotosProps = {
   setTempUploadsCreated?: (created: boolean) => void;
   // New prop to store processed images before upload
   setProcessedImages?: Dispatch<SetStateAction<ProcessedImage[]>>;
+  // Previously processed images to restore in ImageProcessor
+  processedImages?: ProcessedImage[];
 };
 
 export function ProductPhotosSection({
@@ -24,6 +26,7 @@ export function ProductPhotosSection({
   form,
   setTempUploadsCreated,
   setProcessedImages,
+  processedImages = [],
 }: ProductPhotosProps) {
   // Track initial existing images (already uploaded HTTP URLs) - stable reference
   // This prevents infinite loops by keeping existingImages stable
@@ -95,12 +98,33 @@ export function ProductPhotosSection({
       }
 
       // Store processed images for later upload
-      // Separate existing from new processed images
+      // Separate existing (already uploaded) from new processed images (need to be uploaded)
+      // Keep all processed images that aren't already uploaded (existing ones have "existing-" prefix)
       const newProcessedImages = processed.filter(
         (img) => !img.id.startsWith("existing-")
       );
       if (setProcessedImages) {
-        setProcessedImages(newProcessedImages);
+        // The processed array from ImageProcessor should contain ALL processed images
+        // (both previously processed and newly processed). We use a functional update
+        // to merge with existing images as a safety measure, ensuring we never lose
+        // previously processed images even if ImageProcessor state was reset
+        setProcessedImages((prev) => {
+          // Create a map of all processed images by their ID to avoid duplicates
+          const allImagesMap = new Map<string, ProcessedImage>();
+          
+          // First, add all previous images (preserves images if ImageProcessor was reset)
+          prev.forEach((img) => {
+            allImagesMap.set(img.id, img);
+          });
+          
+          // Then, add or update with all new processed images (overwrites with latest version)
+          newProcessedImages.forEach((img) => {
+            allImagesMap.set(img.id, img);
+          });
+          
+          // Return all unique processed images
+          return Array.from(allImagesMap.values());
+        });
       }
 
       // Update existing images ref if the order changed
@@ -126,6 +150,7 @@ export function ProductPhotosSection({
       onImagesProcessed={handleImagesProcessed}
       existingImages={existingImages}
       maxImages={10}
+      initialProcessedImages={processedImages}
     />
   );
 }

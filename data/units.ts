@@ -9,7 +9,7 @@ export const SUPPORTED_CURRENCIES = [
   { code: "JPY", decimals: 0, symbol: "¥", name: "Japanese Yen" },
   { code: "INR", decimals: 2, symbol: "₹", name: "Indian Rupee" },
   { code: "SGD", decimals: 2, symbol: "S$", name: "Singapore Dollar" },
-  
+
   // European currencies
   { code: "CHF", decimals: 2, symbol: "Fr", name: "Swiss Franc" },
   { code: "DKK", decimals: 2, symbol: "kr", name: "Danish Krone" },
@@ -20,27 +20,28 @@ export const SUPPORTED_CURRENCIES = [
   { code: "BGN", decimals: 2, symbol: "лв", name: "Bulgarian Lev" },
   { code: "RON", decimals: 2, symbol: "lei", name: "Romanian Leu" },
   { code: "GIP", decimals: 2, symbol: "£", name: "Gibraltar Pound" },
-  
+  { code: "PLN", decimals: 2, symbol: "zł", name: "Polish Zloty" },
+
   // Asian currencies
   { code: "HKD", decimals: 2, symbol: "HK$", name: "Hong Kong Dollar" },
   { code: "THB", decimals: 2, symbol: "฿", name: "Thai Baht" },
   { code: "MYR", decimals: 2, symbol: "RM", name: "Malaysian Ringgit" },
   { code: "IDR", decimals: 0, symbol: "Rp", name: "Indonesian Rupiah" },
-  
+
   // Oceania currencies
   { code: "NZD", decimals: 2, symbol: "NZ$", name: "New Zealand Dollar" },
-  
+
   // South American currencies
   { code: "BRL", decimals: 2, symbol: "R$", name: "Brazilian Real" },
   { code: "MXN", decimals: 2, symbol: "$", name: "Mexican Peso" },
-  
+
   // African currencies
   { code: "ZAR", decimals: 2, symbol: "R", name: "South African Rand" },
   { code: "GHS", decimals: 2, symbol: "₵", name: "Ghanaian Cedi" },
   { code: "KES", decimals: 2, symbol: "KSh", name: "Kenyan Shilling" },
   { code: "NGN", decimals: 2, symbol: "₦", name: "Nigerian Naira" },
   { code: "XOF", decimals: 0, symbol: "CFA", name: "West African CFA Franc" },
-  
+
   // Middle East currencies
   { code: "AED", decimals: 2, symbol: "د.إ", name: "UAE Dirham" },
 ] as const;
@@ -69,41 +70,55 @@ export const SUPPORTED_DISTANCE_UNITS = [
 
 // Helper functions
 export const getCurrencyDecimals = (currency: string) => {
-  return SUPPORTED_CURRENCIES.find(c => c.code === currency)?.decimals || 2;
+  return SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.decimals || 2;
 };
 
 export const getCurrencySymbol = (currency: string) => {
-  return SUPPORTED_CURRENCIES.find(c => c.code === currency)?.symbol || "$";
+  return SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.symbol || "$";
 };
 
 export const getCurrencyName = (currency: string) => {
-  return SUPPORTED_CURRENCIES.find(c => c.code === currency)?.name || "US Dollar";
+  return (
+    SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.name || "US Dollar"
+  );
 };
 
 // Type definitions
-export type CurrencyCode = typeof SUPPORTED_CURRENCIES[number]['code'];
-export type WeightUnit = typeof SUPPORTED_WEIGHT_UNITS[number]['code'];
-export type DimensionUnit = typeof SUPPORTED_DIMENSION_UNITS[number]['code'];
-export type DistanceUnit = typeof SUPPORTED_DISTANCE_UNITS[number]['code'];
+export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]["code"];
+export type WeightUnit = (typeof SUPPORTED_WEIGHT_UNITS)[number]["code"];
+export type DimensionUnit = (typeof SUPPORTED_DIMENSION_UNITS)[number]["code"];
+export type DistanceUnit = (typeof SUPPORTED_DISTANCE_UNITS)[number]["code"];
 
 // Conversion functions
-export const convertWeight = (value: number, fromUnit: WeightUnit, toUnit: WeightUnit) => {
-  const from = SUPPORTED_WEIGHT_UNITS.find(u => u.code === fromUnit);
-  const to = SUPPORTED_WEIGHT_UNITS.find(u => u.code === toUnit);
+export const convertWeight = (
+  value: number,
+  fromUnit: WeightUnit,
+  toUnit: WeightUnit
+) => {
+  const from = SUPPORTED_WEIGHT_UNITS.find((u) => u.code === fromUnit);
+  const to = SUPPORTED_WEIGHT_UNITS.find((u) => u.code === toUnit);
   if (!from || !to) return value;
   return (value * from.conversion) / to.conversion;
 };
 
-export const convertDimension = (value: number, fromUnit: DimensionUnit, toUnit: DimensionUnit) => {
-  const from = SUPPORTED_DIMENSION_UNITS.find(u => u.code === fromUnit);
-  const to = SUPPORTED_DIMENSION_UNITS.find(u => u.code === toUnit);
+export const convertDimension = (
+  value: number,
+  fromUnit: DimensionUnit,
+  toUnit: DimensionUnit
+) => {
+  const from = SUPPORTED_DIMENSION_UNITS.find((u) => u.code === fromUnit);
+  const to = SUPPORTED_DIMENSION_UNITS.find((u) => u.code === toUnit);
   if (!from || !to) return value;
   return (value * from.conversion) / to.conversion;
 };
 
-export const convertDistance = (value: number, fromUnit: DistanceUnit, toUnit: DistanceUnit) => {
-  const from = SUPPORTED_DISTANCE_UNITS.find(u => u.code === fromUnit);
-  const to = SUPPORTED_DISTANCE_UNITS.find(u => u.code === toUnit);
+export const convertDistance = (
+  value: number,
+  fromUnit: DistanceUnit,
+  toUnit: DistanceUnit
+) => {
+  const from = SUPPORTED_DISTANCE_UNITS.find((u) => u.code === fromUnit);
+  const to = SUPPORTED_DISTANCE_UNITS.find((u) => u.code === toUnit);
   if (!from || !to) return value;
   return (value * from.conversion) / to.conversion;
-}; 
+};

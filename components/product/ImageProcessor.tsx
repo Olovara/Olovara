@@ -33,15 +33,18 @@ type ImageProcessorProps = {
   onImagesProcessed: (images: ProcessedImage[]) => void; // Callback when images are ready
   existingImages?: string[]; // URLs of already uploaded images (for editing)
   maxImages?: number; // Maximum number of images allowed
+  initialProcessedImages?: ProcessedImage[]; // Previously processed images to restore
 };
 
 export function ImageProcessor({
   onImagesProcessed,
   existingImages = [],
   maxImages = 10,
+  initialProcessedImages = [],
 }: ImageProcessorProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
+  // Initialize with previously processed images from parent
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>(initialProcessedImages);
   const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
   // Track all files in the processing queue (for navigation)
@@ -122,6 +125,68 @@ export function ImageProcessor({
       // Don't remove on unmount as it might be used by other instances
     };
   }, []);
+
+  // Sync initialProcessedImages from parent when it changes
+  // This ensures previously processed images are restored when dialog reopens
+  // We merge them with existing processedImages to avoid losing newly processed images
+  // IMPORTANT: Recreate blob URLs from File objects to ensure they're valid
+  const prevInitialProcessedImagesRef = React.useRef<string>("");
+  React.useEffect(() => {
+    // Only process if initialProcessedImages actually changed
+    const currentKey = JSON.stringify(initialProcessedImages.map((img) => img.id));
+    const prevKey = prevInitialProcessedImagesRef.current;
+    
+    if (initialProcessedImages.length > 0 && currentKey !== prevKey) {
+      prevInitialProcessedImagesRef.current = currentKey;
+      
+      setProcessedImages((prev) => {
+        // Create a map of current images by ID (preserve newly processed images with valid blob URLs)
+        const currentMap = new Map(prev.map((img) => [img.id, img]));
+        
+        // Add images from initialProcessedImages that we don't already have
+        // This restores previously processed images without overwriting new ones
+        initialProcessedImages.forEach((img) => {
+          const existing = currentMap.get(img.id);
+          
+          // Only restore if we don't already have this image, or if the existing one has an invalid blob URL
+          if (!existing) {
+            // Always recreate blob URL from File object to ensure it's valid
+            // Blob URLs can become invalid when the page state changes
+            let preview = img.preview;
+            
+            // If we have a valid File object, recreate the blob URL
+            if (img.file && img.file.size > 0) {
+              // Revoke old blob URL if it exists and is different
+              if (preview.startsWith("blob:") && preview !== img.originalName) {
+                try {
+                  URL.revokeObjectURL(preview);
+                } catch (e) {
+                  // Ignore errors if URL was already revoked
+                }
+              }
+              // Create new blob URL from File object
+              preview = URL.createObjectURL(img.file);
+            }
+            
+            // Create restored image with new blob URL
+            const restoredImage: ProcessedImage = {
+              ...img,
+              preview,
+            };
+            
+            currentMap.set(img.id, restoredImage);
+          } else if (existing && existing.preview.startsWith("blob:")) {
+            // We already have this image, but check if the blob URL is still valid
+            // If the existing image has a blob URL, keep it (it's already valid)
+            // Don't overwrite it
+          }
+        });
+        
+        // Return all images
+        return Array.from(currentMap.values());
+      });
+    }
+  }, [initialProcessedImages]);
 
   // Convert existing image URLs to ProcessedImage format (for editing mode)
   // These are already uploaded, so we'll keep them as-is
@@ -528,12 +593,17 @@ export function ImageProcessor({
   const removeImage = useCallback((id: string) => {
     setProcessedImages((prev) => {
       const image = prev.find((img) => img.id === id);
-      if (image) {
-        URL.revokeObjectURL(image.preview); // Clean up object URL
+      if (image && image.preview.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(image.preview); // Clean up object URL
+        } catch (e) {
+          // Ignore errors if URL was already revoked
+        }
       }
       return prev.filter((img) => img.id !== id);
     });
   }, []);
+  
 
   // Store callback in ref to avoid dependency issues
   const onImagesProcessedRef = React.useRef(onImagesProcessed);

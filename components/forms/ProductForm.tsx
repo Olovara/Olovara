@@ -681,8 +681,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
-      // Validate GPSR compliance if required
-      if (isGPSRRequired) {
+      // Validate GPSR compliance if required (only for physical products)
+      // GPSR compliance is not required for digital items, even if seller ships to EU/EEA
+      if (isGPSRRequired && !data.isDigital) {
         const requiredGPSRFields = [
           "safetyWarnings",
           "materialsComposition",
@@ -704,17 +705,19 @@ export function ProductForm({ initialData }: ProductFormProps) {
       }
 
       // Upload processed images first (if any)
-      let finalImageUrls = [...images];
+      // Extract existing images (already uploaded HTTP URLs) from the images state
+      // This preserves all existing images even when new ones are added
+      const existingImageUrls = images.filter(
+        (url) => url.startsWith("http://") || url.startsWith("https://")
+      );
 
-      // Separate existing images (already uploaded URLs) from new processed images (File objects)
-      const existingImageUrls = processedImages
-        .filter((img) => img.preview.startsWith("http"))
-        .map((img) => img.preview);
-
+      // Get new processed images that need to be uploaded (blob URLs with File objects)
       const newProcessedImages = processedImages.filter(
         (img) =>
           img.preview.startsWith("blob:") && img.file && img.file.size > 0
       );
+
+      let finalImageUrls = [...existingImageUrls]; // Start with existing images
 
       if (newProcessedImages.length > 0) {
         setIsUploading(true);
@@ -724,7 +727,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
           const filesToUpload = newProcessedImages.map((img) => img.file);
           const uploadedUrls = await uploadProcessedImages(filesToUpload);
 
-          // Combine existing URLs with newly uploaded URLs
+          // Append newly uploaded URLs to existing ones (preserve existing images)
           finalImageUrls = [...existingImageUrls, ...uploadedUrls];
 
           // Update images state
@@ -742,10 +745,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       } else {
         // No new images to upload, just use existing URLs
-        finalImageUrls =
-          existingImageUrls.length > 0
-            ? existingImageUrls
-            : images.filter((url) => url.startsWith("http"));
+        finalImageUrls = existingImageUrls;
       }
 
       // Handle file upload (similar to images)
@@ -1079,6 +1079,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     form={form}
                     setTempUploadsCreated={setTempUploadsCreated}
                     setProcessedImages={setProcessedImages}
+                    processedImages={processedImages}
                   />
 
                   <ProductFileSection
