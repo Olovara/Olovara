@@ -169,7 +169,7 @@ export default function CreateFirstProductForm() {
     defaultValues: {
       name: "",
       sku: "",
-      shortDescription: "Enter a brief description of your product",
+      shortDescription: "",
       description: { html: "", text: "" },
       options: null,
       price: 0,
