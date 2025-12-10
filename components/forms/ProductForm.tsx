@@ -29,7 +29,7 @@ import { ProductPromotionsSection } from "../product/productPromotions";
 import { ProductInventorySection } from "../product/productInventory";
 import { ProductHowItsMadeSection } from "../product/productHowMade";
 import { useRouter, usePathname } from "next/navigation";
-import { ProductFileSection } from "../product/productFile";
+import { ProductFileSection, ProcessedFile } from "../product/productFile";
 import { ProductSEOSection } from "../product/productSEO";
 import GPSRComplianceForm from "../product/GPSRComplianceForm";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
@@ -39,6 +39,7 @@ import { useTestEnvironment } from "@/hooks/useTestEnvironment";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { isGPSRComplianceRequired } from "@/lib/gpsr-compliance";
+import { uploadProcessedFiles } from "@/lib/upload-files";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -95,6 +96,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Store processed images (before upload)
   const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
+
+  // Store processed file (before upload) - similar to processedImages
+  const [processedFile, setProcessedFile] = useState<ProcessedFile | null>(
+    null
+  );
 
   // Add state to track when temporary uploads are created
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
@@ -153,7 +159,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
-  const [tempFiles, setTempFiles] = useState<string[]>([]); // Track new file uploads
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(
     null
   );
@@ -174,7 +179,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     delay: number = 1000
   ): Promise<Response> => {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await fetch(url, options);
@@ -185,7 +190,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Don't retry on the last attempt
         if (attempt < maxRetries) {
           const waitTime = delay * attempt; // Exponential backoff
@@ -197,7 +202,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
     }
-    
+
     // All retries failed, throw the last error
     throw lastError || new Error("Failed to fetch after all retries");
   };
@@ -208,14 +213,17 @@ export function ProductForm({ initialData }: ProductFormProps) {
       try {
         const response = await fetchWithRetry("/api/seller/preferences");
         const preferences = await response.json();
-        
+
         if (preferences && preferences.preferredCurrency) {
           setSellerPreferences({
-            preferredCurrency: (preferences.preferredCurrency || "USD") as CurrencyCode,
-            preferredWeightUnit: (preferences.preferredWeightUnit || "lbs") as WeightUnit,
-            preferredDimensionUnit: (preferences.preferredDimensionUnit || "in") as DimensionUnit,
+            preferredCurrency: (preferences.preferredCurrency ||
+              "USD") as CurrencyCode,
+            preferredWeightUnit: (preferences.preferredWeightUnit ||
+              "lbs") as WeightUnit,
+            preferredDimensionUnit: (preferences.preferredDimensionUnit ||
+              "in") as DimensionUnit,
           });
-          
+
           // For new products (no initialData), always use seller's preferred currency
           // For existing products, only update if no currency was set
           if (!initialData) {
@@ -227,7 +235,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
           }
         }
       } catch (error) {
-        console.error("Error fetching seller preferences after retries:", error);
+        console.error(
+          "Error fetching seller preferences after retries:",
+          error
+        );
         // Fallback to defaults if all retries fail
         console.warn("Using default currency (USD) due to fetch failure");
       }
@@ -571,10 +582,23 @@ export function ProductForm({ initialData }: ProductFormProps) {
     };
   }, [cleanupTempImages]);
 
+  // Cleanup blob URLs for processed file on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up blob URL if it exists
+      if (processedFile) {
+        const currentValue = form.getValues("productFile");
+        if (currentValue && currentValue.startsWith("blob:")) {
+          URL.revokeObjectURL(currentValue);
+        }
+      }
+    };
+  }, [processedFile, form]);
+
   // Update the beforeunload handler
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (form.formState.isDirty || tempImages.length > 0) {
+      if (form.formState.isDirty || tempImages.length > 0 || processedFile) {
         e.preventDefault();
         // Modern browsers ignore the return value, but we still need to call preventDefault()
         return "You have unsaved changes. Are you sure you want to leave?";
@@ -585,7 +609,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [form.formState.isDirty, tempImages]);
+  }, [form.formState.isDirty, tempImages, processedFile]);
 
   useEffect(() => {
     const checkApproval = async () => {
@@ -724,10 +748,57 @@ export function ProductForm({ initialData }: ProductFormProps) {
             : images.filter((url) => url.startsWith("http"));
       }
 
+      // Handle file upload (similar to images)
+      let finalFileUrl = data.productFile || null;
+
+      // Check if there's a new processed file to upload
+      if (processedFile && processedFile.file) {
+        setIsUploading(true);
+        toast.loading("Uploading product file...");
+        try {
+          // Upload the processed file
+          const uploadedUrls = await uploadProcessedFiles([processedFile.file]);
+
+          if (uploadedUrls.length > 0) {
+            finalFileUrl = uploadedUrls[0];
+
+            // Revoke the blob URL to prevent memory leaks
+            const currentValue = form.getValues("productFile");
+            if (currentValue && currentValue.startsWith("blob:")) {
+              URL.revokeObjectURL(currentValue);
+            }
+
+            // Clear the processed file after successful upload
+            setProcessedFile(null);
+          }
+          toast.dismiss();
+        } catch (uploadError) {
+          console.error("Error uploading file:", uploadError);
+          toast.dismiss();
+          toast.error("Failed to upload product file. Please try again.");
+          setIsLoading(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        // No new file to upload, use existing URL if it's an HTTP URL
+        // If it's a blob URL, it means the file was removed or never uploaded
+        if (finalFileUrl && finalFileUrl.startsWith("blob:")) {
+          // Blob URL means file was selected but not uploaded - clear it
+          finalFileUrl = null;
+        } else if (finalFileUrl && !finalFileUrl.startsWith("http")) {
+          // Invalid URL format, clear it
+          finalFileUrl = null;
+        }
+      }
+
       // The schema already handles the conversion to cents
       const formData = {
         ...data,
         images: finalImageUrls, // Use uploaded URLs
+        productFile: finalFileUrl, // Use uploaded file URL or null
         status: isDraft ? "DRAFT" : data.status,
         options:
           dropdownOptions.length > 0
@@ -777,9 +848,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
         formSubmittedRef.current = true;
 
         // Prepare the URLs for cleanup
-        const urlsToCleanup = [...images];
-        if (data.productFile) {
-          urlsToCleanup.push(data.productFile);
+        const urlsToCleanup = [...finalImageUrls];
+        if (finalFileUrl) {
+          urlsToCleanup.push(finalFileUrl);
         }
 
         // Call the cleanup server action with the product ID
@@ -807,6 +878,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       router.replace("/seller/dashboard/products");
       router.refresh();
       setTempImages([]); // Clear temp images after successful submission
+      setProcessedFile(null); // Clear processed file after successful submission
     } catch (error) {
       console.error("Form submission error:", error);
       toast.error("Something went wrong");
@@ -1011,9 +1083,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
                   <ProductFileSection
                     form={form}
-                    tempFiles={tempFiles}
-                    setTempFiles={setTempFiles}
-                    setTempUploadsCreated={setTempUploadsCreated}
+                    processedFile={processedFile}
+                    setProcessedFile={setProcessedFile}
+                    existingFileUrl={initialData?.productFile || null}
                   />
                 </div>
               </div>

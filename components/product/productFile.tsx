@@ -1,53 +1,136 @@
 "use client";
 
-import { UploadDropzone } from "@/lib/uploadthing";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { Form, UseFormReturn } from "react-hook-form";
+import { useRef } from "react";
+import { Input } from "@/components/ui/input";
+
+// Type for processed file data (similar to ProcessedImage)
+export type ProcessedFile = {
+  id: string; // Unique ID for this file
+  file: File; // The file ready for upload
+  preview: string; // File name or preview URL
+  originalName: string; // Original filename
+};
 
 type ProductFileProps = {
   form: UseFormReturn<any>;
-  tempFiles?: string[];
-  setTempFiles?: (files: string[]) => void;
-  setTempUploadsCreated?: (created: boolean) => void;
+  processedFile?: ProcessedFile | null; // Store the file object instead of URL
+  setProcessedFile?: (file: ProcessedFile | null) => void;
+  existingFileUrl?: string | null; // URL of already uploaded file (for editing)
 };
 
 export function ProductFileSection({
   form,
-  tempFiles = [],
-  setTempFiles = (files: string[]) => {},
-  setTempUploadsCreated,
+  processedFile,
+  setProcessedFile,
+  existingFileUrl,
 }: ProductFileProps) {
-  const currentFile = form.watch("productFile");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentFileUrl = form.watch("productFile"); // This will be the URL (existing or to be set after upload)
+
+  // Determine if we have a file to show (either existing URL or new processed file)
+  const hasFile = currentFileUrl || processedFile || existingFileUrl;
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (PDF only based on the upload endpoint)
+    if (file.type !== "application/pdf") {
+      toast.error("Please upload a PDF file");
+      return;
+    }
+
+    // Validate file size (check if there's a max size limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB (adjust as needed)
+    if (file.size > maxSize) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    // Create ProcessedFile object (similar to ProcessedImage)
+    const newProcessedFile: ProcessedFile = {
+      id: `processed-file-${Date.now()}-${Math.random()}`,
+      file: file,
+      preview: file.name, // Use file name as preview
+      originalName: file.name,
+    };
+
+    // Store the processed file (will be uploaded later in onSubmit)
+    if (setProcessedFile) {
+      setProcessedFile(newProcessedFile);
+    }
+
+    // Set a temporary preview URL in the form (blob URL for display)
+    const previewUrl = URL.createObjectURL(file);
+    form.setValue("productFile", previewUrl, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+
+    toast.success(
+      "File selected. It will be uploaded when you save the product."
+    );
+  };
 
   const handleRemoveFile = () => {
-    if (currentFile) {
-      // Clean up the file from storage, regardless of whether it's temp or not
-      fetch("/api/upload/cleanup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ files: [currentFile] }),
-      }).catch(console.error);
-
-      // If it was a temp file, remove from temp state
-      if (tempFiles.includes(currentFile)) {
-        const updatedFiles = tempFiles.filter(
-          (file: string) => file !== currentFile
-        );
-        setTempFiles(updatedFiles);
+    // If there's a processed file (new file), remove it
+    if (processedFile) {
+      // Revoke the blob URL to prevent memory leaks
+      const currentValue = form.getValues("productFile");
+      if (currentValue && currentValue.startsWith("blob:")) {
+        URL.revokeObjectURL(currentValue);
       }
 
-      // Clear the form value and mark as dirty
-      form.setValue("productFile", null, {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      });
+      if (setProcessedFile) {
+        setProcessedFile(null);
+      }
     }
+
+    // If there's an existing file URL, we still need to clean it up on the server
+    // But only if the product was already created (we'll handle this in cleanup)
+    const fileToCleanup = existingFileUrl || currentFileUrl;
+    if (fileToCleanup && fileToCleanup.startsWith("http")) {
+      // This is an existing uploaded file - we'll clean it up in the cleanup action
+      // For now, just remove it from the form
+    }
+
+    // Clear the form value
+    form.setValue("productFile", null, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    toast.success("File removed");
+  };
+
+  // Display the file name (either from processed file or existing URL)
+  const getFileName = () => {
+    if (processedFile) {
+      return processedFile.originalName;
+    }
+    if (existingFileUrl || currentFileUrl) {
+      // Extract filename from URL or use a generic name
+      const url = existingFileUrl || currentFileUrl;
+      if (url.startsWith("blob:")) {
+        return "Selected file";
+      }
+      // Try to extract filename from URL
+      const urlParts = url.split("/");
+      return urlParts[urlParts.length - 1] || "Product file";
+    }
+    return null;
   };
 
   return (
@@ -57,10 +140,26 @@ export function ProductFileSection({
         <div className="flex flex-col gap-y-2">
           <Label>Product File</Label>
 
-          {currentFile ? (
+          {hasFile ? (
             <div className="flex items-center gap-x-2">
-              <span className="text-sm text-muted-foreground truncate">
-                Current file: {currentFile}
+              <span className="text-sm text-muted-foreground truncate flex-1">
+                {existingFileUrl && !processedFile ? (
+                  <>
+                    Current file:{" "}
+                    <span className="font-medium">{getFileName()}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Already uploaded)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Selected file:{" "}
+                    <span className="font-medium">{getFileName()}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Will upload on save)
+                    </span>
+                  </>
+                )}
               </span>
               <Button
                 type="button"
@@ -73,33 +172,28 @@ export function ProductFileSection({
               </Button>
             </div>
           ) : (
-            <UploadDropzone
-              endpoint="productFileUpload"
-              onClientUploadComplete={(res) => {
-                if (res && res.length > 0) {
-                  const fileUrl = res[0].url || res[0].ufsUrl;
-                  const updatedFiles = [...tempFiles, fileUrl];
-
-                  // Update both states
-                  setTempFiles(updatedFiles);
-                  form.setValue("productFile", fileUrl, {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                    shouldValidate: true,
-                  });
-
-                  // Mark that temporary uploads have been created
-                  if (setTempUploadsCreated) {
-                    setTempUploadsCreated(true);
-                  }
-
-                  toast.success("Your product file has been uploaded!");
-                }
-              }}
-              onUploadError={(error: Error) => {
-                toast.error("Something went wrong, try again");
-              }}
-            />
+            <div className="flex flex-col gap-2">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="product-file-input"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Select PDF File
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                File will be uploaded when you save the product
+              </p>
+            </div>
           )}
         </div>
       )}

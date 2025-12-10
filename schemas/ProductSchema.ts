@@ -108,7 +108,7 @@ const baseProductSchema = z.object({
   stock: z
     .number()
     .int()
-    .min(1, "Stock is required and must be at least 1 for physical products.")
+    .min(0, "Stock must be non-negative")
     .optional()
     .nullable()
     .transform((stock) => (stock === null ? undefined : stock)),
