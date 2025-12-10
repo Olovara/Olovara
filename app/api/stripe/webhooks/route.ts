@@ -92,10 +92,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No signature" }, { status: 400 });
     }
 
+    // Support multiple webhook secrets (for different webhook endpoints pointing to same route)
+    // Primary secret (for main webhook)
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    // Secondary secret (for ConnectedAccounts webhook - if different)
+    const connectWebhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   
-    if (!webhookSecret) {
+    if (!webhookSecret && !connectWebhookSecret) {
       console.error("❌ No webhook secret found in environment variables");
+      console.error("❌ Need either STRIPE_WEBHOOK_SECRET or STRIPE_CONNECT_WEBHOOK_SECRET");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
@@ -105,20 +110,85 @@ export async function POST(req: Request) {
     // Log the signature and first few characters of the body for debugging
     console.log("🔍 Webhook signature:", sig);
     console.log("🔍 Webhook body preview:", rawBody.substring(0, 100));
+    const secretStatus = {
+      STRIPE_WEBHOOK_SECRET: webhookSecret ? "EXISTS" : "MISSING",
+      STRIPE_CONNECT_WEBHOOK_SECRET: connectWebhookSecret ? "EXISTS" : "MISSING"
+    };
+    console.log("🔍 Webhook secret status:", secretStatus);
 
-    let event;
-    try {
-      event = stripeWebhook.instance.webhooks.constructEvent(
-        rawBody,
-        sig,
-        webhookSecret
-      );
-      console.log(`✅ Webhook verified: ${event.type}`);
-    } catch (err: any) {
-      console.error("❌ Stripe Webhook Error:", err.message);
-      console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
+    let event: Stripe.Event | undefined;
+    let usedSecret = "unknown";
+    
+    // Try primary secret first
+    if (webhookSecret) {
+      try {
+        event = stripeWebhook.instance.webhooks.constructEvent(
+          rawBody,
+          sig,
+          webhookSecret
+        );
+        usedSecret = "STRIPE_WEBHOOK_SECRET";
+        console.log(`✅ Webhook verified with primary secret: ${event.type}`);
+      } catch (err: any) {
+        console.log(`⚠️ Primary secret verification failed, trying secondary secret...`);
+        // If primary fails and we have a secondary secret, try that
+        if (connectWebhookSecret) {
+          try {
+            event = stripeWebhook.instance.webhooks.constructEvent(
+              rawBody,
+              sig,
+              connectWebhookSecret
+            );
+            usedSecret = "STRIPE_CONNECT_WEBHOOK_SECRET";
+            console.log(`✅ Webhook verified with secondary secret: ${event.type}`);
+          } catch (err2: any) {
+            console.error("❌ Both webhook secrets failed verification");
+            console.error("❌ Primary secret error:", err.message);
+            console.error("❌ Secondary secret error:", err2.message);
+            console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
+            console.error("❌ Each webhook endpoint in Stripe has its own signing secret.");
+            console.error("❌ If you have multiple webhooks, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var.");
+            return NextResponse.json(
+              { error: `Webhook Error: Signature verification failed` },
+              { status: 400 }
+            );
+          }
+        } else {
+          // No secondary secret, primary failed
+          console.error("❌ Stripe Webhook Error:", err.message);
+          console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
+          console.error("❌ If you have multiple webhooks pointing to this endpoint, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var.");
+          return NextResponse.json(
+            { error: `Webhook Error: ${err.message}` },
+            { status: 400 }
+          );
+        }
+      }
+    } else if (connectWebhookSecret) {
+      // Only secondary secret available
+      try {
+        event = stripeWebhook.instance.webhooks.constructEvent(
+          rawBody,
+          sig,
+          connectWebhookSecret
+        );
+        usedSecret = "STRIPE_CONNECT_WEBHOOK_SECRET";
+        console.log(`✅ Webhook verified with secondary secret: ${event.type}`);
+      } catch (err: any) {
+        console.error("❌ Stripe Webhook Error:", err.message);
+        console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
+        return NextResponse.json(
+          { error: `Webhook Error: ${err.message}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Ensure event was successfully verified
+    if (!event) {
+      console.error("❌ Webhook event verification failed - no event created");
       return NextResponse.json(
-        { error: `Webhook Error: ${err.message}` },
+        { error: "Webhook verification failed" },
         { status: 400 }
       );
     }

@@ -35,7 +35,7 @@ import { ProductOptionsSection } from "@/components/product/productOptions";
 import { ProductShippingSection } from "@/components/product/productShipping";
 import { ProductInventorySection } from "@/components/product/productInventory";
 import { ProductHowItsMadeSection } from "@/components/product/productHowMade";
-import { ProductFileSection } from "@/components/product/productFile";
+import { ProductFileSection, ProcessedFile } from "@/components/product/productFile";
 
 // Create a simplified schema that matches the product components but excludes advanced features
 const FirstProductSchema = z.object({
@@ -161,7 +161,7 @@ export default function CreateFirstProductForm() {
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
-  const [tempFiles, setTempFiles] = useState<string[]>([]);
+  const [processedFile, setProcessedFile] = useState<ProcessedFile | null>(null);
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([]);
 
   const form = useForm<FirstProductFormValues>({
@@ -483,9 +483,9 @@ export default function CreateFirstProductForm() {
 
                   <ProductFileSection
                     form={form as any}
-                    tempFiles={tempFiles}
-                    setTempFiles={setTempFiles}
-                    setTempUploadsCreated={setTempUploadsCreated}
+                    processedFile={processedFile}
+                    setProcessedFile={setProcessedFile}
+                    existingFileUrl={null}
                   />
                 </div>
               </div>
