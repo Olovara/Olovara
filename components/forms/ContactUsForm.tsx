@@ -96,9 +96,9 @@ const ContactUsFormContent = () => {
   };
 
   const handleRecaptchaSuccess = (token: string) => {
-    // Prevent duplicate submissions if already processing
-    if (isSubmitting && !isRetryAttempt) {
-      console.warn("[CONTACT_US_FORM] Already submitting, ignoring duplicate reCAPTCHA success");
+    // If we already have a token and this isn't a retry, it's a duplicate callback
+    if (recaptchaToken && !isRetryAttempt) {
+      console.warn("[CONTACT_US_FORM] Already have a token, ignoring duplicate reCAPTCHA success");
       return;
     }
 

@@ -196,14 +196,19 @@ export const sendContactResponseEmail = async (
       'PAYMENT': 'Payment Problem',
       'FEATURE': 'Feature Request',
       'BUG': 'Bug Report',
-      'OTHER': 'Inquiry',
+      'OTHER': 'Other',
     };
     const reasonLabel = reasonLabels[reason] || 'Inquiry';
 
+    // Validate email address before sending
+    if (!customerEmail || !customerEmail.includes('@')) {
+      throw new Error(`Invalid customer email address: ${customerEmail}`);
+    }
+
     const response = await resend.emails.send({
       from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
-      to: customerEmail,
-      subject: `Re: Your ${reasonLabel} Inquiry`,
+      to: customerEmail, // Sending TO the customer who submitted the form - VERIFY THIS IS CORRECT
+      subject: `Your ${reasonLabel} Inquiry`,
       react: ContactResponseEmail({
         customerName,
         originalMessage,
@@ -213,12 +218,6 @@ export const sendContactResponseEmail = async (
       replyTo: "support@yarnnu.com", // Allow replies to go to support email
     });
     
-    console.log("[CONTACT_RESPONSE] Email sent successfully:", {
-      customerEmail,
-      customerName,
-      reason,
-      timestamp: new Date().toISOString(),
-    });
     
     return response;
   } catch (error) {

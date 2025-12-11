@@ -8,7 +8,7 @@ import {
   ADMIN_NOTIFICATION_TYPES,
   INITIAL_SELLER_PERMISSIONS
 } from "@/data/roles-and-permissions";
-import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail, sendContactResponseEmail } from "@/lib/mail";
+import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
 import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
 import { updateOnboardingStep, initializeOnboardingSteps } from "@/lib/onboarding";
@@ -1667,66 +1667,6 @@ export async function getContactSubmissionById(id: string) {
   }
 }
 
-// Send email response to a contact submission
-// Always sends from support@yarnnu.com regardless of which admin sends it
-export async function sendContactResponse(
-  submissionId: string,
-  responseMessage: string
-) {
-  try {
-    const currentUserData = await currentUserWithPermissions();
-
-    if (!currentUserData) {
-      return { error: "Not authenticated" };
-    }
-
-    // Check if user has MANAGE_CONTENT permission
-    const hasManageContent = currentUserData.permissions?.includes('MANAGE_CONTENT');
-    
-    if (!hasManageContent) {
-      return { error: "Forbidden: Insufficient permissions" };
-    }
-
-    // Validate response message
-    if (!responseMessage || responseMessage.trim().length < 10) {
-      return { error: "Response message must be at least 10 characters long" };
-    }
-
-    // Get the contact submission
-    const submission = await db.contactUs.findUnique({
-      where: { id: submissionId },
-    });
-
-    if (!submission) {
-      return { error: "Contact submission not found" };
-    }
-
-    // Send the email response (always from support@yarnnu.com)
-    await sendContactResponseEmail(
-      submission.email,
-      submission.name,
-      submission.helpDescription,
-      responseMessage.trim(),
-      submission.reason
-    );
-
-    console.log("[CONTACT_RESPONSE] Response sent successfully", {
-      submissionId,
-      customerEmail: submission.email,
-      adminId: currentUserData.id,
-      timestamp: new Date().toISOString(),
-    });
-
-    return { success: "Response email sent successfully" };
-  } catch (error) {
-    console.error("[CONTACT_RESPONSE] Error sending response:", error);
-    return { 
-      error: error instanceof Error 
-        ? error.message 
-        : "Failed to send response email. Please try again." 
-    };
-  }
-}
 
 export async function updateUserRole(
   userId: string,

@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState, useTransition } from "react";
-import { sendContactResponse } from "@/actions/adminActions";
+import { sendContactResponse } from "@/actions/contact-response";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 
