@@ -190,7 +190,7 @@ export const sendContactResponseEmail = async (
     // Get reason label for subject line
     const reasonLabels: { [key: string]: string } = {
       'BILLING': 'Billing',
-      'GENERAL': 'General Inquiry',
+      'GENERAL': 'General Support',
       'LISTING': 'Listing Issue',
       'ACCOUNT': 'Account Support',
       'PAYMENT': 'Payment Problem',

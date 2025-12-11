@@ -130,11 +130,11 @@ const originalMessageText = {
 };
 
 const responseSection = {
-  backgroundColor: "#fff3cd",
+  backgroundColor: "#f3e8ff", // Light purple background
   padding: "16px",
   borderRadius: "6px",
   margin: "20px 0",
-  border: "1px solid #ffc107",
+  border: "1px solid #8b5cf6", // Purple border
 };
 
 const responseText = {
