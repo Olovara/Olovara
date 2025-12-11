@@ -143,8 +143,17 @@ const baseProductSchema = z.object({
     .union([z.date(), z.string()])
     .optional()
     .transform((value) => {
+      // Handle empty strings and null/undefined
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
       if (typeof value === "string") {
-        return new Date(value); // Convert string to Date
+        const date = new Date(value);
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          return undefined;
+        }
+        return date;
       }
       return value;
     }),
@@ -269,31 +278,42 @@ export const ProductSchema = baseProductSchema
       });
     }
 
-    if (data.onSale && data.discountEndDate === undefined) {
-      console.log("Validation Error: Discount end date required when on sale.");
-      ctx.addIssue({
-        code: "custom",
-        message: "Discount end date is required when the product is on sale.",
-        path: ["discount"],
-      });
+    if (data.onSale) {
+      if (!data.discountEndDate || (data.discountEndDate instanceof Date && isNaN(data.discountEndDate.getTime()))) {
+        console.log("Validation Error: Discount end date required when on sale.");
+        ctx.addIssue({
+          code: "custom",
+          message: "Discount end date is required when the product is on sale.",
+          path: ["discountEndDate"],
+        });
+      }
+      if (!data.discountEndTime || data.discountEndTime.trim() === "") {
+        console.log("Validation Error: Discount end time required when on sale.");
+        ctx.addIssue({
+          code: "custom",
+          message: "Discount end time is required when the product is on sale.",
+          path: ["discountEndTime"],
+        });
+      }
     }
 
-    if (data.onSale && data.discountEndTime === undefined) {
-      console.log("Validation Error: Discount end time required when on sale.");
-      ctx.addIssue({
-        code: "custom",
-        message: "Discount end time is required when the product is on sale.",
-        path: ["discountEndTime"],
-      });
-    }
-
-    if (data.productDrop && data.dropTime === undefined) {
-      console.log("Validation Error: Drop time required for product drops.");
-      ctx.addIssue({
-        code: "custom",
-        message: "Drop time is required for product drops.",
-        path: ["dropTime"],
-      });
+    if (data.productDrop) {
+      if (!data.dropDate) {
+        console.log("Validation Error: Drop date required for product drops.");
+        ctx.addIssue({
+          code: "custom",
+          message: "Drop date is required for product drops.",
+          path: ["dropDate"],
+        });
+      }
+      if (!data.dropTime || data.dropTime.trim() === "") {
+        console.log("Validation Error: Drop time required for product drops.");
+        ctx.addIssue({
+          code: "custom",
+          message: "Drop time is required for product drops.",
+          path: ["dropTime"],
+        });
+      }
     }
 
     if (

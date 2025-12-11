@@ -23,6 +23,8 @@ type DropSectionProps = {
 };
 
 export function ProductDropSection({ form }: DropSectionProps) {
+  const productDrop = form.watch("productDrop");
+
   // Sync date with form when selected
   const handleDateChange = (selectedDate: Date | undefined) => {
     form.setValue("dropDate", selectedDate || null); // Update form value
@@ -32,6 +34,14 @@ export function ProductDropSection({ form }: DropSectionProps) {
   const handleTimeChange = (time: string) => {
     form.setValue("dropTime", time); // Update form value
   };
+
+  // Clear drop date and time when productDrop is unchecked
+  React.useEffect(() => {
+    if (!productDrop) {
+      form.setValue("dropDate", null);
+      form.setValue("dropTime", "");
+    }
+  }, [productDrop, form]);
 
   return (
     <div className="mt-6">
@@ -85,7 +95,7 @@ export function ProductDropSection({ form }: DropSectionProps) {
                       mode="single"
                       selected={field.value}
                       onSelect={(date) => {
-                        field.onChange(date);
+                        field.onChange(date || null);
                         handleDateChange(date);
                       }}
                       initialFocus

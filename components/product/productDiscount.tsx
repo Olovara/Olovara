@@ -26,16 +26,34 @@ type DiscountSectionProps = {
 
 export function ProductDiscountSection({ form }: DiscountSectionProps) {
   const { control, watch, register, setValue } = form;
-  const [date, setDate] = React.useState<Date | undefined>(undefined);
+  const discountEndDate = watch("discountEndDate");
+  const [date, setDate] = React.useState<Date | undefined>(
+    discountEndDate instanceof Date ? discountEndDate : undefined
+  );
 
   // Watch the onSale state
   const onSale = watch("onSale");
+
+  // Sync local date state with form value
+  React.useEffect(() => {
+    if (discountEndDate instanceof Date) {
+      setDate(discountEndDate);
+    } else if (typeof discountEndDate === "string" && discountEndDate) {
+      const parsedDate = new Date(discountEndDate);
+      if (!isNaN(parsedDate.getTime())) {
+        setDate(parsedDate);
+      }
+    } else {
+      setDate(undefined);
+    }
+  }, [discountEndDate]);
 
   React.useEffect(() => {
     // Reset discount end date and time when the sale status changes
     if (!onSale) {
       setValue("discountEndDate", undefined);
-      setValue("discountEndTime", undefined);
+      setValue("discountEndTime", "");
+      setDate(undefined);
     }
   }, [onSale, setValue]);
 
@@ -97,6 +115,9 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
                     setDate(selectedDate);
                     if (selectedDate) {
                       setValue("discountEndDate", selectedDate);
+                    } else {
+                      // Clear the date if deselected
+                      setValue("discountEndDate", undefined);
                     }
                   }}
                   initialFocus

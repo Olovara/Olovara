@@ -136,7 +136,51 @@ const FirstProductSchema = z.object({
   smallPartsWarning: z.boolean().default(false),
   chemicalWarnings: z.string().optional(),
   onSale: z.boolean().default(false),
+  discount: z.number().int().optional(),
   NSFW: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  // Validate product drop fields when productDrop is true
+  if (data.productDrop) {
+    if (!data.dropDate || (typeof data.dropDate === "string" && data.dropDate.trim() === "")) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Drop date is required for product drops.",
+        path: ["dropDate"],
+      });
+    }
+    if (!data.dropTime || data.dropTime.trim() === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Drop time is required for product drops.",
+        path: ["dropTime"],
+      });
+    }
+  }
+
+  // Validate discount fields when onSale is true
+  if (data.onSale) {
+    if (data.discount === undefined || data.discount === null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Discount is required when the product is on sale.",
+        path: ["discount"],
+      });
+    }
+    if (!data.discountEndDate || (typeof data.discountEndDate === "string" && data.discountEndDate.trim() === "")) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Discount end date is required when the product is on sale.",
+        path: ["discountEndDate"],
+      });
+    }
+    if (!data.discountEndTime || data.discountEndTime.trim() === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Discount end time is required when the product is on sale.",
+        path: ["discountEndTime"],
+      });
+    }
+  }
 });
 
 type FirstProductFormValues = z.infer<typeof FirstProductSchema>;
@@ -213,6 +257,7 @@ export default function CreateFirstProductForm() {
       taxCategory: "PHYSICAL_GOODS",
       taxExempt: false,
       onSale: false,
+      discount: undefined,
       NSFW: false,
       chokingHazard: false,
       smallPartsWarning: false,
