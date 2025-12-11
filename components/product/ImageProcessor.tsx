@@ -27,6 +27,7 @@ export type ProcessedImage = {
   preview: string; // Data URL for preview
   originalName: string; // Original filename
   originalFileIndex?: number; // Index in fileQueue to track which original file this came from
+  uploadSessionId?: string; // Unique ID for the upload session to prevent replacing images from different sessions
 };
 
 type ImageProcessorProps = {
@@ -44,12 +45,15 @@ export function ImageProcessor({
 }: ImageProcessorProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   // Initialize with previously processed images from parent
-  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>(initialProcessedImages);
+  // Use function initializer to capture initial value and prevent re-initialization
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>(() => initialProcessedImages);
   const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
   // Track all files in the processing queue (for navigation)
   const [fileQueue, setFileQueue] = useState<File[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+  // Track unique upload session ID to prevent replacing images from different upload sessions
+  const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
   
   // Store crop state and watermark settings for each image
   type ImageCropState = {
@@ -126,67 +130,68 @@ export function ImageProcessor({
     };
   }, []);
 
-  // Sync initialProcessedImages from parent when it changes
-  // This ensures previously processed images are restored when dialog reopens
-  // We merge them with existing processedImages to avoid losing newly processed images
-  // IMPORTANT: Recreate blob URLs from File objects to ensure they're valid
-  const prevInitialProcessedImagesRef = React.useRef<string>("");
+  // Track if component has mounted - after mount, state is completely independent
+  // We NEVER sync from initialProcessedImages after mount to prevent overwriting
+  const hasMountedRef = React.useRef(false);
+  // Track current processed images in a ref to prevent accidental clearing
+  const processedImagesRef = React.useRef<ProcessedImage[]>([]);
+  
+  // Sync ref with state and log changes
   React.useEffect(() => {
-    // Only process if initialProcessedImages actually changed
-    const currentKey = JSON.stringify(initialProcessedImages.map((img) => img.id));
-    const prevKey = prevInitialProcessedImagesRef.current;
+    const prevCount = processedImagesRef.current.length;
+    const newCount = processedImages.length;
+    const prevIds = processedImagesRef.current.map(img => img.id);
+    const newIds = processedImages.map(img => img.id);
     
-    if (initialProcessedImages.length > 0 && currentKey !== prevKey) {
-      prevInitialProcessedImagesRef.current = currentKey;
-      
-      setProcessedImages((prev) => {
-        // Create a map of current images by ID (preserve newly processed images with valid blob URLs)
-        const currentMap = new Map(prev.map((img) => [img.id, img]));
-        
-        // Add images from initialProcessedImages that we don't already have
-        // This restores previously processed images without overwriting new ones
-        initialProcessedImages.forEach((img) => {
-          const existing = currentMap.get(img.id);
-          
-          // Only restore if we don't already have this image, or if the existing one has an invalid blob URL
-          if (!existing) {
-            // Always recreate blob URL from File object to ensure it's valid
-            // Blob URLs can become invalid when the page state changes
-            let preview = img.preview;
-            
-            // If we have a valid File object, recreate the blob URL
-            if (img.file && img.file.size > 0) {
-              // Revoke old blob URL if it exists and is different
-              if (preview.startsWith("blob:") && preview !== img.originalName) {
-                try {
-                  URL.revokeObjectURL(preview);
-                } catch (e) {
-                  // Ignore errors if URL was already revoked
-                }
-              }
-              // Create new blob URL from File object
-              preview = URL.createObjectURL(img.file);
-            }
-            
-            // Create restored image with new blob URL
-            const restoredImage: ProcessedImage = {
-              ...img,
-              preview,
-            };
-            
-            currentMap.set(img.id, restoredImage);
-          } else if (existing && existing.preview.startsWith("blob:")) {
-            // We already have this image, but check if the blob URL is still valid
-            // If the existing image has a blob URL, keep it (it's already valid)
-            // Don't overwrite it
-          }
-        });
-        
-        // Return all images
-        return Array.from(currentMap.values());
+    if (prevCount !== newCount || JSON.stringify(prevIds) !== JSON.stringify(newIds)) {
+      console.log('[ImageProcessor] processedImages STATE CHANGED:', {
+        prevCount,
+        newCount,
+        prevIds,
+        newIds,
+        added: newIds.filter(id => !prevIds.includes(id)),
+        removed: prevIds.filter(id => !newIds.includes(id)),
+        stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
       });
     }
+    processedImagesRef.current = processedImages;
+  }, [processedImages]);
+  
+  // Log when initialProcessedImages prop changes
+  React.useEffect(() => {
+    console.log('[ImageProcessor] initialProcessedImages PROP CHANGED:', {
+      count: initialProcessedImages.length,
+      ids: initialProcessedImages.map(img => img.id),
+      hasMounted: hasMountedRef.current,
+      currentStateCount: processedImagesRef.current.length,
+      currentStateIds: processedImagesRef.current.map(img => img.id)
+    });
   }, [initialProcessedImages]);
+  
+  // Only initialize from initialProcessedImages on first mount
+  // After that, processedImages state is completely independent
+  React.useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      console.log('[ImageProcessor] COMPONENT MOUNTED:', {
+        initialProcessedImagesCount: initialProcessedImages.length,
+        initialProcessedImagesIds: initialProcessedImages.map(img => img.id)
+      });
+      // On mount, initialize with initialProcessedImages if provided
+      // After this, we never touch initialProcessedImages again
+      if (initialProcessedImages.length > 0) {
+        console.log('[ImageProcessor] Initializing state from initialProcessedImages');
+        setProcessedImages(initialProcessedImages);
+        processedImagesRef.current = initialProcessedImages;
+      } else {
+        console.log('[ImageProcessor] No initialProcessedImages, starting with empty state');
+      }
+    } else {
+      console.log('[ImageProcessor] initialProcessedImages changed but component already mounted - IGNORING');
+    }
+    // After mount, we completely ignore initialProcessedImages prop changes
+    // This prevents parent updates from overwriting our newly processed images
+  }, []); // Empty deps - only run once on mount
 
   // Convert existing image URLs to ProcessedImage format (for editing mode)
   // These are already uploaded, so we'll keep them as-is
@@ -212,24 +217,38 @@ export function ImageProcessor({
         return;
       }
 
-      // Check total image count
-      const totalImages =
-        processedImages.length +
-        existingProcessedImages.length +
-        imageFiles.length;
-      if (totalImages > maxImages) {
+      // Calculate how many images we can still add
+      const currentTotal = processedImages.length + existingProcessedImages.length;
+      const remainingSlots = maxImages - currentTotal;
+
+      if (remainingSlots <= 0) {
         toast.error(`Maximum ${maxImages} images allowed`);
         return;
       }
 
+      // Trim imageFiles to fit within the max limit
+      const filesToProcess = imageFiles.slice(0, remainingSlots);
+      
+      if (imageFiles.length > remainingSlots) {
+        toast.warning(
+          `Only ${remainingSlots} image${remainingSlots > 1 ? 's' : ''} can be added. ${imageFiles.length - remainingSlots} image${imageFiles.length - remainingSlots > 1 ? 's were' : ' was'} ignored.`
+        );
+      }
+
       // Start processing first image
-      if (imageFiles.length > 0) {
+      if (filesToProcess.length > 0) {
+        // Generate unique upload session ID for this batch of files
+        // This prevents replacing images from previous upload sessions
+        const newSessionId = `session-${Date.now()}-${Math.random()}`;
+        setUploadSessionId(newSessionId);
+        console.log('[ImageProcessor] Starting new upload session:', newSessionId);
+        
         // Store all files in queue for navigation
-        setFileQueue(imageFiles);
-        setCurrentCropFile(imageFiles[0]);
+        setFileQueue(filesToProcess);
+        setCurrentCropFile(filesToProcess[0]);
         setCurrentFileIndex(0);
         setCroppingIndex(processedImages.length);
-        setSelectedFiles(imageFiles.slice(1)); // Store remaining files for backward compatibility
+        setSelectedFiles(filesToProcess.slice(1)); // Store remaining files for backward compatibility
         // Initialize watermark settings for first image (always use shop name)
         setWatermarkEnabled(false);
         setWatermarkText(shopName || ""); // Store shopName in state for consistency
@@ -508,6 +527,17 @@ export function ImageProcessor({
     if (!currentCropFile) return;
 
     try {
+      // Step 0: Check if we've reached max images limit (safety check)
+      const currentTotal = processedImages.length + existingProcessedImages.length;
+      if (currentTotal >= maxImages) {
+        toast.error(`Maximum ${maxImages} images reached`);
+        setCurrentCropFile(null);
+        setCroppingIndex(null);
+        setFileQueue([]);
+        setCurrentFileIndex(0);
+        return;
+      }
+
       // Step 0: Save current state before processing (captures final crop position)
       // Use a small delay to ensure cropper is ready
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -529,31 +559,81 @@ export function ImageProcessor({
       // Step 4: Create preview
       const preview = URL.createObjectURL(processedFile);
 
-      // Step 5: Add to processed images (or replace if already exists)
+      // Step 5: Add to processed images (or replace if already exists in SAME upload session)
       const newProcessedImage: ProcessedImage = {
         id: `processed-${Date.now()}-${Math.random()}`,
         file: processedFile,
         preview,
         originalName: currentCropFile.name,
         originalFileIndex: currentFileIndex, // Track which file in queue this came from
+        // Store upload session ID to prevent replacing images from different sessions
+        uploadSessionId: uploadSessionId || undefined,
       };
 
       setProcessedImages((prev) => {
-        // Check if we already have a processed image from this same original file
-        const existingIndex = prev.findIndex(
-          (img) => img.originalFileIndex === currentFileIndex
-        );
+        // CRITICAL: Always preserve existing images - never reset the array
+        // This ensures previously processed images are never lost
+        
+        console.log('[ImageProcessor] setProcessedImages CALLED in processCurrentImage:', {
+          prevCount: prev.length,
+          prevIds: prev.map(img => img.id),
+          newImageId: newProcessedImage.id,
+          newImageName: newProcessedImage.originalName,
+          currentFileIndex,
+          uploadSessionId,
+          existingProcessedImagesCount: existingProcessedImages.length
+        });
+        
+        // Only replace if we have a processed image from the SAME file in the SAME upload session
+        // This prevents replacing images from previous upload sessions
+        // CRITICAL: Never replace existing images (those with "existing-" prefix)
+        const existingIndex = prev.findIndex((img) => {
+          // Never match existing images (already uploaded images)
+          if (img.id.startsWith("existing-")) {
+            return false;
+          }
+          // Only replace if same file index AND same upload session
+          return img.originalFileIndex === currentFileIndex && 
+                 img.uploadSessionId === uploadSessionId &&
+                 uploadSessionId !== null; // Only replace if we're in the same session
+        });
         
         if (existingIndex >= 0) {
-          // Replace the existing processed image
+          // Replace the existing processed image (same file, same session, reprocessed)
+          console.log('[ImageProcessor] Replacing existing image at index:', existingIndex, '(same session)');
           const updated = [...prev];
           // Clean up the old preview URL to prevent memory leaks
           URL.revokeObjectURL(updated[existingIndex].preview);
           updated[existingIndex] = newProcessedImage;
+          console.log('[ImageProcessor] After replacement:', {
+            count: updated.length,
+            ids: updated.map(img => img.id)
+          });
           return updated;
         } else {
-          // Add new processed image
-          return [...prev, newProcessedImage];
+          // Safety check: Don't add if we've reached max images
+          const newTotal = prev.length + existingProcessedImages.length + 1;
+          if (newTotal > maxImages) {
+            console.log('[ImageProcessor] Max images reached, not adding');
+            toast.error(`Maximum ${maxImages} images reached`);
+            URL.revokeObjectURL(preview); // Clean up the preview URL
+            return prev; // Return existing state unchanged
+          }
+          // IMPORTANT: Add new processed image to existing ones (don't replace)
+          // This ensures previously processed images are preserved
+          // Always create a new array to trigger React update
+          const newState = [...prev, newProcessedImage];
+          // Update ref immediately to track current state
+          processedImagesRef.current = newState;
+          console.log('[ImageProcessor] ADDING NEW IMAGE:', {
+            prevCount: prev.length,
+            newCount: newState.length,
+            prevIds: prev.map(img => img.id),
+            newId: newProcessedImage.id,
+            allNewIds: newState.map(img => img.id),
+            stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+          });
+          return newState;
         }
       });
 
@@ -571,6 +651,7 @@ export function ImageProcessor({
         setCroppingIndex(null);
         setFileQueue([]);
         setCurrentFileIndex(0);
+        setUploadSessionId(null); // Clear session ID
         setImageStates(new Map()); // Clear saved states
         toast.success("All images processed successfully");
       }
@@ -587,10 +668,18 @@ export function ImageProcessor({
     compressImage,
     saveCurrentImageState,
     navigateToImage,
+    processedImages.length,
+    existingProcessedImages.length,
+    maxImages,
   ]);
 
   // Remove processed image
   const removeImage = useCallback((id: string) => {
+    console.log('[ImageProcessor] removeImage CALLED:', {
+      idToRemove: id,
+      currentCount: processedImagesRef.current.length,
+      currentIds: processedImagesRef.current.map(img => img.id)
+    });
     setProcessedImages((prev) => {
       const image = prev.find((img) => img.id === id);
       if (image && image.preview.startsWith("blob:")) {
@@ -600,8 +689,17 @@ export function ImageProcessor({
           // Ignore errors if URL was already revoked
         }
       }
-      return prev.filter((img) => img.id !== id);
+      const filtered = prev.filter((img) => img.id !== id);
+      console.log('[ImageProcessor] After removal:', {
+        prevCount: prev.length,
+        newCount: filtered.length,
+        removedId: id,
+        remainingIds: filtered.map(img => img.id)
+      });
+      return filtered;
     });
+    // The existing useEffect at line 709 will automatically notify parent
+    // when processedImages changes, so we don't need to do it here
   }, []);
   
 
@@ -697,9 +795,21 @@ export function ImageProcessor({
 
     // Only call onImagesProcessed if something actually changed
     if (currentKey !== prevKey) {
+      console.log('[ImageProcessor] NOTIFYING PARENT (onImagesProcessed):', {
+        prevKey,
+        currentKey,
+        processedCount: processedImages.length,
+        processedIds: processedImages.map(img => img.id),
+        existingCount: existingProcessedImages.length,
+        existingIds: existingProcessedImages.map(img => img.id),
+        allImagesCount: allImages.length,
+        allImagesIds: allImages.map(img => img.id)
+      });
       prevProcessedImagesRef.current = currentKey;
       // Use ref to call callback to avoid dependency issues
       onImagesProcessedRef.current(allImages);
+    } else {
+      console.log('[ImageProcessor] No change detected, not notifying parent');
     }
   }, [processedImages, existingProcessedImages, allImages]);
 

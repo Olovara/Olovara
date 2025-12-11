@@ -67,6 +67,14 @@ export function ProductPhotosSection({
   // Handle when images are processed (but not yet uploaded)
   const handleImagesProcessed = useCallback(
     (processed: ProcessedImage[]) => {
+      console.log('[ProductPhotosSection] handleImagesProcessed CALLED:', {
+        processedCount: processed.length,
+        processedIds: processed.map(img => img.id),
+        processedPreviews: processed.map(img => img.preview.substring(0, 50) + '...'),
+        existingCount: processed.filter(img => img.id.startsWith("existing-")).length,
+        newCount: processed.filter(img => !img.id.startsWith("existing-")).length
+      });
+      
       // Create a stable key to compare (preserve order)
       const currentKey = JSON.stringify(
         processed.map((img) => ({ id: img.id, preview: img.preview }))
@@ -75,9 +83,11 @@ export function ProductPhotosSection({
 
       // Only update if something actually changed
       if (currentKey === prevKey) {
+        console.log('[ProductPhotosSection] No change detected, skipping update');
         return;
       }
 
+      console.log('[ProductPhotosSection] Change detected, updating parent state');
       prevProcessedRef.current = currentKey;
 
       // Update form with all image URLs (existing + new previews)
@@ -89,6 +99,10 @@ export function ProductPhotosSection({
       const currentUrls = JSON.stringify(images);
       const newUrls = JSON.stringify(allImageUrls);
       if (currentUrls !== newUrls) {
+        console.log('[ProductPhotosSection] Updating images state:', {
+          currentUrlsCount: images.length,
+          newUrlsCount: allImageUrls.length
+        });
         setImages(allImageUrls);
         form.setValue("images", allImageUrls, {
           shouldDirty: true,
@@ -104,27 +118,16 @@ export function ProductPhotosSection({
         (img) => !img.id.startsWith("existing-")
       );
       if (setProcessedImages) {
-        // The processed array from ImageProcessor should contain ALL processed images
-        // (both previously processed and newly processed). We use a functional update
-        // to merge with existing images as a safety measure, ensuring we never lose
-        // previously processed images even if ImageProcessor state was reset
-        setProcessedImages((prev) => {
-          // Create a map of all processed images by their ID to avoid duplicates
-          const allImagesMap = new Map<string, ProcessedImage>();
-          
-          // First, add all previous images (preserves images if ImageProcessor was reset)
-          prev.forEach((img) => {
-            allImagesMap.set(img.id, img);
-          });
-          
-          // Then, add or update with all new processed images (overwrites with latest version)
-          newProcessedImages.forEach((img) => {
-            allImagesMap.set(img.id, img);
-          });
-          
-          // Return all unique processed images
-          return Array.from(allImagesMap.values());
+        console.log('[ProductPhotosSection] UPDATING PARENT processedImages:', {
+          newProcessedImagesCount: newProcessedImages.length,
+          newProcessedImagesIds: newProcessedImages.map(img => img.id),
+          action: 'REPLACING ENTIRE ARRAY',
+          stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
         });
+        // IMPORTANT: Replace the entire processedImages array instead of merging
+        // This ensures that when images are removed, they stay removed
+        // The processed array from ImageProcessor contains the current state of all images
+        setProcessedImages(newProcessedImages);
       }
 
       // Update existing images ref if the order changed
