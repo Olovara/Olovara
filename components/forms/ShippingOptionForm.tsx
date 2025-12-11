@@ -35,6 +35,7 @@ import { getCountryByCode, SUPPORTED_COUNTRIES } from "@/data/countries";
 import {
   getAvailableZones,
   getAvailableCountries,
+  getAvailableCountriesForExceptions,
 } from "@/lib/filter-shipping-options";
 
 interface ShippingRate {
@@ -366,7 +367,10 @@ export default function ShippingOptionForm({
               console.log("Excluded countries:", excludedCountries);
             }
             const availableZones = getAvailableZones(excludedCountries);
-            const availableCountries = getAvailableCountries(excludedCountries);
+            // Use getAvailableCountriesForExceptions for country exceptions
+            // This allows sellers to add country-specific exceptions even if the entire zone is excluded
+            // For example, a seller can add a US exception even if North America zone is excluded
+            const availableCountries = getAvailableCountriesForExceptions(excludedCountries);
             if (process.env.NODE_ENV === "development") {
               console.log("Available zones:", availableZones);
               console.log("Available countries:", availableCountries);

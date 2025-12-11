@@ -776,9 +776,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
-      // Validate GPSR compliance if required (only for physical products)
+      // Validate GPSR compliance if required (only for physical products and non-draft products)
       // GPSR compliance is not required for digital items, even if seller ships to EU/EEA
-      if (isGPSRRequired && !data.isDigital) {
+      // GPSR compliance is also not required for drafts - sellers can save incomplete products
+      if (isGPSRRequired && !data.isDigital && !isDraft) {
         const requiredGPSRFields = [
           "safetyWarnings",
           "materialsComposition",

@@ -145,3 +145,27 @@ export function getAvailableCountries(
   }).map((country) => country.code);
 }
 
+/**
+ * Get available countries for shipping option exceptions
+ * This function only filters out explicitly excluded countries, NOT zones
+ * This allows sellers to add country-specific exceptions even if the entire zone is excluded
+ * For example, a seller from Greece can add a US exception even if they've excluded the entire North America zone
+ * @param excludedCountries - Array of explicitly excluded country codes
+ * @returns Array of available country codes from SUPPORTED_COUNTRIES (only explicitly excluded countries are filtered)
+ */
+export function getAvailableCountriesForExceptions(
+  excludedCountries: string[] = []
+): string[] {
+  if (!excludedCountries || excludedCountries.length === 0) {
+    return SUPPORTED_COUNTRIES.map((c) => c.code);
+  }
+
+  // Only filter out explicitly excluded countries
+  // Do NOT filter based on zone exclusions - this allows sellers to add exceptions
+  // for specific countries even if the entire zone is excluded
+  return SUPPORTED_COUNTRIES.filter((country) => {
+    // Only exclude if explicitly in the exclusion list
+    return !excludedCountries.includes(country.code);
+  }).map((country) => country.code);
+}
+
