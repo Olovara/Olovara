@@ -7,8 +7,12 @@ import { Permission } from "@/data/roles-and-permissions";
 const utapi = new UTApi();
 
 export async function PATCH(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let data: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return new Response(
@@ -25,7 +29,7 @@ export async function PATCH(req: Request) {
         );
     }
 
-    const data = await req.json();
+    data = await req.json();
     console.log('[API INPUT] Received update data:', data);
 
     const { id, ...updateData } = data;
@@ -144,9 +148,37 @@ export async function PATCH(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error("[API ERROR] Product edit failed:", {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      productId: data?.id,
+      userId: session?.user?.id || "unknown",
+      updateData: {
+        name: data?.name,
+        status: data?.status,
+        isDigital: data?.isDigital,
+        price: data?.price,
+        imagesCount: data?.images?.length || 0,
+        hasProductFile: !!data?.productFile,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Internal Server Error";
+    
     return new Response(
-      JSON.stringify({ success: false, error: "Internal Server Error" }),
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" 
+          ? (error instanceof Error ? error.stack : String(error))
+          : undefined,
+      }),
       { status: 500 }
     );
   }

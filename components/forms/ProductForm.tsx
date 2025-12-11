@@ -271,9 +271,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
     fetchExcludedCountries();
   }, []);
 
+  // Determine initial schema based on initial status (defaults to DRAFT for new products)
+  const initialStatus = initialData?.status || "DRAFT";
   const form = useForm<z.infer<typeof ProductSchema>>({
     resolver: zodResolver(
-      initialData?.status === "DRAFT" ? ProductDraftSchema : ProductSchema
+      initialStatus === "DRAFT" ? ProductDraftSchema : ProductSchema
     ),
     mode: "onChange",
     defaultValues: {
@@ -640,18 +642,35 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setIsLoading(true);
       console.log("[DEBUG] Submitting form with data:", data);
 
-      // Determine if this should be saved as a draft
-      const isDraft =
-        initialData?.status === "DRAFT" || data.status === "DRAFT";
+      // Determine if this should be saved as a draft (only check current form value, not initial status)
+      const isDraft = data.status === "DRAFT";
+      
+      // Check if product was originally a draft (for validation purposes only)
+      const wasOriginallyDraft = initialData?.status === "DRAFT";
 
       // For non-draft products, validate all required fields
       if (!isDraft) {
         // If the form started as a draft, we need to validate against the full schema
         // Otherwise, the form resolver will handle validation
-        if (initialData?.status === "DRAFT") {
+        if (wasOriginallyDraft) {
           // Validate against the full schema manually
           const validationResult = ProductSchema.safeParse(data);
           if (!validationResult.success) {
+            console.error("[PRODUCT FORM ERROR] Validation failed:", {
+              errors: validationResult.error.errors,
+              productId: initialData?.id || "new",
+              isDraft,
+              formData: {
+                name: data.name,
+                status: data.status,
+                isDigital: data.isDigital,
+                price: data.price,
+                primaryCategory: data.primaryCategory,
+                imagesCount: data.images?.length || 0,
+              },
+              timestamp: new Date().toISOString(),
+            });
+            
             // Set errors manually to show them in the form
             validationResult.error.errors.forEach((error) => {
               const fieldName = error.path.join(
@@ -672,6 +691,21 @@ export function ProductForm({ initialData }: ProductFormProps) {
           // Form already uses full schema, just trigger validation
           const isValid = await form.trigger();
           if (!isValid) {
+            console.error("[PRODUCT FORM ERROR] Form validation failed:", {
+              errors: form.formState.errors,
+              productId: initialData?.id || "new",
+              isDraft,
+              formData: {
+                name: data.name,
+                status: data.status,
+                isDigital: data.isDigital,
+                price: data.price,
+                primaryCategory: data.primaryCategory,
+                imagesCount: data.images?.length || 0,
+              },
+              timestamp: new Date().toISOString(),
+            });
+            
             toast.error(
               "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
             );
@@ -734,7 +768,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
           setImages(finalImageUrls);
           toast.dismiss();
         } catch (uploadError) {
-          console.error("Error uploading images:", uploadError);
+          console.error("[PRODUCT FORM ERROR] Image upload failed:", {
+            error: uploadError instanceof Error ? {
+              name: uploadError.name,
+              message: uploadError.message,
+              stack: uploadError.stack,
+            } : uploadError,
+            imagesCount: newProcessedImages.length,
+            productId: initialData?.id || "new",
+            timestamp: new Date().toISOString(),
+          });
           toast.dismiss();
           toast.error("Failed to upload images. Please try again.");
           setIsLoading(false);
@@ -773,7 +816,17 @@ export function ProductForm({ initialData }: ProductFormProps) {
           }
           toast.dismiss();
         } catch (uploadError) {
-          console.error("Error uploading file:", uploadError);
+          console.error("[PRODUCT FORM ERROR] File upload failed:", {
+            error: uploadError instanceof Error ? {
+              name: uploadError.name,
+              message: uploadError.message,
+              stack: uploadError.stack,
+            } : uploadError,
+            fileName: processedFile?.originalName,
+            fileSize: processedFile?.file?.size,
+            productId: initialData?.id || "new",
+            timestamp: new Date().toISOString(),
+          });
           toast.dismiss();
           toast.error("Failed to upload product file. Please try again.");
           setIsLoading(false);
@@ -828,6 +881,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
       const responseData = await response.json();
 
       if (!response.ok) {
+        console.error("[PRODUCT FORM ERROR] API response error:", {
+          status: response.status,
+          statusText: response.statusText,
+          responseData,
+          productId: initialData?.id || "new",
+          isDraft,
+          timestamp: new Date().toISOString(),
+        });
+        
         // Handle onboarding incomplete error
         if (responseData.onboardingIncomplete) {
           toast.error(
@@ -835,7 +897,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
           );
           return;
         }
-        throw new Error(responseData.error || "Failed to save product");
+        
+        const errorMessage = responseData.error || responseData.message || "Failed to save product";
+        throw new Error(errorMessage);
       }
 
       // After successful product creation/update, call the cleanup server action
@@ -880,8 +944,32 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setTempImages([]); // Clear temp images after successful submission
       setProcessedFile(null); // Clear processed file after successful submission
     } catch (error) {
-      console.error("Form submission error:", error);
-      toast.error("Something went wrong");
+      console.error("[PRODUCT FORM ERROR] Form submission failed:", {
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        } : error,
+        formData: {
+          name: data.name,
+          status: data.status,
+          isDigital: data.isDigital,
+          price: data.price,
+          currency: data.currency,
+          primaryCategory: data.primaryCategory,
+          secondaryCategory: data.secondaryCategory,
+          imagesCount: data.images?.length || 0,
+          hasProductFile: !!data.productFile,
+          productId: initialData?.id || "new",
+        },
+        timestamp: new Date().toISOString(),
+      });
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An unexpected error occurred";
+      
+      toast.error(`Failed to save product: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -927,8 +1015,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
       toast.success(responseData.message);
       router.refresh();
     } catch (error) {
-      console.error("Status update error:", error);
-      toast.error("Failed to update product status");
+      console.error("[PRODUCT FORM ERROR] Status update failed:", {
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        } : error,
+        productId: initialData?.id,
+        newStatus,
+        timestamp: new Date().toISOString(),
+      });
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to update product status";
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -1455,39 +1557,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 >
                   Cancel
                 </button>
-
-                {initialData?.status === "DRAFT" && (
-                  <button
-                    type="button"
-                    onClick={() => handleStatusUpdate("ACTIVE")}
-                    disabled={isLoading}
-                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors flex items-center justify-center gap-2 h-12"
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Activating...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Activate Product
-                      </>
-                    )}
-                  </button>
-                )}
 
                 {initialData?.status === "ACTIVE" && (
                   <button

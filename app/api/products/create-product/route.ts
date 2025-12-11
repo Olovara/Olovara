@@ -14,8 +14,13 @@ import { generateBatchNumber } from "@/lib/batchNumber";
 export async function POST(req: NextRequest) {
   //console.log("API HIT: /api/products/create-product");
 
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let seller: { id: string; userId: string; isFullyActivated: boolean; applicationAccepted: boolean } | null = null;
+  let data: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new Response(
         JSON.stringify({
@@ -26,7 +31,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await req.json();
+    data = await req.json();
     console.log("[API INPUT] Received product data:", data);
 
     const {
@@ -87,7 +92,7 @@ export async function POST(req: NextRequest) {
     } = data;
 
     // Check if seller exists and get onboarding status
-    const seller = await db.seller.findUnique({
+    seller = await db.seller.findUnique({
       where: { userId: session.user.id },
       select: {
         id: true,
@@ -147,19 +152,35 @@ export async function POST(req: NextRequest) {
     }
 
     // Basic validation for required fields
-    if (!name || !price || !primaryCategory) {
-      console.warn("Missing required fields:", {
-        name,
-        price,
-        primaryCategory,
-      });
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Required fields are missing",
-        }),
-        { status: 400 }
-      );
+    // For drafts, only name is required. For non-drafts, name, price, and primaryCategory are required
+    if (isDraft) {
+      // Only name is required for drafts
+      if (!name || name.trim() === "") {
+        console.warn("Missing required field for draft:", { name });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Product name is required",
+          }),
+          { status: 400 }
+        );
+      }
+    } else {
+      // For non-draft products, require name, price, and primaryCategory
+      if (!name || !price || !primaryCategory) {
+        console.warn("Missing required fields:", {
+          name,
+          price,
+          primaryCategory,
+        });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Required fields are missing",
+          }),
+          { status: 400 }
+        );
+      }
     }
 
     //console.log("Creating product with sanitized data...");
@@ -184,7 +205,6 @@ export async function POST(req: NextRequest) {
 
     // --- Step 2: Prepare clean data for product creation ---
     const productData = {
-      userId: session.user.id,
       name: name.trim(),
       sku: finalSku,
       shortDescription: shortDescription || "",
@@ -210,9 +230,11 @@ export async function POST(req: NextRequest) {
       numberSold,
       onSale,
       discount,
-      primaryCategory,
-      secondaryCategory,
-      tertiaryCategory,
+      // For drafts, allow empty categories (use empty string, not null, since Prisma requires non-null)
+      // For non-drafts, these are required and validated earlier
+      primaryCategory: isDraft ? (primaryCategory || "") : primaryCategory,
+      secondaryCategory: isDraft ? (secondaryCategory || "") : secondaryCategory,
+      tertiaryCategory: tertiaryCategory || null, // This one is nullable in schema
       tags,
       materialTags,
       options,
@@ -255,6 +277,9 @@ export async function POST(req: NextRequest) {
     const product = await db.product.create({
       data: {
         ...productData,
+        // userId is the foreign key that references Seller.userId
+        // Note: If you get "Unknown argument userId" error, run: npx prisma generate
+        userId: session.user.id,
         description: productData.description || { html: "", text: "" }, // Ensure description is never undefined
         shortDescription: productData.shortDescription || "", // Ensure shortDescription is never undefined
         stock: productData.stock ?? undefined, // Convert null to undefined for Prisma
@@ -290,11 +315,38 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating product:", error);
+    console.error("[API ERROR] Product creation failed:", {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      userId: session?.user?.id || "unknown",
+      sellerId: seller?.id || "unknown",
+      productData: {
+        name: data?.name,
+        status: data?.status,
+        isDigital: data?.isDigital,
+        price: data?.price,
+        currency: data?.currency,
+        primaryCategory: data?.primaryCategory,
+        imagesCount: data?.images?.length || 0,
+        hasProductFile: !!data?.productFile,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Failed to create product";
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to create product",
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" 
+          ? (error instanceof Error ? error.stack : String(error))
+          : undefined,
       }),
       { status: 500 }
     );

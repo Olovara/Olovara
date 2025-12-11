@@ -138,7 +138,17 @@ const baseProductSchema = z.object({
     .nullable()
     .optional()
     .transform((date) => (date ? date.toISOString() : null)),
-  dropTime: z.string().optional(),
+  dropTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      // Convert null or empty string to undefined
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   discountEndDate: z
     .union([z.date(), z.string()])
     .optional()
@@ -157,7 +167,17 @@ const baseProductSchema = z.object({
       }
       return value;
     }),
-  discountEndTime: z.string().optional(),
+  discountEndTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      // Convert null or empty string to undefined
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   NSFW: z.boolean().default(false),
   taxCategory: z.enum([
     "PHYSICAL_GOODS",
@@ -189,14 +209,27 @@ const baseProductSchema = z.object({
   careInstructions: z.string().max(1000, "Care instructions must be 1000 characters or less").optional(),
 });
 
-// Draft schema - allows incomplete products
+// Draft schema - allows incomplete products (only name is required)
 export const ProductDraftSchema = baseProductSchema
+  .partial()
   .extend({
-    // For drafts, make most fields optional except basic ones
+    // Only name is required for drafts - override the partial to make it required
     name: z.string().min(1, "Product name is required even for drafts"),
+    // Make description optional (override the required descriptionJsonSchema)
+    description: z.object({
+      html: z.string(),
+      text: z.string(),
+    }).nullable().optional(),
+    // Make images optional
+    images: z.array(z.string().url()).optional(),
+    // Make categories optional
+    primaryCategory: z.string().optional(),
+    secondaryCategory: z.string().optional(),
+    // Make price optional with default 0
     price: z.preprocess(
       (val) => {
-        if (typeof val === "string") return parseFloat(val);
+        if (val === undefined || val === null || val === "") return 0;
+        if (typeof val === "string") return parseFloat(val) || 0;
         if (typeof val === "number") return val;
         return 0;
       },
@@ -205,33 +238,18 @@ export const ProductDraftSchema = baseProductSchema
         .refine((val) => Number.isFinite(val), {
           message: "Price must be a valid number",
         })
+        .default(0)
     ),
-    primaryCategory: z.string().min(1, "Primary category is required even for drafts"),
-    // Make other fields optional for drafts
-    description: z.object({
-      html: z.string(),
-      text: z.string(),
-    }).nullable().optional(),
-    images: z.array(z.string().url()).optional(),
-    stock: z.number().int().min(0).optional().nullable(),
-    // GPSR fields are optional for drafts
-    safetyWarnings: z.string().max(1000).optional(),
-    materialsComposition: z.string().max(1000).optional(),
-    safeUseInstructions: z.string().max(1000).optional(),
-    ageRestriction: z.string().max(200).optional(),
-    chokingHazard: z.boolean().default(false),
-    smallPartsWarning: z.boolean().default(false),
-    chemicalWarnings: z.string().max(500).optional(),
-    careInstructions: z.string().max(1000).optional(),
   })
   .transform((data) => {
-    // Convert all monetary values to smallest unit
-    const decimals = getCurrencyDecimals(data.currency);
+    // Convert all monetary values to smallest unit (with defaults for drafts)
+    const currency = data.currency || "USD";
+    const decimals = getCurrencyDecimals(currency);
     const multiplier = Math.pow(10, decimals);
 
     return {
       ...data,
-      price: Math.round(data.price * multiplier),
+      price: Math.round((data.price || 0) * multiplier),
       shippingCost: Math.round((data.shippingCost || 0) * multiplier),
       handlingFee: Math.round((data.handlingFee || 0) * multiplier),
     };
@@ -287,7 +305,7 @@ export const ProductSchema = baseProductSchema
           path: ["discountEndDate"],
         });
       }
-      if (!data.discountEndTime || data.discountEndTime.trim() === "") {
+      if (!data.discountEndTime || (typeof data.discountEndTime === "string" && data.discountEndTime.trim() === "")) {
         console.log("Validation Error: Discount end time required when on sale.");
         ctx.addIssue({
           code: "custom",

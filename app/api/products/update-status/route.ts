@@ -5,8 +5,15 @@ import { ProductSchema } from "@/schemas/ProductSchema";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
 
 export async function PUT(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let data: any = null;
+  let productId: string | undefined = undefined;
+  let newStatus: string | undefined = undefined;
+  let product: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new Response(
         JSON.stringify({
@@ -17,8 +24,10 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const data = await req.json();
-    const { productId, newStatus } = data;
+    data = await req.json();
+    const { productId: pid, newStatus: ns } = data;
+    productId = pid;
+    newStatus = ns;
 
     if (!productId || !newStatus) {
       return new Response(
@@ -54,7 +63,7 @@ export async function PUT(req: NextRequest) {
     const onboardingSteps = await getSellerOnboardingSteps(seller.id);
 
     // Get the product and verify ownership
-    const product = await db.product.findUnique({
+    product = await db.product.findUnique({
       where: { id: productId },
       select: {
         id: true,
@@ -181,11 +190,30 @@ export async function PUT(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating product status:", error);
+    console.error("[API ERROR] Product status update failed:", {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      productId: productId,
+      newStatus: newStatus || data?.newStatus,
+      userId: session?.user?.id || "unknown",
+      productStatus: product?.status,
+      timestamp: new Date().toISOString(),
+    });
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Failed to update product status";
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to update product status",
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" 
+          ? (error instanceof Error ? error.stack : String(error))
+          : undefined,
       }),
       { status: 500 }
     );

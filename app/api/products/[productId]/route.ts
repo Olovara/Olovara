@@ -125,7 +125,15 @@ export async function GET(
 
     return NextResponse.json(product);
   } catch (error) {
-    console.error("[PRODUCT_GET]", error);
+    console.error("[API ERROR] Product GET failed:", {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      productId: params?.productId,
+      timestamp: new Date().toISOString(),
+    });
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -134,8 +142,12 @@ export async function PATCH(
   req: Request,
   { params }: { params: { productId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let data: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return new Response(
@@ -144,7 +156,7 @@ export async function PATCH(
       );
     }
 
-    const data = await req.json();
+    data = await req.json();
     console.log("[API INPUT] Received update data:", data);
 
     const { productId } = params;
@@ -541,16 +553,36 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[PRODUCT_PATCH] Error details:", error);
-    console.error(
-      "[PRODUCT_PATCH] Error stack:",
-      error instanceof Error ? error.stack : "No stack trace"
-    );
+    console.error("[API ERROR] Product PATCH failed:", {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      productId: params?.productId,
+      userId: session?.user?.id || "unknown",
+      updateData: {
+        status: data?.status,
+        name: data?.name,
+        isDigital: data?.isDigital,
+        price: data?.price,
+        imagesCount: data?.images?.length || 0,
+        hasProductFile: !!data?.productFile,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Internal server error";
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" 
+          ? (error instanceof Error ? error.stack : String(error))
+          : undefined,
       }),
       { status: 500 }
     );

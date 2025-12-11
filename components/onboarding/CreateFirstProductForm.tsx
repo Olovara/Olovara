@@ -107,9 +107,29 @@ const FirstProductSchema = z.object({
   outStockLeadTime: z.number().optional(),
   productDrop: z.boolean().default(false),
   dropDate: z.string().nullable().optional(),
-  dropTime: z.string().optional(),
+  dropTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      // Convert null or empty string to undefined
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   discountEndDate: z.string().optional(),
-  discountEndTime: z.string().optional(),
+  discountEndTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      // Convert null or empty string to undefined
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   isTestProduct: z.boolean().default(false),
   taxCategory: z
     .enum([
@@ -173,7 +193,7 @@ const FirstProductSchema = z.object({
         path: ["discountEndDate"],
       });
     }
-    if (!data.discountEndTime || data.discountEndTime.trim() === "") {
+    if (!data.discountEndTime || (typeof data.discountEndTime === "string" && data.discountEndTime.trim() === "")) {
       ctx.addIssue({
         code: "custom",
         message: "Discount end time is required when the product is on sale.",
@@ -399,8 +419,31 @@ export default function CreateFirstProductForm() {
       
       router.push("/onboarding/payment-setup");
     } catch (error) {
-      console.error("Error creating first product:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create product");
+      console.error("[CREATE FIRST PRODUCT ERROR] Product creation failed:", {
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        } : error,
+        formData: {
+          name: data.name,
+          isDigital: data.isDigital,
+          price: data.price,
+          currency: data.currency,
+          primaryCategory: data.primaryCategory,
+          secondaryCategory: data.secondaryCategory,
+          imagesCount: data.images?.length || 0,
+          hasProductFile: !!data.productFile,
+        },
+        formErrors: form.formState.errors,
+        timestamp: new Date().toISOString(),
+      });
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to create product";
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
