@@ -98,6 +98,28 @@ export const ProductShippingSection = ({
     void fetchShippingOptions();
   }, [fetchShippingOptions]);
 
+  // Ensure shippingOptionId is preserved when shipping options load
+  // This fixes the issue where editing a product doesn't show the selected shipping option
+  useEffect(() => {
+    if (shippingOptions.length > 0) {
+      const currentShippingOptionId = watch("shippingOptionId");
+      if (currentShippingOptionId) {
+        // Verify the option exists in the loaded options
+        const optionExists = shippingOptions.some(
+          (option) => option.id === currentShippingOptionId
+        );
+        if (optionExists) {
+          // Explicitly set the value to ensure Select component recognizes it
+          // This is necessary because the Select might not have recognized the value
+          // when it was set before the options were loaded
+          setValue("shippingOptionId", currentShippingOptionId, {
+            shouldValidate: false,
+          });
+        }
+      }
+    }
+  }, [shippingOptions, watch, setValue]);
+
   // Don't auto-select default shipping option - let user choose
   // This ensures validation works correctly for required fields
 
@@ -172,7 +194,7 @@ export const ProductShippingSection = ({
                 <FormLabel>Shipping Option</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  value={field.value || undefined}
+                  value={field.value ? String(field.value) : undefined}
                 >
                   <FormControl>
                     <SelectTrigger
