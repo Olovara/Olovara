@@ -60,9 +60,21 @@ export default async function ProductsPage({
       }
     }
 
+    // Debug: Log currency value
+    if (process.env.NODE_ENV === "development") {
+      console.log("Product transformation:", {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        currency: product.currency,
+        hasCurrency: !!product.currency,
+      });
+    }
+
     return {
       ...product,
-      description: transformedDescription
+      description: transformedDescription,
+      currency: product.currency || "USD", // Ensure currency is preserved
     };
   });
 

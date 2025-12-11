@@ -46,9 +46,23 @@ export async function getSellerProducts(
     // Get total count for pagination
     const totalItems = await db.product.count({ where });
 
-    // Get paginated products
+    // Get paginated products with all necessary fields including currency
     const products = await db.product.findMany({
       where,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        currency: true, // Explicitly include currency field
+        isDigital: true,
+        status: true,
+        images: true,
+        createdAt: true,
+        updatedAt: true,
+        numberSold: true,
+        userId: true,
+      },
       orderBy: {
         createdAt: 'desc',
       },

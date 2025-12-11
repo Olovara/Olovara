@@ -76,6 +76,12 @@ export default function EditProductPage() {
           materialTags: data.materialTags || [],
           options: data.options || null, // Pass options directly without transformation
           dropDate: data.dropDate ? new Date(data.dropDate) : null,
+          // Sale-related fields - ensure they're properly transformed
+          onSale: data.onSale || false,
+          saleEndDate: data.saleEndDate ? new Date(data.saleEndDate) : undefined,
+          saleEndTime: data.saleEndTime || "",
+          saleStartDate: data.saleStartDate ? new Date(data.saleStartDate) : undefined,
+          saleStartTime: data.saleStartTime || "",
         };
 
         setProduct(transformedProduct);

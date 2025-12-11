@@ -338,6 +338,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
       careInstructions: initialData?.careInstructions || "",
       // Options field
       options: initialData?.options || null,
+      // Sale-related fields
+      onSale: initialData?.onSale || false,
+      discount: initialData?.discount || undefined,
+      saleStartDate: initialData?.saleStartDate
+        ? typeof initialData.saleStartDate === "string"
+          ? new Date(initialData.saleStartDate)
+          : initialData.saleStartDate instanceof Date
+            ? initialData.saleStartDate
+            : undefined
+        : undefined,
+      saleEndDate: initialData?.saleEndDate
+        ? typeof initialData.saleEndDate === "string"
+          ? new Date(initialData.saleEndDate)
+          : initialData.saleEndDate instanceof Date
+            ? initialData.saleEndDate
+            : undefined
+        : undefined,
+      saleStartTime: initialData?.saleStartTime || "",
+      saleEndTime: initialData?.saleEndTime || "",
     },
   });
 
@@ -349,6 +368,50 @@ export function ProductForm({ initialData }: ProductFormProps) {
   console.log("Form state:", formState);
 
   const { setValue } = form;
+
+  // Update sale-related fields when initialData changes (after form is initialized)
+  useEffect(() => {
+    if (initialData) {
+      // Update onSale
+      if (initialData.onSale !== undefined) {
+        form.setValue("onSale", initialData.onSale);
+      }
+      // Update discount
+      if (initialData.discount !== undefined) {
+        form.setValue("discount", initialData.discount);
+      }
+      // Update saleEndDate - handle both string and Date types
+      if (initialData.saleEndDate) {
+        const dateValue = typeof initialData.saleEndDate === "string"
+          ? new Date(initialData.saleEndDate)
+          : initialData.saleEndDate instanceof Date
+            ? initialData.saleEndDate
+            : undefined;
+        if (dateValue && !isNaN(dateValue.getTime())) {
+          form.setValue("saleEndDate", dateValue);
+        }
+      }
+      // Update saleEndTime
+      if (initialData.saleEndTime !== undefined) {
+        form.setValue("saleEndTime", initialData.saleEndTime || "");
+      }
+      // Update saleStartDate
+      if (initialData.saleStartDate) {
+        const dateValue = typeof initialData.saleStartDate === "string"
+          ? new Date(initialData.saleStartDate)
+          : initialData.saleStartDate instanceof Date
+            ? initialData.saleStartDate
+            : undefined;
+        if (dateValue && !isNaN(dateValue.getTime())) {
+          form.setValue("saleStartDate", dateValue);
+        }
+      }
+      // Update saleStartTime
+      if (initialData.saleStartTime !== undefined) {
+        form.setValue("saleStartTime", initialData.saleStartTime || "");
+      }
+    }
+  }, [initialData, form]);
 
   // Helper function to get errors for a specific card section
   const getCardErrors = (fieldNames: string[]) => {

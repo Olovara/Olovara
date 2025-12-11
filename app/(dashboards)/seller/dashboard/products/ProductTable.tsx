@@ -22,12 +22,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { formatPriceInCurrency } from "@/lib/utils";
 
 interface Product {
   id: string;
   name: string;
   description: string | { html: string; text: string } | null;
   price: number;
+  currency?: string;
   isDigital: boolean;
   status: string;
   images: string[];
@@ -118,9 +120,6 @@ export function ProductTable({ products }: ProductTableProps) {
     return 'No description';
   };
 
-  // Debug log to check the data
-  //console.log('Products data:', JSON.stringify(products, null, 2));
-
   return (
     <Table>
       <TableHeader>
@@ -197,7 +196,13 @@ export function ProductTable({ products }: ProductTableProps) {
                   {product.status === "DRAFT" ? "Draft" : product.status || "UNKNOWN"}
                 </Badge>
               </TableCell>
-              <TableCell>${(product.price / 100).toFixed(2)}</TableCell>
+              <TableCell>
+                {formatPriceInCurrency(
+                  product.price,
+                  product.currency || "USD",
+                  true
+                )}
+              </TableCell>
               <TableCell>{product.numberSold || 0}</TableCell>
               <TableCell>
                 {formatDate(product.createdAt)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { UseFormReturn } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -16,7 +16,30 @@ type ProductPromotionsSectionProps = {
 };
 
 export function ProductPromotionsSection({ form }: ProductPromotionsSectionProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  // Check if there's existing sale or drop data to determine initial open state
+  const onSale = form.watch("onSale");
+  const discount = form.watch("discount");
+  const saleEndDate = form.watch("saleEndDate");
+  const productDrop = form.watch("productDrop");
+  const dropDate = form.watch("dropDate");
+  
+  // Open by default if there's existing sale or drop data
+  const hasExistingData = onSale || (discount && discount > 0) || saleEndDate || productDrop || dropDate;
+  const [isOpen, setIsOpen] = useState(hasExistingData);
+  
+  // Update open state when form values change (e.g., when initial data loads)
+  useEffect(() => {
+    const currentOnSale = form.getValues("onSale");
+    const currentDiscount = form.getValues("discount");
+    const currentSaleEndDate = form.getValues("saleEndDate");
+    const currentProductDrop = form.getValues("productDrop");
+    const currentDropDate = form.getValues("dropDate");
+    
+    const hasData = currentOnSale || (currentDiscount && currentDiscount > 0) || currentSaleEndDate || currentProductDrop || currentDropDate;
+    if (hasData && !isOpen) {
+      setIsOpen(true);
+    }
+  }, [form, isOpen]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>

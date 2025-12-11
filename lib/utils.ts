@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { stripeSecret } from "./stripe";
+import { getCurrencySymbol } from "@/data/units";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -162,6 +163,152 @@ export function formatPrice(
     maximumFractionDigits: decimals,
     minimumFractionDigits: decimals,
   }).format(priceInDollars);
+}
+
+/**
+ * Format a price in the product's original currency (no conversion)
+ * @param price - Price in cents
+ * @param currency - Currency code (e.g., "USD", "EUR", "GBP")
+ * @param isCents - Whether the price is in cents (default: true)
+ * @returns Formatted price string with correct currency symbol
+ */
+export function formatPriceInCurrency(
+  price: number | string,
+  currency: string = "USD",
+  isCents: boolean = true
+): string {
+  const numericPrice = typeof price === "string" ? parseFloat(price) : price;
+  
+  // Convert cents to currency units if needed
+  const priceInCurrency = isCents ? numericPrice / 100 : numericPrice;
+  
+  // Get decimal places for the currency (JPY and HUF have 0 decimals, others have 2)
+  const decimals = currency === "JPY" || currency === "HUF" || currency === "IDR" || currency === "XOF" ? 0 : 2;
+  
+  // Use appropriate locale based on currency
+  const localeMap: Record<string, string> = {
+    USD: "en-US",
+    EUR: "de-DE",
+    GBP: "en-GB",
+    CAD: "en-CA",
+    AUD: "en-AU",
+    JPY: "ja-JP",
+    INR: "en-IN",
+    SGD: "en-SG",
+    CHF: "de-CH",
+    DKK: "da-DK",
+    NOK: "nb-NO",
+    SEK: "sv-SE",
+    CZK: "cs-CZ",
+    HUF: "hu-HU",
+    BGN: "bg-BG",
+    RON: "ro-RO",
+    PLN: "pl-PL",
+    HKD: "en-HK",
+    THB: "th-TH",
+    MYR: "ms-MY",
+    IDR: "id-ID",
+    NZD: "en-NZ",
+    BRL: "pt-BR",
+    MXN: "es-MX",
+    ZAR: "en-ZA",
+    GHS: "en-GH",
+    KES: "en-KE",
+    NGN: "en-NG",
+    AED: "ar-AE",
+    XOF: "fr-FR",
+    GIP: "en-GB",
+  };
+  
+  const locale = localeMap[currency] || "en-US";
+  
+  // Ensure currency is uppercase (required by Intl.NumberFormat)
+  const currencyUpper = currency.toUpperCase();
+  
+  // Debug logging in development
+  if (process.env.NODE_ENV === "development" && currencyUpper !== "USD") {
+    console.log("formatPriceInCurrency called:", {
+      price,
+      currency: currencyUpper,
+      isCents,
+      priceInCurrency,
+      locale,
+      decimals,
+    });
+  }
+  
+  try {
+    // Use Intl.NumberFormat with the currency code
+    // Note: Some browsers may not support all currency codes, so we'll test it
+    const formatter = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyUpper, // Must be uppercase
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    
+    let formatted = formatter.format(priceInCurrency);
+    
+    // Debug logging in development
+    if (process.env.NODE_ENV === "development" && currencyUpper !== "USD") {
+      console.log("formatPriceInCurrency result:", formatted);
+      console.log("Formatter options:", {
+        locale,
+        currency: currencyUpper,
+        style: "currency",
+      });
+    }
+    
+    // Check if the formatting actually worked correctly
+    // If currency is NZD but result starts with $ (and not NZ$), try alternative approach
+    if (currencyUpper !== "USD" && formatted.startsWith("$") && !formatted.includes("NZ") && !formatted.includes(currencyUpper)) {
+      // Try using the currency code directly in the locale
+      try {
+        const altFormatter = new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency: currencyUpper,
+        });
+        formatted = altFormatter.format(priceInCurrency);
+        
+        // If still not working, manually format with currency symbol
+        if (formatted.startsWith("$") && currencyUpper !== "USD") {
+          // Get currency symbol from data/units
+          const symbol = getCurrencySymbol(currencyUpper);
+          formatted = `${symbol}${priceInCurrency.toFixed(decimals)}`;
+          if (process.env.NODE_ENV === "development") {
+            console.log("Using manual currency formatting:", formatted);
+          }
+        }
+      } catch (altError) {
+        console.warn("Alternative formatting failed, using manual format");
+        // Manual fallback: use currency symbol from units
+        const symbol = getCurrencySymbol(currencyUpper);
+        formatted = `${symbol}${priceInCurrency.toFixed(decimals)}`;
+      }
+    }
+    
+    return formatted;
+  } catch (error) {
+    console.error("Error formatting price:", {
+      price,
+      currency: currencyUpper,
+      locale,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    // Fallback: use currency symbol from units data
+    try {
+      const symbol = getCurrencySymbol(currencyUpper);
+      return `${symbol}${priceInCurrency.toFixed(decimals)}`;
+    } catch (fallbackError) {
+      // Final fallback to USD formatting
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(priceInCurrency);
+    }
+  }
 }
 
 export function shopNameSlugify(text: string) {
