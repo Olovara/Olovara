@@ -5,6 +5,7 @@ import { TwoFactorEmail } from "@/components/emails/TwoFactorEmail";
 import { SellerApplicationNotificationEmail } from "@/components/emails/SellerApplicationNotificationEmail";
 import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplicationApprovedEmail";
 import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
+import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
 
 const apiKey = process.env.RESEND_API_KEY;
 
@@ -172,6 +173,60 @@ export const sendSellerApplicationRejectedEmail = async (
     return response;
   } catch (error) {
     console.error("Error sending seller application rejected email:", error);
+    throw error;
+  }
+};
+
+// Send response email to customer who submitted contact form
+// Always sends from support@yarnnu.com regardless of which admin sends it
+export const sendContactResponseEmail = async (
+  customerEmail: string,
+  customerName: string,
+  originalMessage: string,
+  adminResponse: string,
+  reason: string
+) => {
+  try {
+    // Get reason label for subject line
+    const reasonLabels: { [key: string]: string } = {
+      'BILLING': 'Billing',
+      'GENERAL': 'General Inquiry',
+      'LISTING': 'Listing Issue',
+      'ACCOUNT': 'Account Support',
+      'PAYMENT': 'Payment Problem',
+      'FEATURE': 'Feature Request',
+      'BUG': 'Bug Report',
+      'OTHER': 'Inquiry',
+    };
+    const reasonLabel = reasonLabels[reason] || 'Inquiry';
+
+    const response = await resend.emails.send({
+      from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
+      to: customerEmail,
+      subject: `Re: Your ${reasonLabel} Inquiry`,
+      react: ContactResponseEmail({
+        customerName,
+        originalMessage,
+        adminResponse,
+        reason: reasonLabel,
+      }),
+      replyTo: "support@yarnnu.com", // Allow replies to go to support email
+    });
+    
+    console.log("[CONTACT_RESPONSE] Email sent successfully:", {
+      customerEmail,
+      customerName,
+      reason,
+      timestamp: new Date().toISOString(),
+    });
+    
+    return response;
+  } catch (error) {
+    console.error("[CONTACT_RESPONSE] Error sending contact response email:", {
+      error,
+      customerEmail,
+      timestamp: new Date().toISOString(),
+    });
     throw error;
   }
 };

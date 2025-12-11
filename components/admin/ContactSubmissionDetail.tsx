@@ -9,16 +9,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   ArrowLeft, 
   Mail, 
   Calendar,
   User,
   MessageSquare,
-  Copy
+  Copy,
+  Send
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { useState, useTransition } from "react";
+import { sendContactResponse } from "@/actions/adminActions";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 interface ContactSubmission {
   id: string;
@@ -34,6 +40,9 @@ interface ContactSubmissionDetailProps {
 }
 
 export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailProps) {
+  const [responseMessage, setResponseMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
+
   const formatDate = (date: Date | string) => {
     try {
       const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -62,10 +71,34 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here if you want
+      toast.success("Copied to clipboard");
     } catch (err) {
       console.error('Failed to copy text: ', err);
+      toast.error("Failed to copy");
     }
+  };
+
+  const handleSendResponse = () => {
+    if (!responseMessage.trim()) {
+      toast.error("Please enter a response message");
+      return;
+    }
+
+    if (responseMessage.trim().length < 10) {
+      toast.error("Response must be at least 10 characters long");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await sendContactResponse(submission.id, responseMessage);
+      
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Response email sent successfully!");
+        setResponseMessage(""); // Clear the form
+      }
+    });
   };
 
   return (
@@ -164,6 +197,64 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Message
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Send Response Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Send Response
+              </CardTitle>
+              <CardDescription>
+                Send an email response to {submission.name}. The email will be sent from support@yarnnu.com
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="response">Your Response</Label>
+                <Textarea
+                  id="response"
+                  placeholder="Type your response here..."
+                  value={responseMessage}
+                  onChange={(e) => setResponseMessage(e.target.value)}
+                  disabled={isPending}
+                  rows={8}
+                  className="resize-none"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {responseMessage.length} characters (minimum 10)
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSendResponse}
+                  disabled={isPending || !responseMessage.trim() || responseMessage.trim().length < 10}
+                  className="flex-1"
+                >
+                  {isPending ? (
+                    <>
+                      <Send className="h-4 w-4 mr-2 animate-pulse" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Response
+                    </>
+                  )}
+                </Button>
+                {responseMessage && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setResponseMessage("")}
+                    disabled={isPending}
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

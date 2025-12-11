@@ -35,6 +35,7 @@ const ContactUsFormContent = () => {
   const [lastError, setLastError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetryAttempt, setIsRetryAttempt] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent duplicate submissions
 
   const Reason = [
     { id: "BILLING", name: "Billing Questions" },
@@ -60,12 +61,21 @@ const ContactUsFormContent = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof ContactUsSchema>) => {
+    // Prevent duplicate submissions - if already submitting, ignore this call
+    if (isSubmitting || isPending || shouldTriggerRecaptcha) {
+      console.warn("[CONTACT_US_FORM] Submission already in progress, ignoring duplicate submit");
+      return;
+    }
+
     // Step 1: Check honeypot first (before any reCAPTCHA calls)
     if (!validateHoneypot(values.website)) {
       // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
       console.warn("[CONTACT_US_FORM] Bot detected via honeypot field");
       return;
     }
+
+    // Mark as submitting to prevent duplicates
+    setIsSubmitting(true);
 
     // Reset retry state for new submission (not a retry)
     setIsRetryAttempt(false);
@@ -86,6 +96,12 @@ const ContactUsFormContent = () => {
   };
 
   const handleRecaptchaSuccess = (token: string) => {
+    // Prevent duplicate submissions if already processing
+    if (isSubmitting && !isRetryAttempt) {
+      console.warn("[CONTACT_US_FORM] Already submitting, ignoring duplicate reCAPTCHA success");
+      return;
+    }
+
     setRecaptchaToken(token);
     setShouldTriggerRecaptcha(false);
     
@@ -105,6 +121,7 @@ const ContactUsFormContent = () => {
           setLastError(null);
           setRetryCount(0);
           setIsRetryAttempt(false);
+          setIsSubmitting(false); // Reset submission flag on success
         }
         if (data.error) {
           const isRetryable = data.retryable !== false; // Default to true if not specified
@@ -114,6 +131,9 @@ const ContactUsFormContent = () => {
             setRetryCount(prev => prev + 1);
             setIsRetryAttempt(false); // Reset for next time
           }
+          
+          // Reset submission flag on error (allows retry)
+          setIsSubmitting(false);
           
           // Log error on client side for debugging
           console.error("[CONTACT_US_FORM] Submission error:", {
@@ -158,6 +178,9 @@ const ContactUsFormContent = () => {
           setIsRetryAttempt(false);
         }
 
+        // Reset submission flag on error (allows retry)
+        setIsSubmitting(false);
+
         // Network errors are retryable
         setLastError({ 
           message: "Failed to submit your message. Please check your internet connection and try again.",
@@ -175,6 +198,7 @@ const ContactUsFormContent = () => {
   const handleRecaptchaError = (error: string) => {
     setRecaptchaError(error);
     setShouldTriggerRecaptcha(false);
+    setIsSubmitting(false); // Reset submission flag on reCAPTCHA error
     
     // Log reCAPTCHA error for debugging
     console.error("[CONTACT_US_FORM] reCAPTCHA error:", {
@@ -203,10 +227,17 @@ const ContactUsFormContent = () => {
       return;
     }
 
+    // Prevent retry if already submitting
+    if (isSubmitting || isPending || shouldTriggerRecaptcha) {
+      console.warn("[CONTACT_US_FORM] Already submitting, ignoring retry");
+      return;
+    }
+
     setLastError(null);
     setRecaptchaError(null);
     setRecaptchaToken("");
     setIsRetryAttempt(true); // Mark this as a retry attempt
+    setIsSubmitting(true); // Mark as submitting to prevent duplicates
     
     // Trigger new reCAPTCHA verification
     setShouldTriggerRecaptcha(true);
@@ -324,7 +355,7 @@ const ContactUsFormContent = () => {
                 <div className="flex-1">
                   <Submitbutton 
                     title={isPending ? "Submitting..." : "Submit"} 
-                    isPending={isPending || shouldTriggerRecaptcha} 
+                    isPending={isPending || shouldTriggerRecaptcha || isSubmitting} 
                   />
                 </div>
                 {lastError?.retryable && retryCount < 3 && (
@@ -332,7 +363,7 @@ const ContactUsFormContent = () => {
                     type="button"
                     variant="outline"
                     onClick={handleRetry}
-                    disabled={isPending || shouldTriggerRecaptcha}
+                    disabled={isPending || shouldTriggerRecaptcha || isSubmitting}
                     className="flex-1"
                   >
                     {isPending || shouldTriggerRecaptcha ? "Retrying..." : `Retry (${retryCount}/3)`}
