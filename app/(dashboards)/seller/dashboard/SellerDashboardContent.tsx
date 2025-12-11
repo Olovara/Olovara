@@ -7,6 +7,8 @@ import SellerOnboardingDashboard from "@/components/seller/SellerOnboardingDashb
 import { OnboardingSurveyProvider } from "@/components/providers/OnboardingSurveyProvider";
 import { SessionRefreshButton } from "@/components/SessionRefreshButton";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { OptionalOnboardingTasks } from "@/components/seller/OptionalOnboardingTasks";
+import { BASE_ONBOARDING_STEPS } from "@/lib/onboarding";
 import { useEffect } from "react";
 
 export function SellerDashboardContent() {
@@ -135,13 +137,22 @@ export function SellerDashboardContent() {
     );
   }
 
+  // Check if base required steps are complete (GPSR is optional)
+  // Only check BASE_ONBOARDING_STEPS, not GPSR compliance
+  const baseStepKeys = BASE_ONBOARDING_STEPS as readonly string[];
+  const baseStepsComplete = steps?.filter(step => 
+    baseStepKeys.includes(step.stepKey)
+  ).every(step => step.completed) ?? false;
+
   return (
     <OnboardingSurveyProvider>
       <div>
-        {isFullyActivated ? (
+        {baseStepsComplete ? (
           <>
             <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
             <SellerDashboardInfo />
+            {/* Show optional onboarding tasks at the bottom */}
+            <OptionalOnboardingTasks steps={steps} />
           </>
         ) : (
           <SellerOnboardingDashboard />

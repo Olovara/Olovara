@@ -88,6 +88,10 @@ export async function POST(req: NextRequest) {
       smallPartsWarning,
       chemicalWarnings,
       careInstructions,
+      // Tax fields
+      taxCategory = "PHYSICAL_GOODS",
+      taxCode,
+      taxExempt = false,
     } = data;
 
     // Check if seller exists and get onboarding status
@@ -260,6 +264,10 @@ export async function POST(req: NextRequest) {
       smallPartsWarning,
       chemicalWarnings,
       careInstructions,
+      // Tax fields - convert empty string to null for taxCode
+      taxCategory: taxCategory || "PHYSICAL_GOODS",
+      taxCode: taxCode && taxCode.trim() !== "" ? taxCode : null,
+      taxExempt: taxExempt || false,
     };
 
     // --- Step 3: Validate data structure (but don't transform, since form already transformed) ---
@@ -329,6 +337,19 @@ export async function POST(req: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     });
+    
+    // Check if it's a ZodError
+    if (error && typeof error === 'object' && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Validation failed",
+          details: zodError.issues,
+        }),
+        { status: 400 }
+      );
+    }
     
     const errorMessage = error instanceof Error 
       ? error.message 

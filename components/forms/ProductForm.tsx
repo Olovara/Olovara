@@ -318,6 +318,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       isTestProduct: initialData?.isTestProduct || false,
       shippingOptionId: initialData?.shippingOptionId || null,
       taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
+      // taxCode is optional - default to empty string, will be converted to null on submit if empty
       taxCode: initialData?.taxCode || "",
       taxExempt: initialData?.taxExempt || false,
       // SEO fields
@@ -733,6 +734,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
             });
             
             // Set errors manually to show them in the form
+            const errorMessages: string[] = [];
             validationResult.error.errors.forEach((error) => {
               const fieldName = error.path.join(
                 "."
@@ -741,10 +743,27 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 type: "manual",
                 message: error.message,
               });
+              // Collect specific error messages for toast
+              if (error.message) {
+                errorMessages.push(error.message);
+              }
             });
-            toast.error(
-              "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
-            );
+            
+            // Show specific error messages in toast
+            if (errorMessages.length > 0) {
+              const uniqueErrors = Array.from(new Set(errorMessages));
+              if (uniqueErrors.length === 1) {
+                toast.error(uniqueErrors[0]);
+              } else {
+                toast.error(
+                  `Validation errors: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
+                );
+              }
+            } else {
+              toast.error(
+                "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
+              );
+            }
             setIsLoading(false);
             return;
           }
@@ -767,9 +786,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
               timestamp: new Date().toISOString(),
             });
             
-            toast.error(
-              "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
-            );
+            // Show specific error messages from form validation
+            const errorMessages = Object.values(form.formState.errors)
+              .map((error) => error?.message)
+              .filter((msg): msg is string => !!msg);
+            
+            if (errorMessages.length > 0) {
+              const uniqueErrors = Array.from(new Set(errorMessages));
+              if (uniqueErrors.length === 1) {
+                toast.error(uniqueErrors[0]);
+              } else {
+                toast.error(
+                  `Validation errors: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
+                );
+              }
+            } else {
+              toast.error(
+                "Please fill in all required fields before saving. Check the highlighted fields and error messages above."
+              );
+            }
             setIsLoading(false);
             return;
           }
@@ -919,6 +954,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
           dropdownOptions.length > 0
             ? convertDropdownOptionsToSchema(dropdownOptions)
             : null,
+        // Convert empty taxCode to null (taxCode is optional and nullable)
+        taxCode: data.taxCode && data.taxCode.trim() !== "" ? data.taxCode : null,
         // Remove these conversions since they're handled by the schema
         // price: Math.round(data.price * 100),
         // shippingCost: Math.round(data.shippingCost * 100),
@@ -960,8 +997,31 @@ export function ProductForm({ initialData }: ProductFormProps) {
           return;
         }
         
+        // Handle Zod validation errors from server
+        if (responseData.details && Array.isArray(responseData.details)) {
+          // This is a ZodError - extract specific error messages
+          const errorMessages = responseData.details
+            .map((err: any) => err?.message)
+            .filter((msg: any): msg is string => typeof msg === "string" && msg.length > 0);
+          
+          if (errorMessages.length > 0) {
+            const uniqueErrors: string[] = Array.from(new Set(errorMessages));
+            if (uniqueErrors.length === 1) {
+              toast.error(uniqueErrors[0]);
+            } else {
+              toast.error(
+                `Validation errors: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
+              );
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
+        
         const errorMessage = responseData.error || responseData.message || "Failed to save product";
-        throw new Error(errorMessage);
+        toast.error(errorMessage);
+        setIsLoading(false);
+        return;
       }
 
       // After successful product creation/update, call the cleanup server action
@@ -1027,11 +1087,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
         timestamp: new Date().toISOString(),
       });
       
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "An unexpected error occurred";
-      
-      toast.error(`Failed to save product: ${errorMessage}`);
+      // Check if it's a ZodError
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
+        const errorMessages = zodError.issues.map(issue => issue.message);
+        if (errorMessages.length > 0) {
+          const uniqueErrors = Array.from(new Set(errorMessages));
+          if (uniqueErrors.length === 1) {
+            toast.error(uniqueErrors[0]);
+          } else {
+            toast.error(
+              `Validation errors: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
+            );
+          }
+        } else {
+          toast.error("Validation failed. Please check your input.");
+        }
+      } else {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : "An unexpected error occurred";
+        
+        toast.error(`Failed to save product: ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
     }

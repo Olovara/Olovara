@@ -10,11 +10,18 @@ export const BASE_ONBOARDING_STEPS = [
   "payment_setup",
 ] as const;
 
-// GPSR compliance step (conditional)
+// GPSR compliance step (conditional/optional)
 export const GPSR_COMPLIANCE_STEP = "gpsr_compliance" as const;
 
 // Convert to mutable array for Prisma queries
 const BASE_ONBOARDING_STEPS_ARRAY = [...BASE_ONBOARDING_STEPS];
+
+/**
+ * Check if an onboarding step is optional (not required for activation)
+ */
+export function isOptionalStep(stepKey: OnboardingStepKey): boolean {
+  return stepKey === GPSR_COMPLIANCE_STEP;
+}
 
 export type OnboardingStepKey =
   | "application_submitted"
@@ -100,22 +107,23 @@ export async function getRequiredOnboardingSteps(
 
 /**
  * Check if a seller is fully activated based on completed onboarding steps
+ * Only checks BASE_ONBOARDING_STEPS - GPSR compliance is optional and doesn't block activation
  */
 export async function checkIsFullyActivated(
   sellerId: string
 ): Promise<boolean> {
-  const requiredSteps = await getRequiredOnboardingSteps(sellerId);
-  const requiredStepsArray = [...requiredSteps];
+  // Only check base required steps for activation (GPSR is optional)
+  const baseStepsArray = [...BASE_ONBOARDING_STEPS];
 
   const completedSteps = await prisma.onboardingStep.findMany({
     where: {
       sellerId,
-      stepKey: { in: requiredStepsArray },
+      stepKey: { in: baseStepsArray },
       completed: true,
     },
   });
 
-  return completedSteps.length === requiredSteps.length;
+  return completedSteps.length === BASE_ONBOARDING_STEPS.length;
 }
 
 /**
@@ -187,34 +195,37 @@ export async function getSellerOnboardingSteps(
 
 /**
  * Get onboarding progress percentage for a seller
+ * Only counts BASE_ONBOARDING_STEPS for activation progress (GPSR is optional)
  */
 export async function getOnboardingProgress(sellerId: string): Promise<number> {
-  const requiredSteps = await getRequiredOnboardingSteps(sellerId);
-  const requiredStepsArray = [...requiredSteps];
+  // Only count base steps for activation progress
+  const baseStepsArray = [...BASE_ONBOARDING_STEPS];
 
   const completedSteps = await prisma.onboardingStep.count({
     where: {
       sellerId,
-      stepKey: { in: requiredStepsArray },
+      stepKey: { in: baseStepsArray },
       completed: true,
     },
   });
 
-  return Math.round((completedSteps / requiredSteps.length) * 100);
+  return Math.round((completedSteps / BASE_ONBOARDING_STEPS.length) * 100);
 }
 
 /**
  * Get the next incomplete onboarding step for a seller
+ * Only checks BASE_ONBOARDING_STEPS (GPSR is optional)
  */
 export async function getNextOnboardingStep(
   sellerId: string
 ): Promise<OnboardingStepKey | null> {
-  const requiredSteps = await getRequiredOnboardingSteps(sellerId);
+  // Only check base steps for next step (GPSR is optional)
+  const baseStepsArray = [...BASE_ONBOARDING_STEPS];
 
   const completedSteps = await prisma.onboardingStep.findMany({
     where: {
       sellerId,
-      stepKey: { in: requiredSteps },
+      stepKey: { in: baseStepsArray },
       completed: true,
     },
   });
@@ -222,13 +233,13 @@ export async function getNextOnboardingStep(
   const completedStepKeys = new Set(completedSteps.map((step) => step.stepKey));
 
   // Find the first incomplete step
-  for (const stepKey of requiredSteps) {
+  for (const stepKey of baseStepsArray) {
     if (!completedStepKeys.has(stepKey)) {
       return stepKey;
     }
   }
 
-  return null; // All steps completed
+  return null; // All base steps completed
 }
 
 /**

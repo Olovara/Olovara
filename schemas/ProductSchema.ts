@@ -8,8 +8,8 @@ import {
 
 // JSON schema for product description
 const descriptionJsonSchema = z.object({
-  html: z.string(),
-  text: z.string(),
+  html: z.string().max(1000, "Description must be 1000 characters or less"),
+  text: z.string().max(1000, "Description must be 1000 characters or less"),
 }).nullable().refine((val) => {
   if (!val) return false;
   // Check if text content is empty or only contains empty HTML tags

@@ -443,7 +443,8 @@ export async function PATCH(
 
     const taxFields = {
       taxCategory: updateData.taxCategory,
-      taxCode: updateData.taxCode,
+      // Convert empty string to null for taxCode (it's optional and nullable)
+      taxCode: updateData.taxCode && updateData.taxCode.trim() !== "" ? updateData.taxCode : null,
       taxExempt: updateData.taxExempt,
     };
 
@@ -569,6 +570,19 @@ export async function PATCH(
       },
       timestamp: new Date().toISOString(),
     });
+    
+    // Check if it's a ZodError
+    if (error && typeof error === 'object' && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Validation failed",
+          details: zodError.issues,
+        }),
+        { status: 400 }
+      );
+    }
     
     const errorMessage = error instanceof Error 
       ? error.message 
