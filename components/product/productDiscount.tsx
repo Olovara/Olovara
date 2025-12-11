@@ -26,9 +26,9 @@ type DiscountSectionProps = {
 
 export function ProductDiscountSection({ form }: DiscountSectionProps) {
   const { control, watch, register, setValue } = form;
-  const discountEndDate = watch("discountEndDate");
+  const saleEndDate = watch("saleEndDate");
   const [date, setDate] = React.useState<Date | undefined>(
-    discountEndDate instanceof Date ? discountEndDate : undefined
+    saleEndDate instanceof Date ? saleEndDate : undefined
   );
 
   // Watch the onSale state
@@ -36,23 +36,23 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
 
   // Sync local date state with form value
   React.useEffect(() => {
-    if (discountEndDate instanceof Date) {
-      setDate(discountEndDate);
-    } else if (typeof discountEndDate === "string" && discountEndDate) {
-      const parsedDate = new Date(discountEndDate);
+    if (saleEndDate instanceof Date) {
+      setDate(saleEndDate);
+    } else if (typeof saleEndDate === "string" && saleEndDate) {
+      const parsedDate = new Date(saleEndDate);
       if (!isNaN(parsedDate.getTime())) {
         setDate(parsedDate);
       }
     } else {
       setDate(undefined);
     }
-  }, [discountEndDate]);
+  }, [saleEndDate]);
 
   React.useEffect(() => {
-    // Reset discount end date and time when the sale status changes
+    // Reset sale end date and time when the sale status changes
     if (!onSale) {
-      setValue("discountEndDate", undefined);
-      setValue("discountEndTime", "");
+      setValue("saleEndDate", undefined);
+      setValue("saleEndTime", "");
       setDate(undefined);
     }
   }, [onSale, setValue]);
@@ -91,9 +91,9 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
             />
           </div>
 
-          {/* Discount End Date */}
+          {/* Sale End Date */}
           <div className="flex flex-col gap-y-2">
-            <Label>Discount End Date</Label>
+            <Label>Sale End Date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -114,10 +114,10 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
                   onSelect={(selectedDate) => {
                     setDate(selectedDate);
                     if (selectedDate) {
-                      setValue("discountEndDate", selectedDate);
+                      setValue("saleEndDate", selectedDate);
                     } else {
                       // Clear the date if deselected
-                      setValue("discountEndDate", undefined);
+                      setValue("saleEndDate", undefined);
                     }
                   }}
                   initialFocus
@@ -126,12 +126,12 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
             </Popover>
           </div>
 
-          {/* Discount End Time */}
+          {/* Sale End Time */}
           <div className="flex flex-col gap-y-2">
-            <Label>Discount End Time</Label>
+            <Label>Sale End Time</Label>
             <FormField
               control={control}
-              name="discountEndTime"
+              name="saleEndTime"
               render={({ field }) => (
                 <Input type="time" className="w-[280px]" {...field} />
               )}

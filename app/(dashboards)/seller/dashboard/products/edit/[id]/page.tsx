@@ -76,9 +76,6 @@ export default function EditProductPage() {
           materialTags: data.materialTags || [],
           options: data.options || null, // Pass options directly without transformation
           dropDate: data.dropDate ? new Date(data.dropDate) : null,
-          discountEndDate: data.discountEndDate
-            ? new Date(data.discountEndDate)
-            : undefined,
         };
 
         setProduct(transformedProduct);

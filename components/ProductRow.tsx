@@ -55,7 +55,6 @@ type ProductWithSeller = {
   NSFW: boolean;
   dropDate: Date | null;
   dropTime: string | null;
-  discountEndDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   seller: {
@@ -112,7 +111,6 @@ const PRODUCT_SELECT_FIELDS = {
   NSFW: true,
   dropDate: true,
   dropTime: true,
-  discountEndDate: true,
   createdAt: true,
   updatedAt: true,
   seller: {

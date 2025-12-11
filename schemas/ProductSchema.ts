@@ -121,6 +121,58 @@ const baseProductSchema = z.object({
   materialTags: z.array(z.string()).optional().default([]),
   onSale: z.boolean().default(false),
   discount: z.number().int().optional(),
+  saleStartDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      if (typeof value === "string") {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return undefined;
+        }
+        return date;
+      }
+      return value;
+    }),
+  saleEndDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      if (typeof value === "string") {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return undefined;
+        }
+        return date;
+      }
+      return value;
+    }),
+  saleStartTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
+  saleEndTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   freeShipping: z.boolean().default(false),
   itemWeight: z.number().optional(),
   itemWeightUnit: z.enum(SUPPORTED_WEIGHT_UNITS.map(u => u.code) as [string, ...string[]]).default("lbs"),
@@ -139,35 +191,6 @@ const baseProductSchema = z.object({
     .optional()
     .transform((date) => (date ? date.toISOString() : null)),
   dropTime: z
-    .string()
-    .nullable()
-    .optional()
-    .transform((value) => {
-      // Convert null or empty string to undefined
-      if (!value || (typeof value === "string" && value.trim() === "")) {
-        return undefined;
-      }
-      return value;
-    }),
-  discountEndDate: z
-    .union([z.date(), z.string()])
-    .optional()
-    .transform((value) => {
-      // Handle empty strings and null/undefined
-      if (!value || (typeof value === "string" && value.trim() === "")) {
-        return undefined;
-      }
-      if (typeof value === "string") {
-        const date = new Date(value);
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-          return undefined;
-        }
-        return date;
-      }
-      return value;
-    }),
-  discountEndTime: z
     .string()
     .nullable()
     .optional()
@@ -297,20 +320,24 @@ export const ProductSchema = baseProductSchema
     }
 
     if (data.onSale) {
-      if (!data.discountEndDate || (data.discountEndDate instanceof Date && isNaN(data.discountEndDate.getTime()))) {
-        console.log("Validation Error: Discount end date required when on sale.");
+      // Check for saleEndDate/saleEndTime (products use these fields)
+      const endDate = (data as any).saleEndDate;
+      const endTime = (data as any).saleEndTime;
+      
+      if (!endDate || (endDate instanceof Date && isNaN(endDate.getTime()))) {
+        console.log("Validation Error: Sale end date required when on sale.");
         ctx.addIssue({
           code: "custom",
-          message: "Discount end date is required when the product is on sale.",
-          path: ["discountEndDate"],
+          message: "Sale end date is required when the product is on sale.",
+          path: ["saleEndDate"],
         });
       }
-      if (!data.discountEndTime || (typeof data.discountEndTime === "string" && data.discountEndTime.trim() === "")) {
-        console.log("Validation Error: Discount end time required when on sale.");
+      if (!endTime || (typeof endTime === "string" && endTime.trim() === "")) {
+        console.log("Validation Error: Sale end time required when on sale.");
         ctx.addIssue({
           code: "custom",
-          message: "Discount end time is required when the product is on sale.",
-          path: ["discountEndTime"],
+          message: "Sale end time is required when the product is on sale.",
+          path: ["saleEndTime"],
         });
       }
     }

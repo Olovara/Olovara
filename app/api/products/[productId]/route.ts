@@ -90,8 +90,6 @@ export async function GET(
         saleStartTime: true,
         saleEndTime: true,
         originalPrice: true,
-        discountEndDate: true,
-        discountEndTime: true,
         howItsMade: true,
         safetyWarnings: true,
         materialsComposition: true,

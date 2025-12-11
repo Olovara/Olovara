@@ -312,8 +312,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productDrop: initialData?.productDrop || false,
       dropDate: initialData?.dropDate || null,
       dropTime: initialData?.dropTime || "",
-      discountEndDate: initialData?.discountEndDate || undefined,
-      discountEndTime: initialData?.discountEndTime || "",
       howItsMade: initialData?.howItsMade || "",
       productFile: initialData?.productFile || null,
       currency: initialData?.currency || "USD", // Will be updated by useEffect when preferences load
@@ -1067,8 +1065,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productDrop: false,
       dropDate: null,
       dropTime: "",
-      discountEndDate: undefined,
-      discountEndTime: "",
       howItsMade: "",
       productFile: null,
       isTestProduct: false,

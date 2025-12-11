@@ -116,9 +116,6 @@ export async function PATCH(req: Request) {
       images: updateData.images, 
       dropDate: updateData.dropDate ? new Date(updateData.dropDate) : null,
       dropTime: updateData.dropTime || null,
-      discountEndDate: updateData.discountEndDate 
-        ? new Date(updateData.discountEndDate) 
-        : null,
       price: Number(updateData.price),
       currency: updateData.currency || "USD",
       stock: Number(updateData.stock),

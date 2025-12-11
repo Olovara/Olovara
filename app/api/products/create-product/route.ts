@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
       NSFW = false,
       dropDate,
       dropTime,
-      discountEndDate,
       currency = "USD",
       isTestProduct = false,
       // SEO fields
@@ -245,11 +244,6 @@ export async function POST(req: NextRequest) {
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
       dropTime,
-      discountEndDate:
-        discountEndDate && discountEndDate !== null
-          ? new Date(discountEndDate)
-          : undefined,
-      discountEndTime: data.discountEndTime,
       metaTitle,
       metaDescription,
       keywords,

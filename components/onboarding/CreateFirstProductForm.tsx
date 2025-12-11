@@ -118,18 +118,6 @@ const FirstProductSchema = z.object({
       }
       return value;
     }),
-  discountEndDate: z.string().optional(),
-  discountEndTime: z
-    .string()
-    .nullable()
-    .optional()
-    .transform((value) => {
-      // Convert null or empty string to undefined
-      if (!value || (typeof value === "string" && value.trim() === "")) {
-        return undefined;
-      }
-      return value;
-    }),
   isTestProduct: z.boolean().default(false),
   taxCategory: z
     .enum([
@@ -186,18 +174,22 @@ const FirstProductSchema = z.object({
         path: ["discount"],
       });
     }
-    if (!data.discountEndDate || (typeof data.discountEndDate === "string" && data.discountEndDate.trim() === "")) {
+    // Check for saleEndDate/saleEndTime (products use these fields)
+    const endDate = (data as any).saleEndDate;
+    const endTime = (data as any).saleEndTime;
+    
+    if (!endDate || (typeof endDate === "string" && endDate.trim() === "")) {
       ctx.addIssue({
         code: "custom",
-        message: "Discount end date is required when the product is on sale.",
-        path: ["discountEndDate"],
+        message: "Sale end date is required when the product is on sale.",
+        path: ["saleEndDate"],
       });
     }
-    if (!data.discountEndTime || (typeof data.discountEndTime === "string" && data.discountEndTime.trim() === "")) {
+    if (!endTime || (typeof endTime === "string" && endTime.trim() === "")) {
       ctx.addIssue({
         code: "custom",
-        message: "Discount end time is required when the product is on sale.",
-        path: ["discountEndTime"],
+        message: "Sale end time is required when the product is on sale.",
+        path: ["saleEndTime"],
       });
     }
   }
@@ -271,8 +263,6 @@ export default function CreateFirstProductForm() {
       productDrop: false,
       dropDate: null,
       dropTime: "",
-      discountEndDate: "",
-      discountEndTime: "",
       isTestProduct: false,
       taxCategory: "PHYSICAL_GOODS",
       taxExempt: false,

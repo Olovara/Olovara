@@ -89,8 +89,6 @@ export async function PUT(req: NextRequest) {
         freeShipping: true,
         onSale: true,
         discount: true,
-        discountEndDate: true,
-        discountEndTime: true,
         tags: true,
         materialTags: true,
         options: true,

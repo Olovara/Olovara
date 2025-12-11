@@ -494,8 +494,6 @@ model Product {
   saleEndTime           String? // Time component for sale end
   originalPrice         Int? // Store original price before sale for easy restoration
   
-  discountEndDate       DateTime?
-  discountEndTime       String? // Time component for discount end
   reviews               Review[]
   productInteractions   ProductInteraction[]
   wishlistItems         WishlistItem[]
