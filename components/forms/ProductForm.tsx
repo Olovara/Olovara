@@ -123,30 +123,40 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Convert schema options to dropdown options format
   const convertOptions = (
-    schemaOptions: SchemaOption[] | null | undefined
+    schemaOptions: SchemaOption[] | null | undefined,
+    currency: string = "USD"
   ): DropdownOption[] => {
     if (!schemaOptions) return [];
 
-    // The new format is already compatible, just need to handle price conversion from cents
+    // Get currency decimals to properly convert from smallest unit to currency units
+    const currencyInfo = SUPPORTED_CURRENCIES.find((c) => c.code === currency);
+    const decimals = currencyInfo?.decimals || 2;
+    const divisor = Math.pow(10, decimals);
+
+    // The new format is already compatible, just need to handle price conversion from smallest unit
     return schemaOptions.map((option) => ({
       label: option.label,
       values: option.values.map((value) => ({
         name: value.name,
-        price: value.price ? value.price / 100 : undefined, // Convert from cents to currency units
+        price: value.price ? value.price / divisor : undefined, // Convert from smallest unit to currency units
         stock: value.stock || 0,
       })),
     }));
   };
 
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(
-    convertOptions(initialData?.options as SchemaOption[] | null | undefined)
+    convertOptions(
+      initialData?.options as SchemaOption[] | null | undefined,
+      initialData?.currency || "USD"
+    )
   );
 
   // Update dropdown options when initialData changes
   useEffect(() => {
     if (initialData?.options) {
       const convertedOptions = convertOptions(
-        initialData.options as SchemaOption[]
+        initialData.options as SchemaOption[],
+        initialData.currency || "USD"
       );
       console.log(
         "[DEBUG] Updating dropdown options from initialData:",
@@ -262,14 +272,37 @@ export function ProductForm({ initialData }: ProductFormProps) {
           setIsGPSRRequired(gpsrRequired);
         }
       } catch (error) {
-        console.error("Error fetching excluded countries:", error);
-        // Default to showing GPSR fields if we can't determine
+        // Enhanced error logging for international sellers
+        console.error(
+          "[PRODUCT FORM ERROR] Error fetching excluded countries:",
+          {
+            error:
+              error instanceof Error
+                ? {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                  }
+                : error,
+            productId: initialData?.id || "new",
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        // CRITICAL: Default to requiring GPSR compliance if we can't determine
+        // This is safer for international sellers - better to require compliance than miss it
+        // However, log this clearly so sellers know why GPSR fields are showing
         setIsGPSRRequired(true);
+        console.warn(
+          "[PRODUCT FORM WARNING] Could not determine GPSR requirement. " +
+            "Defaulting to requiring GPSR compliance for safety. " +
+            "If you don't ship to EU/EEA, you can exclude those countries in your seller settings."
+        );
       }
     };
 
     fetchExcludedCountries();
-  }, []);
+  }, [initialData?.id]);
 
   // Determine initial schema based on initial status (defaults to DRAFT for new products)
   const initialStatus = initialData?.status || "DRAFT";
@@ -291,12 +324,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
       shippingCost: initialData?.shippingCost
         ? initialData.shippingCost / 100
         : 0,
-      itemWeight: initialData?.itemWeight || 0,
+      // CRITICAL: Dimensions are optional - use undefined instead of 0
+      // This prevents validation errors since 0 is invalid (must be > 0 if provided)
+      itemWeight: initialData?.itemWeight ?? undefined,
       itemWeightUnit:
         initialData?.itemWeightUnit || sellerPreferences.preferredWeightUnit,
-      itemLength: initialData?.itemLength || 0,
-      itemWidth: initialData?.itemWidth || 0,
-      itemHeight: initialData?.itemHeight || 0,
+      itemLength: initialData?.itemLength ?? undefined,
+      itemWidth: initialData?.itemWidth ?? undefined,
+      itemHeight: initialData?.itemHeight ?? undefined,
       itemDimensionUnit:
         initialData?.itemDimensionUnit ||
         sellerPreferences.preferredDimensionUnit,
@@ -383,11 +418,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       }
       // Update saleEndDate - handle both string and Date types
       if (initialData.saleEndDate) {
-        const dateValue = typeof initialData.saleEndDate === "string"
-          ? new Date(initialData.saleEndDate)
-          : initialData.saleEndDate instanceof Date
-            ? initialData.saleEndDate
-            : undefined;
+        const dateValue =
+          typeof initialData.saleEndDate === "string"
+            ? new Date(initialData.saleEndDate)
+            : initialData.saleEndDate instanceof Date
+              ? initialData.saleEndDate
+              : undefined;
         if (dateValue && !isNaN(dateValue.getTime())) {
           form.setValue("saleEndDate", dateValue);
         }
@@ -398,11 +434,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       }
       // Update saleStartDate
       if (initialData.saleStartDate) {
-        const dateValue = typeof initialData.saleStartDate === "string"
-          ? new Date(initialData.saleStartDate)
-          : initialData.saleStartDate instanceof Date
-            ? initialData.saleStartDate
-            : undefined;
+        const dateValue =
+          typeof initialData.saleStartDate === "string"
+            ? new Date(initialData.saleStartDate)
+            : initialData.saleStartDate instanceof Date
+              ? initialData.saleStartDate
+              : undefined;
         if (dateValue && !isNaN(dateValue.getTime())) {
           form.setValue("saleStartDate", dateValue);
         }
@@ -553,13 +590,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
   ];
   const mediaFields = ["images"];
   const inventoryFields = ["stock"];
+  // CRITICAL: Dimensions (itemWeight, itemLength, itemWidth, itemHeight) are OPTIONAL
+  // They are not required for physical products, so they should not be in the required fields list
+  // Only include fields that are actually required for product submission
   const shippingFields = [
     "shippingCost",
-    "itemWeight",
-    "itemLength",
-    "itemWidth",
-    "itemHeight",
-    "shippingOptionId",
+    "shippingOptionId", // Only required if freeShipping is false and product is not digital
   ];
 
   // Ensure shippingOptionId is set if it's missing
@@ -686,13 +722,19 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // Convert dropdown options back to schema format
   const convertDropdownOptionsToSchema = (
-    dropdownOptions: DropdownOption[]
+    dropdownOptions: DropdownOption[],
+    currency: string = "USD"
   ): SchemaOption[] => {
+    // Get currency decimals to properly convert from currency units to smallest unit
+    const currencyInfo = SUPPORTED_CURRENCIES.find((c) => c.code === currency);
+    const decimals = currencyInfo?.decimals || 2;
+    const multiplier = Math.pow(10, decimals);
+
     return dropdownOptions.map((option) => ({
       label: option.label,
       values: option.values.map((value) => ({
         name: value.name,
-        price: value.price ? Math.round(value.price * 100) : undefined, // Convert to cents
+        price: value.price ? Math.round(value.price * multiplier) : undefined, // Convert to smallest unit
         stock: value.stock || 0,
       })),
     }));
@@ -700,13 +742,33 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   const onSubmit = async (data: ProductFormValues) => {
     console.log("[DEBUG] onSubmit function called!");
+
+    // CRITICAL: Prevent submission if uploads are in progress
+    // This prevents race conditions where form submits before images/files are uploaded
+    if (isUploading) {
+      console.warn(
+        "[PRODUCT FORM WARNING] Form submission blocked - uploads in progress:",
+        {
+          isUploading,
+          processedImagesCount: processedImages.length,
+          hasProcessedFile: !!processedFile,
+          productId: initialData?.id || "new",
+          timestamp: new Date().toISOString(),
+        }
+      );
+      toast.error(
+        "Please wait for image and file uploads to complete before submitting the form."
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
       console.log("[DEBUG] Submitting form with data:", data);
 
       // Determine if this should be saved as a draft (only check current form value, not initial status)
       const isDraft = data.status === "DRAFT";
-      
+
       // Check if product was originally a draft (for validation purposes only)
       const wasOriginallyDraft = initialData?.status === "DRAFT";
 
@@ -732,7 +794,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
               },
               timestamp: new Date().toISOString(),
             });
-            
+
             // Set errors manually to show them in the form
             const errorMessages: string[] = [];
             validationResult.error.errors.forEach((error) => {
@@ -748,7 +810,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 errorMessages.push(error.message);
               }
             });
-            
+
             // Show specific error messages in toast
             if (errorMessages.length > 0) {
               const uniqueErrors = Array.from(new Set(errorMessages));
@@ -785,12 +847,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
               },
               timestamp: new Date().toISOString(),
             });
-            
+
             // Show specific error messages from form validation
             const errorMessages = Object.values(form.formState.errors)
               .map((error) => error?.message)
               .filter((msg): msg is string => !!msg);
-            
+
             if (errorMessages.length > 0) {
               const uniqueErrors = Array.from(new Set(errorMessages));
               if (uniqueErrors.length === 1) {
@@ -835,6 +897,65 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
+      // CRITICAL: Validation flow order to prevent orphaned images:
+      // 1. Client-side validation (react-hook-form) - happens automatically via handleSubmit
+      // 2. Additional validation checks (GPSR, draft status, etc.) - completed above
+      // 3. Server-side validation (validate data WITHOUT images) - happens NOW
+      // 4. Image/file uploads - happens ONLY after server validation passes
+      // 5. Product creation - happens after uploads succeed
+      // 
+      // This prevents orphaned images by validating on the server before uploading.
+
+      // Step 3: Validate data on server BEFORE uploading images
+      // Send form data without images to validate first
+      console.log("[PRODUCT FORM] Validating data on server before image uploads...");
+      const validationData = {
+        ...data,
+        images: [], // Don't send images for validation - we'll add them after upload
+        productFile: null, // Don't send file for validation - we'll add it after upload
+      };
+
+      const validationResponse = await fetch("/api/products/validate-product", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(validationData),
+      });
+
+      if (!validationResponse.ok) {
+        const validationError = await validationResponse.json();
+        console.error("[PRODUCT FORM ERROR] Server validation failed:", {
+          status: validationResponse.status,
+          error: validationError,
+          productId: initialData?.id || "new",
+          timestamp: new Date().toISOString(),
+        });
+
+        // Show validation errors
+        if (validationError.details && Array.isArray(validationError.details)) {
+          const errorMessages = validationError.details
+            .map((err: any) => err?.message)
+            .filter((msg: any): msg is string => typeof msg === "string" && msg.length > 0);
+          
+          if (errorMessages.length > 0) {
+            const uniqueErrors = Array.from(new Set(errorMessages));
+            toast.error(
+              `Validation failed: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
+            );
+          } else {
+            toast.error(validationError.error || "Validation failed. Please check your form data.");
+          }
+        } else {
+          toast.error(validationError.error || "Validation failed. Please check your form data.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("[PRODUCT FORM] Server validation passed. Proceeding with image uploads...");
+
+      // Step 4: Upload processed images (only after server validation passes)
       // Upload processed images first (if any)
       // Extract existing images (already uploaded HTTP URLs) from the images state
       // This preserves all existing images even when new ones are added
@@ -842,41 +963,394 @@ export function ProductForm({ initialData }: ProductFormProps) {
         (url) => url.startsWith("http://") || url.startsWith("https://")
       );
 
-      // Get new processed images that need to be uploaded (blob URLs with File objects)
-      const newProcessedImages = processedImages.filter(
-        (img) =>
-          img.preview.startsWith("blob:") && img.file && img.file.size > 0
+      // Get new processed images that need to be uploaded
+      // CRITICAL: Simplify the filter - blob URLs with valid files are ALWAYS new images
+      // Don't overthink this - if it has a blob URL and a file, it needs uploading
+      let newProcessedImages: typeof processedImages = [];
+      
+      for (const img of processedImages) {
+        // Skip if missing required properties
+        if (!img || !img.preview || !img.file) {
+          continue;
+        }
+        
+        // Skip existing images (already uploaded)
+        if (img.id && img.id.startsWith("existing-")) {
+          continue;
+        }
+        
+        // CRITICAL: Blob URLs = new images that need uploading
+        if (img.preview.startsWith("blob:")) {
+          // Validate file is actually a File instance with size
+          if (img.file instanceof File && img.file.size > 0) {
+            newProcessedImages.push(img);
+            continue;
+          }
+        }
+        
+        // Fallback: If not a blob URL but also not in existing URLs, might be new
+        if (!existingImageUrls.includes(img.preview) && img.file instanceof File && img.file.size > 0) {
+          newProcessedImages.push(img);
+        }
+      }
+      
+      // CRITICAL FALLBACK: If we still have no images but processedImages has blob URLs, force include them
+      // This is a safety net in case the loop above missed something
+      // Use a more lenient check - if it has a blob URL and any file-like object, include it
+      if (newProcessedImages.length === 0 && processedImages.length > 0) {
+        const blobImages: typeof processedImages = [];
+        
+        for (const img of processedImages) {
+          if (!img || !img.preview) continue;
+          
+          const isBlob = img.preview.startsWith("blob:");
+          const isNotExisting = !img.id || !img.id.startsWith("existing-");
+          
+          if (isBlob && isNotExisting) {
+            // More lenient file check - just check if file exists and has size
+            if (img.file) {
+              const fileSize = (img.file as any)?.size || 0;
+              // Include if it's a File instance OR if it has a size property (might be a different file-like object)
+              if (img.file instanceof File || fileSize > 0) {
+                blobImages.push(img);
+              }
+            }
+          }
+        }
+        
+        if (blobImages.length > 0) {
+          console.warn("[PRODUCT FORM WARNING] Fallback caught blob images that were missed:", {
+            blobImagesCount: blobImages.length,
+            originalFilterResult: newProcessedImages.length,
+            processedImagesCount: processedImages.length,
+            blobImagesDetails: blobImages.map(img => ({
+              id: img.id,
+              preview: img.preview?.substring(0, 50),
+              fileSize: (img.file as any)?.size,
+              isBlob: img.preview?.startsWith("blob:"),
+              isFile: img.file instanceof File,
+              fileType: typeof img.file,
+              fileConstructor: img.file?.constructor?.name
+            })),
+            productId: initialData?.id || "new",
+          });
+          newProcessedImages = blobImages;
+        } else {
+          // Log detailed analysis if even fallback failed
+          console.warn("[PRODUCT FORM WARNING] Processed images found but none detected for upload:", {
+            processedImagesCount: processedImages.length,
+            processedImagesAnalysis: processedImages.map(img => ({
+              id: img.id,
+              hasPreview: !!img.preview,
+              previewType: img.preview ? (img.preview.startsWith("blob:") ? "blob" : img.preview.startsWith("http") ? "http" : "other") : "none",
+              previewStart: img.preview?.substring(0, 50),
+              hasFile: !!img.file,
+              isFileInstance: img.file instanceof File,
+              fileSize: (img.file as any)?.size,
+              fileType: typeof img.file,
+              fileConstructor: img.file?.constructor?.name,
+              isExisting: img.id?.startsWith("existing-"),
+              wouldBeIncluded: img.preview?.startsWith("blob:") && !!img.file && !img.id?.startsWith("existing-")
+            })),
+            existingImageUrlsCount: existingImageUrls.length,
+            productId: initialData?.id || "new",
+          });
+        }
+      }
+
+      // Validate existing images are valid URLs
+      const validExistingImageUrls = existingImageUrls.filter(
+        (url) =>
+          url &&
+          typeof url === "string" &&
+          (url.startsWith("http://") || url.startsWith("https://"))
       );
 
-      let finalImageUrls = [...existingImageUrls]; // Start with existing images
+      // Debug logging to help diagnose image upload issues
+      console.log("[PRODUCT FORM DEBUG] Image state before upload:", {
+        imagesStateCount: images.length,
+        imagesState: images.map(url => url?.substring(0, 50)),
+        processedImagesCount: processedImages.length,
+        processedImagesPreviews: processedImages.map(img => ({
+          id: img.id,
+          preview: img.preview?.substring(0, 50),
+          isBlob: img.preview?.startsWith("blob:"),
+          hasFile: !!img.file,
+          isFileInstance: img.file instanceof File,
+          fileSize: img.file?.size,
+          isExisting: img.id?.startsWith("existing-")
+        })),
+        existingImageUrlsCount: existingImageUrls.length,
+        existingImageUrls: existingImageUrls.map(url => url?.substring(0, 50)),
+        newProcessedImagesCount: newProcessedImages.length,
+        newProcessedImagesDetails: newProcessedImages.map(img => ({
+          id: img.id,
+          preview: img.preview?.substring(0, 50),
+          fileSize: img.file?.size
+        })),
+        productId: initialData?.id || "new",
+        isDraft,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // CRITICAL: If we have processed images with blob URLs but newProcessedImages is empty,
+      // something is wrong with the filter - force include them
+      if (processedImages.length > 0 && newProcessedImages.length === 0) {
+        const blobImages = processedImages.filter(
+          img => img && img.preview && img.preview.startsWith("blob:") && 
+          img.file && img.file instanceof File && img.file.size > 0 &&
+          (!img.id || !img.id.startsWith("existing-"))
+        );
+        
+        if (blobImages.length > 0) {
+          console.warn("[PRODUCT FORM WARNING] Filter missed blob images, forcing inclusion:", {
+            blobImagesCount: blobImages.length,
+            originalFilterResult: newProcessedImages.length,
+            blobImagesDetails: blobImages.map(img => ({
+              id: img.id,
+              preview: img.preview?.substring(0, 50),
+              fileSize: img.file?.size
+            }))
+          });
+          // Force include blob images that were missed
+          newProcessedImages.push(...blobImages);
+        }
+      }
+
+      let finalImageUrls = [...validExistingImageUrls]; // Start with valid existing images
 
       if (newProcessedImages.length > 0) {
+        // Set uploading flag BEFORE starting upload to prevent form submission
         setIsUploading(true);
-        toast.loading("Uploading images...");
+        const uploadToastId = toast.loading(
+          `Uploading ${newProcessedImages.length} image${newProcessedImages.length === 1 ? "" : "s"}...`
+        );
+
         try {
           // Upload only new processed images
-          const filesToUpload = newProcessedImages.map((img) => img.file);
-          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+          // CRITICAL: Convert file-like objects to File instances for upload
+          // The upload function requires File instances, but processedImages might have Blob or other types
+          const filesToUpload: File[] = [];
+          
+          for (const img of newProcessedImages) {
+            if (!img.file) {
+              console.warn("[PRODUCT FORM WARNING] Processed image missing file:", {
+                id: img.id,
+                preview: img.preview?.substring(0, 50)
+              });
+              continue;
+            }
+            
+            // CRITICAL: Cast to any first to handle type mismatches
+            // The ProcessedImage type says file: File, but in practice it might be Blob or other types
+            const fileObj: any = img.file;
+            let file: File;
+            
+            // If it's already a File instance, use it directly
+            if (fileObj && typeof fileObj === 'object' && fileObj instanceof File) {
+              file = fileObj as File;
+            }
+            // If it's a Blob, convert to File
+            else if (fileObj && typeof fileObj === 'object' && fileObj instanceof Blob) {
+              // Get original name from processed image if available
+              const fileName = img.originalName || `image-${Date.now()}.jpg`;
+              const blobType = (fileObj as Blob).type || 'image/jpeg';
+              file = new File([fileObj as Blob], fileName, { 
+                type: blobType,
+                lastModified: Date.now()
+              });
+            }
+            // If it's a file-like object (has size, name, type properties)
+            else {
+              // Log detailed info about the file-like object
+              console.warn("[PRODUCT FORM WARNING] Converting file-like object to File:", {
+                fileType: typeof fileObj,
+                fileConstructor: fileObj?.constructor?.name,
+                hasSize: 'size' in fileObj,
+                hasName: 'name' in fileObj,
+                hasType: 'type' in fileObj,
+                size: fileObj.size,
+                name: fileObj.name,
+                type: fileObj.type
+              });
+              
+              // Try to convert to File using arrayBuffer or stream
+              if (fileObj.size > 0) {
+                // If it has an arrayBuffer method, use it
+                if (typeof fileObj.arrayBuffer === 'function') {
+                  const arrayBuffer = await fileObj.arrayBuffer();
+                  file = new File([arrayBuffer], fileObj.name || img.originalName || `image-${Date.now()}.jpg`, {
+                    type: fileObj.type || 'image/jpeg',
+                    lastModified: fileObj.lastModified || Date.now()
+                  });
+                }
+                // Otherwise, try to create a File wrapper from the object
+                else {
+                  // This is a fallback - try to create a File wrapper
+                  // Note: This might not work for all file-like objects
+                  file = new File([fileObj], fileObj.name || img.originalName || `image-${Date.now()}.jpg`, {
+                    type: fileObj.type || 'image/jpeg',
+                    lastModified: fileObj.lastModified || Date.now()
+                  });
+                }
+              } else {
+                console.error("[PRODUCT FORM ERROR] File-like object has no size:", {
+                  fileObj,
+                  imgId: img.id
+                });
+                continue;
+              }
+            }
+            
+            filesToUpload.push(file);
+          }
 
-          // Append newly uploaded URLs to existing ones (preserve existing images)
-          finalImageUrls = [...existingImageUrls, ...uploadedUrls];
+          // Validate we have files to upload
+          if (filesToUpload.length === 0) {
+            console.error("[PRODUCT FORM ERROR] No valid files extracted from processed images:", {
+              newProcessedImagesCount: newProcessedImages.length,
+              newProcessedImagesDetails: newProcessedImages.map(img => ({
+                id: img.id,
+                hasFile: !!img.file,
+                fileType: typeof img.file,
+                fileConstructor: img.file?.constructor?.name,
+                isFile: img.file instanceof File,
+                isBlob: img.file instanceof Blob,
+                hasSize: img.file && 'size' in img.file,
+                size: (img.file as any)?.size
+              })),
+              productId: initialData?.id || "new",
+            });
+            throw new Error("No valid files to upload");
+          }
 
-          // Update images state
-          setImages(finalImageUrls);
-          toast.dismiss();
-        } catch (uploadError) {
-          console.error("[PRODUCT FORM ERROR] Image upload failed:", {
-            error: uploadError instanceof Error ? {
-              name: uploadError.name,
-              message: uploadError.message,
-              stack: uploadError.stack,
-            } : uploadError,
-            imagesCount: newProcessedImages.length,
+          if (filesToUpload.length !== newProcessedImages.length) {
+            console.warn(
+              "[PRODUCT FORM WARNING] Some processed images had invalid files:",
+              {
+                expectedCount: newProcessedImages.length,
+                validFilesCount: filesToUpload.length,
+                productId: initialData?.id || "new",
+              }
+            );
+          }
+
+          console.log("[PRODUCT FORM] Starting image upload:", {
+            filesCount: filesToUpload.length,
+            fileNames: filesToUpload.map((f) => f.name),
+            fileSizes: filesToUpload.map(
+              (f) => `${(f.size / 1024).toFixed(2)}KB`
+            ),
+            existingImagesCount: validExistingImageUrls.length,
             productId: initialData?.id || "new",
             timestamp: new Date().toISOString(),
           });
-          toast.dismiss();
-          toast.error("Failed to upload images. Please try again.");
+
+          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+
+          // Validate uploaded URLs
+          const validUploadedUrls = uploadedUrls.filter(
+            (url) =>
+              url &&
+              typeof url === "string" &&
+              (url.startsWith("http://") || url.startsWith("https://"))
+          );
+
+          if (validUploadedUrls.length === 0) {
+            throw new Error("No valid URLs returned from upload");
+          }
+
+          if (validUploadedUrls.length !== uploadedUrls.length) {
+            console.warn(
+              "[PRODUCT FORM WARNING] Some uploaded URLs are invalid:",
+              {
+                expectedCount: uploadedUrls.length,
+                validUrlsCount: validUploadedUrls.length,
+                invalidUrls: uploadedUrls.filter(
+                  (url) =>
+                    !url ||
+                    typeof url !== "string" ||
+                    (!url.startsWith("http://") && !url.startsWith("https://"))
+                ),
+                productId: initialData?.id || "new",
+              }
+            );
+          }
+
+          // Clean up blob URLs for successfully uploaded images
+          newProcessedImages.forEach((img, index) => {
+            if (
+              index < validUploadedUrls.length &&
+              img.preview.startsWith("blob:")
+            ) {
+              try {
+                URL.revokeObjectURL(img.preview);
+              } catch (e) {
+                // Ignore errors if URL was already revoked
+                console.warn("[PRODUCT FORM] Error revoking blob URL:", e);
+              }
+            }
+          });
+
+          // Append newly uploaded URLs to existing ones (preserve existing images)
+          finalImageUrls = [...validExistingImageUrls, ...validUploadedUrls];
+
+          // Update images state
+          setImages(finalImageUrls);
+
+          toast.dismiss(uploadToastId);
+
+          if (validUploadedUrls.length < filesToUpload.length) {
+            toast.warning(
+              `${validUploadedUrls.length} of ${filesToUpload.length} image${filesToUpload.length === 1 ? "" : "s"} uploaded successfully. Some images failed to upload.`
+            );
+          } else {
+            toast.success(
+              `${validUploadedUrls.length} image${validUploadedUrls.length === 1 ? "" : "s"} uploaded successfully`
+            );
+          }
+        } catch (uploadError) {
+          // Clean up blob URLs on error to prevent memory leaks
+          newProcessedImages.forEach((img) => {
+            if (img.preview && img.preview.startsWith("blob:")) {
+              try {
+                URL.revokeObjectURL(img.preview);
+              } catch (e) {
+                // Ignore errors if URL was already revoked
+              }
+            }
+          });
+
+          console.error("[PRODUCT FORM ERROR] Image upload failed:", {
+            error:
+              uploadError instanceof Error
+                ? {
+                    name: uploadError.name,
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                  }
+                : uploadError,
+            imagesCount: newProcessedImages.length,
+            fileNames: newProcessedImages.map(
+              (img) => img.originalName || "unknown"
+            ),
+            fileSizes: newProcessedImages.map((img) =>
+              img.file ? `${(img.file.size / 1024).toFixed(2)}KB` : "unknown"
+            ),
+            existingImagesCount: validExistingImageUrls.length,
+            productId: initialData?.id || "new",
+            isDraft,
+            timestamp: new Date().toISOString(),
+          });
+
+          toast.dismiss(uploadToastId);
+
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : "Failed to upload images. Please try again.";
+
+          toast.error(errorMessage);
           setIsLoading(false);
           setIsUploading(false);
           return;
@@ -885,7 +1359,56 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       } else {
         // No new images to upload, just use existing URLs
-        finalImageUrls = existingImageUrls;
+        finalImageUrls = validExistingImageUrls;
+
+        // CRITICAL: Check if we have processed images that should have been uploaded
+        // This handles the case where images were added but the upload path wasn't taken
+        if (processedImages.length > 0 && finalImageUrls.length === 0) {
+          console.error(
+            "[PRODUCT FORM ERROR] Images in processedImages but not uploaded:",
+            {
+              processedImagesCount: processedImages.length,
+              processedImagesDetails: processedImages.map(img => ({
+                id: img.id,
+                preview: img.preview?.substring(0, 50),
+                isBlob: img.preview?.startsWith("blob:"),
+                hasFile: !!img.file,
+                fileSize: img.file?.size
+              })),
+              existingImageUrlsCount: existingImageUrls.length,
+              validExistingImageUrlsCount: validExistingImageUrls.length,
+              imagesStateCount: images.length,
+              productId: initialData?.id || "new",
+              timestamp: new Date().toISOString(),
+            }
+          );
+          toast.error(
+            "Images were added but not properly processed. Please try adding the images again."
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate we have at least one image for non-draft products
+        if (!isDraft && finalImageUrls.length === 0) {
+          console.error(
+            "[PRODUCT FORM ERROR] No images available for active product:",
+            {
+              existingImageUrlsCount: existingImageUrls.length,
+              validExistingImageUrlsCount: validExistingImageUrls.length,
+              processedImagesCount: processedImages.length,
+              newProcessedImagesCount: newProcessedImages.length,
+              imagesState: images,
+              productId: initialData?.id || "new",
+              timestamp: new Date().toISOString(),
+            }
+          );
+          toast.error(
+            "At least one product image is required for active products."
+          );
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Handle file upload (similar to images)
@@ -893,8 +1416,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
       // Check if there's a new processed file to upload
       if (processedFile && processedFile.file) {
-        setIsUploading(true);
-        toast.loading("Uploading product file...");
+        // Set uploading flag BEFORE starting upload to prevent form submission
+        // Note: This should already be false from image upload, but set it again for safety
+        if (!isUploading) {
+          setIsUploading(true);
+        }
+        const fileUploadToastId = toast.loading("Uploading product file...");
         try {
           // Upload the processed file
           const uploadedUrls = await uploadProcessedFiles([processedFile.file]);
@@ -911,25 +1438,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
             // Clear the processed file after successful upload
             setProcessedFile(null);
           }
-          toast.dismiss();
+          toast.dismiss(fileUploadToastId);
         } catch (uploadError) {
           console.error("[PRODUCT FORM ERROR] File upload failed:", {
-            error: uploadError instanceof Error ? {
-              name: uploadError.name,
-              message: uploadError.message,
-              stack: uploadError.stack,
-            } : uploadError,
+            error:
+              uploadError instanceof Error
+                ? {
+                    name: uploadError.name,
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                  }
+                : uploadError,
             fileName: processedFile?.originalName,
             fileSize: processedFile?.file?.size,
             productId: initialData?.id || "new",
             timestamp: new Date().toISOString(),
           });
-          toast.dismiss();
+          toast.dismiss(fileUploadToastId);
           toast.error("Failed to upload product file. Please try again.");
           setIsLoading(false);
           setIsUploading(false);
           return;
         } finally {
+          // Always clear uploading flag, even on error
           setIsUploading(false);
         }
       } else {
@@ -944,7 +1475,36 @@ export function ProductForm({ initialData }: ProductFormProps) {
         }
       }
 
-      // The schema already handles the conversion to cents
+      // The schema already handles the conversion to cents/smallest unit
+      // Log currency information for debugging
+      const currencyInfo = SUPPORTED_CURRENCIES.find(
+        (c) => c.code === data.currency
+      );
+      console.log("[DEBUG] Form data before API call:", {
+        currency: data.currency,
+        currencyInfo: currencyInfo
+          ? {
+              name: currencyInfo.name,
+              symbol: currencyInfo.symbol,
+              decimals: currencyInfo.decimals,
+            }
+          : "Currency not found",
+        price: {
+          original: data.price,
+          currency: data.currency,
+        },
+        shippingCost: {
+          original: data.shippingCost,
+          currency: data.currency,
+        },
+        handlingFee: {
+          original: data.handlingFee,
+          currency: data.currency,
+        },
+        isDraft,
+        productId: initialData?.id || "new",
+      });
+
       const formData = {
         ...data,
         images: finalImageUrls, // Use uploaded URLs
@@ -952,18 +1512,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
         status: isDraft ? "DRAFT" : data.status,
         options:
           dropdownOptions.length > 0
-            ? convertDropdownOptionsToSchema(dropdownOptions)
+            ? convertDropdownOptionsToSchema(dropdownOptions, data.currency)
             : null,
         // Convert empty taxCode to null (taxCode is optional and nullable)
-        taxCode: data.taxCode && data.taxCode.trim() !== "" ? data.taxCode : null,
-        // Remove these conversions since they're handled by the schema
-        // price: Math.round(data.price * 100),
-        // shippingCost: Math.round(data.shippingCost * 100),
-        // handlingFee: Math.round(data.handlingFee * 100),
+        taxCode:
+          data.taxCode && data.taxCode.trim() !== "" ? data.taxCode : null,
+        // Schema will handle currency conversion to smallest unit
       };
 
-      console.log("[DEBUG] Form data after conversion:", formData);
+      console.log(
+        "[DEBUG] Form data after conversion (schema will convert monetary values):",
+        {
+          ...formData,
+          // Don't log full formData to avoid cluttering, just key fields
+          price: formData.price,
+          shippingCost: formData.shippingCost,
+          handlingFee: formData.handlingFee,
+          currency: formData.currency,
+        }
+      );
 
+      // CRITICAL: Create product AFTER images are uploaded
+      // If this fails, we'll have orphaned images, but at least validation passed
+      console.log("[PRODUCT FORM] Creating product with uploaded images...");
       const response = await fetch(
         initialData
           ? `/api/products/${initialData.id}`
@@ -980,15 +1551,56 @@ export function ProductForm({ initialData }: ProductFormProps) {
       const responseData = await response.json();
 
       if (!response.ok) {
+        // CRITICAL: Product creation failed after images were uploaded
+        // Log warning about orphaned images (we can't easily delete them from UploadThing)
+        if (finalImageUrls.length > validExistingImageUrls.length) {
+          const orphanedImageCount = finalImageUrls.length - validExistingImageUrls.length;
+          console.warn(
+            "[PRODUCT FORM WARNING] Product creation failed after image upload. Orphaned images may exist:",
+            {
+              orphanedImageCount,
+              uploadedImageUrls: finalImageUrls.slice(validExistingImageUrls.length),
+              error: responseData.error || responseData.message,
+              productId: initialData?.id || "new",
+              timestamp: new Date().toISOString(),
+            }
+          );
+        }
+        // Enhanced error logging with currency context
+        const currencyInfo = SUPPORTED_CURRENCIES.find(
+          (c) => c.code === data.currency
+        );
         console.error("[PRODUCT FORM ERROR] API response error:", {
           status: response.status,
           statusText: response.statusText,
           responseData,
           productId: initialData?.id || "new",
           isDraft,
+          currency: data.currency,
+          currencyInfo: currencyInfo
+            ? {
+                name: currencyInfo.name,
+                symbol: currencyInfo.symbol,
+                decimals: currencyInfo.decimals,
+              }
+            : "Currency not found",
+          monetaryValues: {
+            price: data.price,
+            shippingCost: data.shippingCost,
+            handlingFee: data.handlingFee,
+          },
+          formData: {
+            name: data.name,
+            status: data.status,
+            isDigital: data.isDigital,
+            primaryCategory: data.primaryCategory,
+            secondaryCategory: data.secondaryCategory,
+            imagesCount: finalImageUrls.length,
+            hasProductFile: !!finalFileUrl,
+          },
           timestamp: new Date().toISOString(),
         });
-        
+
         // Handle onboarding incomplete error
         if (responseData.onboardingIncomplete) {
           toast.error(
@@ -996,17 +1608,40 @@ export function ProductForm({ initialData }: ProductFormProps) {
           );
           return;
         }
-        
+
         // Handle Zod validation errors from server
         if (responseData.details && Array.isArray(responseData.details)) {
           // This is a ZodError - extract specific error messages
           const errorMessages = responseData.details
             .map((err: any) => err?.message)
-            .filter((msg: any): msg is string => typeof msg === "string" && msg.length > 0);
-          
+            .filter(
+              (msg: any): msg is string =>
+                typeof msg === "string" && msg.length > 0
+            );
+
+          console.error("[PRODUCT FORM ERROR] Server validation errors:", {
+            errors: responseData.details,
+            errorMessages,
+            currency: data.currency,
+            productId: initialData?.id || "new",
+            timestamp: new Date().toISOString(),
+          });
+
           if (errorMessages.length > 0) {
             const uniqueErrors: string[] = Array.from(new Set(errorMessages));
-            if (uniqueErrors.length === 1) {
+            // Provide helpful error messages for currency-related issues
+            const currencyRelatedErrors = uniqueErrors.filter(
+              (err) =>
+                err.toLowerCase().includes("currency") ||
+                err.toLowerCase().includes("price") ||
+                err.toLowerCase().includes("decimal")
+            );
+
+            if (currencyRelatedErrors.length > 0 && currencyInfo) {
+              toast.error(
+                `Currency error (${currencyInfo.name}): ${currencyRelatedErrors[0]}. Please check your price, shipping cost, and handling fee values.`
+              );
+            } else if (uniqueErrors.length === 1) {
               toast.error(uniqueErrors[0]);
             } else {
               toast.error(
@@ -1017,8 +1652,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
             return;
           }
         }
-        
-        const errorMessage = responseData.error || responseData.message || "Failed to save product";
+
+        const errorMessage =
+          responseData.error ||
+          responseData.message ||
+          "Failed to save product";
         toast.error(errorMessage);
         setIsLoading(false);
         return;
@@ -1066,17 +1704,35 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setTempImages([]); // Clear temp images after successful submission
       setProcessedFile(null); // Clear processed file after successful submission
     } catch (error) {
+      // Enhanced error logging with full context
+      const currencyInfo = SUPPORTED_CURRENCIES.find(
+        (c) => c.code === data.currency
+      );
       console.error("[PRODUCT FORM ERROR] Form submission failed:", {
-        error: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        } : error,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
+        currency: data.currency,
+        currencyInfo: currencyInfo
+          ? {
+              name: currencyInfo.name,
+              symbol: currencyInfo.symbol,
+              decimals: currencyInfo.decimals,
+            }
+          : "Currency not found",
         formData: {
           name: data.name,
           status: data.status,
+          isDraft,
           isDigital: data.isDigital,
           price: data.price,
+          shippingCost: data.shippingCost,
+          handlingFee: data.handlingFee,
           currency: data.currency,
           primaryCategory: data.primaryCategory,
           secondaryCategory: data.secondaryCategory,
@@ -1084,13 +1740,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
           hasProductFile: !!data.productFile,
           productId: initialData?.id || "new",
         },
+        formErrors: form.formState.errors,
         timestamp: new Date().toISOString(),
       });
-      
+
       // Check if it's a ZodError
-      if (error && typeof error === 'object' && 'issues' in error) {
-        const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
-        const errorMessages = zodError.issues.map(issue => issue.message);
+      if (error && typeof error === "object" && "issues" in error) {
+        const zodError = error as {
+          issues: Array<{ message: string; path: (string | number)[] }>;
+        };
+        const errorMessages = zodError.issues.map((issue) => issue.message);
         if (errorMessages.length > 0) {
           const uniqueErrors = Array.from(new Set(errorMessages));
           if (uniqueErrors.length === 1) {
@@ -1104,10 +1763,11 @@ export function ProductForm({ initialData }: ProductFormProps) {
           toast.error("Validation failed. Please check your input.");
         }
       } else {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : "An unexpected error occurred";
-        
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred";
+
         toast.error(`Failed to save product: ${errorMessage}`);
       }
     } finally {
@@ -1156,20 +1816,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
       router.refresh();
     } catch (error) {
       console.error("[PRODUCT FORM ERROR] Status update failed:", {
-        error: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        } : error,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
         productId: initialData?.id,
         newStatus,
         timestamp: new Date().toISOString(),
       });
-      
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Failed to update product status";
-      
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to update product status";
+
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -1191,10 +1855,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       freeShipping: false,
       handlingFee: 0,
       shippingCost: 0,
-      itemWeight: 0,
-      itemLength: 0,
-      itemWidth: 0,
-      itemHeight: 0,
+      // CRITICAL: Dimensions are optional - use undefined instead of 0
+      // This prevents validation errors since 0 is invalid (must be > 0 if provided)
+      itemWeight: undefined,
+      itemLength: undefined,
+      itemWidth: undefined,
+      itemHeight: undefined,
       shippingNotes: "",
       status: "DRAFT",
       isDigital: false,
@@ -1236,7 +1902,19 @@ export function ProductForm({ initialData }: ProductFormProps) {
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-8"
+            // Prevent form submission if uploads are in progress
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && isUploading) {
+                e.preventDefault();
+                toast.error(
+                  "Please wait for uploads to complete before submitting."
+                );
+              }
+            }}
+          >
             {/* Grid Layout for Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Basic Information Section */}
@@ -1394,10 +2072,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
                                 const fieldLabels: Record<string, string> = {
                                   shippingCost: "Shipping Cost",
                                   shippingOptionId: "Shipping Option",
-                                  itemWeight: "Item Weight",
-                                  itemLength: "Item Length",
-                                  itemWidth: "Item Width",
-                                  itemHeight: "Item Height",
+                                  // Note: Dimensions (itemWeight, itemLength, itemWidth, itemHeight) are optional
+                                  // and no longer included in shippingFields array
                                 };
                                 return fieldLabels[field] || field;
                               })
@@ -1710,14 +2386,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 <div className="flex flex-col items-center gap-2">
                   <Submitbutton
                     title={
-                      initialData
-                        ? `Update Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
-                        : `Create Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
+                      isUploading
+                        ? "Uploading images/files..."
+                        : initialData
+                          ? `Update Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
+                          : `Create Product (Status: ${formatStatus(currentStatus || "DRAFT")})`
                     }
-                    isPending={isLoading}
+                    isPending={isLoading || isUploading}
                   />
                   <p className="text-xs text-gray-500 text-center">
-                    This will save all changes to your product
+                    {isUploading
+                      ? "Please wait for uploads to complete before submitting"
+                      : "This will save all changes to your product"}
                   </p>
                 </div>
               </div>
