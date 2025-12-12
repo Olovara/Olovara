@@ -6,7 +6,21 @@ export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, onWheel, ...props }, ref) => {
+    // Prevent number inputs from changing value when scrolling
+    const handleWheel = React.useCallback(
+      (e: React.WheelEvent<HTMLInputElement>) => {
+        // If it's a number input, prevent the default scroll behavior
+        // This stops the value from incrementing/decrementing when scrolling
+        if (type === "number") {
+          e.currentTarget.blur();
+        }
+        // Call the original onWheel handler if provided
+        onWheel?.(e);
+      },
+      [type, onWheel]
+    );
+
     return (
       <input
         type={type}
@@ -15,6 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onWheel={handleWheel}
         {...props}
       />
     )
