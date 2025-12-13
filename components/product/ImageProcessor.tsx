@@ -191,7 +191,8 @@ export function ImageProcessor({
     }
     // After mount, we completely ignore initialProcessedImages prop changes
     // This prevents parent updates from overwriting our newly processed images
-  }, []); // Empty deps - only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount (intentional: ignore prop changes after mount)
 
   // Convert existing image URLs to ProcessedImage format (for editing mode)
   // These are already uploaded, so we'll keep them as-is
@@ -671,6 +672,7 @@ export function ImageProcessor({
     processedImages.length,
     existingProcessedImages.length,
     maxImages,
+    uploadSessionId, // Added missing dependency
   ]);
 
   // Remove processed image

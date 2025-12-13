@@ -1,4 +1,5 @@
-import bcrypt from "bcryptjs";
+// Don't import bcrypt at top level - it uses Node.js APIs not available in Edge Runtime
+// Middleware imports this file, so we need to dynamically import bcrypt only when needed
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
@@ -22,6 +23,9 @@ export const authConfig = {
           const user = await getUserByEmail(email);
           if (!user || !user.password) return null;
 
+          // Dynamically import bcrypt only when needed (runs in Node.js API route, not Edge)
+          // This prevents Edge Runtime bundling errors
+          const bcrypt = (await import("bcryptjs")).default;
           const passwordsMatch = await bcrypt.compare(password, user.password);
 
           if (passwordsMatch) {

@@ -203,8 +203,8 @@ app.prepare().then(() => {
 
   // Handle all other requests with Next.js
   httpServer.on('request', async (req, res) => {
-    // Set request timeout (60 seconds - Railway default is often 30s)
-    req.setTimeout(60000, () => {
+    // Set request timeout (30 seconds - reduced from 60 to prevent client timeouts)
+    req.setTimeout(30000, () => {
       if (!res.headersSent) {
         res.statusCode = 408;
         res.end('Request Timeout');
@@ -212,46 +212,58 @@ app.prepare().then(() => {
       req.destroy();
     });
 
-    // Handle connection errors gracefully (client closing connection)
+    // Set response timeout to prevent hanging connections
+    res.setTimeout(30000, () => {
+      if (!res.headersSent) {
+        res.statusCode = 504;
+        res.end('Gateway Timeout');
+      }
+    });
+
+    // Handle connection errors - these are SYMPTOMS of underlying issues
+    // Log them to track when they occur (they indicate server action failures or slow responses)
     req.on('error', (error) => {
-      // Log timeout errors - these indicate performance problems that need fixing
+      // Log connection errors that indicate problems (not just normal disconnects)
       if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.warn(`[TIMEOUT] Request to ${req.url} timed out - this indicates a performance issue`);
+        console.warn(`[TIMEOUT] Request to ${req.url} timed out - server too slow`);
+      } else if (error.code === 'HPE_INVALID_EOF_STATE') {
+        // This often happens when server actions fail and client disconnects
+        console.warn(`[PARSE_ERROR] Parse error on ${req.url} - possible server action failure`);
       } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
-        // ECONNRESET/EPIPE are normal when clients close connections
+        // ECONNRESET/EPIPE are normal client disconnects, but log others
         console.error('Request error:', error);
       }
     });
 
     res.on('error', (error) => {
-      // Log timeout errors - these indicate performance problems that need fixing
+      // Log response errors that indicate problems
       if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.warn(`[TIMEOUT] Response for ${req.url} timed out - this indicates a performance issue`);
+        console.warn(`[TIMEOUT] Response for ${req.url} timed out - server too slow`);
       } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
-        // ECONNRESET/EPIPE are normal when clients close connections
         console.error('Response error:', error);
       }
     });
 
-    try {
-      // Ensure proper handling of static files in development
-      if (dev && req.url && req.url.startsWith('/_next/static/')) {
-        // Let Next.js handle static files directly
-        await handler(req, res);
-        return;
+    // Handle client disconnect gracefully
+    req.on('close', () => {
+      if (!res.headersSent && !res.writableEnded) {
+        res.destroy();
       }
-      
+    });
+
+    try {
+      // CRITICAL: Server actions MUST be handled by Next.js handler directly
+      // They use routes like /_next/server-actions/[actionId] and need proper routing
+      // Don't interfere with Next.js internal routes - let Next.js handle everything
       await handler(req, res);
     } catch (error) {
-      // Handle connection reset errors gracefully (normal client behavior)
-      if (error?.code === 'ECONNRESET' || error?.code === 'EPIPE') {
-        // Client closed connection - this is normal
-        return;
-      }
+      // These errors are SYMPTOMS - they happen when:
+      // 1. Server actions fail (causing clients to disconnect)
+      // 2. Server is too slow (causing timeouts)
+      // 3. Build ID mismatch (causing server action registry errors)
       
-      // Log timeout errors - these indicate performance problems
       if (error?.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.warn(`[TIMEOUT] Request to ${req.url} timed out - investigate slow queries or operations`);
+        console.error(`[CRITICAL] Request to ${req.url} timed out - server performance issue`);
         if (!res.headersSent) {
           res.statusCode = 504;
           res.end('Gateway Timeout');
@@ -259,7 +271,17 @@ app.prepare().then(() => {
         return;
       }
       
-      console.error('Error handling request:', error);
+      // HPE_INVALID_EOF_STATE often indicates server action failure
+      if (error?.code === 'HPE_INVALID_EOF_STATE') {
+        console.error(`[CRITICAL] Parse error on ${req.url} - likely server action failure or build mismatch`);
+        // Don't return silently - this indicates a real problem
+      }
+      
+      // Log all errors except normal client disconnects
+      if (error?.code !== 'ECONNRESET' && error?.code !== 'EPIPE') {
+        console.error(`[ERROR] Error handling request to ${req.url}:`, error);
+      }
+      
       if (!res.headersSent) {
         res.statusCode = 500;
         res.end('Internal Server Error');
@@ -267,13 +289,19 @@ app.prepare().then(() => {
     }
   });
 
-  // Handle server-level connection errors gracefully
+  // Handle server-level connection errors
   httpServer.on('clientError', (err, socket) => {
-    // Don't log timeout/connection reset errors - these are normal
-    if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE' && err.code !== 'ERR_HTTP_REQUEST_TIMEOUT') {
+    // Log errors that indicate problems (not just normal disconnects)
+    if (err.code === 'HPE_INVALID_EOF_STATE') {
+      console.error('[CRITICAL] Client parse error - possible server action/build mismatch');
+    } else if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
       console.error('Client error:', err);
     }
-    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    
+    // Only send error response if socket is still writable
+    if (!socket.destroyed && socket.writable) {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    }
   });
 
   httpServer

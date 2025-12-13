@@ -1,10 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Generate consistent build ID to prevent server action mismatches
+  // This is critical when deploying to multiple instances or after rebuilds
+  generateBuildId: async () => {
+    // Use environment variable if set (for consistent builds across deployments)
+    // Otherwise use timestamp to ensure fresh builds
+    return process.env.BUILD_ID || `build-${Date.now()}`;
+  },
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client'],
     // Improve Server Action stability
     serverActions: {
       bodySizeLimit: '2mb',
+      // Allow server actions to work with custom server
+      allowedOrigins: process.env.NODE_ENV === 'production' 
+        ? ['https://yarnnu.com', 'https://www.yarnnu.com']
+        : ['http://localhost:3000'],
     },
   },
   // Clear build cache on issues
@@ -14,6 +25,8 @@ const nextConfig = {
     // Number of pages that should be kept simultaneously without being disposed
     pagesBufferLength: 2,
   },
+  // Ensure proper handling of server actions Note: In development, components may render twice. This is expected and helps find problems.
+  reactStrictMode: true,
   // Ensure HTTPS redirects are handled properly
   async redirects() {
     return [
