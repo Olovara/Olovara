@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePermissions } from "@/components/providers/PermissionProvider";
 
-export default function CheckoutSuccessClient() {
+interface CheckoutSuccessClientProps {
+  isAuthenticated?: boolean;
+}
+
+export default function CheckoutSuccessClient({ isAuthenticated = false }: CheckoutSuccessClientProps) {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +39,7 @@ export default function CheckoutSuccessClient() {
   }, [sessionId]);
 
   // Determine the orders page URL based on user role
+  // Only used if user is authenticated
   const getOrdersPageUrl = () => {
     if (role === "SELLER") {
       return "/seller/dashboard/my-purchases";
@@ -78,9 +83,12 @@ export default function CheckoutSuccessClient() {
           <Button asChild variant="outline">
             <Link href="/">Continue Shopping</Link>
           </Button>
-          <Button asChild>
-            <Link href={getOrdersPageUrl()}>View Purchases</Link>
-          </Button>
+          {/* Only show "View Purchases" button if user is authenticated */}
+          {isAuthenticated && (
+            <Button asChild>
+              <Link href={getOrdersPageUrl()}>View Purchases</Link>
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>

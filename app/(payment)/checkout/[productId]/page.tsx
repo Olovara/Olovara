@@ -17,6 +17,7 @@ import { useLocation } from "@/hooks/useLocation";
 import { SUPPORTED_COUNTRIES, type Country } from "@/data/countries";
 import { ReCaptcha } from "@/components/ui/recaptcha";
 import EmbeddedPaymentForm from "@/components/EmbeddedPaymentForm";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 // Placeholder for product fetch (replace with real hook or API call)
 async function fetchProduct(productId: string) {
@@ -32,6 +33,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const productId = params.productId as string;
   const { locationPreferences } = useLocation();
+  const currentUser = useCurrentUser();
 
   // Get user's detected country or default to US
   const userCountry = locationPreferences?.countryCode || 'US';
@@ -45,6 +47,7 @@ export default function CheckoutPage() {
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [appliedDiscountCode, setAppliedDiscountCode] = useState<string>("");
   const [appliedDiscountAmount, setAppliedDiscountAmount] = useState<number>(0);
+  const [buyerEmail, setBuyerEmail] = useState<string>("");
   const [shippingAddress, setShippingAddress] = useState({
     name: "",
     street: "",
@@ -97,6 +100,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetchProduct(productId).then(setProduct);
   }, [productId]);
+
+  // Pre-fill email if user is logged in (only once when user email becomes available)
+  useEffect(() => {
+    if (currentUser?.email && !buyerEmail) {
+      setBuyerEmail(currentUser.email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.email]);
 
   // Calculate prices
   const subtotal = product ? product.price * quantity : 0;
@@ -238,6 +249,19 @@ export default function CheckoutPage() {
       return false;
     }
     
+    // Validate email (required for all checkouts)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!buyerEmail || !buyerEmail.trim()) {
+      trackFormError('email', 'Email is required');
+      toast.error("Please enter your email address");
+      return false;
+    }
+    if (!emailRegex.test(buyerEmail)) {
+      trackFormError('email', 'Invalid email format');
+      toast.error("Please enter a valid email address");
+      return false;
+    }
+    
     if (!product.isDigital) {
       // Validate shipping address
       for (const field of ["name", "street", "city", "state", "postal", "country"]) {
@@ -314,6 +338,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           productId: product.id,
           quantity,
+          buyerEmail: buyerEmail.trim(), // Include buyer email
           discountCode: appliedDiscountCode || undefined,
           shippingAddress: !product.isDigital ? shippingAddress : undefined,
           billingAddress: !product.isDigital ? (sameAsShipping ? shippingAddress : billingAddress) : undefined,
@@ -325,6 +350,7 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (response.ok && data.clientSecret) {
+        console.log(`✅ Payment intent created successfully: ${data.paymentIntentId || 'ID not provided'}`);
         // Track successful payment intent creation
         trackPaymentIntentCreated(data);
         
@@ -512,6 +538,29 @@ export default function CheckoutPage() {
                   maxQuantity={product.stock}
                   quantity={quantity}
                   setQuantity={setQuantity}
+                />
+              </div>
+
+              {/* Email Address - Required for order confirmation */}
+              <div className="p-6 border-b border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email address <span className="text-red-500">*</span>
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  We&apos;ll send your order confirmation to this email
+                </p>
+                <Input 
+                  type="email"
+                  name="email"
+                  placeholder="your.email@example.com" 
+                  value={buyerEmail} 
+                  onChange={(e) => {
+                    setBuyerEmail(e.target.value);
+                    trackFieldInteraction('email');
+                  }}
+                  onFocus={() => trackFieldInteraction('email')}
+                  className="w-full"
+                  required
                 />
               </div>
 

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     const body = await req.json();
-    const { productId, quantity, preferredCurrency, discountCode, shippingAddress, billingAddress, recaptchaToken, abandonedCartSessionId } = body;
+    const { productId, quantity, preferredCurrency, discountCode, buyerEmail, shippingAddress, billingAddress, recaptchaToken, abandonedCartSessionId } = body;
 
     if (!productId || !quantity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -422,6 +422,7 @@ export async function POST(req: Request) {
     }
 
     // Create payment intent with application fee
+    console.log(`💳 Creating payment intent: amount=${finalOrderAmountInCents}, currency=${checkoutCurrency}, productId=${productId}`);
     const paymentIntent = await stripeSecret.instance.paymentIntents.create({
       amount: finalOrderAmountInCents,
       currency: checkoutCurrency,
@@ -450,7 +451,8 @@ export async function POST(req: Request) {
         userCountry: shippingAddress?.country || req.headers.get('x-user-country') || 'US',
         dynamicShipping: (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0).toString(),
         // Buyer information - store in metadata for webhook retrieval
-        buyerEmail: session?.user?.email || billingAddress?.email || shippingAddress?.email || '',
+        // Priority: 1) Explicit buyerEmail from form, 2) Logged in user email, 3) Empty string
+        buyerEmail: buyerEmail || session?.user?.email || '',
         buyerName: shippingAddress?.name || billingAddress?.name || session?.user?.name || '',
         // Discount information
         discountCodeId: discountCodeId || '',
@@ -475,11 +477,14 @@ export async function POST(req: Request) {
       },
     });
 
+    console.log(`✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`);
+
     return NextResponse.json({ 
       clientSecret: paymentIntent.client_secret,
       customerId: customerId,
       amount: finalOrderAmountInCents,
       currency: checkoutCurrency,
+      paymentIntentId: paymentIntent.id, // Include payment intent ID for tracking
     });
   } catch (error: any) {
     console.error("[PAYMENT_INTENT_ERROR]", error);
