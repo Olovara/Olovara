@@ -626,6 +626,58 @@ export function logError(options: LogErrorOptions): string {
       "We couldn't load your founding seller status. Please refresh the page and try again.",
     FOUNDING_SELLER_ELIGIBILITY_CHECK_FAILED:
       "We couldn't check your founding seller eligibility. Please refresh the page and try again.",
+
+    // Admin Actions
+    ADMIN_GET_USERS_FAILED:
+      "We couldn't load the users. Please refresh the page and try again.",
+    ADMIN_GET_ALL_SELLERS_FAILED:
+      "We couldn't load all seller applications. Please refresh the page and try again.",
+    ADMIN_GET_APPROVED_SELLERS_FAILED:
+      "We couldn't load approved seller applications. Please refresh the page and try again.",
+    ADMIN_GET_UNAPPROVED_SELLERS_FAILED:
+      "We couldn't load unapproved seller applications. Please refresh the page and try again.",
+    ADMIN_APPROVE_APPLICATION_FAILED:
+      "We couldn't approve the seller application. Please try again or contact support.",
+    ADMIN_REJECT_APPLICATION_FAILED:
+      "We couldn't reject the seller application. Please try again or contact support.",
+    ADMIN_GET_ALL_USERS_FAILED:
+      "We couldn't load all users. Please refresh the page and try again.",
+    ADMIN_GET_USER_PERMISSIONS_FAILED:
+      "We couldn't load user permissions. Please refresh the page and try again.",
+    ADMIN_ADD_USER_PERMISSION_FAILED:
+      "We couldn't add the permission. Please try again or contact support.",
+    ADMIN_REMOVE_USER_PERMISSION_FAILED:
+      "We couldn't remove the permission. Please try again or contact support.",
+    ADMIN_GET_DASHBOARD_STATS_FAILED:
+      "We couldn't load dashboard statistics. Please refresh the page and try again.",
+    ADMIN_GET_RECENT_ACTIVITY_FAILED:
+      "We couldn't load recent activity. Please refresh the page and try again.",
+    ADMIN_CREATE_ADMIN_FAILED:
+      "We couldn't create the admin account. Please try again or contact support.",
+    ADMIN_GET_ADMIN_BY_USER_ID_FAILED:
+      "We couldn't load the admin information. Please refresh the page and try again.",
+    ADMIN_UPDATE_ADMIN_ROLE_FAILED:
+      "We couldn't update the admin role. Please try again or contact support.",
+    ADMIN_DEACTIVATE_ADMIN_FAILED:
+      "We couldn't deactivate the admin account. Please try again or contact support.",
+    ADMIN_UPDATE_NOTIFICATION_PREFERENCES_FAILED:
+      "We couldn't update notification preferences. Please try again or contact support.",
+    ADMIN_ADD_TASK_FAILED:
+      "We couldn't add the task. Please try again or contact support.",
+    ADMIN_UPDATE_TASK_FAILED:
+      "We couldn't update the task. Please try again or contact support.",
+    ADMIN_REMOVE_TASK_FAILED:
+      "We couldn't remove the task. Please try again or contact support.",
+    ADMIN_GET_ADMINS_FOR_NOTIFICATION_FAILED:
+      "We couldn't load admins for notifications. Please try again or contact support.",
+    ADMIN_SETUP_NOTIFICATIONS_FAILED:
+      "We couldn't set up notifications. Please try again or contact support.",
+    ADMIN_GET_CONTACT_SUBMISSIONS_FAILED:
+      "We couldn't load contact submissions. Please refresh the page and try again.",
+    ADMIN_GET_CONTACT_SUBMISSION_BY_ID_FAILED:
+      "We couldn't load the contact submission. Please refresh the page and try again.",
+    ADMIN_UPDATE_USER_ROLE_FAILED:
+      "We couldn't update the user role. Please try again or contact support.",
   };
 
   // Return user-friendly message or generic one

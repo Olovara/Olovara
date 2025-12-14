@@ -6,6 +6,7 @@ import { SellerApplicationNotificationEmail } from "@/components/emails/SellerAp
 import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplicationApprovedEmail";
 import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
 import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
+import { logError } from "@/lib/error-logger";
 
 const apiKey = process.env.RESEND_API_KEY;
 
@@ -15,16 +16,44 @@ const domain = process.env.NEXT_PUBLIC_APP_URL;
 
 export const sendTwoFactorTokenEmail = async (email: string, token: string) => {
   try {
+    console.log("[2FA_EMAIL] Attempting to send 2FA email:", {
+      email,
+      timestamp: new Date().toISOString(),
+    });
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: email,
       subject: "2FA Code",
       react: TwoFactorEmail({ token }),
     });
-    console.log("2FA Email sent successfully:", response);
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[2FA_EMAIL] Email sent successfully:", {
+      email,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    console.error("Error sending 2FA email:", error);
-    throw error;
+    const userMessage = logError({
+      code: "2FA_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendTwoFactorTokenEmail",
+      error,
+      metadata: {
+        email,
+        note: "Failed to send 2FA email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };
 
@@ -32,20 +61,52 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
   const resetLink = `${domain}/new-password?token=${token}`;
 
   try {
+    console.log("[PASSWORD_RESET] Attempting to send password reset email:", {
+      email,
+      timestamp: new Date().toISOString(),
+    });
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: email,
       subject: "Reset your password",
       react: PasswordResetEmail({ resetLink }),
     });
-    console.log("Password reset email sent successfully:", response);
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[PASSWORD_RESET] Email sent successfully:", {
+      email,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    console.error("Error sending password reset email:", error);
-    throw error;
+    const userMessage = logError({
+      code: "PASSWORD_RESET_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendPasswordResetEmail",
+      error,
+      metadata: {
+        email,
+        note: "Failed to send password reset email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };
 
-export const sendVerificationEmail = async (email: string, token: string, customUrl?: string) => {
+export const sendVerificationEmail = async (
+  email: string,
+  token: string,
+  customUrl?: string
+) => {
   const startTime = Date.now();
   const confirmLink = customUrl || `${domain}/new-verification?token=${token}`;
 
@@ -55,7 +116,7 @@ export const sendVerificationEmail = async (email: string, token: string, custom
       timestamp: new Date().toISOString(),
       startTime,
     });
-    
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: email,
@@ -65,33 +126,41 @@ export const sendVerificationEmail = async (email: string, token: string, custom
         "X-Entity-Ref-ID": token,
       },
     });
-    
+
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
+
     if (!response) {
-      throw new Error("Failed to send verification email: No response received");
+      throw new Error(
+        "Failed to send verification email: No response received"
+      );
     }
-    
+
     console.log("[Email Verification] Email sent successfully:", {
       email,
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
       response,
     });
-    
+
     return response;
   } catch (error) {
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
-    console.error("[Email Verification] Error sending email:", {
+
+    const userMessage = logError({
+      code: "VERIFICATION_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendVerificationEmail",
       error,
-      email,
-      duration: `${duration}ms`,
-      timestamp: new Date().toISOString(),
+      metadata: {
+        email,
+        duration: `${duration}ms`,
+        note: "Failed to send verification email",
+      },
     });
-    throw new Error("Failed to send verification email. Please try again later.");
+    throw new Error(userMessage);
   }
 };
 
@@ -105,6 +174,17 @@ export const sendSellerApplicationNotificationEmail = async (
   const adminDashboardUrl = `${domain}/admin/dashboard/seller-applications`;
 
   try {
+    console.log(
+      "[SELLER_APP_NOTIFICATION] Attempting to send notification email:",
+      {
+        adminEmail,
+        applicantName,
+        applicantEmail,
+        applicationId,
+        timestamp: new Date().toISOString(),
+      }
+    );
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: adminEmail,
@@ -117,11 +197,37 @@ export const sendSellerApplicationNotificationEmail = async (
         adminDashboardUrl,
       }),
     });
-    console.log("Seller application notification email sent successfully:", response);
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[SELLER_APP_NOTIFICATION] Email sent successfully:", {
+      adminEmail,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
     return response;
   } catch (error) {
-    console.error("Error sending seller application notification email:", error);
-    throw error;
+    const userMessage = logError({
+      code: "SELLER_APP_NOTIFICATION_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendSellerApplicationNotificationEmail",
+      error,
+      metadata: {
+        adminEmail,
+        applicantName,
+        applicantEmail,
+        applicationId,
+        note: "Failed to send seller application notification email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };
 
@@ -132,6 +238,12 @@ export const sendSellerApplicationApprovedEmail = async (
   const dashboardUrl = `${domain}/seller/dashboard`;
 
   try {
+    console.log("[SELLER_APP_APPROVED] Attempting to send approval email:", {
+      sellerEmail,
+      sellerName,
+      timestamp: new Date().toISOString(),
+    });
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: sellerEmail,
@@ -142,11 +254,35 @@ export const sendSellerApplicationApprovedEmail = async (
         dashboardUrl,
       }),
     });
-    console.log("Seller application approved email sent successfully:", response);
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[SELLER_APP_APPROVED] Email sent successfully:", {
+      sellerEmail,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
     return response;
   } catch (error) {
-    console.error("Error sending seller application approved email:", error);
-    throw error;
+    const userMessage = logError({
+      code: "SELLER_APP_APPROVED_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendSellerApplicationApprovedEmail",
+      error,
+      metadata: {
+        sellerEmail,
+        sellerName,
+        note: "Failed to send seller application approved email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };
 
@@ -158,6 +294,13 @@ export const sendSellerApplicationRejectedEmail = async (
   const applicationUrl = `${domain}/seller-application`;
 
   try {
+    console.log("[SELLER_APP_REJECTED] Attempting to send rejection email:", {
+      sellerEmail,
+      sellerName,
+      hasRejectionReason: !!rejectionReason,
+      timestamp: new Date().toISOString(),
+    });
+
     const response = await resend.emails.send({
       from: "Yarnnu <noreply@yarnnu.com>",
       to: sellerEmail,
@@ -169,11 +312,36 @@ export const sendSellerApplicationRejectedEmail = async (
         rejectionReason,
       }),
     });
-    console.log("Seller application rejected email sent successfully:", response);
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[SELLER_APP_REJECTED] Email sent successfully:", {
+      sellerEmail,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
     return response;
   } catch (error) {
-    console.error("Error sending seller application rejected email:", error);
-    throw error;
+    const userMessage = logError({
+      code: "SELLER_APP_REJECTED_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendSellerApplicationRejectedEmail",
+      error,
+      metadata: {
+        sellerEmail,
+        sellerName,
+        hasRejectionReason: !!rejectionReason,
+        note: "Failed to send seller application rejected email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };
 
@@ -189,21 +357,41 @@ export const sendContactResponseEmail = async (
   try {
     // Get reason label for subject line
     const reasonLabels: { [key: string]: string } = {
-      'BILLING': 'Billing',
-      'GENERAL': 'General Support',
-      'LISTING': 'Listing Issue',
-      'ACCOUNT': 'Account Support',
-      'PAYMENT': 'Payment Problem',
-      'FEATURE': 'Feature Request',
-      'BUG': 'Bug Report',
-      'OTHER': 'Other',
+      BILLING: "Billing",
+      GENERAL: "General Support",
+      LISTING: "Listing Issue",
+      ACCOUNT: "Account Support",
+      PAYMENT: "Payment Problem",
+      FEATURE: "Feature Request",
+      BUG: "Bug Report",
+      OTHER: "Other",
     };
-    const reasonLabel = reasonLabels[reason] || 'Inquiry';
+    const reasonLabel = reasonLabels[reason] || "Inquiry";
 
     // Validate email address before sending
-    if (!customerEmail || !customerEmail.includes('@')) {
+    if (!customerEmail || !customerEmail.includes("@")) {
       throw new Error(`Invalid customer email address: ${customerEmail}`);
     }
+
+    // Validate inputs aren't too long (Resend has limits)
+    if (adminResponse.length > 50000) {
+      throw new Error(
+        "Response message is too long. Please keep it under 50,000 characters."
+      );
+    }
+
+    if (originalMessage.length > 50000) {
+      throw new Error("Original message is too long.");
+    }
+
+    console.log("[CONTACT_RESPONSE] Attempting to send email:", {
+      customerEmail,
+      customerName,
+      reasonLabel,
+      adminResponseLength: adminResponse.length,
+      originalMessageLength: originalMessage.length,
+      timestamp: new Date().toISOString(),
+    });
 
     const response = await resend.emails.send({
       from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
@@ -217,15 +405,43 @@ export const sendContactResponseEmail = async (
       }),
       replyTo: "support@yarnnu.com", // Allow replies to go to support email
     });
-    
-    
-    return response;
-  } catch (error) {
-    console.error("[CONTACT_RESPONSE] Error sending contact response email:", {
-      error,
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    // Safely access response ID - Resend response may have id in data property or directly
+    const responseId =
+      (response as any)?.data?.id || (response as any)?.id || "unknown";
+
+    console.log("[CONTACT_RESPONSE] Email sent successfully:", {
       customerEmail,
+      responseId: responseId,
+      response: response,
       timestamp: new Date().toISOString(),
     });
-    throw error;
+
+    return response;
+  } catch (error) {
+    const userMessage = logError({
+      code: "CONTACT_RESPONSE_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendContactResponseEmail",
+      error,
+      metadata: {
+        customerEmail,
+        customerName,
+        reason,
+        adminResponseLength: adminResponse?.length,
+        originalMessageLength: originalMessage?.length,
+        note: "Failed to send contact response email",
+      },
+    });
+    throw new Error(userMessage);
   }
 };

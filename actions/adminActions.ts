@@ -3,15 +3,22 @@ import { User, AccountStatus } from "@prisma/client";
 import { getAuthUserId, getUserRole } from "./authActions";
 import { currentUser, currentUserWithPermissions } from "@/lib/auth";
 import {
-  ROLES, 
+  ROLES,
   ADMIN_ROLES,
   ADMIN_NOTIFICATION_TYPES,
-  INITIAL_SELLER_PERMISSIONS
+  INITIAL_SELLER_PERMISSIONS,
 } from "@/data/roles-and-permissions";
-import { sendSellerApplicationApprovedEmail, sendSellerApplicationRejectedEmail } from "@/lib/mail";
+import {
+  sendSellerApplicationApprovedEmail,
+  sendSellerApplicationRejectedEmail,
+} from "@/lib/mail";
 import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
-import { updateOnboardingStep, initializeOnboardingSteps } from "@/lib/onboarding";
+import {
+  updateOnboardingStep,
+  initializeOnboardingSteps,
+} from "@/lib/onboarding";
+import { logError } from "@/lib/error-logger";
 
 interface GetUsersParams {
   role?: string;
@@ -31,13 +38,16 @@ export async function getUsers({
   pageNumber = "1",
   pageSize = "12",
 }: GetUsersParams): Promise<PaginatedResponse<User>> {
-  const userId = await getAuthUserId();
-
-  const page = isNaN(parseInt(pageNumber)) ? 1 : parseInt(pageNumber);
-  const limit = isNaN(parseInt(pageSize)) ? 12 : parseInt(pageSize);
-  const skip = (page - 1) * limit;
+  // Declare variables outside try block so they're accessible in catch
+  let userId: string | null = null;
 
   try {
+    userId = await getAuthUserId();
+
+    const page = isNaN(parseInt(pageNumber)) ? 1 : parseInt(pageNumber);
+    const limit = isNaN(parseInt(pageSize)) ? 12 : parseInt(pageSize);
+    const skip = (page - 1) * limit;
+
     // Dynamic WHERE filters based on parameters
     const usersSelect = {
       where: {
@@ -62,25 +72,50 @@ export async function getUsers({
       totalCount: count,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching users:", error);
-    throw error; // Customize this error handling based on your needs
+
+    // Log to database - admin could email about "can't load users"
+    logError({
+      code: "ADMIN_GET_USERS_FAILED",
+      userId: userId || undefined,
+      route: "actions/adminActions",
+      method: "getUsers",
+      error,
+      metadata: {
+        role,
+        status,
+        pageNumber,
+        pageSize,
+        note: "Failed to fetch users",
+      },
+    });
+
+    throw error; // Re-throw for caller to handle
   }
 }
 
 export async function getAllSellers() {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
     console.log("Starting getAllSellers...");
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has VIEW_SELLER_APPLICATIONS permission
-    const hasViewSellerApplications = currentUserData.permissions?.includes('VIEW_SELLER_APPLICATIONS');
-    
+    const hasViewSellerApplications = currentUserData.permissions?.includes(
+      "VIEW_SELLER_APPLICATIONS"
+    );
+
     if (!hasViewSellerApplications) {
-      console.error("Access denied: User does not have VIEW_SELLER_APPLICATIONS permission");
+      console.error(
+        "Access denied: User does not have VIEW_SELLER_APPLICATIONS permission"
+      );
       throw new Error("Forbidden: Insufficient permissions");
     }
 
@@ -113,16 +148,18 @@ export async function getAllSellers() {
     });
     console.log("Found applications:", {
       count: applications.length,
-      firstApplication: applications[0] ? {
-        id: applications[0].id,
-        userId: applications[0].userId,
-        username: applications[0].user?.username,
-        email: applications[0].user?.email
-      } : null
+      firstApplication: applications[0]
+        ? {
+            id: applications[0].id,
+            userId: applications[0].userId,
+            username: applications[0].user?.username,
+            email: applications[0].user?.email,
+          }
+        : null,
     });
-    
+
     // Decrypt birthdate for each application
-    const applicationsWithDecryptedBirthdate = applications.map(app => {
+    const applicationsWithDecryptedBirthdate = applications.map((app) => {
       let birthdate = "N/A";
       try {
         birthdate = decryptBirthdate({
@@ -131,41 +168,77 @@ export async function getAllSellers() {
           birthdateSalt: app.birthdateSalt,
         });
       } catch (error) {
-        console.error("Error decrypting birthdate for application:", app.id, error);
+        console.error(
+          "Error decrypting birthdate for application:",
+          app.id,
+          error
+        );
         birthdate = "Error decrypting";
       }
-      
+
       return {
         ...app,
         birthdate,
       };
     });
-    
+
     return applicationsWithDecryptedBirthdate;
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error in getAllSellers:", {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : error,
-      timestamp: new Date().toISOString()
+      error:
+        error instanceof Error
+          ? {
+              message: error.message,
+              stack: error.stack,
+              name: error.name,
+            }
+          : error,
+      timestamp: new Date().toISOString(),
     });
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      return [];
+    }
+
+    // Log to database - admin could email about "can't load all sellers"
+    logError({
+      code: "ADMIN_GET_ALL_SELLERS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getAllSellers",
+      error,
+      metadata: {
+        note: "Failed to fetch all seller applications",
+      },
+    });
+
     return [];
   }
 }
 
 export async function getApprovedSellers() {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has VIEW_SELLER_APPLICATIONS permission
-    const hasViewSellerApplications = currentUserData.permissions?.includes('VIEW_SELLER_APPLICATIONS');
-    
+    const hasViewSellerApplications = currentUserData.permissions?.includes(
+      "VIEW_SELLER_APPLICATIONS"
+    );
+
     if (!hasViewSellerApplications) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -199,9 +272,9 @@ export async function getApprovedSellers() {
         },
       },
     });
-    
+
     // Decrypt birthdate for each application
-    const applicationsWithDecryptedBirthdate = applications.map(app => {
+    const applicationsWithDecryptedBirthdate = applications.map((app) => {
       let birthdate = "N/A";
       try {
         if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
@@ -212,37 +285,72 @@ export async function getApprovedSellers() {
           });
         }
       } catch (error) {
-        console.error("Error decrypting birthdate for application:", app.id, error);
+        console.error(
+          "Error decrypting birthdate for application:",
+          app.id,
+          error
+        );
         birthdate = "Error decrypting";
       }
-      
+
       return {
         ...app,
         birthdate,
       };
     });
-    
+
     return applicationsWithDecryptedBirthdate;
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching approved seller applications:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      return [];
+    }
+
+    // Log to database - admin could email about "can't load approved sellers"
+    logError({
+      code: "ADMIN_GET_APPROVED_SELLERS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getApprovedSellers",
+      error,
+      metadata: {
+        note: "Failed to fetch approved seller applications",
+      },
+    });
+
     return [];
   }
 }
 
 export async function getUnapprovedSellers() {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
     console.log("Starting getUnapprovedSellers...");
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has VIEW_SELLER_APPLICATIONS permission
-    const hasViewSellerApplications = currentUserData.permissions?.includes('VIEW_SELLER_APPLICATIONS');
-    
+    const hasViewSellerApplications = currentUserData.permissions?.includes(
+      "VIEW_SELLER_APPLICATIONS"
+    );
+
     if (!hasViewSellerApplications) {
-      console.error("Access denied: User does not have VIEW_SELLER_APPLICATIONS permission");
+      console.error(
+        "Access denied: User does not have VIEW_SELLER_APPLICATIONS permission"
+      );
       throw new Error("Forbidden: Insufficient permissions");
     }
 
@@ -278,16 +386,18 @@ export async function getUnapprovedSellers() {
     });
     console.log("Found applications:", {
       count: applications.length,
-      firstApplication: applications[0] ? {
-        id: applications[0].id,
-        userId: applications[0].userId,
-        username: applications[0].user?.username,
-        email: applications[0].user?.email
-      } : null
+      firstApplication: applications[0]
+        ? {
+            id: applications[0].id,
+            userId: applications[0].userId,
+            username: applications[0].user?.username,
+            email: applications[0].user?.email,
+          }
+        : null,
     });
-    
+
     // Decrypt birthdate for each application
-    const applicationsWithDecryptedBirthdate = applications.map(app => {
+    const applicationsWithDecryptedBirthdate = applications.map((app) => {
       let birthdate = "N/A";
       try {
         if (app.encryptedBirthdate && app.birthdateIV && app.birthdateSalt) {
@@ -298,26 +408,57 @@ export async function getUnapprovedSellers() {
           });
         }
       } catch (error) {
-        console.error("Error decrypting birthdate for application:", app.id, error);
+        console.error(
+          "Error decrypting birthdate for application:",
+          app.id,
+          error
+        );
         birthdate = "Error decrypting";
       }
-      
+
       return {
         ...app,
         birthdate,
       };
     });
-    
+
     return applicationsWithDecryptedBirthdate;
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error in getUnapprovedSellers:", {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : error,
-      timestamp: new Date().toISOString()
+      error:
+        error instanceof Error
+          ? {
+              message: error.message,
+              stack: error.stack,
+              name: error.name,
+            }
+          : error,
+      timestamp: new Date().toISOString(),
     });
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      return [];
+    }
+
+    // Log to database - admin could email about "can't load unapproved sellers"
+    logError({
+      code: "ADMIN_GET_UNAPPROVED_SELLERS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getUnapprovedSellers",
+      error,
+      metadata: {
+        note: "Failed to fetch unapproved seller applications",
+      },
+    });
+
     return [];
   }
 }
@@ -327,23 +468,31 @@ export async function approveApplication(applicationId: string) {
   const logContext: Record<string, any> = {
     applicationId,
     timestamp: new Date().toISOString(),
-    action: 'approve_application'
+    action: "approve_application",
   };
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
 
   try {
     console.log(`[APPROVAL] Starting approval process`, logContext);
 
     // Validate that the applicationId is a valid ObjectID
     if (!ObjectId.isValid(applicationId)) {
-      console.error(`[APPROVAL] Invalid application ID format`, { ...logContext, error: 'Invalid ObjectID format' });
+      console.error(`[APPROVAL] Invalid application ID format`, {
+        ...logContext,
+        error: "Invalid ObjectID format",
+      });
       throw new Error("Invalid application ID format");
     }
 
     // Verify that the current user has APPROVE_SELLERS permission
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
-      console.error(`[APPROVAL] Authentication failed`, { ...logContext, error: 'Not authenticated' });
+      console.error(`[APPROVAL] Authentication failed`, {
+        ...logContext,
+        error: "Not authenticated",
+      });
       throw new Error("Not authenticated");
     }
 
@@ -352,21 +501,22 @@ export async function approveApplication(applicationId: string) {
     logContext.adminAuthenticated = true;
 
     // Check if user has APPROVE_SELLERS permission
-    const hasApproveSellersPermission = currentUserData.permissions?.includes('APPROVE_SELLERS');
-    
+    const hasApproveSellersPermission =
+      currentUserData.permissions?.includes("APPROVE_SELLERS");
+
     if (!hasApproveSellersPermission) {
-      console.error(`[APPROVAL] Permission denied`, { 
-        ...logContext, 
-        error: 'Insufficient permissions'
+      console.error(`[APPROVAL] Permission denied`, {
+        ...logContext,
+        error: "Insufficient permissions",
         // Don't log permissions array for security
       });
       throw new Error("Forbidden: Insufficient permissions");
     }
 
     // Log permission check without exposing admin details
-    console.log(`[APPROVAL] Admin authenticated and authorized`, { 
+    console.log(`[APPROVAL] Admin authenticated and authorized`, {
       ...logContext,
-      hasApprovePermission: true
+      hasApprovePermission: true,
     });
 
     // Retrieve the seller application to get the userId
@@ -376,10 +526,10 @@ export async function approveApplication(applicationId: string) {
         user: {
           select: {
             email: true,
-            username: true
-          }
-        }
-      }
+            username: true,
+          },
+        },
+      },
     });
 
     if (!sellerApplication) {
@@ -391,15 +541,15 @@ export async function approveApplication(applicationId: string) {
     // Don't log seller email/username for privacy - only log IDs for debugging
     logContext.sellerUserId = userId;
 
-    console.log(`[APPROVAL] Application found`, { 
+    console.log(`[APPROVAL] Application found`, {
       ...logContext,
-      applicationApproved: sellerApplication.applicationApproved 
+      applicationApproved: sellerApplication.applicationApproved,
     });
 
     // Get the seller ID from the userId
     const seller = await db.seller.findUnique({
       where: { userId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!seller) {
@@ -418,21 +568,24 @@ export async function approveApplication(applicationId: string) {
       await initializeOnboardingSteps(sellerId);
       console.log(`[APPROVAL] Onboarding steps initialized`, { ...logContext });
     } catch (initError) {
-      console.error(`[APPROVAL] Failed to initialize onboarding steps`, { 
-        ...logContext, 
-        error: initError instanceof Error ? initError.message : String(initError),
-        stack: initError instanceof Error ? initError.stack : undefined
+      console.error(`[APPROVAL] Failed to initialize onboarding steps`, {
+        ...logContext,
+        error:
+          initError instanceof Error ? initError.message : String(initError),
+        stack: initError instanceof Error ? initError.stack : undefined,
       });
       throw initError;
     }
 
     // Update application and seller in a transaction to ensure consistency
     console.log(`[APPROVAL] Starting database transaction`, { ...logContext });
-    
+
     try {
       await db.$transaction(async (tx) => {
         // Approve the seller application
-        console.log(`[APPROVAL] Updating seller application`, { ...logContext });
+        console.log(`[APPROVAL] Updating seller application`, {
+          ...logContext,
+        });
         await tx.sellerApplication.update({
           where: { id: applicationId },
           data: { applicationApproved: true },
@@ -467,17 +620,20 @@ export async function approveApplication(applicationId: string) {
         });
 
         // Grant initial seller permissions (without product permissions)
-        const sellerPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
-          permission,
-          grantedAt: new Date(),
-          grantedBy: currentUserData.id,
-          reason: 'Application approved by admin - initial seller permissions',
-          expiresAt: null,
-        }));
+        const sellerPermissions = INITIAL_SELLER_PERMISSIONS.map(
+          (permission) => ({
+            permission,
+            grantedAt: new Date(),
+            grantedBy: currentUserData.id,
+            reason:
+              "Application approved by admin - initial seller permissions",
+            expiresAt: null,
+          })
+        );
 
-        console.log(`[APPROVAL] Granting seller permissions`, { 
-          ...logContext, 
-          permissionsCount: sellerPermissions.length 
+        console.log(`[APPROVAL] Granting seller permissions`, {
+          ...logContext,
+          permissionsCount: sellerPermissions.length,
         });
 
         // Get current user permissions and merge
@@ -488,15 +644,22 @@ export async function approveApplication(applicationId: string) {
 
         if (user) {
           const currentPermissions = user.permissions as any[];
-          const existingPermissionValues = currentPermissions.map(p => p.permission);
-          const uniqueNewPermissions = sellerPermissions.filter(p => !existingPermissionValues.includes(p.permission));
-          const updatedPermissions = [...currentPermissions, ...uniqueNewPermissions];
+          const existingPermissionValues = currentPermissions.map(
+            (p) => p.permission
+          );
+          const uniqueNewPermissions = sellerPermissions.filter(
+            (p) => !existingPermissionValues.includes(p.permission)
+          );
+          const updatedPermissions = [
+            ...currentPermissions,
+            ...uniqueNewPermissions,
+          ];
 
-          console.log(`[APPROVAL] Updating user permissions`, { 
-            ...logContext, 
+          console.log(`[APPROVAL] Updating user permissions`, {
+            ...logContext,
             existingPermissionsCount: currentPermissions.length,
             newPermissionsCount: uniqueNewPermissions.length,
-            totalPermissionsCount: updatedPermissions.length
+            totalPermissionsCount: updatedPermissions.length,
           });
 
           await tx.user.update({
@@ -504,22 +667,31 @@ export async function approveApplication(applicationId: string) {
             data: { permissions: updatedPermissions },
           });
         } else {
-          console.warn(`[APPROVAL] User record not found for permission update`, { ...logContext });
+          console.warn(
+            `[APPROVAL] User record not found for permission update`,
+            { ...logContext }
+          );
         }
       });
 
       const transactionDuration = Date.now() - startTime;
-      console.log(`[APPROVAL] Transaction completed successfully`, { 
-        ...logContext, 
-        durationMs: transactionDuration 
+      console.log(`[APPROVAL] Transaction completed successfully`, {
+        ...logContext,
+        durationMs: transactionDuration,
       });
     } catch (transactionError) {
       const transactionDuration = Date.now() - startTime;
-      console.error(`[APPROVAL] Transaction failed`, { 
-        ...logContext, 
-        error: transactionError instanceof Error ? transactionError.message : String(transactionError),
-        stack: transactionError instanceof Error ? transactionError.stack : undefined,
-        durationMs: transactionDuration
+      console.error(`[APPROVAL] Transaction failed`, {
+        ...logContext,
+        error:
+          transactionError instanceof Error
+            ? transactionError.message
+            : String(transactionError),
+        stack:
+          transactionError instanceof Error
+            ? transactionError.stack
+            : undefined,
+        durationMs: transactionDuration,
       });
       throw transactionError;
     }
@@ -529,14 +701,20 @@ export async function approveApplication(applicationId: string) {
     console.log(`[APPROVAL] Recalculating isFullyActivated`, { ...logContext });
     try {
       await updateOnboardingStep(sellerId, "application_approved", true);
-      console.log(`[APPROVAL] isFullyActivated recalculated successfully`, { ...logContext });
-    } catch (stepError) {
-      console.error(`[APPROVAL] Failed to recalculate isFullyActivated (non-critical)`, { 
-        ...logContext, 
-        error: stepError instanceof Error ? stepError.message : String(stepError),
-        stack: stepError instanceof Error ? stepError.stack : undefined,
-        note: 'Step was already updated in transaction, this is just for recalculation'
+      console.log(`[APPROVAL] isFullyActivated recalculated successfully`, {
+        ...logContext,
       });
+    } catch (stepError) {
+      console.error(
+        `[APPROVAL] Failed to recalculate isFullyActivated (non-critical)`,
+        {
+          ...logContext,
+          error:
+            stepError instanceof Error ? stepError.message : String(stepError),
+          stack: stepError instanceof Error ? stepError.stack : undefined,
+          note: "Step was already updated in transaction, this is just for recalculation",
+        }
+      );
       // Don't fail the approval if this fails - the step was already updated in the transaction
       // This just ensures isFullyActivated is recalculated
     }
@@ -547,22 +725,25 @@ export async function approveApplication(applicationId: string) {
       if (sellerApplication.user.email) {
         await sendSellerApplicationApprovedEmail(
           sellerApplication.user.email,
-          sellerApplication.user.username || 'Seller'
+          sellerApplication.user.username || "Seller"
         );
-        console.log(`[APPROVAL] Approval email sent successfully`, { 
-          ...logContext, 
-          recipientEmail: sellerApplication.user.email 
+        console.log(`[APPROVAL] Approval email sent successfully`, {
+          ...logContext,
+          recipientEmail: sellerApplication.user.email,
         });
       } else {
-        console.warn(`[APPROVAL] No email address for seller, skipping email`, { ...logContext });
+        console.warn(`[APPROVAL] No email address for seller, skipping email`, {
+          ...logContext,
+        });
       }
     } catch (emailError) {
-      console.error(`[APPROVAL] Failed to send approval email (non-critical)`, { 
-        ...logContext, 
-        error: emailError instanceof Error ? emailError.message : String(emailError),
+      console.error(`[APPROVAL] Failed to send approval email (non-critical)`, {
+        ...logContext,
+        error:
+          emailError instanceof Error ? emailError.message : String(emailError),
         stack: emailError instanceof Error ? emailError.stack : undefined,
         recipientEmail: sellerApplication.user.email,
-        note: 'Approval succeeded, but email failed - seller should still be notified via dashboard'
+        note: "Approval succeeded, but email failed - seller should still be notified via dashboard",
       });
       // Don't fail the approval process if email fails
     }
@@ -570,10 +751,10 @@ export async function approveApplication(applicationId: string) {
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
     const totalDuration = Date.now() - startTime;
-    console.log(`[APPROVAL] Approval completed successfully`, { 
-      ...logContext, 
+    console.log(`[APPROVAL] Approval completed successfully`, {
+      ...logContext,
       totalDurationMs: totalDuration,
-      status: 'SUCCESS'
+      status: "SUCCESS",
     });
 
     return { success: true };
@@ -585,46 +766,68 @@ export async function approveApplication(applicationId: string) {
       errorType: error instanceof Error ? error.constructor.name : typeof error,
       stack: error instanceof Error ? error.stack : undefined,
       totalDurationMs: totalDuration,
-      status: 'FAILED'
+      status: "FAILED",
     };
 
     console.error(`[APPROVAL] Approval failed`, errorDetails);
-    
+
     // Provide more specific error messages
     if (error instanceof Error) {
       // If it's a known error (validation, permission, etc.), return the specific message
-      if (error.message.includes("Invalid") || 
-          error.message.includes("Not authenticated") || 
-          error.message.includes("Forbidden") ||
-          error.message.includes("not found")) {
+      if (
+        error.message.includes("Invalid") ||
+        error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("not found")
+      ) {
         return { success: false, error: error.message };
       }
     }
-    
+
+    // Log to database - admin could email about "couldn't approve application"
+    const userMessage = logError({
+      code: "ADMIN_APPROVE_APPLICATION_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "approveApplication",
+      error,
+      metadata: {
+        applicationId,
+        note: "Failed to approve seller application",
+      },
+    });
+
     // For unknown errors, return a generic message but log the full error
-    return { 
-      success: false, 
-      error: "Failed to approve application. Please try again or contact support if the issue persists." 
+    return {
+      success: false,
+      error: userMessage,
     };
   }
 }
 
-export async function rejectApplication(applicationId: string, rejectionReason?: string) {
+export async function rejectApplication(
+  applicationId: string,
+  rejectionReason?: string
+) {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
     // Validate that the applicationId is a valid ObjectID
     if (!ObjectId.isValid(applicationId)) {
       throw new Error("Invalid application ID format");
     }
 
-    const currentUserData = await currentUserWithPermissions();
-    
+    currentUserData = await currentUserWithPermissions();
+
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has APPROVE_SELLERS permission (same permission for approve/reject)
-    const hasApproveSellersPermission = currentUserData.permissions?.includes('APPROVE_SELLERS');
-    
+    const hasApproveSellersPermission =
+      currentUserData.permissions?.includes("APPROVE_SELLERS");
+
     if (!hasApproveSellersPermission) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -636,10 +839,10 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
         user: {
           select: {
             email: true,
-            username: true
-          }
-        }
-      }
+            username: true,
+          },
+        },
+      },
     });
 
     if (!sellerApplication) {
@@ -662,22 +865,22 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
 
       // Revert user role back to MEMBER and restore member permissions
       const memberPermissions = [
-        'ACCESS_MEMBER_DASHBOARD',
-        'VIEW_USERS',
-        'MANAGE_MESSAGES',
-        'MANAGE_REVIEWS',
-        'MANAGE_MEMBER_SETTINGS',
-      ].map(permission => ({
+        "ACCESS_MEMBER_DASHBOARD",
+        "VIEW_USERS",
+        "MANAGE_MESSAGES",
+        "MANAGE_REVIEWS",
+        "MANAGE_MEMBER_SETTINGS",
+      ].map((permission) => ({
         permission,
         grantedAt: new Date(),
         grantedBy: currentUserData.id,
-        reason: 'Application rejected - restored member permissions',
+        reason: "Application rejected - restored member permissions",
         expiresAt: null,
       }));
 
       await tx.user.update({
         where: { id: userId },
-        data: { 
+        data: {
           role: ROLES.MEMBER,
           permissions: memberPermissions,
         },
@@ -689,10 +892,12 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
       if (sellerApplication.user.email) {
         await sendSellerApplicationRejectedEmail(
           sellerApplication.user.email,
-          sellerApplication.user.username || 'Seller',
+          sellerApplication.user.username || "Seller",
           rejectionReason
         );
-        console.log(`Rejection email sent to seller: ${sellerApplication.user.email}`);
+        console.log(
+          `Rejection email sent to seller: ${sellerApplication.user.email}`
+        );
       }
     } catch (emailError) {
       console.error("Error sending rejection email:", emailError);
@@ -701,26 +906,59 @@ export async function rejectApplication(applicationId: string, rejectionReason?:
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's role and permissions have been updated in the database
-    console.log(`Seller application rejected for user ${userId}. User role and permissions updated.`);
+    console.log(
+      `Seller application rejected for user ${userId}. User role and permissions updated.`
+    );
 
     return { success: true };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error rejecting application:", error);
-    return { success: false, error: "Failed to reject application." };
+
+    // Don't log validation/authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Invalid") ||
+        error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions") ||
+        error.message.includes("not found"))
+    ) {
+      return { success: false, error: error.message };
+    }
+
+    // Log to database - admin could email about "couldn't reject application"
+    const userMessage = logError({
+      code: "ADMIN_REJECT_APPLICATION_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "rejectApplication",
+      error,
+      metadata: {
+        applicationId,
+        rejectionReason,
+        note: "Failed to reject seller application",
+      },
+    });
+
+    return { success: false, error: userMessage };
   }
 }
 
 export async function getAllUsers() {
+  // Declare variables outside try block so they're accessible in catch
+  let user: any = null;
+
   try {
-    const user = await currentUserWithPermissions();
+    user = await currentUserWithPermissions();
 
     if (!user) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has VIEW_USERS permission
-    const hasViewUsersPermission = user.permissions?.includes('VIEW_USERS');
-    
+    const hasViewUsersPermission = user.permissions?.includes("VIEW_USERS");
+
     if (!hasViewUsersPermission) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -742,27 +980,55 @@ export async function getAllUsers() {
 
     return users;
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching all users:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      return [];
+    }
+
+    // Log to database - admin could email about "can't load all users"
+    logError({
+      code: "ADMIN_GET_ALL_USERS_FAILED",
+      userId: user?.id,
+      route: "actions/adminActions",
+      method: "getAllUsers",
+      error,
+      metadata: {
+        note: "Failed to fetch all users",
+      },
+    });
+
     return [];
   }
 }
 
 export async function getUserPermissions(userId: string) {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
     // Validate that the userId is a valid ObjectID
     if (!ObjectId.isValid(userId)) {
       throw new Error("Invalid user ID format");
     }
 
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has MANAGE_PERMISSIONS permission
-    const hasManagePermissions = currentUserData.permissions?.includes('MANAGE_PERMISSIONS');
-    
+    const hasManagePermissions =
+      currentUserData.permissions?.includes("MANAGE_PERMISSIONS");
+
     if (!hasManagePermissions) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -801,8 +1067,8 @@ export async function getUserPermissions(userId: string) {
             valuesPreferNotToSay: true,
             createdAt: true,
             updatedAt: true,
-          }
-        }
+          },
+        },
       },
     });
 
@@ -840,17 +1106,36 @@ export async function addUserPermission(
       },
     });
 
-    console.log(`Permission ${permission} added to user ${userId} by ${grantedBy}`);
+    console.log(
+      `Permission ${permission} added to user ${userId} by ${grantedBy}`
+    );
 
     return {
       success: true,
       message: `Permission "${permission}" has been granted to the user.`,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error adding user permission:", error);
+
+    // Log to database - admin could email about "couldn't add permission"
+    const userMessage = logError({
+      code: "ADMIN_ADD_USER_PERMISSION_FAILED",
+      userId: grantedBy,
+      route: "actions/adminActions",
+      method: "addUserPermission",
+      error,
+      metadata: {
+        targetUserId: userId,
+        permission,
+        reason,
+        note: "Failed to add user permission",
+      },
+    });
+
     return {
       success: false,
-      error: "Failed to add permission",
+      error: userMessage,
     };
   }
 }
@@ -887,33 +1172,56 @@ export async function removeUserPermission(
       },
     });
 
-    console.log(`Permission ${permission} removed from user ${userId} by ${removedBy}`);
+    console.log(
+      `Permission ${permission} removed from user ${userId} by ${removedBy}`
+    );
 
     return {
       success: true,
       message: `Permission "${permission}" has been removed from the user.`,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error removing user permission:", error);
+
+    // Log to database - admin could email about "couldn't remove permission"
+    const userMessage = logError({
+      code: "ADMIN_REMOVE_USER_PERMISSION_FAILED",
+      userId: removedBy,
+      route: "actions/adminActions",
+      method: "removeUserPermission",
+      error,
+      metadata: {
+        targetUserId: userId,
+        permission,
+        note: "Failed to remove user permission",
+      },
+    });
+
     return {
       success: false,
-      error: "Failed to remove permission",
+      error: userMessage,
     };
   }
 }
 
 // Dashboard Statistics Functions
 export async function getDashboardStats() {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has ACCESS_ADMIN_DASHBOARD permission
-    const hasAccessAdminDashboard = currentUserData.permissions?.includes('ACCESS_ADMIN_DASHBOARD');
-    
+    const hasAccessAdminDashboard = currentUserData.permissions?.includes(
+      "ACCESS_ADMIN_DASHBOARD"
+    );
+
     if (!hasAccessAdminDashboard) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -931,65 +1239,65 @@ export async function getDashboardStats() {
       recentOrders,
       totalReports,
       pendingReports,
-      criticalReports
+      criticalReports,
     ] = await Promise.all([
       // Total users
       db.user.count(),
-      
+
       // Total sellers (users with seller profile)
       db.seller.count(),
-      
+
       // Total products
       db.product.count(),
-      
+
       // Total orders
       db.order.count(),
-      
+
       // Pending seller applications
       db.sellerApplication.count({
-        where: { applicationApproved: false }
+        where: { applicationApproved: false },
       }),
-      
+
       // Active users
       db.user.count({
-        where: { status: 'ACTIVE' }
+        where: { status: "ACTIVE" },
       }),
-      
+
       // Suspended users
       db.user.count({
-        where: { status: 'SUSPENDED' }
+        where: { status: "SUSPENDED" },
       }),
-      
+
       // Total revenue (sum of all completed orders)
       db.order.aggregate({
-        where: { 
-          status: 'COMPLETED',
-          paymentStatus: 'PAID'
+        where: {
+          status: "COMPLETED",
+          paymentStatus: "PAID",
         },
-        _sum: { totalAmount: true }
+        _sum: { totalAmount: true },
       }),
-      
+
       // Recent orders (last 7 days)
       db.order.count({
         where: {
           createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-          }
-        }
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+          },
+        },
       }),
-      
+
       // Total reports
       db.report.count(),
-      
+
       // Pending reports
       db.report.count({
-        where: { status: 'PENDING' }
+        where: { status: "PENDING" },
       }),
-      
+
       // Critical reports
       db.report.count({
-        where: { severity: 'CRITICAL' }
-      })
+        where: { severity: "CRITICAL" },
+      }),
     ]);
 
     // Get user growth (users created in last 30 days)
@@ -997,27 +1305,27 @@ export async function getDashboardStats() {
     const newUsersThisMonth = await db.user.count({
       where: {
         createdAt: {
-          gte: thirtyDaysAgo
-        }
-      }
+          gte: thirtyDaysAgo,
+        },
+      },
     });
 
     // Get product growth (products created in last 30 days)
     const newProductsThisMonth = await db.product.count({
       where: {
         createdAt: {
-          gte: thirtyDaysAgo
-        }
-      }
+          gte: thirtyDaysAgo,
+        },
+      },
     });
 
     // Get recent seller applications (last 7 days)
     const recentSellerApplications = await db.sellerApplication.count({
       where: {
         createdAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        }
-      }
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
     });
 
     return {
@@ -1025,142 +1333,199 @@ export async function getDashboardStats() {
         total: totalUsers,
         active: activeUsers,
         suspended: suspendedUsers,
-        newThisMonth: newUsersThisMonth
+        newThisMonth: newUsersThisMonth,
       },
       sellers: {
         total: totalSellers,
         pendingApplications: pendingSellerApplications,
-        recentApplications: recentSellerApplications
+        recentApplications: recentSellerApplications,
       },
       products: {
         total: totalProducts,
-        newThisMonth: newProductsThisMonth
+        newThisMonth: newProductsThisMonth,
       },
       orders: {
         total: totalOrders,
-        recent: recentOrders
+        recent: recentOrders,
       },
       revenue: {
-        total: totalRevenue._sum.totalAmount || 0
+        total: totalRevenue._sum.totalAmount || 0,
       },
       reports: {
         total: totalReports,
         pending: pendingReports,
-        critical: criticalReports
-      }
+        critical: criticalReports,
+      },
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching dashboard stats:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      throw error; // Re-throw expected errors
+    }
+
+    // Log to database - admin could email about "can't load dashboard stats"
+    logError({
+      code: "ADMIN_GET_DASHBOARD_STATS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getDashboardStats",
+      error,
+      metadata: {
+        note: "Failed to fetch admin dashboard statistics",
+      },
+    });
+
     throw error;
   }
 }
 
 export async function getRecentActivity() {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has ACCESS_ADMIN_DASHBOARD permission
-    const hasAccessAdminDashboard = currentUserData.permissions?.includes('ACCESS_ADMIN_DASHBOARD');
-    
+    const hasAccessAdminDashboard = currentUserData.permissions?.includes(
+      "ACCESS_ADMIN_DASHBOARD"
+    );
+
     if (!hasAccessAdminDashboard) {
       throw new Error("Forbidden: Insufficient permissions");
     }
 
     // Get recent activities
-    const [recentUsers, recentOrders, recentProducts, recentApplications] = await Promise.all([
-      // Recent users (last 5)
-      db.user.findMany({
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          image: true
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }),
-      
-      // Recent orders (last 5)
-      db.order.findMany({
-        select: {
-          id: true,
-          totalAmount: true,
-          currency: true,
-          status: true,
-          createdAt: true,
-          user: {
-            select: {
-              username: true,
-              email: true
-            }
+    const [recentUsers, recentOrders, recentProducts, recentApplications] =
+      await Promise.all([
+        // Recent users (last 5)
+        db.user.findMany({
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            image: true,
           },
-          product: {
-            select: {
-              name: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }),
-      
-      // Recent products (last 5)
-      db.product.findMany({
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          currency: true,
-          status: true,
-          createdAt: true,
-          seller: {
-            select: {
-              shopName: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }),
-      
-      // Recent seller applications (last 5)
-      db.sellerApplication.findMany({
-        select: {
-          id: true,
-          applicationApproved: true,
-          createdAt: true,
-          user: {
-            select: {
-              username: true,
-              email: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      })
-    ]);
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+
+        // Recent orders (last 5)
+        db.order.findMany({
+          select: {
+            id: true,
+            totalAmount: true,
+            currency: true,
+            status: true,
+            createdAt: true,
+            user: {
+              select: {
+                username: true,
+                email: true,
+              },
+            },
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+
+        // Recent products (last 5)
+        db.product.findMany({
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            currency: true,
+            status: true,
+            createdAt: true,
+            seller: {
+              select: {
+                shopName: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+
+        // Recent seller applications (last 5)
+        db.sellerApplication.findMany({
+          select: {
+            id: true,
+            applicationApproved: true,
+            createdAt: true,
+            user: {
+              select: {
+                username: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+      ]);
 
     return {
       recentUsers,
       recentOrders,
       recentProducts,
-      recentApplications
+      recentApplications,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching recent activity:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      throw error; // Re-throw expected errors
+    }
+
+    // Log to database - admin could email about "can't load recent activity"
+    logError({
+      code: "ADMIN_GET_RECENT_ACTIVITY_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getRecentActivity",
+      error,
+      metadata: {
+        note: "Failed to fetch recent activity",
+      },
+    });
+
     throw error;
   }
 }
 
 // Admin management functions
-export async function createAdmin(userId: string, role: string = "GENERAL_ADMIN") {
+export async function createAdmin(
+  userId: string,
+  role: string = "GENERAL_ADMIN"
+) {
   try {
     const admin = await db.admin.create({
       data: {
@@ -1170,21 +1535,21 @@ export async function createAdmin(userId: string, role: string = "GENERAL_ADMIN"
           {
             type: "SELLER_APPLICATIONS",
             email: true,
-            inApp: true
+            inApp: true,
           },
           {
             type: "DISPUTES",
             email: true,
-            inApp: true
+            inApp: true,
           },
           {
             type: "SYSTEM_ALERTS",
             email: true,
-            inApp: true
-          }
+            inApp: true,
+          },
         ],
-        tasks: [] // Initialize with empty tasks array
-      }
+        tasks: [], // Initialize with empty tasks array
+      },
     });
 
     return { success: true, admin };
@@ -1198,12 +1563,27 @@ export async function getAdminByUserId(userId: string) {
   try {
     const admin = await db.admin.findUnique({
       where: { userId },
-      include: { user: true }
+      include: { user: true },
     });
     return { success: true, admin };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching admin:", error);
-    return { success: false, error: "Failed to fetch admin" };
+
+    // Log to database - admin could email about "can't load admin"
+    const userMessage = logError({
+      code: "ADMIN_GET_ADMIN_BY_USER_ID_FAILED",
+      userId: undefined, // System function
+      route: "actions/adminActions",
+      method: "getAdminByUserId",
+      error,
+      metadata: {
+        targetUserId: userId,
+        note: "Failed to fetch admin by user ID",
+      },
+    });
+
+    return { success: false, error: userMessage };
   }
 }
 
@@ -1211,7 +1591,7 @@ export async function updateAdminRole(userId: string, newRole: string) {
   try {
     const admin = await db.admin.update({
       where: { userId },
-      data: { role: newRole }
+      data: { role: newRole },
     });
     return { success: true, admin };
   } catch (error) {
@@ -1224,72 +1604,113 @@ export async function deactivateAdmin(userId: string) {
   try {
     const admin = await db.admin.update({
       where: { userId },
-      data: { isActive: false }
+      data: { isActive: false },
     });
     return { success: true, admin };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deactivating admin:", error);
-    return { success: false, error: "Failed to deactivate admin" };
+
+    // Log to database - admin could email about "couldn't deactivate admin"
+    const userMessage = logError({
+      code: "ADMIN_DEACTIVATE_ADMIN_FAILED",
+      userId: undefined, // System function
+      route: "actions/adminActions",
+      method: "deactivateAdmin",
+      error,
+      metadata: {
+        targetUserId: userId,
+        note: "Failed to deactivate admin",
+      },
+    });
+
+    return { success: false, error: userMessage };
   }
 }
 
-export async function updateAdminNotificationPreferences(userId: string, preferences: any[]) {
+export async function updateAdminNotificationPreferences(
+  userId: string,
+  preferences: any[]
+) {
   try {
     const admin = await db.admin.update({
       where: { userId },
-      data: { notificationPreferences: preferences }
+      data: { notificationPreferences: preferences },
     });
     return { success: true, admin };
   } catch (error) {
     console.error("Error updating notification preferences:", error);
-    return { success: false, error: "Failed to update notification preferences" };
+    return {
+      success: false,
+      error: "Failed to update notification preferences",
+    };
   }
 }
 
 export async function addAdminTask(userId: string, task: any) {
   try {
     const admin = await db.admin.findUnique({
-      where: { userId }
+      where: { userId },
     });
 
     if (!admin) {
       return { success: false, error: "Admin not found" };
     }
 
-    const currentTasks = admin.tasks as any[] || [];
+    const currentTasks = (admin.tasks as any[]) || [];
     const newTask = {
       id: generateTaskId(),
       ...task,
       createdAt: new Date().toISOString(),
-      status: task.status || "PENDING"
+      status: task.status || "PENDING",
     };
 
     const updatedTasks = [...currentTasks, newTask];
 
     const updatedAdmin = await db.admin.update({
       where: { userId },
-      data: { tasks: updatedTasks }
+      data: { tasks: updatedTasks },
     });
 
     return { success: true, admin: updatedAdmin };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error adding admin task:", error);
-    return { success: false, error: "Failed to add task" };
+
+    // Log to database - admin could email about "couldn't add task"
+    const userMessage = logError({
+      code: "ADMIN_ADD_TASK_FAILED",
+      userId: undefined, // System function
+      route: "actions/adminActions",
+      method: "addAdminTask",
+      error,
+      metadata: {
+        targetUserId: userId,
+        taskTitle: task?.title,
+        note: "Failed to add admin task",
+      },
+    });
+
+    return { success: false, error: userMessage };
   }
 }
 
-export async function updateAdminTask(userId: string, taskId: string, updates: any) {
+export async function updateAdminTask(
+  userId: string,
+  taskId: string,
+  updates: any
+) {
   try {
     const admin = await db.admin.findUnique({
-      where: { userId }
+      where: { userId },
     });
 
     if (!admin) {
       return { success: false, error: "Admin not found" };
     }
 
-    const currentTasks = admin.tasks as any[] || [];
-    const taskIndex = currentTasks.findIndex(task => task.id === taskId);
+    const currentTasks = (admin.tasks as any[]) || [];
+    const taskIndex = currentTasks.findIndex((task) => task.id === taskId);
 
     if (taskIndex === -1) {
       return { success: false, error: "Task not found" };
@@ -1299,12 +1720,12 @@ export async function updateAdminTask(userId: string, taskId: string, updates: a
     updatedTasks[taskIndex] = {
       ...updatedTasks[taskIndex],
       ...updates,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     const updatedAdmin = await db.admin.update({
       where: { userId },
-      data: { tasks: updatedTasks }
+      data: { tasks: updatedTasks },
     });
 
     return { success: true, admin: updatedAdmin };
@@ -1317,25 +1738,41 @@ export async function updateAdminTask(userId: string, taskId: string, updates: a
 export async function removeAdminTask(userId: string, taskId: string) {
   try {
     const admin = await db.admin.findUnique({
-      where: { userId }
+      where: { userId },
     });
 
     if (!admin) {
       return { success: false, error: "Admin not found" };
     }
 
-    const currentTasks = admin.tasks as any[] || [];
-    const updatedTasks = currentTasks.filter(task => task.id !== taskId);
+    const currentTasks = (admin.tasks as any[]) || [];
+    const updatedTasks = currentTasks.filter((task) => task.id !== taskId);
 
     const updatedAdmin = await db.admin.update({
       where: { userId },
-      data: { tasks: updatedTasks }
+      data: { tasks: updatedTasks },
     });
 
     return { success: true, admin: updatedAdmin };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error removing admin task:", error);
-    return { success: false, error: "Failed to remove task" };
+
+    // Log to database - admin could email about "couldn't remove task"
+    const userMessage = logError({
+      code: "ADMIN_REMOVE_TASK_FAILED",
+      userId: undefined, // System function
+      route: "actions/adminActions",
+      method: "removeAdminTask",
+      error,
+      metadata: {
+        targetUserId: userId,
+        taskId,
+        note: "Failed to remove admin task",
+      },
+    });
+
+    return { success: false, error: userMessage };
   }
 }
 
@@ -1348,7 +1785,7 @@ function generateTaskId(): string {
 export async function getAdminsForSellerApplicationNotification() {
   try {
     console.log("Fetching admins for seller application notification...");
-    
+
     // First, get admins from the Admin table
     // NOTE: Currently Admin table queries return 0 results, likely due to database environment/migration issues
     // The User table fallback is working correctly for current super admin accounts
@@ -1356,26 +1793,28 @@ export async function getAdminsForSellerApplicationNotification() {
       where: {
         isActive: true,
         user: {
-          status: 'ACTIVE'
+          status: "ACTIVE",
         },
         OR: [
           { role: ADMIN_ROLES.SUPER_ADMIN },
-          { role: ADMIN_ROLES.SELLER_MANAGER }
-        ]
+          { role: ADMIN_ROLES.SELLER_MANAGER },
+        ],
       },
       include: {
         user: {
           select: {
             email: true,
             username: true,
-            status: true
-          }
-        }
-      }
+            status: true,
+          },
+        },
+      },
     });
 
-    console.log(`Found ${adminTableAdmins.length} active admins in Admin table with SUPER_ADMIN or SELLER_MANAGER role`);
-    
+    console.log(
+      `Found ${adminTableAdmins.length} active admins in Admin table with SUPER_ADMIN or SELLER_MANAGER role`
+    );
+
     // Debug: Let's also check what admins exist without the status filter
     const allAdminsInTable = await db.admin.findMany({
       include: {
@@ -1383,122 +1822,167 @@ export async function getAdminsForSellerApplicationNotification() {
           select: {
             email: true,
             username: true,
-            status: true
-          }
-        }
-      }
+            status: true,
+          },
+        },
+      },
     });
-    
+
     console.log(`Total admins in Admin table: ${allAdminsInTable.length}`);
-    allAdminsInTable.forEach(admin => {
-      console.log(`Admin record: userId=${admin.userId}, role=${admin.role}, isActive=${admin.isActive}, userStatus=${admin.user?.status}`);
+    allAdminsInTable.forEach((admin) => {
+      console.log(
+        `Admin record: userId=${admin.userId}, role=${admin.role}, isActive=${admin.isActive}, userStatus=${admin.user?.status}`
+      );
     });
-    
+
     // Test simpler queries to isolate the issue
     const superAdminAdmins = await db.admin.findMany({
-      where: { role: 'SUPER_ADMIN' }
+      where: { role: "SUPER_ADMIN" },
     });
     console.log(`Admins with SUPER_ADMIN role: ${superAdminAdmins.length}`);
-    
+
     const activeAdmins = await db.admin.findMany({
-      where: { isActive: true }
+      where: { isActive: true },
     });
     console.log(`Active admins: ${activeAdmins.length}`);
-    
+
     // Let's also check if we can find your specific admin record by userId
     const yourAdminRecord = await db.admin.findUnique({
-      where: { userId: '681948f56125257664f88194' }
+      where: { userId: "681948f56125257664f88194" },
     });
     console.log(`Your specific admin record:`, yourAdminRecord);
-    
+
     // And let's check if the user exists
     const yourUserRecord = await db.user.findUnique({
-      where: { id: '681948f56125257664f88194' }
+      where: { id: "681948f56125257664f88194" },
     });
-    console.log(`Your user record:`, yourUserRecord ? {
-      id: yourUserRecord.id,
-      username: yourUserRecord.username,
-      email: yourUserRecord.email,
-      role: yourUserRecord.role,
-      status: yourUserRecord.status
-    } : null);
+    console.log(
+      `Your user record:`,
+      yourUserRecord
+        ? {
+            id: yourUserRecord.id,
+            username: yourUserRecord.username,
+            email: yourUserRecord.email,
+            role: yourUserRecord.role,
+            status: yourUserRecord.status,
+          }
+        : null
+    );
 
     // Also get users with SUPER_ADMIN role from the User table (for backward compatibility)
     const superAdminUsers = await db.user.findMany({
       where: {
-        role: 'SUPER_ADMIN',
-        status: 'ACTIVE'
+        role: "SUPER_ADMIN",
+        status: "ACTIVE",
       },
       select: {
         id: true,
         email: true,
-        username: true
-      }
+        username: true,
+      },
     });
 
-    console.log(`Found ${superAdminUsers.length} users with SUPER_ADMIN role in User table`);
+    console.log(
+      `Found ${superAdminUsers.length} users with SUPER_ADMIN role in User table`
+    );
 
     // Combine both sources
     const allAdmins = [
       ...adminTableAdmins,
-      ...superAdminUsers.map(user => ({
+      ...superAdminUsers.map((user) => ({
         userId: user.id,
-        role: 'SUPER_ADMIN',
+        role: "SUPER_ADMIN",
         isActive: true,
         user: {
           email: user.email,
-          username: user.username
-        }
-      }))
+          username: user.username,
+        },
+      })),
     ];
 
     console.log(`Total admins found: ${allAdmins.length}`);
 
     // Filter admins who have the specific notification preference enabled for email
-    const filteredAdmins = allAdmins.filter(admin => {
+    const filteredAdmins = allAdmins.filter((admin) => {
       console.log(`Checking admin ${admin.userId} (role: ${admin.role})`);
-      
+
       // For users from User table (no Admin record), always include them
-      if (!('notificationPreferences' in admin) || !admin.notificationPreferences) {
-        console.log(`Admin ${admin.userId} has no notification preferences - including as fallback`);
+      if (
+        !("notificationPreferences" in admin) ||
+        !admin.notificationPreferences
+      ) {
+        console.log(
+          `Admin ${admin.userId} has no notification preferences - including as fallback`
+        );
         return true; // Include super admins even without specific preferences
       }
-      
+
       const preferences = admin.notificationPreferences as any[];
-      console.log(`Admin ${admin.userId} has ${preferences.length} notification preferences:`, preferences);
-      
+      console.log(
+        `Admin ${admin.userId} has ${preferences.length} notification preferences:`,
+        preferences
+      );
+
       // Look for the specific notification type with email enabled
-      const sellerAppNotification = preferences.find(pref => {
+      const sellerAppNotification = preferences.find((pref) => {
         console.log(`Checking preference:`, pref);
-        return pref.notificationType === ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED;
+        return (
+          pref.notificationType ===
+          ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED
+        );
       });
-      
-      console.log(`Seller app notification found for admin ${admin.userId}:`, sellerAppNotification);
-      
-      if (sellerAppNotification && (sellerAppNotification.emailEnabled || sellerAppNotification.email)) {
-        console.log(`Admin ${admin.userId} has seller application email notifications enabled`);
+
+      console.log(
+        `Seller app notification found for admin ${admin.userId}:`,
+        sellerAppNotification
+      );
+
+      if (
+        sellerAppNotification &&
+        (sellerAppNotification.emailEnabled || sellerAppNotification.email)
+      ) {
+        console.log(
+          `Admin ${admin.userId} has seller application email notifications enabled`
+        );
         return true;
       } else {
-        console.log(`Admin ${admin.userId} does not have seller application email notifications enabled`);
-        console.log(`Email enabled check:`, sellerAppNotification?.emailEnabled, sellerAppNotification?.email);
+        console.log(
+          `Admin ${admin.userId} does not have seller application email notifications enabled`
+        );
+        console.log(
+          `Email enabled check:`,
+          sellerAppNotification?.emailEnabled,
+          sellerAppNotification?.email
+        );
         return false;
       }
     });
 
-    console.log(`Found ${filteredAdmins.length} admins with seller application email notifications enabled`);
-    
-    // Fallback: If no admins have specific notification preferences, 
+    console.log(
+      `Found ${filteredAdmins.length} admins with seller application email notifications enabled`
+    );
+
+    // Fallback: If no admins have specific notification preferences,
     // send to all SUPER_ADMIN users as a critical notification
     if (filteredAdmins.length === 0) {
-      console.log("No admins with specific notification preferences found, falling back to all SUPER_ADMIN users");
-      const superAdmins = allAdmins.filter(admin => admin.role === ADMIN_ROLES.SUPER_ADMIN);
-      console.log(`Found ${superAdmins.length} SUPER_ADMIN users for fallback notification`);
+      console.log(
+        "No admins with specific notification preferences found, falling back to all SUPER_ADMIN users"
+      );
+      const superAdmins = allAdmins.filter(
+        (admin) => admin.role === ADMIN_ROLES.SUPER_ADMIN
+      );
+      console.log(
+        `Found ${superAdmins.length} SUPER_ADMIN users for fallback notification`
+      );
       return superAdmins;
     }
-    
+
     return filteredAdmins;
   } catch (error) {
-    console.error("Error fetching admins for seller application notification:", error);
+    console.error(
+      "Error fetching admins for seller application notification:",
+      error
+    );
     return [];
   }
 }
@@ -1507,7 +1991,7 @@ export async function getAdminsForSellerApplicationNotification() {
 export async function setupAdminSellerApplicationNotifications(userId: string) {
   try {
     const admin = await db.admin.findUnique({
-      where: { userId }
+      where: { userId },
     });
 
     if (!admin) {
@@ -1515,24 +1999,50 @@ export async function setupAdminSellerApplicationNotifications(userId: string) {
     }
 
     // Get current preferences or initialize empty array
-    const currentPreferences = admin.notificationPreferences as string[] || [];
-    
+    const currentPreferences =
+      (admin.notificationPreferences as string[]) || [];
+
     // Add seller application notification if not already present
-    if (!currentPreferences.includes(ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED)) {
-      const updatedPreferences = [...currentPreferences, ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED];
-      
+    if (
+      !currentPreferences.includes(
+        ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED
+      )
+    ) {
+      const updatedPreferences = [
+        ...currentPreferences,
+        ADMIN_NOTIFICATION_TYPES.SELLER_APPLICATION_SUBMITTED,
+      ];
+
       await db.admin.update({
         where: { userId },
         data: {
-          notificationPreferences: updatedPreferences
-        }
+          notificationPreferences: updatedPreferences,
+        },
       });
     }
 
     return { success: "Seller application notifications enabled" };
   } catch (error) {
-    console.error("Error setting up admin seller application notifications:", error);
-    return { error: "Failed to set up notifications" };
+    // Log to console (always happens)
+    console.error(
+      "Error setting up admin seller application notifications:",
+      error
+    );
+
+    // Log to database - admin could email about "couldn't setup notifications"
+    const userMessage = logError({
+      code: "ADMIN_SETUP_NOTIFICATIONS_FAILED",
+      userId: undefined, // System function
+      route: "actions/adminActions",
+      method: "setupAdminSellerApplicationNotifications",
+      error,
+      metadata: {
+        targetUserId: userId,
+        note: "Failed to setup admin seller application notifications",
+      },
+    });
+
+    return { error: userMessage };
   }
 }
 
@@ -1563,16 +2073,20 @@ export async function getContactSubmissions({
   reason = "",
   page = 1,
 }: GetContactSubmissionsParams): Promise<ContactSubmissionsResponse> {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
   try {
-    const currentUserData = await currentUserWithPermissions();
+    currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
       throw new Error("Not authenticated");
     }
 
     // Check if user has MANAGE_CONTENT permission
-    const hasManageContent = currentUserData.permissions?.includes('MANAGE_CONTENT');
-    
+    const hasManageContent =
+      currentUserData.permissions?.includes("MANAGE_CONTENT");
+
     if (!hasManageContent) {
       throw new Error("Forbidden: Insufficient permissions");
     }
@@ -1582,15 +2096,15 @@ export async function getContactSubmissions({
 
     // Build where clause
     const whereClause: any = {};
-    
+
     if (search) {
       whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { helpDescription: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { helpDescription: { contains: search, mode: "insensitive" } },
       ];
     }
-    
+
     if (reason && reason !== "all") {
       whereClause.reason = reason;
     }
@@ -1601,7 +2115,7 @@ export async function getContactSubmissions({
         where: whereClause,
         skip,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       db.contactUs.count({ where: whereClause }),
     ]);
@@ -1636,7 +2150,34 @@ export async function getContactSubmissions({
       today,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching contact submissions:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      throw error; // Re-throw expected errors
+    }
+
+    // Log to database - admin could email about "can't load contact submissions"
+    logError({
+      code: "ADMIN_GET_CONTACT_SUBMISSIONS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getContactSubmissions",
+      error,
+      metadata: {
+        search,
+        reason,
+        page,
+        note: "Failed to fetch contact submissions",
+      },
+    });
+
     throw error;
   }
 }
@@ -1646,14 +2187,22 @@ export async function getContactSubmissionById(id: string) {
     const currentUserData = await currentUserWithPermissions();
 
     if (!currentUserData) {
-      throw new Error("Not authenticated");
+      // Log the error but don't throw - let the page handle redirect
+      console.error(
+        "[getContactSubmissionById] Not authenticated - session may have expired"
+      );
+      return null;
     }
 
     // Check if user has MANAGE_CONTENT permission
-    const hasManageContent = currentUserData.permissions?.includes('MANAGE_CONTENT');
-    
+    const hasManageContent =
+      currentUserData.permissions?.includes("MANAGE_CONTENT");
+
     if (!hasManageContent) {
-      throw new Error("Forbidden: Insufficient permissions");
+      console.error(
+        "[getContactSubmissionById] Insufficient permissions - user lacks MANAGE_CONTENT"
+      );
+      return null;
     }
 
     const submission = await db.contactUs.findUnique({
@@ -1662,11 +2211,19 @@ export async function getContactSubmissionById(id: string) {
 
     return submission;
   } catch (error) {
-    console.error("Error fetching contact submission:", error);
+    console.error(
+      "[getContactSubmissionById] Error fetching contact submission:",
+      {
+        error: error instanceof Error ? error.message : String(error),
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        submissionId: id,
+        timestamp: new Date().toISOString(),
+      }
+    );
     return null;
   }
 }
-
 
 export async function updateUserRole(
   userId: string,
@@ -1676,8 +2233,10 @@ export async function updateUserRole(
 ) {
   try {
     // Get role permissions
-    const { ROLE_PERMISSIONS, createRolePermissions } = await import("@/data/roles-and-permissions");
-    
+    const { ROLE_PERMISSIONS, createRolePermissions } = await import(
+      "@/data/roles-and-permissions"
+    );
+
     // Update user role
     await db.user.update({
       where: { id: userId },
@@ -1688,11 +2247,11 @@ export async function updateUserRole(
     });
 
     // If the new role is ADMIN or SUPER_ADMIN, create or update Admin document
-    if (newRole === 'ADMIN' || newRole === 'SUPER_ADMIN') {
+    if (newRole === "ADMIN" || newRole === "SUPER_ADMIN") {
       try {
         // Check if admin record already exists
         const existingAdmin = await db.admin.findUnique({
-          where: { userId }
+          where: { userId },
         });
 
         if (existingAdmin) {
@@ -1701,14 +2260,18 @@ export async function updateUserRole(
             where: { userId },
             data: {
               role: newRole,
-              isActive: true
-            }
+              isActive: true,
+            },
           });
-          console.log(`Admin record updated for user ${userId} with role ${newRole}`);
+          console.log(
+            `Admin record updated for user ${userId} with role ${newRole}`
+          );
         } else {
           // Create new admin record
           await createAdmin(userId, newRole);
-          console.log(`Admin record created for user ${userId} with role ${newRole}`);
+          console.log(
+            `Admin record created for user ${userId} with role ${newRole}`
+          );
         }
       } catch (adminError) {
         console.error("Error creating/updating admin record:", adminError);
@@ -1718,13 +2281,13 @@ export async function updateUserRole(
       // If role is not ADMIN or SUPER_ADMIN, deactivate any existing admin record
       try {
         const existingAdmin = await db.admin.findUnique({
-          where: { userId }
+          where: { userId },
         });
 
         if (existingAdmin) {
           await db.admin.update({
             where: { userId },
-            data: { isActive: false }
+            data: { isActive: false },
           });
           console.log(`Admin record deactivated for user ${userId}`);
         }
@@ -1741,10 +2304,27 @@ export async function updateUserRole(
       message: `User role has been updated to "${newRole}".`,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating user role:", error);
+
+    // Log to database - admin could email about "couldn't update user role"
+    const userMessage = logError({
+      code: "ADMIN_UPDATE_USER_ROLE_FAILED",
+      userId: updatedBy,
+      route: "actions/adminActions",
+      method: "updateUserRole",
+      error,
+      metadata: {
+        targetUserId: userId,
+        newRole,
+        reason,
+        note: "Failed to update user role",
+      },
+    });
+
     return {
       success: false,
-      error: "Failed to update user role",
+      error: userMessage,
     };
   }
 }

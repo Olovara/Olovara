@@ -1,6 +1,7 @@
 import { getContactSubmissionById } from "@/actions/adminActions";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ContactSubmissionDetail } from "@/components/admin/ContactSubmissionDetail";
+import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,12 @@ export default async function ContactSubmissionDetailPage({
 }: {
   params: { id: string };
 }) {
+  // Check authentication first
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const submission = await getContactSubmissionById(params.id);
 
   if (!submission) {
