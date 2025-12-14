@@ -114,6 +114,11 @@ const ContactUsFormContent = () => {
         ...values, 
         recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : token 
       }).then((data) => {
+        // Guard against undefined/null responses (e.g., 502 errors)
+        if (!data) {
+          throw new Error("Server returned an invalid response. Please try again.");
+        }
+
         if (data.success) {
           toast.success("Thank you! Your message has been sent successfully. We'll get back to you soon.");
           form.reset();

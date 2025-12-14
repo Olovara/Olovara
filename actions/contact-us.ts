@@ -268,16 +268,23 @@ export const contactUs = async (values: z.infer<typeof ContactUsSchema>) => {
     }
 
     // Log to database - user could email about "contact form not working"
-    const userMessage = logError({
-      code: "CONTACT_US_SUBMIT_FAILED",
-      userId: undefined, // Public route
-      route: "actions/contact-us",
-      method: "contactUs",
-      error,
-      metadata: {
-        note: "Failed to submit contact form",
-      },
-    });
+    // Wrap in try-catch to ensure we always return a response even if logging fails
+    let userMessage = "An unexpected error occurred. Please try again.";
+    try {
+      userMessage = logError({
+        code: "CONTACT_US_SUBMIT_FAILED",
+        userId: undefined, // Public route
+        route: "actions/contact-us",
+        method: "contactUs",
+        error,
+        metadata: {
+          note: "Failed to submit contact form",
+        },
+      });
+    } catch (logError) {
+      // If logging fails, use default message
+      console.error("[CONTACT_US] Failed to log error:", logError);
+    }
 
     return {
       error: userMessage,

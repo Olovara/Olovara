@@ -90,13 +90,28 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
     }
 
     startTransition(async () => {
-      const result = await sendContactResponse(submission.id, responseMessage);
-      
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Response email sent successfully!");
-        setResponseMessage(""); // Clear the form
+      try {
+        const result = await sendContactResponse(submission.id, responseMessage);
+        
+        // Guard against undefined/null responses (e.g., 502 errors)
+        if (!result) {
+          throw new Error("Server returned an invalid response. Please try again.");
+        }
+
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          toast.success("Response email sent successfully!");
+          setResponseMessage(""); // Clear the form
+        }
+      } catch (error) {
+        // Handle network errors, 502s, or other unexpected errors
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : "Failed to send response. Please check your connection and try again.";
+        
+        toast.error(errorMessage);
+        console.error("[CONTACT_RESPONSE] Error sending response:", error);
       }
     });
   };

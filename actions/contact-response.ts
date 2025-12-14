@@ -87,17 +87,24 @@ export async function sendContactResponse(
     }
 
     // Log to database - admin could email about "couldn't send contact response"
-    const userMessage = logError({
-      code: "CONTACT_RESPONSE_SEND_FAILED",
-      userId: currentUserData?.user?.id,
-      route: "actions/contact-response",
-      method: "sendContactResponse",
-      error,
-      metadata: {
-        submissionId,
-        note: "Failed to send contact response email",
-      },
-    });
+    // Wrap in try-catch to ensure we always return a response even if logging fails
+    let userMessage = "An unexpected error occurred. Please try again.";
+    try {
+      userMessage = logError({
+        code: "CONTACT_RESPONSE_SEND_FAILED",
+        userId: currentUserData?.user?.id,
+        route: "actions/contact-response",
+        method: "sendContactResponse",
+        error,
+        metadata: {
+          submissionId,
+          note: "Failed to send contact response email",
+        },
+      });
+    } catch (logError) {
+      // If logging fails, use default message
+      console.error("[CONTACT_RESPONSE] Failed to log error:", logError);
+    }
 
     return {
       error: userMessage,
