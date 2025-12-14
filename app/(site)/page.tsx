@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 
 import { Metadata } from "next";
 
+// Force dynamic rendering - this page uses getUserCountryCode() which uses headers()
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
   description:

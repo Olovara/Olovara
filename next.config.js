@@ -3,8 +3,11 @@ const nextConfig = {
   // Generate consistent build ID to prevent server action mismatches
   // This is critical when deploying to multiple instances or after rebuilds
   generateBuildId: async () => {
-    // Use environment variable if set (for consistent builds across deployments)
-    // Otherwise use timestamp to ensure fresh builds
+    // In development, use a fixed build ID to prevent server action mismatches
+    // In production, use environment variable or timestamp
+    if (process.env.NODE_ENV === 'development') {
+      return process.env.BUILD_ID || 'dev-build';
+    }
     return process.env.BUILD_ID || `build-${Date.now()}`;
   },
   experimental: {

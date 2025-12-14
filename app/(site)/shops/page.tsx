@@ -11,6 +11,9 @@ import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 
+// Force dynamic rendering - this page uses getUserCountryCode() which uses headers()
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ searchParams }: ShopsPageProps): Promise<Metadata> {
   const values = searchParams.values?.split(",") || [];
   const sortBy = searchParams.sortBy || "newest";

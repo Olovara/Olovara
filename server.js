@@ -6,6 +6,51 @@ const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
 const path = require("path");
 
+// CRITICAL: Handle uncaught exceptions and unhandled rejections
+// These prevent the server from crashing on connection resets and other errors
+process.on('uncaughtException', (error) => {
+  // ECONNRESET, EPIPE, and "aborted" errors are normal client disconnects - don't log or crash
+  const errorMessage = error?.message || '';
+  const errorCode = error?.code || '';
+  const errorStack = error?.stack || '';
+  
+  const isNormalDisconnect = 
+    errorCode === 'ECONNRESET' || 
+    errorCode === 'EPIPE' || 
+    errorMessage === 'aborted' ||
+    errorMessage.includes('aborted') ||
+    errorStack.includes('abortIncoming') ||
+    errorStack.includes('socketOnClose');
+  
+  if (isNormalDisconnect) {
+    // Silently ignore - these are normal when clients disconnect
+    return;
+  }
+  
+  // Log other uncaught exceptions but don't crash
+  console.error('[UNCAUGHT_EXCEPTION]', {
+    error: errorMessage,
+    code: errorCode,
+    stack: errorStack,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Don't exit - let the server continue running
+  // process.exit(1) would crash the entire server
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  // Log unhandled promise rejections but don't crash
+  console.error('[UNHANDLED_REJECTION]', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    code: reason?.code,
+    stack: reason instanceof Error ? reason.stack : undefined,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Don't exit - let the server continue running
+});
+
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -57,7 +102,12 @@ const emitSessionUpdate = (userId, updatedBy, reason) => {
 // Make the function available globally for other parts of the app
 global.emitSessionUpdate = emitSessionUpdate;
 
+let appReady = false;
+
 app.prepare().then(() => {
+  appReady = true;
+  console.log('[SERVER] Next.js app prepared and ready');
+  
   const httpServer = createServer();
   
   // Configure Socket.IO with CORS and secure options
@@ -203,20 +253,49 @@ app.prepare().then(() => {
 
   // Handle all other requests with Next.js
   httpServer.on('request', async (req, res) => {
-    // Set request timeout (30 seconds - reduced from 60 to prevent client timeouts)
-    req.setTimeout(30000, () => {
+    // Check if app is ready before handling requests
+    if (!appReady) {
+      console.error(`[ERROR] Request to ${req.url} received before app is ready`);
       if (!res.headersSent) {
-        res.statusCode = 408;
-        res.end('Request Timeout');
+        res.statusCode = 503;
+        res.end('Service Unavailable - App is still initializing');
       }
-      req.destroy();
+      return;
+    }
+    
+    const requestStart = Date.now();
+    const url = req.url || 'unknown';
+    
+    // Log incoming requests (but not for static assets to reduce noise)
+    if (!url.includes('/_next/static') && !url.includes('/favicon.ico')) {
+      console.log(`[REQUEST] ${req.method} ${url}`);
+    }
+    
+    // Set request timeout (60 seconds - server actions may take time)
+    // CRITICAL: Don't destroy request immediately - let Next.js handle it
+    req.setTimeout(60000, () => {
+      if (!res.headersSent && !res.writableEnded) {
+        console.warn(`[TIMEOUT] Request to ${url} timed out after 60s`);
+        try {
+          res.statusCode = 408;
+          res.end('Request Timeout');
+        } catch (e) {
+          // Response might be destroyed - ignore
+        }
+      }
     });
 
     // Set response timeout to prevent hanging connections
-    res.setTimeout(30000, () => {
-      if (!res.headersSent) {
-        res.statusCode = 504;
-        res.end('Gateway Timeout');
+    // CRITICAL: Don't interfere with Next.js response handling
+    res.setTimeout(60000, () => {
+      if (!res.headersSent && !res.writableEnded) {
+        console.warn(`[TIMEOUT] Response for ${url} timed out after 60s`);
+        try {
+          res.statusCode = 504;
+          res.end('Gateway Timeout');
+        } catch (e) {
+          // Response might be destroyed - ignore
+        }
       }
     });
 
@@ -245,28 +324,80 @@ app.prepare().then(() => {
     });
 
     // Handle client disconnect gracefully
+    // CRITICAL: Don't destroy response - let Next.js handle it completely
+    // Destroying the response prevents server actions from sending their responses
     req.on('close', () => {
-      if (!res.headersSent && !res.writableEnded) {
-        res.destroy();
-      }
+      // Don't destroy the response - Next.js needs to send it
+      // Even if client disconnects, the server action should complete
+      // The response will be cleaned up automatically by Node.js
     });
 
     try {
       // CRITICAL: Server actions MUST be handled by Next.js handler directly
       // They use routes like /_next/server-actions/[actionId] and need proper routing
       // Don't interfere with Next.js internal routes - let Next.js handle everything
-      await handler(req, res);
+      
+      // Log server action requests specifically
+      if (url.includes('/_next/server-actions') || (req.method === 'POST' && !url.startsWith('/api/'))) {
+        console.log(`[SERVER_ACTION] ${req.method} ${url} - handling via Next.js`);
+      }
+      
+      // Call Next.js handler - this handles all routes including server actions
+      // CRITICAL: Properly await the handler but don't interfere with response
+      try {
+        await handler(req, res);
+        
+        // For server actions, check response status
+        if (url.includes('/_next/server-actions') || (req.method === 'POST' && !url.startsWith('/api/'))) {
+          // Give Next.js time to send the response
+          await new Promise(resolve => setTimeout(resolve, 10));
+          
+          const duration = Date.now() - requestStart;
+          const responseSent = res.headersSent || res.writableEnded;
+          
+          console.log(`[SERVER_ACTION] ${req.method} ${url} completed in ${duration}ms, responseSent: ${responseSent}`);
+        } else {
+          // For regular requests, log completion
+          const duration = Date.now() - requestStart;
+          if (!url.includes('/_next/static') && !url.includes('/favicon.ico')) {
+            console.log(`[REQUEST_SUCCESS] ${req.method} ${url} completed in ${duration}ms`);
+          }
+        }
+      } catch (handlerError) {
+        // Only handle errors if response hasn't been sent
+        if (!res.headersSent && !res.writableEnded && !res.destroyed) {
+          console.error(`[HANDLER_ERROR] Error in Next.js handler for ${url}:`, handlerError);
+          // Try to send error response if possible
+          try {
+            res.statusCode = 500;
+            res.end('Internal Server Error');
+          } catch (e) {
+            // Response might be destroyed - ignore
+          }
+        }
+        // Re-throw to be caught by outer catch block for logging
+        throw handlerError;
+      }
     } catch (error) {
+      const duration = Date.now() - requestStart;
       // These errors are SYMPTOMS - they happen when:
       // 1. Server actions fail (causing clients to disconnect)
       // 2. Server is too slow (causing timeouts)
       // 3. Build ID mismatch (causing server action registry errors)
       
+      // Check if response was already sent or connection closed
+      if (res.headersSent || res.destroyed || res.writableEnded) {
+        // Response already sent or connection closed - nothing to do
+        return;
+      }
+      
       if (error?.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
         console.error(`[CRITICAL] Request to ${req.url} timed out - server performance issue`);
-        if (!res.headersSent) {
+        try {
           res.statusCode = 504;
           res.end('Gateway Timeout');
+        } catch (e) {
+          // Response might be destroyed - ignore
         }
         return;
       }
@@ -279,12 +410,21 @@ app.prepare().then(() => {
       
       // Log all errors except normal client disconnects
       if (error?.code !== 'ECONNRESET' && error?.code !== 'EPIPE') {
-        console.error(`[ERROR] Error handling request to ${req.url}:`, error);
+        console.error(`[ERROR] Error handling request to ${req.url}:`, {
+          message: error?.message,
+          code: error?.code,
+          stack: error?.stack
+        });
       }
       
-      if (!res.headersSent) {
-        res.statusCode = 500;
-        res.end('Internal Server Error');
+      // Always try to send an error response if possible
+      try {
+        if (!res.headersSent && !res.destroyed) {
+          res.statusCode = 500;
+          res.end('Internal Server Error');
+        }
+      } catch (e) {
+        // Response might be destroyed - ignore
       }
     }
   });
@@ -317,4 +457,7 @@ app.prepare().then(() => {
       console.log(`> Ready on ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${hostname}:${port}`);
       console.log(`> Socket.IO server is running on the same port`);
     });
+}).catch((error) => {
+  console.error('[CRITICAL] Failed to prepare Next.js app:', error);
+  process.exit(1);
 });

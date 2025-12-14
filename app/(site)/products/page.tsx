@@ -22,6 +22,9 @@ import { auth } from "@/auth";
 import { getFollowedSellersFeed } from "@/actions/followActions";
 import { SearchAnalyticsTracker } from "@/components/SearchAnalyticsTracker";
 
+// Force dynamic rendering - this page uses getUserCountryCode() which uses headers()
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   searchParams,
 }: ProductsPageProps): Promise<Metadata> {

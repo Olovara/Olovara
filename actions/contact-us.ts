@@ -8,6 +8,16 @@ import { logError } from "@/lib/error-logger";
 
 export const contactUs = async (values: z.infer<typeof ContactUsSchema>) => {
   const startTime = Date.now();
+  
+  // CRITICAL: Log immediately to verify this function is being called
+  console.log(`[CONTACT_US] Server action called at ${new Date().toISOString()}`, {
+    hasName: !!values?.name,
+    hasEmail: !!values?.email,
+    hasReason: !!values?.reason,
+    hasDescription: !!values?.helpDescription,
+    hasRecaptchaToken: !!values?.recaptchaToken,
+  });
+  
   const logContext = {
     timestamp: new Date().toISOString(),
     formData: {

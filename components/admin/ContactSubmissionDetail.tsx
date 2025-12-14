@@ -91,18 +91,39 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
 
     startTransition(async () => {
       try {
+        console.log("[CONTACT_RESPONSE_CLIENT] Starting sendContactResponse:", {
+          submissionId: submission.id,
+          responseMessageLength: responseMessage.length,
+          timestamp: new Date().toISOString(),
+        });
+
         const result = await sendContactResponse(submission.id, responseMessage);
         
-        // Guard against undefined/null responses (e.g., 502 errors)
+        console.log("[CONTACT_RESPONSE_CLIENT] Received result:", {
+          result,
+          resultType: typeof result,
+          hasError: result?.error,
+          hasSuccess: result?.success,
+          timestamp: new Date().toISOString(),
+        });
+        
+        // Guard against undefined/null responses (e.g., 502 errors, timeouts)
         if (!result) {
+          console.error("[CONTACT_RESPONSE_CLIENT] Result is null/undefined - server action may have timed out");
           throw new Error("Server returned an invalid response. Please try again.");
         }
 
         if (result.error) {
+          console.error("[CONTACT_RESPONSE_CLIENT] Error in result:", result.error);
           toast.error(result.error);
-        } else {
+        } else if (result.success) {
+          console.log("[CONTACT_RESPONSE_CLIENT] Success:", result.success);
           toast.success("Response email sent successfully!");
           setResponseMessage(""); // Clear the form
+        } else {
+          // Unexpected response format
+          console.error("[CONTACT_RESPONSE_CLIENT] Unexpected response format:", result);
+          toast.error("Unexpected response from server. Please try again.");
         }
       } catch (error) {
         // Handle network errors, 502s, or other unexpected errors
@@ -110,8 +131,14 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
           ? error.message 
           : "Failed to send response. Please check your connection and try again.";
         
+        console.error("[CONTACT_RESPONSE_CLIENT] Caught error:", {
+          error: errorMessage,
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
+        
         toast.error(errorMessage);
-        console.error("[CONTACT_RESPONSE] Error sending response:", error);
       }
     });
   };
