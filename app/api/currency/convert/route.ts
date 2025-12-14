@@ -409,7 +409,33 @@ export async function POST(req: Request) {
   let body: any = null;
 
   try {
-    body = await req.json();
+    // Check if request has a body before trying to parse it
+    const contentType = req.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 400 }
+      );
+    }
+
+    // Get the raw text first to check if body is empty
+    const text = await req.text();
+    if (!text || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Request body is empty" },
+        { status: 400 }
+      );
+    }
+
+    // Parse the JSON body
+    try {
+      body = JSON.parse(text);
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
 
     // Check if this is a batch request
     if (Array.isArray(body.conversions)) {
