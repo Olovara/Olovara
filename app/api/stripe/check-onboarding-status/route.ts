@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { updateOnboardingStep } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const logContext: any = {

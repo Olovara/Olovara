@@ -5,6 +5,9 @@ import { ObjectId } from "mongodb";
 import { getCountryByCode } from "@/data/countries";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Duplicate/Copy a shipping option
  * Creates a new shipping option with all the same data as the original,

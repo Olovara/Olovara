@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // GET - Fetch products for a seller
 export async function GET(request: NextRequest) {
   // Declare variables outside try block so they're accessible in catch

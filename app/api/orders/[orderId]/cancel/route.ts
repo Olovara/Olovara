@@ -6,6 +6,9 @@ import { ObjectId } from "mongodb";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { orderId: string } }

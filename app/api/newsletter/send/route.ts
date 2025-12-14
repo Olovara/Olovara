@@ -6,6 +6,9 @@ import NewsletterEmail from "@/components/emails/NewsletterEmail";
 import { auth } from "@/auth";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {

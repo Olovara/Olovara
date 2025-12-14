@@ -7,6 +7,9 @@ import { ObjectId } from "mongodb";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Duplicate/Copy a product
  * Creates a new product with all the same data as the original,

@@ -10,6 +10,9 @@ import {
 } from "@/lib/search-analytics";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * API Route for tracking search analytics
  * Tracks product searches with all required analytics data

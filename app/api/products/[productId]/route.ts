@@ -11,6 +11,9 @@ import {
 } from "@/lib/batchNumber";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 const utapi = new UTApi();
 
 // Schema for updating product sales

@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getUserLocationPreferences } from "@/lib/ipinfo";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Helper function to get country code with three-tier fallback
 async function getCountryCodeForStripe(
   userId: string,

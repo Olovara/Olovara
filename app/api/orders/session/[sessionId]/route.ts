@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { decryptData } from "@/lib/encryption";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: { sessionId: string } }

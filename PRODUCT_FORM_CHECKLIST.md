@@ -450,7 +450,7 @@
 ### Boundary Conditions
 - [ ] Maximum image count (10) enforced
 - [ ] Maximum file size (4MB) enforced
-- [ ] Maximum description length (1000 chars)
+- [ ] Maximum description length (2000 chars)
 - [ ] Maximum SEO field lengths enforced
 - [ ] Minimum price per currency enforced
 

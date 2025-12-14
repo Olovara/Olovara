@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getUserAnalytics } from "@/lib/ipinfo";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   // Declare variables outside try block so they're accessible in catch
   let session: any = null;

@@ -10,6 +10,9 @@ import { z } from "zod";
 import { checkApiPermissions } from "@/lib/api-permissions";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch categories
 export async function GET(req: Request) {
   try {

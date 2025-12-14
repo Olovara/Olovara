@@ -6,6 +6,9 @@ import { checkDigitalRefundEligibility } from "@/lib/refund-policy";
 import { stripeSecret } from "@/lib/stripe";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   req: Request,
   { params }: { params: { orderId: string } }

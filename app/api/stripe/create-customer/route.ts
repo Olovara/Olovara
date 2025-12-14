@@ -3,6 +3,9 @@ import { StripeCustomerType } from "@/types/stripe";
 import { NextResponse } from "next/server";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   // Declare variables outside try block so they're accessible in catch
   let body: any = null;

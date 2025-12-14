@@ -2,6 +2,9 @@ import { approveApplication } from "@/actions/adminActions";
 import { logError } from "@/lib/error-logger";
 import { auth } from "@/auth";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const logContext: Record<string, any> = {

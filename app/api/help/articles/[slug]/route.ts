@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { updateHelpArticleSchema } from "@/schemas/HelpArticleSchema";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }

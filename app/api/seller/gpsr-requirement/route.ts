@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { isSellerGPSRComplianceRequired } from "@/lib/gpsr-compliance";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/seller/gpsr-requirement
  * Check if GPSR compliance is required for the authenticated seller

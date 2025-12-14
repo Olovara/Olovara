@@ -5,6 +5,9 @@ import { getSellerByUserId } from "@/lib/queries";
 import { z } from "zod";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Schema for creating templates
 const CreateTemplateSchema = z.object({
   name: z.string().min(1, "Template name is required"),

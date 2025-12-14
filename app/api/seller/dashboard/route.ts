@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // GET - Fetch seller dashboard data
 export async function GET(request: NextRequest) {
   // Declare variables outside try block so they're accessible in catch

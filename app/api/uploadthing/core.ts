@@ -4,6 +4,9 @@ import { UploadThingError } from "uploadthing/server";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 const f = createUploadthing();
 
 // FileRouter for your app, can contain multiple FileRoutes

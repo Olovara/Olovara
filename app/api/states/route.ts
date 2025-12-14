@@ -8,6 +8,9 @@ import {
 } from "@/data/states";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/states
  * Returns states/provinces data for countries

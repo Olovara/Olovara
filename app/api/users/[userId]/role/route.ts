@@ -4,6 +4,9 @@ import { ObjectId } from "mongodb";
 import { auth } from "@/auth";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { userId: string } }

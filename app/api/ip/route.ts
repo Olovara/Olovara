@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     // Get client IP from various headers

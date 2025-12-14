@@ -4,6 +4,9 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   req: Request,
   { params }: { params: { suggestionId: string } }

@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { logError } from "@/lib/error-logger";
 
-export const dynamic = "force-dynamic";
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   // Declare variables outside try block so they're accessible in catch

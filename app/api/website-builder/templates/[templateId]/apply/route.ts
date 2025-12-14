@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getSellerByUserId, getWebsiteBySellerId } from "@/lib/queries";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // POST - Apply template to a website
 export async function POST(
   request: NextRequest,

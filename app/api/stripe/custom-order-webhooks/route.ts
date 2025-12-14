@@ -6,6 +6,9 @@ import type { Stripe } from "stripe";
 import { calculateCommissionRate } from "@/lib/feeConfig";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = headers().get("Stripe-Signature") as string;

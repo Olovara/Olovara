@@ -3,6 +3,9 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db"; // Your Prisma client
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Define an interface matching Uploadthing's expected payload structure
 // **Important:** Verify this structure against Uploadthing's documentation!
 interface UploadthingFile {

@@ -9,6 +9,9 @@ import {
 } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const logContext: Record<string, any> = {

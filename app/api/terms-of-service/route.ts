@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { ROLES } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 const defaultTerms = {
   html: `
     <h1>Terms of Service</h1>

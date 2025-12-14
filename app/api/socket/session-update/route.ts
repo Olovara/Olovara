@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // This is a simple endpoint that will be called to trigger session updates
 // The actual WebSocket logic is handled in the server.js file
 export async function POST(request: NextRequest) {

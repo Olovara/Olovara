@@ -5,6 +5,9 @@ import { z } from "zod";
 import { getCurrencyDecimals } from "@/data/units";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Schema for updating discount codes - now accepts currency amounts instead of cents
 const updateDiscountCodeSchema = z.object({
   name: z.string().min(1).max(100).optional(),

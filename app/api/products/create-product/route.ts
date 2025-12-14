@@ -8,6 +8,9 @@ import { generateBatchNumber } from "@/lib/batchNumber";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // 60 seconds timeout
 
 // For body size limit, we need to use a different approach in App Router

@@ -5,6 +5,9 @@ import { encryptData, decryptData } from "@/lib/encryption";
 import { z } from "zod";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Schema for updating profile
 const updateProfileSchema = z.object({
   firstName: z

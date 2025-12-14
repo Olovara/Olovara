@@ -5,6 +5,9 @@
 import { NextResponse } from "next/server";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   console.warn(
     "⚠️ DEPRECATED: Using old webhook endpoint. Please update Stripe webhook URL to /api/stripe/webhooks"

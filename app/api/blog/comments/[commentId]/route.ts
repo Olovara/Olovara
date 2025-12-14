@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 // Schema for updating a comment
 const updateCommentSchema = z.object({
   content: z

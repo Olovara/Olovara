@@ -183,7 +183,7 @@ const FirstProductSchema = z.object({
   description: z
     .string()
     .min(10, "Description must be at least 10 characters")
-    .max(1000, "Description must be 1000 characters or less"),
+    .max(2000, "Description must be 2000 characters or less"),
   shortDescription: z.string(),
   shortDescriptionBullets: z
     .array(z.string())

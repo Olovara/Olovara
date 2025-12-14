@@ -5,6 +5,9 @@ import { hasPermission } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   // Declare variables outside try block so they're accessible in catch
   let session: any = null;

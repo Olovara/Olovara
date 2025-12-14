@@ -5,6 +5,9 @@ import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 const utapi = new UTApi();
 
 export async function PATCH(req: Request) {

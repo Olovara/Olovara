@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { validateDiscountCode } from "@/lib/discount-calculator";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   // Declare variables outside try block so they're accessible in catch
   let session: any = null;

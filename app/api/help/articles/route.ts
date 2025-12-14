@@ -3,6 +3,10 @@ import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
 import { createHelpArticleSchema } from "@/schemas/HelpArticleSchema";
 import { logError } from "@/lib/error-logger";
+
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   // Declare variables outside try block so they're accessible in catch
   let permissionCheck: any = null;

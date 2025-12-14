@@ -5,6 +5,9 @@ import { SUPPORTED_CURRENCIES } from "@/data/units";
 import * as z from "zod";
 import { logError } from "@/lib/error-logger";
 
+// Force dynamic rendering - this route uses auth() which is dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Validate product data BEFORE uploading images/files
  * This prevents orphaned images if validation fails
