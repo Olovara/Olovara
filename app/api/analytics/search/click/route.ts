@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { SearchAnalyticsService } from "@/lib/analytics";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    const body = await req.json();
-    
+    session = await auth();
+    body = await req.json();
+
     const {
       searchId,
       clickedResult,
       clickProductId, // Fixed: use clickProductId (not clickedProductId)
       clickedSellerId,
-      timeToClick
+      timeToClick,
     } = body;
 
     // Validate required fields
@@ -34,14 +39,28 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      searchAnalytics: updatedSearch
+      searchAnalytics: updatedSearch,
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error tracking search click:", error);
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "search click tracking not working"
+    const userMessage = logError({
+      code: "SEARCH_CLICK_TRACK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/search/click",
+      method: "POST",
+      error,
+      metadata: {
+        searchId: body?.searchId,
+        clickProductId: body?.clickProductId,
+        note: "Failed to track search click",
+      },
     });
 
-  } catch (error) {
-    console.error('Error tracking search click:', error);
-    return NextResponse.json(
-      { error: "Failed to track search click" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

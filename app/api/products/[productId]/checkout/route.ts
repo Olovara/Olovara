@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   req: Request,
@@ -9,7 +10,10 @@ export async function GET(
     const productId = params.productId;
 
     if (!productId) {
-      return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
     }
 
     // Fetch product with seller information
@@ -47,22 +51,28 @@ export async function GET(
     }
 
     if (!product.seller) {
-      return NextResponse.json({ error: "Product seller not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Product seller not found" },
+        { status: 404 }
+      );
     }
 
     // Check if product is active
     if (product.stock <= 0 && !product.isDigital) {
-      return NextResponse.json({ error: "Product is out of stock" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Product is out of stock" },
+        { status: 400 }
+      );
     }
 
     // Calculate if sale is currently active
     const now = new Date();
     let isSaleActive = product.onSale && product.discount;
-    
+
     if (isSaleActive && product.saleStartDate) {
       const saleStart = new Date(product.saleStartDate);
       if (product.saleStartTime) {
-        const [hours, minutes] = product.saleStartTime.split(':').map(Number);
+        const [hours, minutes] = product.saleStartTime.split(":").map(Number);
         saleStart.setHours(hours, minutes, 0, 0);
       }
       if (now < saleStart) {
@@ -73,7 +83,7 @@ export async function GET(
     if (isSaleActive && product.saleEndDate) {
       const saleEnd = new Date(product.saleEndDate);
       if (product.saleEndTime) {
-        const [hours, minutes] = product.saleEndTime.split(':').map(Number);
+        const [hours, minutes] = product.saleEndTime.split(":").map(Number);
         saleEnd.setHours(hours, minutes, 0, 0);
       }
       if (now > saleEnd) {
@@ -100,12 +110,22 @@ export async function GET(
       onSale: isSaleActive,
       discount: isSaleActive ? product.discount : null,
     });
-
   } catch (error) {
+    // Log to console (existing behavior)
     console.error("Error fetching product for checkout:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Log to error database
+    const userMessage = logError({
+      code: "CHECKOUT_PRODUCT_FETCH_FAILED",
+      route: `/api/products/${params?.productId}/checkout`,
+      method: "GET",
+      error,
+      metadata: {
+        productId: params?.productId,
+        note: "Failed to fetch product data for checkout page",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

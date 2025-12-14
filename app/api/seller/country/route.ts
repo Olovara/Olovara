@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptData } from "@/lib/encryption";
+import { logError } from "@/lib/error-logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -34,7 +38,21 @@ export async function GET() {
 
     return NextResponse.json({ country });
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SELLER_COUNTRY_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Log to database - user could email about "can't see country"
+    const userMessage = logError({
+      code: "SELLER_COUNTRY_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/country",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch seller country",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

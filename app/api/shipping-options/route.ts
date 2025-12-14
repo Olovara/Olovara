@@ -2,22 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getCountryByCode } from "@/data/countries";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    body = await request.json();
     const {
       name,
       countryOfOrigin,
       rates,
       defaultShipping,
       defaultShippingCurrency,
-    } = await request.json();
+    } = body;
 
     if (!name || !countryOfOrigin) {
       return NextResponse.json(
@@ -35,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rates array is optional, but if provided must be an array
-    if (rates !== undefined && (!Array.isArray(rates))) {
+    if (rates !== undefined && !Array.isArray(rates)) {
       return NextResponse.json(
         { error: "Rates must be an array" },
         { status: 400 }
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
               const country = getCountryByCode(rate.countryCode);
               zoneValue = country?.zone || "NORTH_AMERICA"; // Default fallback
             }
-            
+
             return {
               type: rate.type || "zone",
               zone: zoneValue || "NORTH_AMERICA", // Ensure zone is always set
@@ -101,17 +107,34 @@ export async function POST(request: NextRequest) {
       shippingOption,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error creating shipping option:", error);
-    return NextResponse.json(
-      { error: "Failed to create shipping option" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't create shipping option"
+    const userMessage = logError({
+      code: "SHIPPING_OPTION_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/shipping-options",
+      method: "POST",
+      error,
+      metadata: {
+        name: body?.name,
+        countryOfOrigin: body?.countryOfOrigin,
+        ratesCount: body?.rates?.length,
+        note: "Failed to create shipping option",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -127,7 +150,21 @@ export async function GET(req: Request) {
 
     return NextResponse.json(shippingOptions);
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SHIPPING_PROFILES_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Log to database - user could email about "can't see shipping options"
+    const userMessage = logError({
+      code: "SHIPPING_OPTIONS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/shipping-options",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch shipping options",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

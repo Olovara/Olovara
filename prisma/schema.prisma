@@ -1841,4 +1841,25 @@ model WebsiteTemplate {
   updatedAt     DateTime @updatedAt
 }
 
+// Error Logging System
+model ErrorLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  level     String   // "info" | "warn" | "error" | "fatal"
+  code      String   // Error code like "PRODUCT_CREATE_FAILED"
+  message   String   // Human-readable error message
+  userId    String?  // Optional user ID if error is user-specific
+  route     String?  // API route or page path (e.g., "/api/products")
+  method    String?  // HTTP method (e.g., "POST", "GET")
+  metadata  Json?    // Additional context (payload, browser, file size, etc.)
+  error     Json?    // Full error object (stack trace, name, etc.)
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([code])
+  @@index([userId])
+  @@index([route])
+  @@index([createdAt])
+  @@index([code, createdAt])
+}
+
 

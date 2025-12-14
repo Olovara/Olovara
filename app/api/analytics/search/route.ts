@@ -2,26 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getUserAnalytics } from "@/lib/ipinfo";
-import { 
-  truncateIPToSubnet, 
-  normalizeSearchQuery, 
+import {
+  truncateIPToSubnet,
+  normalizeSearchQuery,
   getDeviceType,
-  extractLocationData 
+  extractLocationData,
 } from "@/lib/search-analytics";
+import { logError } from "@/lib/error-logger";
 
 /**
  * API Route for tracking search analytics
  * Tracks product searches with all required analytics data
  */
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Handle empty or malformed request body
-    let body;
     try {
       const text = await req.text();
-      if (!text || text.trim() === '') {
+      if (!text || text.trim() === "") {
         return NextResponse.json(
           { error: "Request body is empty" },
           { status: 400 }
@@ -29,39 +33,42 @@ export async function POST(req: NextRequest) {
       }
       body = JSON.parse(text);
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
+      console.error("JSON parse error:", parseError);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
-    
+
     const {
-      searchQuery,           // Raw search query (required)
-      resultCount,           // Total results returned (required)
-      clickProductId,        // Product ID if clicked (optional)
-      deviceId,             // Device ID from cookie/localStorage (required)
-      sessionId,            // Session ID (optional for advanced)
-      searchContext,        // Where they searched from (optional)
-      deviceType,           // Device type from client (optional, will be determined if not provided)
+      searchQuery, // Raw search query (required)
+      resultCount, // Total results returned (required)
+      clickProductId, // Product ID if clicked (optional)
+      deviceId, // Device ID from cookie/localStorage (required)
+      sessionId, // Session ID (optional for advanced)
+      searchContext, // Where they searched from (optional)
+      deviceType, // Device type from client (optional, will be determined if not provided)
     } = body || {};
 
     // Validate required fields
     if (!searchQuery || !deviceId || resultCount === undefined) {
       return NextResponse.json(
-        { error: "Missing required fields: searchQuery, deviceId, and resultCount are required" },
+        {
+          error:
+            "Missing required fields: searchQuery, deviceId, and resultCount are required",
+        },
         { status: 400 }
       );
     }
 
     // Get client IP and truncate to /24 for privacy
-    const forwarded = req.headers.get('x-forwarded-for');
-    const realIP = req.headers.get('x-real-ip');
-    const clientIP = forwarded?.split(',')[0] || realIP || req.ip || 'unknown';
+    const forwarded = req.headers.get("x-forwarded-for");
+    const realIP = req.headers.get("x-real-ip");
+    const clientIP = forwarded?.split(",")[0] || realIP || req.ip || "unknown";
     const truncatedIP = truncateIPToSubnet(clientIP);
 
     // Get user agent
-    const userAgent = req.headers.get('user-agent') || '';
+    const userAgent = req.headers.get("user-agent") || "";
 
     // Determine device type (use provided or detect from user agent)
     const detectedDeviceType = deviceType || getDeviceType(userAgent);
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
       const fullLocationData = await getUserAnalytics(clientIP);
       locationData = extractLocationData(fullLocationData);
     } catch (error) {
-      console.warn('Failed to get location data for search analytics:', error);
+      console.warn("Failed to get location data for search analytics:", error);
     }
 
     // Normalize the search query
@@ -87,19 +94,19 @@ export async function POST(req: NextRequest) {
         resultCount: Number(resultCount),
         clickProductId: clickProductId || null,
         deviceId,
-        
+
         // Device and location
         deviceType: detectedDeviceType,
         ipAddress: truncatedIP,
         userAgent: userAgent || null,
         location: locationData,
-        
+
         // Context and metadata
         searchContext: searchContext || null,
-        
+
         // User info (only if logged in)
         userId: session?.user?.id || null,
-        
+
         // Advanced fields (optional)
         sessionId: sessionId || null,
         queryLength: searchQuery.trim().length,
@@ -109,15 +116,28 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      id: searchAnalytics.id
+      id: searchAnalytics.id,
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error tracking search analytics:", error);
+
+    // Don't log JSON parse errors or validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "search tracking not working"
+    const userMessage = logError({
+      code: "SEARCH_ANALYTICS_TRACK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/search",
+      method: "POST",
+      error,
+      metadata: {
+        searchQuery: body?.searchQuery,
+        note: "Failed to track search analytics",
+      },
     });
 
-  } catch (error) {
-    console.error('Error tracking search analytics:', error);
-    return NextResponse.json(
-      { error: "Failed to track search analytics" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -126,11 +146,13 @@ export async function POST(req: NextRequest) {
  * Called when user clicks a product after searching
  */
 export async function PATCH(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let body: any = null;
+
   try {
-    let body;
     try {
       const text = await req.text();
-      if (!text || text.trim() === '') {
+      if (!text || text.trim() === "") {
         return NextResponse.json(
           { error: "Request body is empty" },
           { status: 400 }
@@ -138,22 +160,25 @@ export async function PATCH(req: NextRequest) {
       }
       body = JSON.parse(text);
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
+      console.error("JSON parse error:", parseError);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
-    
+
     const {
-      clickProductId,  // Product ID that was clicked (required)
-      deviceId,        // Device ID to find the search record (required)
-      searchQuery,    // Optional: search query to match (helps find the right record)
+      clickProductId, // Product ID that was clicked (required)
+      deviceId, // Device ID to find the search record (required)
+      searchQuery, // Optional: search query to match (helps find the right record)
     } = body || {};
 
     if (!clickProductId || !deviceId) {
       return NextResponse.json(
-        { error: "Missing required fields: clickProductId and deviceId are required" },
+        {
+          error:
+            "Missing required fields: clickProductId and deviceId are required",
+        },
         { status: 400 }
       );
     }
@@ -173,7 +198,7 @@ export async function PATCH(req: NextRequest) {
     const recentSearch = await db.searchAnalytics.findFirst({
       where: whereClause,
       orderBy: {
-        timestamp: 'desc',
+        timestamp: "desc",
       },
     });
 
@@ -196,7 +221,7 @@ export async function PATCH(req: NextRequest) {
           },
         },
         orderBy: {
-          timestamp: 'desc',
+          timestamp: "desc",
         },
       });
 
@@ -213,12 +238,26 @@ export async function PATCH(req: NextRequest) {
       success: true,
       updated,
     });
-
   } catch (error) {
-    console.error('Error updating search analytics with click:', error);
-    return NextResponse.json(
-      { error: "Failed to update search analytics" },
-      { status: 500 }
-    );
+    // Log to console (always happens)
+    console.error("Error updating search analytics with click:", error);
+
+    // Don't log JSON parse errors or validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "search click tracking not working"
+    const userMessage = logError({
+      code: "SEARCH_ANALYTICS_CLICK_UPDATE_FAILED",
+      userId: undefined, // This endpoint doesn't require auth
+      route: "/api/analytics/search",
+      method: "PATCH",
+      error,
+      metadata: {
+        clickProductId: body?.clickProductId,
+        deviceId: body?.deviceId,
+        note: "Failed to update search analytics with click",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@ import {
   hasGPSRFieldsChanged,
   hasStockIncreased,
 } from "@/lib/batchNumber";
+import { logError } from "@/lib/error-logger";
 
 const utapi = new UTApi();
 
@@ -124,11 +125,14 @@ export async function GET(
     return NextResponse.json(product);
   } catch (error) {
     console.error("[API ERROR] Product GET failed:", {
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : error,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
       productId: params?.productId,
       timestamp: new Date().toISOString(),
     });
@@ -444,7 +448,10 @@ export async function PATCH(
     const taxFields = {
       taxCategory: updateData.taxCategory,
       // Convert empty string to null for taxCode (it's optional and nullable)
-      taxCode: updateData.taxCode && updateData.taxCode.trim() !== "" ? updateData.taxCode : null,
+      taxCode:
+        updateData.taxCode && updateData.taxCode.trim() !== ""
+          ? updateData.taxCode
+          : null,
       taxExempt: updateData.taxExempt,
     };
 
@@ -552,12 +559,16 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
+    // Log to console (existing behavior)
     console.error("[API ERROR] Product PATCH failed:", {
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : error,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
       productId: params?.productId,
       userId: session?.user?.id || "unknown",
       updateData: {
@@ -570,10 +581,34 @@ export async function PATCH(
       },
       timestamp: new Date().toISOString(),
     });
-    
-    // Check if it's a ZodError
-    if (error && typeof error === 'object' && 'issues' in error) {
-      const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
+
+    // Check if it's a ZodError (validation error)
+    if (error && typeof error === "object" && "issues" in error) {
+      const zodError = error as {
+        issues: Array<{ message: string; path: (string | number)[] }>;
+      };
+
+      // Log validation errors to database
+      logError({
+        code: "PRODUCT_VALIDATION_FAILED",
+        userId: session?.user?.id,
+        route: `/api/products/${params?.productId}`,
+        method: "PATCH",
+        error,
+        metadata: {
+          productId: params?.productId,
+          validationErrors: zodError.issues,
+          updateData: {
+            status: data?.status,
+            name: data?.name,
+            isDigital: data?.isDigital,
+            price: data?.price,
+            imagesCount: data?.images?.length || 0,
+            hasProductFile: !!data?.productFile,
+          },
+        },
+      });
+
       return new Response(
         JSON.stringify({
           success: false,
@@ -583,18 +618,37 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Internal server error";
-    
+
+    // Log to database for non-validation errors
+    const userMessage = logError({
+      code: "PRODUCT_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: `/api/products/${params?.productId}`,
+      method: "PATCH",
+      error,
+      metadata: {
+        productId: params?.productId,
+        updateData: {
+          status: data?.status,
+          name: data?.name,
+          isDigital: data?.isDigital,
+          price: data?.price,
+          imagesCount: data?.images?.length || 0,
+          hasProductFile: !!data?.productFile,
+        },
+      },
+    });
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
-        details: process.env.NODE_ENV === "development" 
-          ? (error instanceof Error ? error.stack : String(error))
-          : undefined,
+        error: userMessage,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.stack
+              : String(error)
+            : undefined,
       }),
       { status: 500 }
     );

@@ -1,29 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addUserPermission, removeUserPermission } from "@/actions/adminActions";
+import {
+  addUserPermission,
+  removeUserPermission,
+} from "@/actions/adminActions";
 import { ObjectId } from "mongodb";
 import { auth } from "@/auth";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+  let userId: string | undefined = undefined;
+
   try {
     // Get current user for grantedBy parameter
-    const session = await auth();
+    session = await auth();
+    userId = params.userId;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Validate that the userId is a valid ObjectID
-    if (!ObjectId.isValid(params.userId)) {
+    if (!ObjectId.isValid(userId)) {
       return NextResponse.json(
         { error: "Invalid user ID format" },
         { status: 400 }
       );
     }
 
-    const { permission, reason } = await request.json();
-    
+    body = await request.json();
+    const { permission, reason } = body;
+
     if (!permission) {
       return NextResponse.json(
         { error: "Permission is required" },
@@ -31,25 +42,41 @@ export async function POST(
       );
     }
 
-    const result = await addUserPermission(params.userId, permission, reason || "Granted by admin", session.user.id);
-    
+    const result = await addUserPermission(
+      userId,
+      permission,
+      reason || "Granted by admin",
+      session.user.id
+    );
+
     if (result.success) {
       return NextResponse.json({
         ...result,
-        message: "Permission added successfully."
+        message: "Permission added successfully.",
       });
     } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error adding permission:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "couldn't add permission"
+    const userMessage = logError({
+      code: "USER_PERMISSION_ADD_FAILED",
+      userId: session?.user?.id,
+      route: "/api/users/[userId]/permissions",
+      method: "POST",
+      error,
+      metadata: {
+        targetUserId: userId,
+        permission: body?.permission,
+        reason: body?.reason,
+        note: "Failed to add user permission",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -57,15 +84,21 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let userId: string | undefined = undefined;
+  let permission: string | null = null;
+
   try {
     // Get current user for removedBy parameter
-    const session = await auth();
+    session = await auth();
+    userId = params.userId;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Validate that the userId is a valid ObjectID
-    if (!ObjectId.isValid(params.userId)) {
+    if (!ObjectId.isValid(userId)) {
       return NextResponse.json(
         { error: "Invalid user ID format" },
         { status: 400 }
@@ -73,8 +106,8 @@ export async function DELETE(
     }
 
     const { searchParams } = new URL(request.url);
-    const permission = searchParams.get("permission");
-    
+    permission = searchParams.get("permission");
+
     if (!permission) {
       return NextResponse.json(
         { error: "Permission is required" },
@@ -82,24 +115,38 @@ export async function DELETE(
       );
     }
 
-    const result = await removeUserPermission(params.userId, permission, session.user.id);
-    
+    const result = await removeUserPermission(
+      userId,
+      permission,
+      session.user.id
+    );
+
     if (result.success) {
       return NextResponse.json({
         ...result,
-        message: "Permission removed successfully."
+        message: "Permission removed successfully.",
       });
     } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error removing permission:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "couldn't remove permission"
+    const userMessage = logError({
+      code: "USER_PERMISSION_REMOVE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/users/[userId]/permissions",
+      method: "DELETE",
+      error,
+      metadata: {
+        targetUserId: userId,
+        permission,
+        note: "Failed to remove user permission",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

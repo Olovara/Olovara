@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { FraudDetectionService } from "@/lib/analytics";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    body = await req.json();
     const { action, deviceFingerprint, details } = body;
 
     if (!action) {
@@ -46,17 +51,33 @@ export async function POST(req: NextRequest) {
       message: "Activity tracked successfully",
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error tracking user activity:", error);
-    return NextResponse.json(
-      { error: "Failed to track activity" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "activity not being tracked"
+    const userMessage = logError({
+      code: "USER_ACTIVITY_TRACK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/user-activity",
+      method: "POST",
+      error,
+      metadata: {
+        action: body?.action,
+        deviceFingerprint: body?.deviceFingerprint,
+        note: "Failed to track user activity",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -95,10 +116,21 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting user activity:", error);
-    return NextResponse.json(
-      { error: "Failed to get user activity" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see my activity"
+    const userMessage = logError({
+      code: "USER_ACTIVITY_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/user-activity",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch user activity",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

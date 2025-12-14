@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ROLES } from "@/data/roles-and-permissions";
+import { logError } from "@/lib/error-logger";
 
 const defaultTerms = {
   html: `
@@ -40,7 +41,7 @@ const defaultTerms = {
     <p>If you have any questions about these Terms, please contact us at:</p>
     <ul>
       <li>Email: legal@yarnnu.com</li>
-      <li>Address: [Your Business Address]</li>
+      <li>Address: [Reminder to Add Our Business Address]</li>
     </ul>
   `,
   text: `Terms of Service - Last updated: ${new Date().toLocaleDateString()}
@@ -74,14 +75,14 @@ We reserve the right to modify or replace these Terms at any time. If a revision
 8. Contact Us
 If you have any questions about these Terms, please contact us at:
 - Email: legal@yarnnu.com
-- Address: [Your Business Address]`
+- Address: [Reminder to Add Our Business Address]`,
 };
 
 // Add CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 // Handle OPTIONS request for CORS
@@ -101,60 +102,89 @@ export async function GET() {
 
     return NextResponse.json(terms);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching terms of service:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch terms of service" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load terms"
+    const userMessage = logError({
+      code: "TERMS_OF_SERVICE_FETCH_FAILED",
+      userId: undefined, // Public route
+      route: "/api/terms-of-service",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch terms of service",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  // Check if user is authenticated
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
 
-  // Fetch user permissions from database
-  const dbUser = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { permissions: true }
-  });
+  try {
+    session = await auth();
+    // Check if user is authenticated
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
-  if (!dbUser?.permissions?.includes('MANAGE_POLICIES')) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
-
-  const { content } = await req.json();
-  
-  // Ensure content is in the correct format
-  const formattedContent = {
-    html: content.html || "",
-    text: content.text || content.html?.replace(/<[^>]*>?/gm, '') || ""
-  };
-  
-  // First, try to find existing terms
-  const existingTerms = await db.termsOfService.findFirst();
-  
-  if (existingTerms) {
-    // Update existing terms
-    const updatedTerms = await db.termsOfService.update({
-      where: { id: existingTerms.id },
-      data: { content: formattedContent }
+    // Fetch user permissions from database
+    const dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { permissions: true },
     });
-    return NextResponse.json(updatedTerms);
-  } else {
-    // Create new terms if none exist
-    const newTerms = await db.termsOfService.create({
-      data: { content: formattedContent }
+
+    if (!dbUser?.permissions?.includes("MANAGE_POLICIES")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    body = await req.json();
+    const { content } = body;
+
+    // Ensure content is in the correct format
+    const formattedContent = {
+      html: content?.html || "",
+      text: content?.text || content?.html?.replace(/<[^>]*>?/gm, "") || "",
+    };
+
+    // First, try to find existing terms
+    const existingTerms = await db.termsOfService.findFirst();
+
+    if (existingTerms) {
+      // Update existing terms
+      const updatedTerms = await db.termsOfService.update({
+        where: { id: existingTerms.id },
+        data: { content: formattedContent },
+      });
+      return NextResponse.json(updatedTerms);
+    } else {
+      // Create new terms if none exist
+      const newTerms = await db.termsOfService.create({
+        data: { content: formattedContent },
+      });
+      return NextResponse.json(newTerms);
+    }
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error in POST /api/terms-of-service:", error);
+
+    // Log to database - admin could email about "couldn't update terms"
+    const userMessage = logError({
+      code: "TERMS_OF_SERVICE_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/terms-of-service",
+      method: "POST",
+      error,
+      metadata: {
+        note: "Failed to update terms of service",
+      },
     });
-    return NextResponse.json(newTerms);
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

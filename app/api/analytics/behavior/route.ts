@@ -5,13 +5,17 @@ import {
   ProductInteractionService,
   EnhancedAnalyticsService,
 } from "@/lib/analytics";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     // Handle empty or malformed request body
-    let body;
     try {
       const text = await req.text();
       if (!text || text.trim() === "") {
@@ -191,17 +195,34 @@ export async function POST(req: NextRequest) {
       processedCount: processedEvents.length,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error processing behavior events:", error);
-    return NextResponse.json(
-      { error: "Failed to process behavior events" },
-      { status: 500 }
-    );
+
+    // Don't log JSON parse errors - they're expected client-side issues
+
+    // Log to database - user could email about "behavior tracking not working"
+    const userMessage = logError({
+      code: "BEHAVIOR_ANALYTICS_TRACK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/behavior",
+      method: "POST",
+      error,
+      metadata: {
+        eventCount: body?.events?.length,
+        note: "Failed to process behavior events",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -234,10 +255,21 @@ export async function GET(req: NextRequest) {
       events,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting behavior analytics:", error);
-    return NextResponse.json(
-      { error: "Failed to get behavior analytics" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load behavior analytics"
+    const userMessage = logError({
+      code: "BEHAVIOR_ANALYTICS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/behavior",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch behavior analytics",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

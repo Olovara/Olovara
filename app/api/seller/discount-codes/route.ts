@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getCurrencyDecimals } from "@/data/units";
+import { logError } from "@/lib/error-logger";
 
 // Schema for creating discount codes - now accepts currency amounts instead of cents
 const createDiscountCodeSchema = z.object({
@@ -26,8 +27,11 @@ const createDiscountCodeSchema = z.object({
 
 // GET - Fetch discount codes for a seller
 export async function GET(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -36,7 +40,10 @@ export async function GET(request: NextRequest) {
     const sellerId = searchParams.get("sellerId");
 
     if (!sellerId) {
-      return NextResponse.json({ error: "Seller ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Seller ID is required" },
+        { status: 400 }
+      );
     }
 
     // Verify the user is the seller or an admin
@@ -67,23 +74,38 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(discountCodes);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching discount codes:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch discount codes" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see discount codes"
+    const userMessage = logError({
+      code: "DISCOUNT_CODES_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch discount codes",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 // POST - Create a new discount code
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    body = await request.json();
     const validatedData = createDiscountCodeSchema.parse(body);
 
     // Verify the user is the seller
@@ -119,7 +141,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate discount value based on type
-    if (validatedData.discountType === "PERCENTAGE" && validatedData.discountValue > 100) {
+    if (
+      validatedData.discountType === "PERCENTAGE" &&
+      validatedData.discountValue > 100
+    ) {
       return NextResponse.json(
         { error: "Percentage discount cannot exceed 100%" },
         { status: 400 }
@@ -131,11 +156,12 @@ export async function POST(request: NextRequest) {
     const multiplier = Math.pow(10, decimals);
 
     // Convert amounts to cents for storage
-    const discountValueInCents = validatedData.discountType === "PERCENTAGE" 
-      ? validatedData.discountValue // Keep percentage as-is
-      : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
+    const discountValueInCents =
+      validatedData.discountType === "PERCENTAGE"
+        ? validatedData.discountValue // Keep percentage as-is
+        : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
 
-    const minimumOrderAmountInCents = validatedData.minimumOrderAmount 
+    const minimumOrderAmountInCents = validatedData.minimumOrderAmount
       ? Math.round(validatedData.minimumOrderAmount * multiplier)
       : null;
 
@@ -156,7 +182,9 @@ export async function POST(request: NextRequest) {
         maximumDiscountAmount: maximumDiscountAmountInCents,
         maxUses: validatedData.maxUses || null,
         maxUsesPerCustomer: validatedData.maxUsesPerCustomer || null,
-        expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
+        expiresAt: validatedData.expiresAt
+          ? new Date(validatedData.expiresAt)
+          : null,
         isActive: validatedData.isActive,
         appliesToAllProducts: validatedData.appliesToAllProducts,
         applicableProductIds: validatedData.applicableProductIds,
@@ -167,6 +195,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(discountCode, { status: 201 });
   } catch (error) {
+    // Check if it's a ZodError (validation error) - don't log these to DB
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid data", details: error.errors },
@@ -174,10 +203,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log to console (always happens)
     console.error("Error creating discount code:", error);
-    return NextResponse.json(
-      { error: "Failed to create discount code" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't create discount code"
+    const userMessage = logError({
+      code: "DISCOUNT_CODE_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes",
+      method: "POST",
+      error,
+      metadata: {
+        sellerId: body?.sellerId,
+        code: body?.code,
+        discountType: body?.discountType,
+        note: "Failed to create discount code",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

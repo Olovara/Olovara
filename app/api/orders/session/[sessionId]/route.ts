@@ -2,15 +2,24 @@ import { NextResponse } from "next/server";
 import { stripeCheckout } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { decryptData } from "@/lib/encryption";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   request: Request,
   { params }: { params: { sessionId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  // Extract sessionId from params immediately to avoid scope issues
+  const sessionIdParam = params.sessionId;
+  let sessionId: string | undefined = sessionIdParam;
+
   try {
-    const session = await stripeCheckout.instance.checkout.sessions.retrieve(params.sessionId, {
-      expand: ['payment_intent'],
-    });
+    const session = await stripeCheckout.instance.checkout.sessions.retrieve(
+      sessionId,
+      {
+        expand: ["payment_intent"],
+      }
+    );
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -19,7 +28,7 @@ export async function GET(
     // Find the order in our database
     const order = await db.order.findFirst({
       where: {
-        stripeSessionId: params.sessionId,
+        stripeSessionId: sessionId,
       },
       select: {
         id: true,
@@ -48,10 +57,24 @@ export async function GET(
     }
 
     // Decrypt sensitive data
-    const buyerEmail = decryptData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
-    const buyerName = decryptData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt);
-    const shippingAddress = order.encryptedShippingAddress 
-      ? JSON.parse(decryptData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt))
+    const buyerEmail = decryptData(
+      order.encryptedBuyerEmail,
+      order.buyerEmailIV,
+      order.buyerEmailSalt
+    );
+    const buyerName = decryptData(
+      order.encryptedBuyerName,
+      order.buyerNameIV,
+      order.buyerNameSalt
+    );
+    const shippingAddress = order.encryptedShippingAddress
+      ? JSON.parse(
+          decryptData(
+            order.encryptedShippingAddress,
+            order.shippingAddressIV,
+            order.shippingAddressSalt
+          )
+        )
       : null;
 
     return NextResponse.json({
@@ -67,7 +90,22 @@ export async function GET(
       buyerName,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("[ORDER_DETAILS_ERROR]", error);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+
+    // Log to database - user could email about "can't load order details"
+    const userMessage = logError({
+      code: "ORDER_SESSION_FETCH_FAILED",
+      userId: undefined, // Public route (order lookup by session ID)
+      route: "/api/orders/session/[sessionId]",
+      method: "GET",
+      error,
+      metadata: {
+        sessionId,
+        note: "Failed to fetch order details from Stripe session",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

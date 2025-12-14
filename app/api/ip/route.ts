@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,7 +15,21 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting client IP:", error);
+
+    // Log to database - user could email about "IP detection not working"
+    logError({
+      code: "IP_DETECTION_FAILED",
+      userId: undefined, // Public route
+      route: "/api/ip",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to get client IP",
+      },
+    });
+
     return NextResponse.json({
       ip: "unknown",
       timestamp: new Date().toISOString(),

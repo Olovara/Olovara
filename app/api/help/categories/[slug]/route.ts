@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
 import { updateHelpCategorySchema } from "@/schemas/HelpCategorySchema";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let slug: string | undefined = undefined;
+
   try {
-    const { slug } = params;
+    slug = params.slug;
 
     const category = await db.helpCategory.findUnique({
       where: { slug },
@@ -47,11 +51,23 @@ export async function GET(
 
     return NextResponse.json(category);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching help category:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch help category" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load help category"
+    const userMessage = logError({
+      code: "HELP_CATEGORY_FETCH_FAILED",
+      userId: undefined, // Public route
+      route: "/api/help/categories/[slug]",
+      method: "GET",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to fetch help category",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -59,8 +75,15 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  let body: any = null;
+  // Extract slug from params immediately to avoid scope issues
+  const slugParam = params.slug;
+  let slug: string | undefined = slugParam;
+
   try {
-    const permissionCheck = await checkApiPermissions(["MANAGE_HELP_CATEGORIES"]);
+    permissionCheck = await checkApiPermissions(["MANAGE_HELP_CATEGORIES"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -68,9 +91,8 @@ export async function PUT(
       );
     }
 
-    const { slug } = params;
-    const body = await request.json();
-    
+    body = await request.json();
+
     // Validate request body
     const validation = updateHelpCategorySchema.safeParse(body);
     if (!validation.success) {
@@ -84,7 +106,7 @@ export async function PUT(
 
     // Check if category exists
     const existingCategory = await db.helpCategory.findUnique({
-      where: { slug },
+      where: { slug: slug },
     });
 
     if (!existingCategory) {
@@ -117,7 +139,7 @@ export async function PUT(
 
     // Update the category
     const updatedCategory = await db.helpCategory.update({
-      where: { slug },
+      where: { slug: slug },
       data: {
         title,
         description: description || "",
@@ -137,11 +159,26 @@ export async function PUT(
 
     return NextResponse.json(updatedCategory);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating help category:", error);
-    return NextResponse.json(
-      { error: "Failed to update help category" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - admin could email about "couldn't update help category"
+    const userMessage = logError({
+      code: "HELP_CATEGORY_UPDATE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/help/categories/[slug]",
+      method: "PUT",
+      error,
+      metadata: {
+        slug,
+        title: body?.title,
+        note: "Failed to update help category",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -149,8 +186,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  // Extract slug from params immediately to avoid scope issues
+  const slugParam = params.slug;
+  let slug: string | undefined = slugParam;
+
   try {
-    const permissionCheck = await checkApiPermissions(["MANAGE_HELP_CATEGORIES"]);
+    permissionCheck = await checkApiPermissions(["MANAGE_HELP_CATEGORIES"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -158,11 +201,9 @@ export async function DELETE(
       );
     }
 
-    const { slug } = params;
-
     // Check if category exists
     const category = await db.helpCategory.findUnique({
-      where: { slug },
+      where: { slug: slug },
       include: {
         _count: {
           select: {
@@ -182,22 +223,37 @@ export async function DELETE(
     // Check if category has articles
     if (category._count.articles > 0) {
       return NextResponse.json(
-        { error: "Cannot delete category with existing articles. Please move or delete the articles first." },
+        {
+          error:
+            "Cannot delete category with existing articles. Please move or delete the articles first.",
+        },
         { status: 400 }
       );
     }
 
     // Delete the category
     await db.helpCategory.delete({
-      where: { slug },
+      where: { slug: slug },
     });
 
     return NextResponse.json({ message: "Category deleted successfully" });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deleting help category:", error);
-    return NextResponse.json(
-      { error: "Failed to delete help category" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "couldn't delete help category"
+    const userMessage = logError({
+      code: "HELP_CATEGORY_DELETE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/help/categories/[slug]",
+      method: "DELETE",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to delete help category",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

@@ -3,18 +3,20 @@ import { auth } from "@/auth";
 import { FraudDetectionService } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { getIPInfo, checkIPSuspicious, getUserAnalytics } from "@/lib/ipinfo";
-
-
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Handle empty or malformed request body
-    let body;
     try {
       const text = await req.text();
-      if (!text || text.trim() === '') {
+      if (!text || text.trim() === "") {
         return NextResponse.json(
           { error: "Request body is empty" },
           { status: 400 }
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
       }
       body = JSON.parse(text);
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
+      console.error("JSON parse error:", parseError);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
@@ -117,12 +119,12 @@ export async function POST(req: NextRequest) {
 
     // Use a simple approach without transactions to avoid P2028 errors
     let deviceRecord;
-    
+
     try {
       // Try to create first (will fail if exists due to unique constraint)
       // Removed deviceId and userId from logs for security
       //console.log(`[DEBUG] Attempting to create new device fingerprint`);
-      
+
       // Prepare the create data
       const createData: any = {
         userId: userId || null,
@@ -139,42 +141,8 @@ export async function POST(req: NextRequest) {
       };
 
       // Only include user relation if userId is provided
-      const includeData = userId ? {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            createdAt: true,
-            fraudScore: true,
-            accountReputation: true,
-          },
-        },
-      } : {};
-
-      deviceRecord = await db.deviceFingerprint.create({
-        data: createData,
-        include: includeData,
-      });
-
-      // Removed deviceId and userId from logs for security
-      {/*console.log(`[DEBUG] Device fingerprint created successfully:`, {
-        action: 'created',
-        id: deviceRecord.id
-      });*/}
-    } catch (createError: any) {
-      // If creation fails due to unique constraint, try to update
-      if (createError.code === 'P2002') {
-        // Removed deviceId and userId from logs for security
-        //console.log(`[DEBUG] Device fingerprint already exists, attempting update`);
-        
-        // Find the existing record
-        const existingDevice = await db.deviceFingerprint.findFirst({
-          where: {
-            deviceId,
-            userId: userId || null,
-          },
-          include: userId ? {
+      const includeData = userId
+        ? {
             user: {
               select: {
                 id: true,
@@ -185,7 +153,47 @@ export async function POST(req: NextRequest) {
                 accountReputation: true,
               },
             },
-          } : {},
+          }
+        : {};
+
+      deviceRecord = await db.deviceFingerprint.create({
+        data: createData,
+        include: includeData,
+      });
+
+      // Removed deviceId and userId from logs for security
+      {
+        /*console.log(`[DEBUG] Device fingerprint created successfully:`, {
+        action: 'created',
+        id: deviceRecord.id
+      });*/
+      }
+    } catch (createError: any) {
+      // If creation fails due to unique constraint, try to update
+      if (createError.code === "P2002") {
+        // Removed deviceId and userId from logs for security
+        //console.log(`[DEBUG] Device fingerprint already exists, attempting update`);
+
+        // Find the existing record
+        const existingDevice = await db.deviceFingerprint.findFirst({
+          where: {
+            deviceId,
+            userId: userId || null,
+          },
+          include: userId
+            ? {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    username: true,
+                    createdAt: true,
+                    fraudScore: true,
+                    accountReputation: true,
+                  },
+                },
+              }
+            : {},
         });
 
         if (existingDevice) {
@@ -204,25 +212,29 @@ export async function POST(req: NextRequest) {
               location: locationData,
               isProxy: isProxy,
             },
-            include: userId ? {
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  username: true,
-                  createdAt: true,
-                  fraudScore: true,
-                  accountReputation: true,
-                },
-              },
-            } : {},
+            include: userId
+              ? {
+                  user: {
+                    select: {
+                      id: true,
+                      email: true,
+                      username: true,
+                      createdAt: true,
+                      fraudScore: true,
+                      accountReputation: true,
+                    },
+                  },
+                }
+              : {},
           });
 
           // Removed deviceId and userId from logs for security
-          {/*console.log(`[DEBUG] Device fingerprint updated successfully:`, {
+          {
+            /*console.log(`[DEBUG] Device fingerprint updated successfully:`, {
             action: 'updated',
             id: deviceRecord.id
-          });*/}
+          });*/
+          }
         } else {
           throw createError; // Re-throw if we can't find the existing device
         }
@@ -316,19 +328,37 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error processing device fingerprint:", error);
-    return NextResponse.json(
-      { error: "Failed to process device fingerprint" },
-      { status: 500 }
-    );
+
+    // Don't log JSON parse errors or validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "device fingerprint not working"
+    const userMessage = logError({
+      code: "DEVICE_FINGERPRINT_PROCESS_FAILED",
+      userId: session?.user?.id || body?.userId,
+      route: "/api/device-fingerprint",
+      method: "POST",
+      error,
+      metadata: {
+        deviceId: body?.deviceId,
+        note: "Failed to process device fingerprint",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let deviceId: string | null = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     const { searchParams } = new URL(req.url);
-    const deviceId = searchParams.get("deviceId");
+    deviceId = searchParams.get("deviceId");
 
     if (!deviceId) {
       return NextResponse.json(
@@ -419,10 +449,24 @@ export async function GET(req: NextRequest) {
       analysis,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting device analysis:", error);
-    return NextResponse.json(
-      { error: "Failed to get device analysis" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "can't get device analysis"
+    const userMessage = logError({
+      code: "DEVICE_FINGERPRINT_ANALYSIS_FAILED",
+      userId: session?.user?.id,
+      route: "/api/device-fingerprint",
+      method: "GET",
+      error,
+      metadata: {
+        deviceId,
+        note: "Failed to get device analysis",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

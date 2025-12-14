@@ -10,6 +10,7 @@ import SellerOrderEmail from "@/components/emails/SellerOrderEmail";
 import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
 import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { updateOnboardingStep } from "@/lib/onboarding";
+import { logError } from "@/lib/error-logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -18,7 +19,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export const dynamic = "force-dynamic";
 
 // Helper function to determine hold period in days
-async function determineHoldPeriod(sellerId: string, isDigital: boolean): Promise<number> {
+async function determineHoldPeriod(
+  sellerId: string,
+  isDigital: boolean
+): Promise<number> {
   try {
     // Get seller account details with user reputation data
     const seller = await db.seller.findUnique({
@@ -37,12 +41,16 @@ async function determineHoldPeriod(sellerId: string, isDigital: boolean): Promis
     });
 
     if (!seller) {
-      console.warn(`⚠️ Seller not found for hold period calculation: ${sellerId}`);
+      console.warn(
+        `⚠️ Seller not found for hold period calculation: ${sellerId}`
+      );
       return 7; // Default to 7 days for unknown sellers
     }
 
     // Calculate account age in days
-    const accountAgeInDays = Math.floor((Date.now() - seller.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const accountAgeInDays = Math.floor(
+      (Date.now() - seller.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     // Digital items always have minimum 2-day hold
     if (isDigital) {
@@ -59,9 +67,10 @@ async function determineHoldPeriod(sellerId: string, isDigital: boolean): Promis
 // Helper function to calculate hold period based on account age and reputation
 function calculateHoldPeriod(accountAgeInDays: number, seller: any): number {
   // Check if seller is trusted (good reputation, low chargebacks/disputes)
-  const isTrusted = seller.user?.accountReputation === "TRUSTED" && 
-                   seller.user?.numChargebacks <= 1 && 
-                   seller.user?.numDisputes <= 1;
+  const isTrusted =
+    seller.user?.accountReputation === "TRUSTED" &&
+    seller.user?.numChargebacks <= 1 &&
+    seller.user?.numDisputes <= 1;
 
   // New seller (less than 30 days): 10 days
   if (accountAgeInDays < 30) {
@@ -81,7 +90,7 @@ export async function POST(req: Request) {
   console.log("🔔 Webhook received at /api/stripe/webhooks");
   console.log("🔍 Request URL:", req.url);
   console.log("🔍 Request method:", req.method);
-  
+
   try {
     // Get the raw body as text
     const rawBody = await req.text();
@@ -97,10 +106,12 @@ export async function POST(req: Request) {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     // Secondary secret (for ConnectedAccounts webhook - if different)
     const connectWebhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
-  
+
     if (!webhookSecret && !connectWebhookSecret) {
       console.error("❌ No webhook secret found in environment variables");
-      console.error("❌ Need either STRIPE_WEBHOOK_SECRET or STRIPE_CONNECT_WEBHOOK_SECRET");
+      console.error(
+        "❌ Need either STRIPE_WEBHOOK_SECRET or STRIPE_CONNECT_WEBHOOK_SECRET"
+      );
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
@@ -112,13 +123,15 @@ export async function POST(req: Request) {
     console.log("🔍 Webhook body preview:", rawBody.substring(0, 100));
     const secretStatus = {
       STRIPE_WEBHOOK_SECRET: webhookSecret ? "EXISTS" : "MISSING",
-      STRIPE_CONNECT_WEBHOOK_SECRET: connectWebhookSecret ? "EXISTS" : "MISSING"
+      STRIPE_CONNECT_WEBHOOK_SECRET: connectWebhookSecret
+        ? "EXISTS"
+        : "MISSING",
     };
     console.log("🔍 Webhook secret status:", secretStatus);
 
     let event: Stripe.Event | undefined;
     let usedSecret = "unknown";
-    
+
     // Try primary secret first
     if (webhookSecret) {
       try {
@@ -130,7 +143,9 @@ export async function POST(req: Request) {
         usedSecret = "STRIPE_WEBHOOK_SECRET";
         console.log(`✅ Webhook verified with primary secret: ${event.type}`);
       } catch (err: any) {
-        console.log(`⚠️ Primary secret verification failed, trying secondary secret...`);
+        console.log(
+          `⚠️ Primary secret verification failed, trying secondary secret...`
+        );
         // If primary fails and we have a secondary secret, try that
         if (connectWebhookSecret) {
           try {
@@ -140,14 +155,22 @@ export async function POST(req: Request) {
               connectWebhookSecret
             );
             usedSecret = "STRIPE_CONNECT_WEBHOOK_SECRET";
-            console.log(`✅ Webhook verified with secondary secret: ${event.type}`);
+            console.log(
+              `✅ Webhook verified with secondary secret: ${event.type}`
+            );
           } catch (err2: any) {
             console.error("❌ Both webhook secrets failed verification");
             console.error("❌ Primary secret error:", err.message);
             console.error("❌ Secondary secret error:", err2.message);
-            console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
-            console.error("❌ Each webhook endpoint in Stripe has its own signing secret.");
-            console.error("❌ If you have multiple webhooks, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var.");
+            console.error(
+              "❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard."
+            );
+            console.error(
+              "❌ Each webhook endpoint in Stripe has its own signing secret."
+            );
+            console.error(
+              "❌ If you have multiple webhooks, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var."
+            );
             return NextResponse.json(
               { error: `Webhook Error: Signature verification failed` },
               { status: 400 }
@@ -156,8 +179,12 @@ export async function POST(req: Request) {
         } else {
           // No secondary secret, primary failed
           console.error("❌ Stripe Webhook Error:", err.message);
-          console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
-          console.error("❌ If you have multiple webhooks pointing to this endpoint, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var.");
+          console.error(
+            "❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard."
+          );
+          console.error(
+            "❌ If you have multiple webhooks pointing to this endpoint, you may need STRIPE_CONNECT_WEBHOOK_SECRET env var."
+          );
           return NextResponse.json(
             { error: `Webhook Error: ${err.message}` },
             { status: 400 }
@@ -176,7 +203,9 @@ export async function POST(req: Request) {
         console.log(`✅ Webhook verified with secondary secret: ${event.type}`);
       } catch (err: any) {
         console.error("❌ Stripe Webhook Error:", err.message);
-        console.error("❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard.");
+        console.error(
+          "❌ Webhook verification failed. Check if webhook secret matches Stripe dashboard."
+        );
         return NextResponse.json(
           { error: `Webhook Error: ${err.message}` },
           { status: 400 }
@@ -198,7 +227,9 @@ export async function POST(req: Request) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           console.log(`✅ Processing checkout.session.completed`);
-          console.log(`📋 Session details: payment_intent=${session.payment_intent ? 'EXISTS' : 'MISSING'}, metadata=${session.metadata ? 'EXISTS' : 'MISSING'}, customer_details=${session.customer_details ? 'EXISTS' : 'MISSING'}`);
+          console.log(
+            `📋 Session details: payment_intent=${session.payment_intent ? "EXISTS" : "MISSING"}, metadata=${session.metadata ? "EXISTS" : "MISSING"}, customer_details=${session.customer_details ? "EXISTS" : "MISSING"}`
+          );
 
           if (!session.payment_intent) {
             console.error("❌ Session completed without Payment Intent ID");
@@ -211,77 +242,123 @@ export async function POST(req: Request) {
           if (!session.metadata) {
             console.error("❌ Session completed without metadata");
             console.error("❌ Session ID exists:", !!session.id);
-            console.error("❌ Payment intent exists:", !!session.payment_intent);
+            console.error(
+              "❌ Payment intent exists:",
+              !!session.payment_intent
+            );
             throw new Error("Metadata missing from session");
           }
-          
-          console.log(`📋 Metadata check: productId=${session.metadata.productId ? 'EXISTS' : 'MISSING'}, sellerId=${session.metadata.sellerId ? 'EXISTS' : 'MISSING'}, userId=${session.metadata.userId ? 'EXISTS' : 'MISSING'}`);
+
+          console.log(
+            `📋 Metadata check: productId=${session.metadata.productId ? "EXISTS" : "MISSING"}, sellerId=${session.metadata.sellerId ? "EXISTS" : "MISSING"}, userId=${session.metadata.userId ? "EXISTS" : "MISSING"}`
+          );
 
           // Fetch product details using metadata
-          console.log(`🔍 Fetching product with ID: ${session.metadata.productId ? 'EXISTS' : 'MISSING'}`);
+          console.log(
+            `🔍 Fetching product with ID: ${session.metadata.productId ? "EXISTS" : "MISSING"}`
+          );
           let product;
           try {
             product = await db.product.findUnique({
               where: { id: session.metadata.productId },
-              include: { 
+              include: {
                 seller: {
                   include: {
-                    user: true
-                  }
-                }
+                    user: true,
+                  },
+                },
               },
             });
-            console.log(`📦 Product fetch result: ${product ? 'FOUND' : 'NOT_FOUND'}`);
+            console.log(
+              `📦 Product fetch result: ${product ? "FOUND" : "NOT_FOUND"}`
+            );
           } catch (dbError) {
-            console.error("❌ Database error fetching product:", dbError instanceof Error ? dbError.message : String(dbError));
-            console.error("❌ Product ID from metadata:", session.metadata.productId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Database error fetching product:",
+              dbError instanceof Error ? dbError.message : String(dbError)
+            );
+            console.error(
+              "❌ Product ID from metadata:",
+              session.metadata.productId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Failed to fetch product from database");
           }
 
           if (!product) {
             console.error("❌ Product not found in database");
-            console.error("❌ Product ID from metadata:", session.metadata.productId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Product ID from metadata:",
+              session.metadata.productId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Product not found");
           }
 
           if (!product.seller) {
             console.error("❌ Product found but seller is missing");
-            console.error("❌ Product ID:", product.id ? 'EXISTS' : 'MISSING');
+            console.error("❌ Product ID:", product.id ? "EXISTS" : "MISSING");
             throw new Error("Seller not found for product");
           }
 
           if (!product.seller.connectedAccountId) {
-            console.error("❌ Seller found but connected account ID is missing");
-            console.error("❌ Seller ID:", product.seller.id ? 'EXISTS' : 'MISSING');
-            console.error("❌ Seller user ID:", product.seller.userId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Seller found but connected account ID is missing"
+            );
+            console.error(
+              "❌ Seller ID:",
+              product.seller.id ? "EXISTS" : "MISSING"
+            );
+            console.error(
+              "❌ Seller user ID:",
+              product.seller.userId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Seller connected account not found");
           }
 
-          console.log(`✅ Product and seller validation passed: product=${product.id ? 'EXISTS' : 'MISSING'}, seller=${product.seller.id ? 'EXISTS' : 'MISSING'}, connectedAccount=${product.seller.connectedAccountId ? 'EXISTS' : 'MISSING'}`);
+          console.log(
+            `✅ Product and seller validation passed: product=${product.id ? "EXISTS" : "MISSING"}, seller=${product.seller.id ? "EXISTS" : "MISSING"}, connectedAccount=${product.seller.connectedAccountId ? "EXISTS" : "MISSING"}`
+          );
 
           // Create preliminary order
           // Get buyer email from Stripe's customer_details (should be available for all checkouts)
           const buyerEmail = session.customer_details?.email || "";
           const buyerName = session.customer_details?.name || "";
-          
+
           // Log email retrieval for debugging
-          if (!buyerEmail || buyerEmail.trim() === '') {
-            console.warn("⚠️ WARNING: Buyer email is empty or missing from checkout session. Email confirmation will not be sent.");
-            console.warn("⚠️ Customer details object:", session.customer_details ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Customer email in customer_details:", session.customer_details?.email ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Customer email in metadata:", session.metadata?.buyerEmail ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Customer name:", session.customer_details?.name ? 'EXISTS' : 'MISSING');
+          if (!buyerEmail || buyerEmail.trim() === "") {
+            console.warn(
+              "⚠️ WARNING: Buyer email is empty or missing from checkout session. Email confirmation will not be sent."
+            );
+            console.warn(
+              "⚠️ Customer details object:",
+              session.customer_details ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Customer email in customer_details:",
+              session.customer_details?.email ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Customer email in metadata:",
+              session.metadata?.buyerEmail ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Customer name:",
+              session.customer_details?.name ? "EXISTS" : "MISSING"
+            );
           } else {
             const emailPrefix = buyerEmail.substring(0, 3);
-            const emailDomain = buyerEmail.includes('@') ? buyerEmail.split('@')[1]?.substring(0, 3) : '***';
-            console.log(`📧 Buyer email retrieved: ${emailPrefix}***@${emailDomain}*** (from customer_details)`);
+            const emailDomain = buyerEmail.includes("@")
+              ? buyerEmail.split("@")[1]?.substring(0, 3)
+              : "***";
+            console.log(
+              `📧 Buyer email retrieved: ${emailPrefix}***@${emailDomain}*** (from customer_details)`
+            );
           }
-          
-          console.log(`📋 Buyer name: ${buyerName ? 'EXISTS' : 'MISSING'}`);
-          
+
+          console.log(`📋 Buyer name: ${buyerName ? "EXISTS" : "MISSING"}`);
+
           // Use shipping address from checkout page if provided, otherwise from Stripe
           let shippingAddress = null;
-          if (session.metadata.shippingAddressProvided === 'true') {
+          if (session.metadata.shippingAddressProvided === "true") {
             // Shipping address was collected on our checkout page
             // We'll need to store it in the order metadata or create a separate field
             shippingAddress = "Address collected on checkout page"; // Placeholder
@@ -293,7 +370,8 @@ export async function POST(req: Request) {
                   country: session.shipping_details.address.country || "",
                   line1: session.shipping_details.address.line1 || "",
                   line2: session.shipping_details.address.line2 || "",
-                  postal_code: session.shipping_details.address.postal_code || "",
+                  postal_code:
+                    session.shipping_details.address.postal_code || "",
                   state: session.shipping_details.address.state || "",
                 })
               : null;
@@ -303,15 +381,22 @@ export async function POST(req: Request) {
           let encryptedBuyerEmail, buyerEmailIV, buyerEmailSalt;
           let encryptedBuyerName, buyerNameIV, buyerNameSalt;
           let encryptedShippingAddress, shippingAddressIV, shippingAddressSalt;
-          
+
           try {
             const emailEncryption = encryptOrderData(buyerEmail);
             encryptedBuyerEmail = emailEncryption.encrypted;
             buyerEmailIV = emailEncryption.iv;
             buyerEmailSalt = emailEncryption.salt;
-            console.log(`🔐 Buyer email encrypted successfully: iv=${buyerEmailIV ? 'EXISTS' : 'MISSING'}, salt=${buyerEmailSalt ? 'EXISTS' : 'MISSING'}`);
+            console.log(
+              `🔐 Buyer email encrypted successfully: iv=${buyerEmailIV ? "EXISTS" : "MISSING"}, salt=${buyerEmailSalt ? "EXISTS" : "MISSING"}`
+            );
           } catch (encryptError) {
-            console.error("❌ Error encrypting buyer email:", encryptError instanceof Error ? encryptError.message : String(encryptError));
+            console.error(
+              "❌ Error encrypting buyer email:",
+              encryptError instanceof Error
+                ? encryptError.message
+                : String(encryptError)
+            );
             throw new Error("Failed to encrypt buyer email");
           }
 
@@ -320,9 +405,16 @@ export async function POST(req: Request) {
             encryptedBuyerName = nameEncryption.encrypted;
             buyerNameIV = nameEncryption.iv;
             buyerNameSalt = nameEncryption.salt;
-            console.log(`🔐 Buyer name encrypted successfully: iv=${buyerNameIV ? 'EXISTS' : 'MISSING'}, salt=${buyerNameSalt ? 'EXISTS' : 'MISSING'}`);
+            console.log(
+              `🔐 Buyer name encrypted successfully: iv=${buyerNameIV ? "EXISTS" : "MISSING"}, salt=${buyerNameSalt ? "EXISTS" : "MISSING"}`
+            );
           } catch (encryptError) {
-            console.error("❌ Error encrypting buyer name:", encryptError instanceof Error ? encryptError.message : String(encryptError));
+            console.error(
+              "❌ Error encrypting buyer name:",
+              encryptError instanceof Error
+                ? encryptError.message
+                : String(encryptError)
+            );
             throw new Error("Failed to encrypt buyer name");
           }
 
@@ -332,9 +424,16 @@ export async function POST(req: Request) {
               encryptedShippingAddress = addressEncryption.encrypted;
               shippingAddressIV = addressEncryption.iv;
               shippingAddressSalt = addressEncryption.salt;
-              console.log(`🔐 Shipping address encrypted successfully: iv=${shippingAddressIV ? 'EXISTS' : 'MISSING'}, salt=${shippingAddressSalt ? 'EXISTS' : 'MISSING'}`);
+              console.log(
+                `🔐 Shipping address encrypted successfully: iv=${shippingAddressIV ? "EXISTS" : "MISSING"}, salt=${shippingAddressSalt ? "EXISTS" : "MISSING"}`
+              );
             } catch (encryptError) {
-              console.error("❌ Error encrypting shipping address:", encryptError instanceof Error ? encryptError.message : String(encryptError));
+              console.error(
+                "❌ Error encrypting shipping address:",
+                encryptError instanceof Error
+                  ? encryptError.message
+                  : String(encryptError)
+              );
               // Don't throw - shipping address is optional
               encryptedShippingAddress = "";
               shippingAddressIV = "";
@@ -350,9 +449,13 @@ export async function POST(req: Request) {
           // Get discount information from metadata
           const discountCodeId = session.metadata.discountCodeId;
           const discountCodeUsed = session.metadata.discountCodeUsed;
-          const discountAmount = parseInt(session.metadata.discountAmount || "0");
+          const discountAmount = parseInt(
+            session.metadata.discountAmount || "0"
+          );
           const saleDiscount = parseInt(session.metadata.saleDiscount || "0");
-          const finalOrderAmount = parseInt(session.metadata.finalOrderAmount || "0");
+          const finalOrderAmount = parseInt(
+            session.metadata.finalOrderAmount || "0"
+          );
 
           const preliminaryOrderData = {
             userId: session.metadata.userId || "",
@@ -367,38 +470,49 @@ export async function POST(req: Request) {
             productId: session.metadata.productId || "",
             productName: product.name,
             quantity: parseInt(session.metadata.quantity || "1"),
-            totalAmount: finalOrderAmount || (parseInt(session.metadata.productPrice || "0") + parseInt(session.metadata.shippingAndHandling || "0")),
+            totalAmount:
+              finalOrderAmount ||
+              parseInt(session.metadata.productPrice || "0") +
+                parseInt(session.metadata.shippingAndHandling || "0"),
             productPrice: parseInt(session.metadata.productPrice || "0"),
             shippingCost: parseInt(session.metadata.shippingAndHandling || "0"),
             stripeFee: 0, // Placeholder
             platformFee: parseInt(session.metadata.platformFee || "0"), // Store platform fee from metadata
             isDigital: product.isDigital || false,
-            status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
+            status: product.isDigital
+              ? OrderStatus.COMPLETED
+              : OrderStatus.PENDING_TRANSFER,
             paymentStatus: PaymentStatus.PAID,
             stripeSessionId: session.id,
             stripeTransferId: null,
             encryptedShippingAddress,
             shippingAddressIV,
             shippingAddressSalt,
-            discount: discountAmount > 0 ? JSON.stringify({
-              discountCodeId,
-              discountCodeUsed,
-              discountAmount,
-              saleDiscount,
-            }) : null,
+            discount:
+              discountAmount > 0
+                ? JSON.stringify({
+                    discountCodeId,
+                    discountCodeUsed,
+                    discountAmount,
+                    saleDiscount,
+                  })
+                : null,
             discountCodeId: discountCodeId || null,
             discountCodeAmount: discountAmount,
             discountCodeUsed: discountCodeUsed || null,
             completedAt: product.isDigital ? new Date() : null,
             taxAmount: session.total_details?.amount_tax || 0,
-            taxBreakdown: session.total_details?.breakdown ? JSON.stringify(session.total_details.breakdown) : null,
-            taxExempt: session.metadata.taxExempt === 'true',
+            taxBreakdown: session.total_details?.breakdown
+              ? JSON.stringify(session.total_details.breakdown)
+              : null,
+            taxExempt: session.metadata.taxExempt === "true",
             taxCategory: session.metadata.taxCategory || null,
             taxCode: product.taxCode || null,
             taxJurisdiction: session.customer_details?.address?.country || null,
-            taxRate: session.total_details?.amount_tax ? 
-              (session.total_details.amount_tax / (session.amount_total || 1)) : null,
-            taxType: session.total_details?.amount_tax ? 'VAT' : null, // Default to VAT, adjust based on jurisdiction
+            taxRate: session.total_details?.amount_tax
+              ? session.total_details.amount_tax / (session.amount_total || 1)
+              : null,
+            taxType: session.total_details?.amount_tax ? "VAT" : null, // Default to VAT, adjust based on jurisdiction
             batchNumber: product.batchNumber || null, // Include product batch number for traceability
           };
 
@@ -406,20 +520,48 @@ export async function POST(req: Request) {
           let order;
           try {
             console.log(`💾 Creating order in database...`);
-            console.log(`📋 Order data validation: totalAmount=${preliminaryOrderData.totalAmount}, productPrice=${preliminaryOrderData.productPrice}, shippingCost=${preliminaryOrderData.shippingCost}`);
-            console.log(`📋 Order data validation: platformFee=${preliminaryOrderData.platformFee}, quantity=${preliminaryOrderData.quantity}, isDigital=${preliminaryOrderData.isDigital}`);
+            console.log(
+              `📋 Order data validation: totalAmount=${preliminaryOrderData.totalAmount}, productPrice=${preliminaryOrderData.productPrice}, shippingCost=${preliminaryOrderData.shippingCost}`
+            );
+            console.log(
+              `📋 Order data validation: platformFee=${preliminaryOrderData.platformFee}, quantity=${preliminaryOrderData.quantity}, isDigital=${preliminaryOrderData.isDigital}`
+            );
             order = await db.order.create({ data: preliminaryOrderData });
             console.log(`✅ Created preliminary order successfully`);
-            console.log(`💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${session.currency?.toUpperCase() || 'USD'})`);
+            console.log(
+              `💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${session.currency?.toUpperCase() || "USD"})`
+            );
           } catch (orderError) {
             console.error("❌ CRITICAL: Failed to create order in database");
-            console.error("❌ Error type:", orderError instanceof Error ? orderError.constructor.name : typeof orderError);
-            console.error("❌ Error message:", orderError instanceof Error ? orderError.message : String(orderError));
+            console.error(
+              "❌ Error type:",
+              orderError instanceof Error
+                ? orderError.constructor.name
+                : typeof orderError
+            );
+            console.error(
+              "❌ Error message:",
+              orderError instanceof Error
+                ? orderError.message
+                : String(orderError)
+            );
             console.error("❌ Order data validation:");
-            console.error("  - userId:", preliminaryOrderData.userId ? 'EXISTS' : 'MISSING');
-            console.error("  - sellerId:", preliminaryOrderData.sellerId ? 'EXISTS' : 'MISSING');
-            console.error("  - productId:", preliminaryOrderData.productId ? 'EXISTS' : 'MISSING');
-            console.error("  - encryptedBuyerEmail:", preliminaryOrderData.encryptedBuyerEmail ? 'EXISTS' : 'MISSING');
+            console.error(
+              "  - userId:",
+              preliminaryOrderData.userId ? "EXISTS" : "MISSING"
+            );
+            console.error(
+              "  - sellerId:",
+              preliminaryOrderData.sellerId ? "EXISTS" : "MISSING"
+            );
+            console.error(
+              "  - productId:",
+              preliminaryOrderData.productId ? "EXISTS" : "MISSING"
+            );
+            console.error(
+              "  - encryptedBuyerEmail:",
+              preliminaryOrderData.encryptedBuyerEmail ? "EXISTS" : "MISSING"
+            );
             console.error("  - totalAmount:", preliminaryOrderData.totalAmount);
             throw new Error("Failed to create order in database");
           }
@@ -427,12 +569,18 @@ export async function POST(req: Request) {
           // Create discount usage record if discount code was used
           if (discountCodeId && discountAmount > 0) {
             try {
-              console.log(`🎟️ Processing discount code: codeId=${discountCodeId ? 'EXISTS' : 'MISSING'}, amount=${discountAmount}, codeUsed=${discountCodeUsed ? 'EXISTS' : 'MISSING'}`);
+              console.log(
+                `🎟️ Processing discount code: codeId=${discountCodeId ? "EXISTS" : "MISSING"}, amount=${discountAmount}, codeUsed=${discountCodeUsed ? "EXISTS" : "MISSING"}`
+              );
               await db.discountCodeUsage.create({
                 data: {
                   discountCodeId,
                   orderId: order.id,
-                  userId: session.metadata.userId && session.metadata.userId !== "guest" ? session.metadata.userId : null, // Use null for guest checkouts
+                  userId:
+                    session.metadata.userId &&
+                    session.metadata.userId !== "guest"
+                      ? session.metadata.userId
+                      : null, // Use null for guest checkouts
                   discountAmount,
                 },
               });
@@ -450,85 +598,165 @@ export async function POST(req: Request) {
               console.log(`✅ Created discount usage record successfully`);
             } catch (discountError) {
               console.error("❌ Error creating discount usage record");
-              console.error("❌ Error type:", discountError instanceof Error ? discountError.constructor.name : typeof discountError);
-              console.error("❌ Error message:", discountError instanceof Error ? discountError.message : String(discountError));
-              console.error("❌ Discount code ID:", discountCodeId ? 'EXISTS' : 'MISSING');
-              console.error("❌ Order ID:", order.id ? 'EXISTS' : 'MISSING');
+              console.error(
+                "❌ Error type:",
+                discountError instanceof Error
+                  ? discountError.constructor.name
+                  : typeof discountError
+              );
+              console.error(
+                "❌ Error message:",
+                discountError instanceof Error
+                  ? discountError.message
+                  : String(discountError)
+              );
+              console.error(
+                "❌ Discount code ID:",
+                discountCodeId ? "EXISTS" : "MISSING"
+              );
+              console.error("❌ Order ID:", order.id ? "EXISTS" : "MISSING");
               // Don't throw - discount is not critical for order creation
             }
           } else {
-            console.log(`📋 Discount code: NOT_USED (codeId=${discountCodeId ? 'EXISTS' : 'MISSING'}, amount=${discountAmount})`);
+            console.log(
+              `📋 Discount code: NOT_USED (codeId=${discountCodeId ? "EXISTS" : "MISSING"}, amount=${discountAmount})`
+            );
           }
 
           // Retrieve Charge and Balance Transaction to get the exact fee
           console.log(`🔍 Retrieving payment intent from Stripe...`);
           let paymentIntent;
           try {
-            paymentIntent = await stripeSecret.instance.paymentIntents.retrieve(session.payment_intent as string);
-            console.log(`✅ Payment intent retrieved: status=${paymentIntent.status}, amount=${paymentIntent.amount}, currency=${paymentIntent.currency}`);
+            paymentIntent = await stripeSecret.instance.paymentIntents.retrieve(
+              session.payment_intent as string
+            );
+            console.log(
+              `✅ Payment intent retrieved: status=${paymentIntent.status}, amount=${paymentIntent.amount}, currency=${paymentIntent.currency}`
+            );
           } catch (piError) {
             console.error("❌ Error retrieving payment intent from Stripe");
-            console.error("❌ Error type:", piError instanceof Error ? piError.constructor.name : typeof piError);
-            console.error("❌ Error message:", piError instanceof Error ? piError.message : String(piError));
-            console.error("❌ Payment intent ID:", session.payment_intent ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Error type:",
+              piError instanceof Error
+                ? piError.constructor.name
+                : typeof piError
+            );
+            console.error(
+              "❌ Error message:",
+              piError instanceof Error ? piError.message : String(piError)
+            );
+            console.error(
+              "❌ Payment intent ID:",
+              session.payment_intent ? "EXISTS" : "MISSING"
+            );
             throw new Error("Failed to retrieve payment intent");
           }
 
           if (!paymentIntent.latest_charge) {
             console.error("❌ Charge ID missing from Payment Intent");
             console.error("❌ Payment intent status:", paymentIntent.status);
-            console.error("❌ Latest charge:", paymentIntent.latest_charge ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Latest charge:",
+              paymentIntent.latest_charge ? "EXISTS" : "MISSING"
+            );
             throw new Error("Charge ID missing from Payment Intent");
           }
 
           console.log(`🔍 Retrieving charge from Stripe...`);
           let charge;
           try {
-            charge = await stripeSecret.instance.charges.retrieve(paymentIntent.latest_charge as string);
-            console.log(`✅ Charge retrieved: status=${charge.status}, amount=${charge.amount}, currency=${charge.currency}`);
+            charge = await stripeSecret.instance.charges.retrieve(
+              paymentIntent.latest_charge as string
+            );
+            console.log(
+              `✅ Charge retrieved: status=${charge.status}, amount=${charge.amount}, currency=${charge.currency}`
+            );
           } catch (chargeError) {
             console.error("❌ Error retrieving charge from Stripe");
-            console.error("❌ Error type:", chargeError instanceof Error ? chargeError.constructor.name : typeof chargeError);
-            console.error("❌ Error message:", chargeError instanceof Error ? chargeError.message : String(chargeError));
-            console.error("❌ Charge ID:", paymentIntent.latest_charge ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Error type:",
+              chargeError instanceof Error
+                ? chargeError.constructor.name
+                : typeof chargeError
+            );
+            console.error(
+              "❌ Error message:",
+              chargeError instanceof Error
+                ? chargeError.message
+                : String(chargeError)
+            );
+            console.error(
+              "❌ Charge ID:",
+              paymentIntent.latest_charge ? "EXISTS" : "MISSING"
+            );
             throw new Error("Failed to retrieve charge");
           }
 
           // Check charge status - should be succeeded
-          if (charge.status !== 'succeeded') {
-            console.error(`❌ Charge status is ${charge.status}, not 'succeeded'. Cannot process transfer yet.`);
-            console.error(`❌ Charge details: paid=${charge.paid}, refunded=${charge.refunded}, captured=${charge.captured}`);
-            console.error(`❌ Charge failure code: ${charge.failure_code || 'NONE'}`);
-            console.error(`❌ Charge failure message: ${charge.failure_message || 'NONE'}`);
-            throw new Error(`Charge status is ${charge.status}, cannot get balance transaction.`);
+          if (charge.status !== "succeeded") {
+            console.error(
+              `❌ Charge status is ${charge.status}, not 'succeeded'. Cannot process transfer yet.`
+            );
+            console.error(
+              `❌ Charge details: paid=${charge.paid}, refunded=${charge.refunded}, captured=${charge.captured}`
+            );
+            console.error(
+              `❌ Charge failure code: ${charge.failure_code || "NONE"}`
+            );
+            console.error(
+              `❌ Charge failure message: ${charge.failure_message || "NONE"}`
+            );
+            throw new Error(
+              `Charge status is ${charge.status}, cannot get balance transaction.`
+            );
           }
-          
+
           console.log(`✅ Charge status validated: succeeded`);
 
-          let balanceTransactionId = charge.balance_transaction as string | null;
+          let balanceTransactionId = charge.balance_transaction as
+            | string
+            | null;
 
           // If balance_transaction ID is missing, try listing balance transactions by source (charge ID)
           if (!balanceTransactionId) {
-            console.warn(`⚠️ Charge ${charge.id} status is 'succeeded', but balance_transaction ID initially missing. Trying list fallback.`);
-            const btList = await stripeSecret.instance.balanceTransactions.list({
-              source: charge.id,
-              limit: 1 // We only expect one balance transaction per charge
-            });
+            console.warn(
+              `⚠️ Charge ${charge.id} status is 'succeeded', but balance_transaction ID initially missing. Trying list fallback.`
+            );
+            const btList = await stripeSecret.instance.balanceTransactions.list(
+              {
+                source: charge.id,
+                limit: 1, // We only expect one balance transaction per charge
+              }
+            );
 
             if (btList.data.length > 0) {
               balanceTransactionId = btList.data[0].id;
-              console.log(`✅ Fallback successful: Found balance transaction ${balanceTransactionId} via list.`);
+              console.log(
+                `✅ Fallback successful: Found balance transaction ${balanceTransactionId} via list.`
+              );
             } else {
               // Optional: Add a small delay and retry the list once more, as a final check
-              console.warn(`⚠️ Fallback list failed for charge ${charge.id}. Waiting 1 second and retrying list.`);
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-              const finalList = await stripeSecret.instance.balanceTransactions.list({ source: charge.id, limit: 1 });
+              console.warn(
+                `⚠️ Fallback list failed for charge ${charge.id}. Waiting 1 second and retrying list.`
+              );
+              await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+              const finalList =
+                await stripeSecret.instance.balanceTransactions.list({
+                  source: charge.id,
+                  limit: 1,
+                });
               if (finalList.data.length > 0) {
                 balanceTransactionId = finalList.data[0].id;
-                console.log(`✅ Fallback successful on retry: Found balance transaction ${balanceTransactionId} via list.`);
+                console.log(
+                  `✅ Fallback successful on retry: Found balance transaction ${balanceTransactionId} via list.`
+                );
               } else {
-                console.error(`❌ Fallback failed again: No balance transaction found via list for charge ${charge.id}.`);
-                throw new Error("Balance Transaction ID missing and list fallback failed");
+                console.error(
+                  `❌ Fallback failed again: No balance transaction found via list for charge ${charge.id}.`
+                );
+                throw new Error(
+                  "Balance Transaction ID missing and list fallback failed"
+                );
               }
             }
           }
@@ -543,22 +771,44 @@ export async function POST(req: Request) {
           console.log(`🔍 Retrieving balance transaction from Stripe...`);
           let balanceTransaction;
           try {
-            balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(balanceTransactionId);
-            console.log(`✅ Balance transaction retrieved: type=${balanceTransaction.type}, amount=${balanceTransaction.amount}, fee=${balanceTransaction.fee}`);
+            balanceTransaction =
+              await stripeSecret.instance.balanceTransactions.retrieve(
+                balanceTransactionId
+              );
+            console.log(
+              `✅ Balance transaction retrieved: type=${balanceTransaction.type}, amount=${balanceTransaction.amount}, fee=${balanceTransaction.fee}`
+            );
           } catch (btError) {
-            console.error("❌ Error retrieving balance transaction from Stripe");
-            console.error("❌ Error type:", btError instanceof Error ? btError.constructor.name : typeof btError);
-            console.error("❌ Error message:", btError instanceof Error ? btError.message : String(btError));
-            console.error("❌ Balance transaction ID:", balanceTransactionId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Error retrieving balance transaction from Stripe"
+            );
+            console.error(
+              "❌ Error type:",
+              btError instanceof Error
+                ? btError.constructor.name
+                : typeof btError
+            );
+            console.error(
+              "❌ Error message:",
+              btError instanceof Error ? btError.message : String(btError)
+            );
+            console.error(
+              "❌ Balance transaction ID:",
+              balanceTransactionId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Failed to retrieve balance transaction");
           }
-          
+
           const stripeFee = balanceTransaction.fee; // Actual fee in cents
-          console.log(`💰 Stripe fee from balance transaction: ${stripeFee} cents`);
+          console.log(
+            `💰 Stripe fee from balance transaction: ${stripeFee} cents`
+          );
 
           // Update order with Stripe fee (store in cents)
           try {
-            console.log(`💾 Updating order with Stripe fee: ${stripeFee} cents`);
+            console.log(
+              `💾 Updating order with Stripe fee: ${stripeFee} cents`
+            );
             await db.order.update({
               where: { id: order.id },
               data: { stripeFee: stripeFee }, // Store fee in cents
@@ -566,52 +816,81 @@ export async function POST(req: Request) {
             console.log(`✅ Order updated with Stripe fee successfully`);
           } catch (updateError) {
             console.error("❌ Error updating order with Stripe fee");
-            console.error("❌ Error type:", updateError instanceof Error ? updateError.constructor.name : typeof updateError);
-            console.error("❌ Error message:", updateError instanceof Error ? updateError.message : String(updateError));
-            console.error("❌ Order ID:", order.id ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Error type:",
+              updateError instanceof Error
+                ? updateError.constructor.name
+                : typeof updateError
+            );
+            console.error(
+              "❌ Error message:",
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError)
+            );
+            console.error("❌ Order ID:", order.id ? "EXISTS" : "MISSING");
             // Don't throw - fee update is not critical, we can continue
           }
 
           // Get amounts from metadata (already in cents)
           const totalAmountInCents = order.totalAmount;
-          const platformFeeInCents = parseInt(session.metadata.platformFee || "0");
+          const platformFeeInCents = parseInt(
+            session.metadata.platformFee || "0"
+          );
           const sellerCurrency = session.metadata.sellerCurrency || "usd"; // Get seller's currency from metadata
           const originalPrice = parseInt(session.metadata.originalPrice || "0"); // Get original price in seller's currency
 
           // Get the current exchange rate from the database
-          console.log(`🔍 Fetching exchange rate: ${product.currency.toUpperCase()} -> ${sellerCurrency.toUpperCase()}`);
+          console.log(
+            `🔍 Fetching exchange rate: ${product.currency.toUpperCase()} -> ${sellerCurrency.toUpperCase()}`
+          );
           let exchangeRate;
           try {
             exchangeRate = await db.exchangeRate.findUnique({
               where: {
                 baseCurrency_targetCurrency: {
                   baseCurrency: product.currency.toUpperCase(), // Use product's currency as base
-                  targetCurrency: sellerCurrency.toUpperCase()
-                }
-              }
+                  targetCurrency: sellerCurrency.toUpperCase(),
+                },
+              },
             });
             if (exchangeRate) {
-              console.log(`✅ Exchange rate found: ${exchangeRate.rate} (last updated: ${exchangeRate.lastUpdated ? 'EXISTS' : 'MISSING'})`);
+              console.log(
+                `✅ Exchange rate found: ${exchangeRate.rate} (last updated: ${exchangeRate.lastUpdated ? "EXISTS" : "MISSING"})`
+              );
             } else {
-              console.warn(`⚠️ Exchange rate not found, using default rate of 1.0`);
+              console.warn(
+                `⚠️ Exchange rate not found, using default rate of 1.0`
+              );
             }
           } catch (erError) {
             console.error("❌ Error fetching exchange rate from database");
-            console.error("❌ Error type:", erError instanceof Error ? erError.constructor.name : typeof erError);
-            console.error("❌ Error message:", erError instanceof Error ? erError.message : String(erError));
+            console.error(
+              "❌ Error type:",
+              erError instanceof Error
+                ? erError.constructor.name
+                : typeof erError
+            );
+            console.error(
+              "❌ Error message:",
+              erError instanceof Error ? erError.message : String(erError)
+            );
             console.warn("⚠️ Using default exchange rate of 1.0");
             exchangeRate = null;
           }
 
           // Calculate amount to transfer (ensure at least 1 cent)
           // The total amount is what the customer paid, we need to deduct our platform fee and Stripe's fee
-          const amountToSeller = Math.max(1,
-            totalAmountInCents
-            - platformFeeInCents  // Platform fee in cents
-            - stripeFee           // Stripe fee in cents
+          const amountToSeller = Math.max(
+            1,
+            totalAmountInCents -
+              platformFeeInCents - // Platform fee in cents
+              stripeFee // Stripe fee in cents
           );
 
-          console.log(`💰 Transfer calculation (in ${product.currency.toUpperCase()}):`);
+          console.log(
+            `💰 Transfer calculation (in ${product.currency.toUpperCase()}):`
+          );
           console.log(`- Total amount: ${totalAmountInCents}`);
           console.log(`- Stripe fee: ${stripeFee}`);
           console.log(`- Platform fee: ${platformFeeInCents}`);
@@ -621,8 +900,13 @@ export async function POST(req: Request) {
           console.log(`- Exchange rate: ${exchangeRate?.rate || 1}`);
 
           // Determine hold period based on seller account age and trust status
-          const holdPeriodDays = await determineHoldPeriod(session.metadata.sellerId, product.isDigital);
-          console.log(`⏰ Hold period determined: ${holdPeriodDays} days for ${product.isDigital ? 'digital' : 'physical'} product`);
+          const holdPeriodDays = await determineHoldPeriod(
+            session.metadata.sellerId,
+            product.isDigital
+          );
+          console.log(
+            `⏰ Hold period determined: ${holdPeriodDays} days for ${product.isDigital ? "digital" : "physical"} product`
+          );
 
           // Calculate transfer date (hold period from now)
           const transferDate = new Date();
@@ -659,25 +943,84 @@ export async function POST(req: Request) {
           let transferId: string | null = null;
           try {
             console.log(`💸 Creating transfer to seller...`);
-            console.log(`📋 Transfer params: amount=${amountToSeller}, currency=${product.currency.toLowerCase()}, destination=${product.seller.connectedAccountId ? 'EXISTS' : 'MISSING'}`);
-            console.log(`📋 Transfer params: holdPeriod=${holdPeriodDays} days, source_transaction=${charge.id ? 'EXISTS' : 'MISSING'}`);
-            const transfer = await stripeSecret.instance.transfers.create(transferParams);
+            console.log(
+              `📋 Transfer params: amount=${amountToSeller}, currency=${product.currency.toLowerCase()}, destination=${product.seller.connectedAccountId ? "EXISTS" : "MISSING"}`
+            );
+            console.log(
+              `📋 Transfer params: holdPeriod=${holdPeriodDays} days, source_transaction=${charge.id ? "EXISTS" : "MISSING"}`
+            );
+            const transfer =
+              await stripeSecret.instance.transfers.create(transferParams);
             transferId = transfer.id;
-            console.log(`✅ Created ${holdPeriodDays > 0 ? 'scheduled' : 'immediate'} transfer successfully`);
-            console.log(`💰 Transfer details: id=${transfer.id ? 'EXISTS' : 'MISSING'}, amount=${transfer.amount}, currency=${transfer.currency}`);
+            console.log(
+              `✅ Created ${holdPeriodDays > 0 ? "scheduled" : "immediate"} transfer successfully`
+            );
+            console.log(
+              `💰 Transfer details: id=${transfer.id ? "EXISTS" : "MISSING"}, amount=${transfer.amount}, currency=${transfer.currency}`
+            );
           } catch (transferError) {
             console.error("❌ CRITICAL: Error creating transfer to seller");
-            console.error("❌ Error type:", transferError instanceof Error ? transferError.constructor.name : typeof transferError);
-            console.error("❌ Error message:", transferError instanceof Error ? transferError.message : String(transferError));
-            if (transferError instanceof Error && 'code' in transferError) {
-              console.error("❌ Stripe error code:", (transferError as any).code);
+            console.error(
+              "❌ Error type:",
+              transferError instanceof Error
+                ? transferError.constructor.name
+                : typeof transferError
+            );
+            console.error(
+              "❌ Error message:",
+              transferError instanceof Error
+                ? transferError.message
+                : String(transferError)
+            );
+            if (transferError instanceof Error && "code" in transferError) {
+              console.error(
+                "❌ Stripe error code:",
+                (transferError as any).code
+              );
             }
-            console.error("❌ Transfer failed but order was created. Manual intervention required!");
-            console.error("❌ Order ID:", order.id ? 'EXISTS' : 'MISSING');
-            console.error("❌ Amount to transfer:", amountToSeller, product.currency);
-            console.error("❌ Seller connected account:", product.seller.connectedAccountId ? 'EXISTS' : 'MISSING');
-            console.error("❌ Charge ID:", charge.id ? 'EXISTS' : 'MISSING');
-            console.error("❌ Transfer group:", transferParams.transfer_group ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Transfer failed but order was created. Manual intervention required!"
+            );
+            console.error("❌ Order ID:", order.id ? "EXISTS" : "MISSING");
+            console.error(
+              "❌ Amount to transfer:",
+              amountToSeller,
+              product.currency
+            );
+            console.error(
+              "❌ Seller connected account:",
+              product.seller.connectedAccountId ? "EXISTS" : "MISSING"
+            );
+            console.error("❌ Charge ID:", charge.id ? "EXISTS" : "MISSING");
+            console.error(
+              "❌ Transfer group:",
+              transferParams.transfer_group ? "EXISTS" : "MISSING"
+            );
+
+            // Log transfer failure to database
+            logError({
+              code: "TRANSFER_FAILED",
+              userId:
+                paymentIntent.metadata.userId &&
+                paymentIntent.metadata.userId !== "guest"
+                  ? paymentIntent.metadata.userId
+                  : undefined,
+              route: "/api/stripe/webhooks",
+              method: "POST",
+              error: transferError,
+              metadata: {
+                eventType: event.type,
+                orderId: order.id,
+                paymentIntentId: paymentIntent.id,
+                sellerId: product.seller.userId,
+                amountToSeller,
+                currency: product.currency,
+                connectedAccountId: product.seller.connectedAccountId,
+                chargeId: charge.id,
+                transferGroup: transferParams.transfer_group,
+                note: "Order was created but transfer to seller failed - manual intervention required",
+              },
+            });
             // Continue processing - emails should still be sent even if transfer fails
           }
 
@@ -697,7 +1040,9 @@ export async function POST(req: Request) {
           // Update order with transfer ID (if created), currency info, exchange rate, and finalize status
           try {
             console.log(`💾 Updating order with final details...`);
-            console.log(`📋 Update data: transferId=${transferId ? 'EXISTS' : 'MISSING'}, status=${orderStatus}, currency=${sellerCurrency}`);
+            console.log(
+              `📋 Update data: transferId=${transferId ? "EXISTS" : "MISSING"}, status=${orderStatus}, currency=${sellerCurrency}`
+            );
             await db.order.update({
               where: { id: order.id },
               data: {
@@ -715,9 +1060,19 @@ export async function POST(req: Request) {
             console.log(`✅ Order updated with final details successfully`);
           } catch (updateError) {
             console.error("❌ Error updating order with final details");
-            console.error("❌ Error type:", updateError instanceof Error ? updateError.constructor.name : typeof updateError);
-            console.error("❌ Error message:", updateError instanceof Error ? updateError.message : String(updateError));
-            console.error("❌ Order ID:", order.id ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Error type:",
+              updateError instanceof Error
+                ? updateError.constructor.name
+                : typeof updateError
+            );
+            console.error(
+              "❌ Error message:",
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError)
+            );
+            console.error("❌ Order ID:", order.id ? "EXISTS" : "MISSING");
             // Don't throw - order is already created, this is just finalization
           }
 
@@ -725,7 +1080,11 @@ export async function POST(req: Request) {
           let decryptedShippingAddress = null;
           if (order.encryptedShippingAddress) {
             try {
-              const decryptedAddress = decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt);
+              const decryptedAddress = decryptOrderData(
+                order.encryptedShippingAddress,
+                order.shippingAddressIV,
+                order.shippingAddressSalt
+              );
               decryptedShippingAddress = JSON.parse(decryptedAddress);
             } catch (error) {
               console.error("❌ Error parsing shipping address:", error);
@@ -739,55 +1098,100 @@ export async function POST(req: Request) {
             // Decrypt the buyer's email
             let buyerEmail: string;
             try {
-              buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
+              buyerEmail = decryptOrderData(
+                order.encryptedBuyerEmail,
+                order.buyerEmailIV,
+                order.buyerEmailSalt
+              );
               const emailPrefix = buyerEmail.substring(0, 3);
-              const emailDomain = buyerEmail.includes('@') ? buyerEmail.split('@')[1]?.substring(0, 3) : '***';
-              console.log(`🔓 Buyer email decrypted: ${emailPrefix}***@${emailDomain}***`);
+              const emailDomain = buyerEmail.includes("@")
+                ? buyerEmail.split("@")[1]?.substring(0, 3)
+                : "***";
+              console.log(
+                `🔓 Buyer email decrypted: ${emailPrefix}***@${emailDomain}***`
+              );
             } catch (decryptError) {
-              console.error("❌ Error decrypting buyer email for email sending");
-              console.error("❌ Error type:", decryptError instanceof Error ? decryptError.constructor.name : typeof decryptError);
-              console.error("❌ Error message:", decryptError instanceof Error ? decryptError.message : String(decryptError));
-              console.error("❌ Encrypted email data:", order.encryptedBuyerEmail ? 'EXISTS' : 'MISSING');
-              console.error("❌ Email IV:", order.buyerEmailIV ? 'EXISTS' : 'MISSING');
-              console.error("❌ Email salt:", order.buyerEmailSalt ? 'EXISTS' : 'MISSING');
+              console.error(
+                "❌ Error decrypting buyer email for email sending"
+              );
+              console.error(
+                "❌ Error type:",
+                decryptError instanceof Error
+                  ? decryptError.constructor.name
+                  : typeof decryptError
+              );
+              console.error(
+                "❌ Error message:",
+                decryptError instanceof Error
+                  ? decryptError.message
+                  : String(decryptError)
+              );
+              console.error(
+                "❌ Encrypted email data:",
+                order.encryptedBuyerEmail ? "EXISTS" : "MISSING"
+              );
+              console.error(
+                "❌ Email IV:",
+                order.buyerEmailIV ? "EXISTS" : "MISSING"
+              );
+              console.error(
+                "❌ Email salt:",
+                order.buyerEmailSalt ? "EXISTS" : "MISSING"
+              );
               throw decryptError;
             }
-            
-            if (!buyerEmail || buyerEmail.trim() === '') {
-              console.error("❌ Buyer email is empty after decryption, cannot send email");
-              console.error("❌ Order ID:", order.id ? 'EXISTS' : 'MISSING');
+
+            if (!buyerEmail || buyerEmail.trim() === "") {
+              console.error(
+                "❌ Buyer email is empty after decryption, cannot send email"
+              );
+              console.error("❌ Order ID:", order.id ? "EXISTS" : "MISSING");
             } else {
               // Send buyer email
-              const { data: buyerEmailData, error: buyerEmailError } = await resend.emails.send({
-                from: "Yarnnu <noreply@yarnnu.com>",
-                to: [buyerEmail],
-                subject: product.isDigital ? "Your digital product is ready!" : "Your order has been confirmed!",
-                react: ProductEmail({
-                  link: product.isDigital && product.productFile ? product.productFile : undefined,
-                  isDigital: product.isDigital,
-                  orderDetails: {
-                    productName: product.name,
-                    orderId: order.id,
-                    batchNumber: order.batchNumber || undefined,
-                    shippingAddress: decryptedShippingAddress ? {
-                      street: decryptedShippingAddress.line1 || "",
-                      city: decryptedShippingAddress.city || "",
-                      state: decryptedShippingAddress.state || "",
-                      zipCode: decryptedShippingAddress.postal_code || "",
-                      country: decryptedShippingAddress.country || "",
-                    } : undefined,
-                  },
-                }),
-              });
+              const { data: buyerEmailData, error: buyerEmailError } =
+                await resend.emails.send({
+                  from: "Yarnnu <noreply@yarnnu.com>",
+                  to: [buyerEmail],
+                  subject: product.isDigital
+                    ? "Your digital product is ready!"
+                    : "Your order has been confirmed!",
+                  react: ProductEmail({
+                    link:
+                      product.isDigital && product.productFile
+                        ? product.productFile
+                        : undefined,
+                    isDigital: product.isDigital,
+                    orderDetails: {
+                      productName: product.name,
+                      orderId: order.id,
+                      batchNumber: order.batchNumber || undefined,
+                      shippingAddress: decryptedShippingAddress
+                        ? {
+                            street: decryptedShippingAddress.line1 || "",
+                            city: decryptedShippingAddress.city || "",
+                            state: decryptedShippingAddress.state || "",
+                            zipCode: decryptedShippingAddress.postal_code || "",
+                            country: decryptedShippingAddress.country || "",
+                          }
+                        : undefined,
+                    },
+                  }),
+                });
 
               if (buyerEmailError) {
-                console.error("❌ Error sending buyer confirmation email:", buyerEmailError);
+                console.error(
+                  "❌ Error sending buyer confirmation email:",
+                  buyerEmailError
+                );
               } else {
                 console.log("✅ Buyer confirmation email sent successfully");
               }
             }
           } catch (buyerEmailError) {
-            console.error("❌ Error decrypting buyer email or sending buyer email:", buyerEmailError);
+            console.error(
+              "❌ Error decrypting buyer email or sending buyer email:",
+              buyerEmailError
+            );
             // Continue to seller email even if buyer email fails
           }
 
@@ -799,43 +1203,60 @@ export async function POST(req: Request) {
               // Decrypt buyer name for seller email (handle errors gracefully)
               let buyerName = "Customer";
               try {
-                buyerName = decryptOrderData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt) || "Customer";
+                buyerName =
+                  decryptOrderData(
+                    order.encryptedBuyerName,
+                    order.buyerNameIV,
+                    order.buyerNameSalt
+                  ) || "Customer";
               } catch (error) {
-                console.error("❌ Error decrypting buyer name for seller email:", error);
+                console.error(
+                  "❌ Error decrypting buyer name for seller email:",
+                  error
+                );
                 buyerName = "Customer"; // Fallback to generic name
               }
 
-              const { data: sellerEmailData, error: sellerEmailError } = await resend.emails.send({
-                from: "Yarnnu <noreply@yarnnu.com>",
-                to: [product.seller.user.email],
-                subject: `New Sale Alert! Order #${order.id}`,
-                react: SellerOrderEmail({
-                  orderDetails: {
-                    productName: product.name,
-                    orderId: order.id,
-                    batchNumber: order.batchNumber || undefined,
-                    quantity: order.quantity,
-                    totalAmount: order.totalAmount,
-                    buyerName: buyerName,
-                    shippingAddress: decryptedShippingAddress ? {
-                      street: decryptedShippingAddress.line1 || "",
-                      city: decryptedShippingAddress.city || "",
-                      state: decryptedShippingAddress.state || "",
-                      zipCode: decryptedShippingAddress.postal_code || "",
-                      country: decryptedShippingAddress.country || "",
-                    } : undefined,
-                  },
-                }),
-              });
+              const { data: sellerEmailData, error: sellerEmailError } =
+                await resend.emails.send({
+                  from: "Yarnnu <noreply@yarnnu.com>",
+                  to: [product.seller.user.email],
+                  subject: `New Sale Alert! Order #${order.id}`,
+                  react: SellerOrderEmail({
+                    orderDetails: {
+                      productName: product.name,
+                      orderId: order.id,
+                      batchNumber: order.batchNumber || undefined,
+                      quantity: order.quantity,
+                      totalAmount: order.totalAmount,
+                      buyerName: buyerName,
+                      shippingAddress: decryptedShippingAddress
+                        ? {
+                            street: decryptedShippingAddress.line1 || "",
+                            city: decryptedShippingAddress.city || "",
+                            state: decryptedShippingAddress.state || "",
+                            zipCode: decryptedShippingAddress.postal_code || "",
+                            country: decryptedShippingAddress.country || "",
+                          }
+                        : undefined,
+                    },
+                  }),
+                });
 
               if (sellerEmailError) {
-                console.error("❌ Error sending seller notification email:", sellerEmailError);
+                console.error(
+                  "❌ Error sending seller notification email:",
+                  sellerEmailError
+                );
               } else {
                 console.log("✅ Seller notification email sent successfully");
               }
             }
           } catch (sellerEmailError) {
-            console.error("❌ Error sending seller notification email:", sellerEmailError);
+            console.error(
+              "❌ Error sending seller notification email:",
+              sellerEmailError
+            );
           }
 
           // Update product/seller stats
@@ -923,9 +1344,14 @@ export async function POST(req: Request) {
               },
             });
 
-            console.log(`✅ Updated product and seller stats for order ${order.id}`);
+            console.log(
+              `✅ Updated product and seller stats for order ${order.id}`
+            );
           } catch (statsError) {
-            console.error("⚠️ Error updating product/seller stats:", statsError);
+            console.error(
+              "⚠️ Error updating product/seller stats:",
+              statsError
+            );
           }
 
           return NextResponse.json({ success: true, orderId: order.id });
@@ -933,14 +1359,17 @@ export async function POST(req: Request) {
         case "account.updated": {
           const account = event.data.object as Stripe.Account;
           const logContext: Record<string, any> = {
-            event: 'account.updated',
+            event: "account.updated",
             stripeAccountId: account.id,
             chargesEnabled: account.charges_enabled,
             payoutsEnabled: account.payouts_enabled,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           };
 
-          console.log(`[STRIPE_WEBHOOK] Account updated event received`, logContext);
+          console.log(
+            `[STRIPE_WEBHOOK] Account updated event received`,
+            logContext
+          );
 
           // Check if the account is fully onboarded (can accept charges and payouts)
           if (account.charges_enabled && account.payouts_enabled) {
@@ -948,13 +1377,13 @@ export async function POST(req: Request) {
               // Find the seller with this connected account ID
               const seller = await db.seller.findUnique({
                 where: { connectedAccountId: account.id },
-                select: { id: true, userId: true, stripeConnected: true }
+                select: { id: true, userId: true, stripeConnected: true },
               });
 
               if (!seller) {
-                console.warn(`[STRIPE_WEBHOOK] No seller found for account`, { 
-                  ...logContext, 
-                  note: 'Account may not be associated with a seller yet' 
+                console.warn(`[STRIPE_WEBHOOK] No seller found for account`, {
+                  ...logContext,
+                  note: "Account may not be associated with a seller yet",
                 });
                 return NextResponse.json({ received: true });
               }
@@ -964,15 +1393,18 @@ export async function POST(req: Request) {
               logContext.currentStripeConnected = seller.stripeConnected;
 
               if (!seller.stripeConnected) {
-                console.log(`[STRIPE_WEBHOOK] Updating seller stripe connection status`, logContext);
-                
+                console.log(
+                  `[STRIPE_WEBHOOK] Updating seller stripe connection status`,
+                  logContext
+                );
+
                 // Update in a transaction to ensure consistency
                 try {
                   await db.$transaction(async (tx) => {
                     // Update the seller's stripeConnected status
                     await tx.seller.update({
                       where: { id: seller.id },
-                      data: { stripeConnected: true }
+                      data: { stripeConnected: true },
                     });
 
                     // Mark payment_setup step as completed
@@ -998,44 +1430,75 @@ export async function POST(req: Request) {
 
                   // Recalculate isFullyActivated (outside transaction)
                   try {
-                    await updateOnboardingStep(seller.id, "payment_setup", true);
-                    console.log(`[STRIPE_WEBHOOK] isFullyActivated recalculated`, logContext);
+                    await updateOnboardingStep(
+                      seller.id,
+                      "payment_setup",
+                      true
+                    );
+                    console.log(
+                      `[STRIPE_WEBHOOK] isFullyActivated recalculated`,
+                      logContext
+                    );
                   } catch (recalcError) {
-                    console.warn(`[STRIPE_WEBHOOK] Failed to recalculate isFullyActivated (non-critical)`, { 
-                      ...logContext, 
-                      error: recalcError instanceof Error ? recalcError.message : String(recalcError)
-                    });
+                    console.warn(
+                      `[STRIPE_WEBHOOK] Failed to recalculate isFullyActivated (non-critical)`,
+                      {
+                        ...logContext,
+                        error:
+                          recalcError instanceof Error
+                            ? recalcError.message
+                            : String(recalcError),
+                      }
+                    );
                   }
 
-                  console.log(`[STRIPE_WEBHOOK] Seller stripe connection updated successfully`, { 
-                    ...logContext, 
-                    status: 'SUCCESS'
-                  });
+                  console.log(
+                    `[STRIPE_WEBHOOK] Seller stripe connection updated successfully`,
+                    {
+                      ...logContext,
+                      status: "SUCCESS",
+                    }
+                  );
                 } catch (dbError) {
                   const errorDetails = {
                     ...logContext,
-                    error: dbError instanceof Error ? dbError.message : String(dbError),
+                    error:
+                      dbError instanceof Error
+                        ? dbError.message
+                        : String(dbError),
                     stack: dbError instanceof Error ? dbError.stack : undefined,
-                    status: 'FAILED'
+                    status: "FAILED",
                   };
-                  console.error(`[STRIPE_WEBHOOK] Failed to update seller stripe connection`, errorDetails);
+                  console.error(
+                    `[STRIPE_WEBHOOK] Failed to update seller stripe connection`,
+                    errorDetails
+                  );
                   // Don't throw - webhook should still return success to Stripe
                 }
               } else {
-                console.log(`[STRIPE_WEBHOOK] Seller already marked as connected, skipping update`, logContext);
+                console.log(
+                  `[STRIPE_WEBHOOK] Seller already marked as connected, skipping update`,
+                  logContext
+                );
               }
             } catch (error) {
               const errorDetails = {
                 ...logContext,
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-                status: 'FAILED'
+                status: "FAILED",
               };
-              console.error(`[STRIPE_WEBHOOK] Error processing account.updated event`, errorDetails);
+              console.error(
+                `[STRIPE_WEBHOOK] Error processing account.updated event`,
+                errorDetails
+              );
               // Don't throw - webhook should still return success to Stripe
             }
           } else {
-            console.log(`[STRIPE_WEBHOOK] Account not fully onboarded yet`, logContext);
+            console.log(
+              `[STRIPE_WEBHOOK] Account not fully onboarded yet`,
+              logContext
+            );
           }
 
           return NextResponse.json({ received: true });
@@ -1043,7 +1506,9 @@ export async function POST(req: Request) {
         case "payment_intent.succeeded": {
           const paymentIntent = event.data.object as Stripe.PaymentIntent;
           console.log(`✅ Processing payment_intent.succeeded`);
-          console.log(`📋 Payment intent details: metadata=${paymentIntent.metadata ? 'EXISTS' : 'MISSING'}, status=${paymentIntent.status}, amount=${paymentIntent.amount}, currency=${paymentIntent.currency}`);
+          console.log(
+            `📋 Payment intent details: metadata=${paymentIntent.metadata ? "EXISTS" : "MISSING"}, status=${paymentIntent.status}, amount=${paymentIntent.amount}, currency=${paymentIntent.currency}`
+          );
 
           if (!paymentIntent.metadata) {
             console.error("❌ Payment intent completed without metadata");
@@ -1051,61 +1516,91 @@ export async function POST(req: Request) {
             console.error("❌ Payment intent amount:", paymentIntent.amount);
             throw new Error("Metadata missing from payment intent");
           }
-          
-          console.log(`📋 Metadata check: productId=${paymentIntent.metadata.productId ? 'EXISTS' : 'MISSING'}, sellerId=${paymentIntent.metadata.sellerId ? 'EXISTS' : 'MISSING'}, userId=${paymentIntent.metadata.userId ? 'EXISTS' : 'MISSING'}`);
+
+          console.log(
+            `📋 Metadata check: productId=${paymentIntent.metadata.productId ? "EXISTS" : "MISSING"}, sellerId=${paymentIntent.metadata.sellerId ? "EXISTS" : "MISSING"}, userId=${paymentIntent.metadata.userId ? "EXISTS" : "MISSING"}`
+          );
 
           // Fetch product details using metadata
-          console.log(`🔍 Fetching product with ID: ${paymentIntent.metadata.productId ? 'EXISTS' : 'MISSING'}`);
+          console.log(
+            `🔍 Fetching product with ID: ${paymentIntent.metadata.productId ? "EXISTS" : "MISSING"}`
+          );
           let product;
           try {
             product = await db.product.findUnique({
               where: { id: paymentIntent.metadata.productId },
-              include: { 
+              include: {
                 seller: {
                   include: {
-                    user: true
-                  }
-                }
+                    user: true,
+                  },
+                },
               },
             });
-            console.log(`📦 Product fetch result: ${product ? 'FOUND' : 'NOT_FOUND'}`);
+            console.log(
+              `📦 Product fetch result: ${product ? "FOUND" : "NOT_FOUND"}`
+            );
           } catch (dbError) {
-            console.error("❌ Database error fetching product:", dbError instanceof Error ? dbError.message : String(dbError));
-            console.error("❌ Product ID from metadata:", paymentIntent.metadata.productId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Database error fetching product:",
+              dbError instanceof Error ? dbError.message : String(dbError)
+            );
+            console.error(
+              "❌ Product ID from metadata:",
+              paymentIntent.metadata.productId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Failed to fetch product from database");
           }
 
           if (!product) {
             console.error("❌ Product not found in database");
-            console.error("❌ Product ID from metadata:", paymentIntent.metadata.productId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Product ID from metadata:",
+              paymentIntent.metadata.productId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Product not found");
           }
 
           if (!product.seller) {
             console.error("❌ Product found but seller is missing");
-            console.error("❌ Product ID:", product.id ? 'EXISTS' : 'MISSING');
+            console.error("❌ Product ID:", product.id ? "EXISTS" : "MISSING");
             throw new Error("Seller not found for product");
           }
 
           if (!product.seller.connectedAccountId) {
-            console.error("❌ Seller found but connected account ID is missing");
-            console.error("❌ Seller ID:", product.seller.id ? 'EXISTS' : 'MISSING');
-            console.error("❌ Seller user ID:", product.seller.userId ? 'EXISTS' : 'MISSING');
+            console.error(
+              "❌ Seller found but connected account ID is missing"
+            );
+            console.error(
+              "❌ Seller ID:",
+              product.seller.id ? "EXISTS" : "MISSING"
+            );
+            console.error(
+              "❌ Seller user ID:",
+              product.seller.userId ? "EXISTS" : "MISSING"
+            );
             throw new Error("Seller connected account not found");
           }
 
-          console.log(`✅ Product and seller validation passed: product=${product.id ? 'EXISTS' : 'MISSING'}, seller=${product.seller.id ? 'EXISTS' : 'MISSING'}, connectedAccount=${product.seller.connectedAccountId ? 'EXISTS' : 'MISSING'}`);
+          console.log(
+            `✅ Product and seller validation passed: product=${product.id ? "EXISTS" : "MISSING"}, seller=${product.seller.id ? "EXISTS" : "MISSING"}, connectedAccount=${product.seller.connectedAccountId ? "EXISTS" : "MISSING"}`
+          );
 
           // Create preliminary order
           // Get buyer email from multiple sources (most reliable first)
           // For guest checkouts, Stripe should have the email in receipt_email or customer_details
-          let buyerEmail = paymentIntent.metadata.buyerEmail || paymentIntent.receipt_email || "";
+          let buyerEmail =
+            paymentIntent.metadata.buyerEmail ||
+            paymentIntent.receipt_email ||
+            "";
           let buyerName = paymentIntent.metadata.buyerName || "";
-          
+
           // If no email from metadata or receipt_email, try to get it from the customer
           if (!buyerEmail && paymentIntent.customer) {
             try {
-              const customer = await stripeSecret.instance.customers.retrieve(paymentIntent.customer as string);
+              const customer = await stripeSecret.instance.customers.retrieve(
+                paymentIntent.customer as string
+              );
               if (customer && !customer.deleted) {
                 buyerEmail = customer.email || buyerEmail;
                 buyerName = customer.name || buyerName;
@@ -1116,28 +1611,52 @@ export async function POST(req: Request) {
           }
 
           // Log email retrieval for debugging
-          if (!buyerEmail || buyerEmail.trim() === '') {
-            console.warn("⚠️ WARNING: Buyer email is empty or missing for order. Email confirmation will not be sent.");
-            console.warn("⚠️ Metadata buyerEmail:", paymentIntent.metadata.buyerEmail ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Receipt email:", paymentIntent.receipt_email ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Customer ID:", paymentIntent.customer ? 'EXISTS' : 'MISSING');
-            console.warn("⚠️ Customer object:", paymentIntent.customer ? 'EXISTS' : 'MISSING');
+          if (!buyerEmail || buyerEmail.trim() === "") {
+            console.warn(
+              "⚠️ WARNING: Buyer email is empty or missing for order. Email confirmation will not be sent."
+            );
+            console.warn(
+              "⚠️ Metadata buyerEmail:",
+              paymentIntent.metadata.buyerEmail ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Receipt email:",
+              paymentIntent.receipt_email ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Customer ID:",
+              paymentIntent.customer ? "EXISTS" : "MISSING"
+            );
+            console.warn(
+              "⚠️ Customer object:",
+              paymentIntent.customer ? "EXISTS" : "MISSING"
+            );
           } else {
             const emailPrefix = buyerEmail.substring(0, 3);
-            const emailDomain = buyerEmail.includes('@') ? buyerEmail.split('@')[1]?.substring(0, 3) : '***';
-            const emailSource = paymentIntent.metadata.buyerEmail ? 'metadata' : paymentIntent.receipt_email ? 'receipt_email' : 'customer';
-            console.log(`📧 Buyer email retrieved: ${emailPrefix}***@${emailDomain}*** (from ${emailSource})`);
+            const emailDomain = buyerEmail.includes("@")
+              ? buyerEmail.split("@")[1]?.substring(0, 3)
+              : "***";
+            const emailSource = paymentIntent.metadata.buyerEmail
+              ? "metadata"
+              : paymentIntent.receipt_email
+                ? "receipt_email"
+                : "customer";
+            console.log(
+              `📧 Buyer email retrieved: ${emailPrefix}***@${emailDomain}*** (from ${emailSource})`
+            );
           }
-          
-          console.log(`📋 Buyer name: ${buyerName ? 'EXISTS' : 'MISSING'}`);
-          
+
+          console.log(`📋 Buyer name: ${buyerName ? "EXISTS" : "MISSING"}`);
+
           // Use shipping address from metadata if provided
           let shippingAddress = null;
-          if (paymentIntent.metadata.shippingAddressProvided === 'true') {
+          if (paymentIntent.metadata.shippingAddressProvided === "true") {
             // Shipping address was collected on our checkout page and stored in metadata
             if (paymentIntent.metadata.shippingAddress) {
               try {
-                const addressData = JSON.parse(paymentIntent.metadata.shippingAddress);
+                const addressData = JSON.parse(
+                  paymentIntent.metadata.shippingAddress
+                );
                 shippingAddress = JSON.stringify({
                   line1: addressData.street || "",
                   city: addressData.city || "",
@@ -1146,7 +1665,10 @@ export async function POST(req: Request) {
                   country: addressData.country || "",
                 });
               } catch (error) {
-                console.error("❌ Error parsing shipping address from metadata:", error);
+                console.error(
+                  "❌ Error parsing shipping address from metadata:",
+                  error
+                );
                 shippingAddress = JSON.stringify({
                   line1: "Address collected on checkout page",
                   city: "",
@@ -1167,21 +1689,43 @@ export async function POST(req: Request) {
             }
           }
 
-          const { encrypted: encryptedBuyerEmail, iv: buyerEmailIV, salt: buyerEmailSalt } = encryptOrderData(buyerEmail);
-          const { encrypted: encryptedBuyerName, iv: buyerNameIV, salt: buyerNameSalt } = encryptOrderData(buyerName);
-          const { encrypted: encryptedShippingAddress, iv: shippingAddressIV, salt: shippingAddressSalt } = shippingAddress 
+          const {
+            encrypted: encryptedBuyerEmail,
+            iv: buyerEmailIV,
+            salt: buyerEmailSalt,
+          } = encryptOrderData(buyerEmail);
+          const {
+            encrypted: encryptedBuyerName,
+            iv: buyerNameIV,
+            salt: buyerNameSalt,
+          } = encryptOrderData(buyerName);
+          const {
+            encrypted: encryptedShippingAddress,
+            iv: shippingAddressIV,
+            salt: shippingAddressSalt,
+          } = shippingAddress
             ? encryptOrderData(shippingAddress)
             : { encrypted: "", iv: "", salt: "" };
 
           // Get discount information from metadata
           const discountCodeId = paymentIntent.metadata.discountCodeId;
           const discountCodeUsed = paymentIntent.metadata.discountCodeUsed;
-          const discountAmount = parseInt(paymentIntent.metadata.discountAmount || "0");
-          const saleDiscount = parseInt(paymentIntent.metadata.saleDiscount || "0");
-          const finalOrderAmount = parseInt(paymentIntent.metadata.finalOrderAmount || "0");
+          const discountAmount = parseInt(
+            paymentIntent.metadata.discountAmount || "0"
+          );
+          const saleDiscount = parseInt(
+            paymentIntent.metadata.saleDiscount || "0"
+          );
+          const finalOrderAmount = parseInt(
+            paymentIntent.metadata.finalOrderAmount || "0"
+          );
 
           const preliminaryOrderData = {
-            userId: paymentIntent.metadata.userId && paymentIntent.metadata.userId !== "guest" ? paymentIntent.metadata.userId : null, // Use null for guest checkouts
+            userId:
+              paymentIntent.metadata.userId &&
+              paymentIntent.metadata.userId !== "guest"
+                ? paymentIntent.metadata.userId
+                : null, // Use null for guest checkouts
             encryptedBuyerEmail,
             buyerEmailIV,
             buyerEmailSalt,
@@ -1193,32 +1737,42 @@ export async function POST(req: Request) {
             productId: paymentIntent.metadata.productId || "",
             productName: product.name,
             quantity: parseInt(paymentIntent.metadata.quantity || "1"),
-            totalAmount: finalOrderAmount || (parseInt(paymentIntent.metadata.productPrice || "0") + parseInt(paymentIntent.metadata.shippingAndHandling || "0")),
+            totalAmount:
+              finalOrderAmount ||
+              parseInt(paymentIntent.metadata.productPrice || "0") +
+                parseInt(paymentIntent.metadata.shippingAndHandling || "0"),
             productPrice: parseInt(paymentIntent.metadata.productPrice || "0"),
-            shippingCost: parseInt(paymentIntent.metadata.shippingAndHandling || "0"),
+            shippingCost: parseInt(
+              paymentIntent.metadata.shippingAndHandling || "0"
+            ),
             stripeFee: 0, // Placeholder
             platformFee: parseInt(paymentIntent.metadata.platformFee || "0"), // Store platform fee from metadata
             isDigital: product.isDigital || false,
-            status: product.isDigital ? OrderStatus.COMPLETED : OrderStatus.PENDING_TRANSFER,
+            status: product.isDigital
+              ? OrderStatus.COMPLETED
+              : OrderStatus.PENDING_TRANSFER,
             paymentStatus: PaymentStatus.PAID,
             stripeSessionId: paymentIntent.id, // Use payment intent ID as session ID
             stripeTransferId: null,
             encryptedShippingAddress,
             shippingAddressIV,
             shippingAddressSalt,
-            discount: discountAmount > 0 ? JSON.stringify({
-              discountCodeId,
-              discountCodeUsed,
-              discountAmount,
-              saleDiscount,
-            }) : null,
+            discount:
+              discountAmount > 0
+                ? JSON.stringify({
+                    discountCodeId,
+                    discountCodeUsed,
+                    discountAmount,
+                    saleDiscount,
+                  })
+                : null,
             discountCodeId: discountCodeId || null,
             discountCodeAmount: discountAmount,
             discountCodeUsed: discountCodeUsed || null,
             completedAt: product.isDigital ? new Date() : null,
             taxAmount: 0, // Payment intents don't have tax details
             taxBreakdown: null,
-            taxExempt: paymentIntent.metadata.taxExempt === 'true',
+            taxExempt: paymentIntent.metadata.taxExempt === "true",
             taxCategory: paymentIntent.metadata.taxCategory || null,
             taxCode: product.taxCode || null,
             taxJurisdiction: null,
@@ -1227,9 +1781,36 @@ export async function POST(req: Request) {
             batchNumber: product.batchNumber || null,
           };
 
-          const order = await db.order.create({ data: preliminaryOrderData });
-          console.log(`✅ Created preliminary order: ${order.id}`);
-          console.log(`💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${paymentIntent.currency?.toUpperCase() || 'USD'})`);
+          let order;
+          try {
+            order = await db.order.create({ data: preliminaryOrderData });
+            console.log(`✅ Created preliminary order: ${order.id}`);
+          } catch (orderError) {
+            // Log order creation failure
+            logError({
+              code: "ORDER_CREATE_FAILED",
+              userId:
+                paymentIntent.metadata.userId &&
+                paymentIntent.metadata.userId !== "guest"
+                  ? paymentIntent.metadata.userId
+                  : undefined,
+              route: "/api/stripe/webhooks",
+              method: "POST",
+              error: orderError,
+              metadata: {
+                eventType: event.type,
+                paymentIntentId: paymentIntent.id,
+                productId: paymentIntent.metadata.productId,
+                sellerId: paymentIntent.metadata.sellerId,
+                amount: paymentIntent.amount,
+                currency: paymentIntent.currency,
+              },
+            });
+            throw orderError; // Re-throw to be caught by outer handler
+          }
+          console.log(
+            `💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${paymentIntent.currency?.toUpperCase() || "USD"})`
+          );
 
           // Create discount usage record if discount code was used
           if (discountCodeId && discountAmount > 0) {
@@ -1238,7 +1819,11 @@ export async function POST(req: Request) {
                 data: {
                   discountCodeId,
                   orderId: order.id,
-                  userId: paymentIntent.metadata.userId && paymentIntent.metadata.userId !== "guest" ? paymentIntent.metadata.userId : null, // Use null for guest checkouts
+                  userId:
+                    paymentIntent.metadata.userId &&
+                    paymentIntent.metadata.userId !== "guest"
+                      ? paymentIntent.metadata.userId
+                      : null, // Use null for guest checkouts
                   discountAmount,
                 },
               });
@@ -1253,7 +1838,9 @@ export async function POST(req: Request) {
                 },
               });
 
-              console.log(`✅ Created discount usage record for code: ${discountCodeUsed}`);
+              console.log(
+                `✅ Created discount usage record for code: ${discountCodeUsed}`
+              );
             } catch (error) {
               console.error("❌ Error creating discount usage record:", error);
             }
@@ -1261,15 +1848,15 @@ export async function POST(req: Request) {
 
           // Since we removed automatic transfer, we need to create the transfer manually
           // This ensures we transfer the correct amount after deducting both platform fee and Stripe fee
-          
+
           // Get the Stripe fee from the balance transaction and store charge ID for transfer
           let stripeFee = 0;
           let chargeId: string | null = null;
-          
+
           try {
             // Add a small delay to ensure balance transaction is available
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             // First, try to get the charge from the payment intent
             const charges = await stripeSecret.instance.charges.list({
               payment_intent: paymentIntent.id,
@@ -1280,28 +1867,43 @@ export async function POST(req: Request) {
               const charge = charges.data[0];
               chargeId = charge.id; // Store charge ID for transfer
               console.log(`💰 Found charge: ${charge.id}`);
-              
+
               // Get the balance transaction from the charge
               if (charge.balance_transaction) {
-                const balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(charge.balance_transaction as string);
+                const balanceTransaction =
+                  await stripeSecret.instance.balanceTransactions.retrieve(
+                    charge.balance_transaction as string
+                  );
                 stripeFee = balanceTransaction.fee;
-                console.log(`💰 Stripe fee from balance transaction: ${stripeFee} cents`);
+                console.log(
+                  `💰 Stripe fee from balance transaction: ${stripeFee} cents`
+                );
               } else {
-                console.warn(`⚠️ No balance_transaction found on charge ${charge.id}`);
+                console.warn(
+                  `⚠️ No balance_transaction found on charge ${charge.id}`
+                );
                 // Try to get balance transaction by listing
-                const btList = await stripeSecret.instance.balanceTransactions.list({
-                  source: charge.id,
-                  limit: 1
-                });
-                
+                const btList =
+                  await stripeSecret.instance.balanceTransactions.list({
+                    source: charge.id,
+                    limit: 1,
+                  });
+
                 if (btList.data.length > 0) {
-                  const balanceTransaction = await stripeSecret.instance.balanceTransactions.retrieve(btList.data[0].id);
+                  const balanceTransaction =
+                    await stripeSecret.instance.balanceTransactions.retrieve(
+                      btList.data[0].id
+                    );
                   stripeFee = balanceTransaction.fee;
-                  console.log(`💰 Stripe fee from list fallback: ${stripeFee} cents`);
+                  console.log(
+                    `💰 Stripe fee from list fallback: ${stripeFee} cents`
+                  );
                 }
               }
             } else {
-              console.warn(`⚠️ No charges found for payment intent ${paymentIntent.id}`);
+              console.warn(
+                `⚠️ No charges found for payment intent ${paymentIntent.id}`
+              );
             }
           } catch (error) {
             console.error(`❌ Error retrieving Stripe fee:`, error);
@@ -1314,15 +1916,20 @@ export async function POST(req: Request) {
           // Update order with fee information
           await db.order.update({
             where: { id: order.id },
-            data: { 
+            data: {
               stripeFee: stripeFee, // Store Stripe fee in cents
             },
           });
 
           // Calculate the correct amount to transfer to the seller
           const totalAmountInCents = order.totalAmount;
-          const platformFeeInCents = parseInt(paymentIntent.metadata.platformFee || "0");
-          const amountToSeller = Math.max(1, totalAmountInCents - platformFeeInCents - stripeFee);
+          const platformFeeInCents = parseInt(
+            paymentIntent.metadata.platformFee || "0"
+          );
+          const amountToSeller = Math.max(
+            1,
+            totalAmountInCents - platformFeeInCents - stripeFee
+          );
 
           console.log(`💰 Transfer calculation:`);
           console.log(`- Total amount: ${totalAmountInCents} cents`);
@@ -1336,7 +1943,9 @@ export async function POST(req: Request) {
           // rather than requiring funds to be available in the platform balance first
           try {
             if (!chargeId) {
-              throw new Error("Charge ID not found - cannot create transfer without source_transaction");
+              throw new Error(
+                "Charge ID not found - cannot create transfer without source_transaction"
+              );
             }
 
             const transferParams: Stripe.TransferCreateParams = {
@@ -1354,21 +1963,36 @@ export async function POST(req: Request) {
               },
             };
 
-            const transfer = await stripeSecret.instance.transfers.create(transferParams);
+            const transfer =
+              await stripeSecret.instance.transfers.create(transferParams);
 
             // Update order with transfer ID
             await db.order.update({
               where: { id: order.id },
-              data: { stripeTransferId: transfer.id }
+              data: { stripeTransferId: transfer.id },
             });
 
-            console.log(`✅ Created transfer to seller: ${transfer.id} for ${amountToSeller} cents`);
+            console.log(
+              `✅ Created transfer to seller: ${transfer.id} for ${amountToSeller} cents`
+            );
           } catch (transferError) {
-            console.error("❌ CRITICAL: Error creating transfer to seller:", transferError);
-            console.error("❌ Transfer failed but order was created. Manual intervention required!");
+            console.error(
+              "❌ CRITICAL: Error creating transfer to seller:",
+              transferError
+            );
+            console.error(
+              "❌ Transfer failed but order was created. Manual intervention required!"
+            );
             console.error("❌ Order ID:", order.id);
-            console.error("❌ Amount to transfer:", amountToSeller, paymentIntent.currency);
-            console.error("❌ Seller connected account:", product.seller.connectedAccountId);
+            console.error(
+              "❌ Amount to transfer:",
+              amountToSeller,
+              paymentIntent.currency
+            );
+            console.error(
+              "❌ Seller connected account:",
+              product.seller.connectedAccountId
+            );
             console.error("❌ Charge ID:", chargeId);
             // Don't throw here, as the order is already created and emails should still be sent
           }
@@ -1395,7 +2019,11 @@ export async function POST(req: Request) {
           let decryptedShippingAddress = null;
           if (order.encryptedShippingAddress) {
             try {
-              const decryptedAddress = decryptOrderData(order.encryptedShippingAddress, order.shippingAddressIV, order.shippingAddressSalt);
+              const decryptedAddress = decryptOrderData(
+                order.encryptedShippingAddress,
+                order.shippingAddressIV,
+                order.shippingAddressSalt
+              );
               decryptedShippingAddress = JSON.parse(decryptedAddress);
             } catch (error) {
               console.error("❌ Error parsing shipping address:", error);
@@ -1405,43 +2033,61 @@ export async function POST(req: Request) {
 
           // Send confirmation email to buyer (separate try-catch so seller email still sends if this fails)
           try {
-            const buyerEmail = decryptOrderData(order.encryptedBuyerEmail, order.buyerEmailIV, order.buyerEmailSalt);
+            const buyerEmail = decryptOrderData(
+              order.encryptedBuyerEmail,
+              order.buyerEmailIV,
+              order.buyerEmailSalt
+            );
             console.log(`📧 Buyer email: ${buyerEmail}`);
-            
-            if (!buyerEmail || buyerEmail.trim() === '') {
+
+            if (!buyerEmail || buyerEmail.trim() === "") {
               console.error("❌ Buyer email is empty, cannot send email");
             } else {
               // Send buyer email
-              const { data: buyerEmailData, error: buyerEmailError } = await resend.emails.send({
-                from: "Yarnnu <noreply@yarnnu.com>",
-                to: [buyerEmail],
-                subject: product.isDigital ? "Your digital product is ready!" : "Your order has been confirmed!",
-                react: ProductEmail({
-                  link: product.isDigital && product.productFile ? product.productFile : undefined,
-                  isDigital: product.isDigital,
-                  orderDetails: {
-                    productName: product.name,
-                    orderId: order.id,
-                    batchNumber: order.batchNumber || undefined,
-                    shippingAddress: decryptedShippingAddress ? {
-                      street: decryptedShippingAddress.line1 || "",
-                      city: decryptedShippingAddress.city || "",
-                      state: decryptedShippingAddress.state || "",
-                      zipCode: decryptedShippingAddress.postal_code || "",
-                      country: decryptedShippingAddress.country || "",
-                    } : undefined,
-                  },
-                }),
-              });
+              const { data: buyerEmailData, error: buyerEmailError } =
+                await resend.emails.send({
+                  from: "Yarnnu <noreply@yarnnu.com>",
+                  to: [buyerEmail],
+                  subject: product.isDigital
+                    ? "Your digital product is ready!"
+                    : "Your order has been confirmed!",
+                  react: ProductEmail({
+                    link:
+                      product.isDigital && product.productFile
+                        ? product.productFile
+                        : undefined,
+                    isDigital: product.isDigital,
+                    orderDetails: {
+                      productName: product.name,
+                      orderId: order.id,
+                      batchNumber: order.batchNumber || undefined,
+                      shippingAddress: decryptedShippingAddress
+                        ? {
+                            street: decryptedShippingAddress.line1 || "",
+                            city: decryptedShippingAddress.city || "",
+                            state: decryptedShippingAddress.state || "",
+                            zipCode: decryptedShippingAddress.postal_code || "",
+                            country: decryptedShippingAddress.country || "",
+                          }
+                        : undefined,
+                    },
+                  }),
+                });
 
               if (buyerEmailError) {
-                console.error("❌ Error sending buyer confirmation email:", buyerEmailError);
+                console.error(
+                  "❌ Error sending buyer confirmation email:",
+                  buyerEmailError
+                );
               } else {
                 console.log("✅ Buyer confirmation email sent successfully");
               }
             }
           } catch (buyerEmailError) {
-            console.error("❌ Error decrypting buyer email or sending buyer email:", buyerEmailError);
+            console.error(
+              "❌ Error decrypting buyer email or sending buyer email:",
+              buyerEmailError
+            );
             // Continue to seller email even if buyer email fails
           }
 
@@ -1453,43 +2099,60 @@ export async function POST(req: Request) {
               // Decrypt buyer name for seller email (handle errors gracefully)
               let buyerName = "Customer";
               try {
-                buyerName = decryptOrderData(order.encryptedBuyerName, order.buyerNameIV, order.buyerNameSalt) || "Customer";
+                buyerName =
+                  decryptOrderData(
+                    order.encryptedBuyerName,
+                    order.buyerNameIV,
+                    order.buyerNameSalt
+                  ) || "Customer";
               } catch (error) {
-                console.error("❌ Error decrypting buyer name for seller email:", error);
+                console.error(
+                  "❌ Error decrypting buyer name for seller email:",
+                  error
+                );
                 buyerName = "Customer"; // Fallback to generic name
               }
 
-              const { data: sellerEmailData, error: sellerEmailError } = await resend.emails.send({
-                from: "Yarnnu <noreply@yarnnu.com>",
-                to: [product.seller.user.email],
-                subject: `New Sale Alert! Order #${order.id}`,
-                react: SellerOrderEmail({
-                  orderDetails: {
-                    productName: product.name,
-                    orderId: order.id,
-                    batchNumber: order.batchNumber || undefined,
-                    quantity: order.quantity,
-                    totalAmount: order.totalAmount,
-                    buyerName: buyerName,
-                    shippingAddress: decryptedShippingAddress ? {
-                      street: decryptedShippingAddress.line1 || "",
-                      city: decryptedShippingAddress.city || "",
-                      state: decryptedShippingAddress.state || "",
-                      zipCode: decryptedShippingAddress.postal_code || "",
-                      country: decryptedShippingAddress.country || "",
-                    } : undefined,
-                  },
-                }),
-              });
+              const { data: sellerEmailData, error: sellerEmailError } =
+                await resend.emails.send({
+                  from: "Yarnnu <noreply@yarnnu.com>",
+                  to: [product.seller.user.email],
+                  subject: `New Sale Alert! Order #${order.id}`,
+                  react: SellerOrderEmail({
+                    orderDetails: {
+                      productName: product.name,
+                      orderId: order.id,
+                      batchNumber: order.batchNumber || undefined,
+                      quantity: order.quantity,
+                      totalAmount: order.totalAmount,
+                      buyerName: buyerName,
+                      shippingAddress: decryptedShippingAddress
+                        ? {
+                            street: decryptedShippingAddress.line1 || "",
+                            city: decryptedShippingAddress.city || "",
+                            state: decryptedShippingAddress.state || "",
+                            zipCode: decryptedShippingAddress.postal_code || "",
+                            country: decryptedShippingAddress.country || "",
+                          }
+                        : undefined,
+                    },
+                  }),
+                });
 
               if (sellerEmailError) {
-                console.error("❌ Error sending seller notification email:", sellerEmailError);
+                console.error(
+                  "❌ Error sending seller notification email:",
+                  sellerEmailError
+                );
               } else {
                 console.log("✅ Seller notification email sent successfully");
               }
             }
           } catch (sellerEmailError) {
-            console.error("❌ Error sending seller notification email:", sellerEmailError);
+            console.error(
+              "❌ Error sending seller notification email:",
+              sellerEmailError
+            );
           }
 
           // Update product/seller stats
@@ -1573,15 +2236,21 @@ export async function POST(req: Request) {
               },
             });
 
-            console.log(`✅ Updated product and seller stats for order ${order.id}`);
+            console.log(
+              `✅ Updated product and seller stats for order ${order.id}`
+            );
           } catch (statsError) {
-            console.error("⚠️ Error updating product/seller stats:", statsError);
+            console.error(
+              "⚠️ Error updating product/seller stats:",
+              statsError
+            );
           }
 
           // Delete abandoned cart record since checkout was completed
           try {
-            const abandonedCartSessionId = paymentIntent.metadata.abandonedCartSessionId;
-            
+            const abandonedCartSessionId =
+              paymentIntent.metadata.abandonedCartSessionId;
+
             if (abandonedCartSessionId) {
               // Use sessionId for precise deletion (preferred method)
               const deletedCarts = await db.abandonedCart.deleteMany({
@@ -1593,9 +2262,13 @@ export async function POST(req: Request) {
               });
 
               if (deletedCarts.count > 0) {
-                console.log(`✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by sessionId)`);
+                console.log(
+                  `✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by sessionId)`
+                );
               } else {
-                console.log('ℹ️ No abandoned cart records found to delete (by sessionId)');
+                console.log(
+                  "ℹ️ No abandoned cart records found to delete (by sessionId)"
+                );
               }
             } else {
               // Fallback: delete by userId + productId (less precise, but safer than before)
@@ -1608,13 +2281,20 @@ export async function POST(req: Request) {
               });
 
               if (deletedCarts.count > 0) {
-                console.log(`✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by userId+productId fallback)`);
+                console.log(
+                  `✅ Deleted ${deletedCarts.count} abandoned cart record(s) after successful payment (by userId+productId fallback)`
+                );
               } else {
-                console.log('ℹ️ No abandoned cart records found to delete (by userId+productId fallback)');
+                console.log(
+                  "ℹ️ No abandoned cart records found to delete (by userId+productId fallback)"
+                );
               }
             }
           } catch (deleteError) {
-            console.warn('⚠️ Error deleting abandoned cart record:', deleteError);
+            console.warn(
+              "⚠️ Error deleting abandoned cart record:",
+              deleteError
+            );
           }
 
           return NextResponse.json({ success: true, orderId: order.id });
@@ -1622,72 +2302,91 @@ export async function POST(req: Request) {
         case "charge.succeeded": {
           // Just log this event
           const charge = event.data.object as Stripe.Charge;
-          console.log(`💰 Charge succeeded: ${charge.id}, PI: ${charge.payment_intent}`);
+          console.log(
+            `💰 Charge succeeded: ${charge.id}, PI: ${charge.payment_intent}`
+          );
           return NextResponse.json({ received: true });
         }
         case "transfer.created": {
           const transfer = event.data.object as Stripe.Transfer;
-          console.log(`💰 Transfer created: ${transfer.id} for amount: ${transfer.amount}`);
-          
+          console.log(
+            `💰 Transfer created: ${transfer.id} for amount: ${transfer.amount}`
+          );
+
           // Since we're creating transfers manually, the order should already have the transfer ID
           // This event is just for logging purposes now
           if (transfer.metadata?.orderId) {
-            console.log(`✅ Transfer ${transfer.id} for order ${transfer.metadata.orderId}`);
+            console.log(
+              `✅ Transfer ${transfer.id} for order ${transfer.metadata.orderId}`
+            );
             console.log(`💰 Transfer amount: ${transfer.amount} cents`);
-            console.log(`💰 Platform fee: ${transfer.metadata.platformFee} cents`);
+            console.log(
+              `💰 Platform fee: ${transfer.metadata.platformFee} cents`
+            );
             console.log(`💰 Stripe fee: ${transfer.metadata.stripeFee} cents`);
-            console.log(`💰 Total amount: ${transfer.metadata.totalAmount} cents`);
+            console.log(
+              `💰 Total amount: ${transfer.metadata.totalAmount} cents`
+            );
           }
-          
+
           return NextResponse.json({ received: true });
         }
         case "transfer.updated": {
           const transfer = event.data.object as Stripe.Transfer;
           console.log(`💰 Transfer updated: ${transfer.id}`);
-          
+
           // Update order status from HELD to PENDING when transfer is completed
-          if (transfer.metadata?.orderId && transfer.object === 'transfer') {
+          if (transfer.metadata?.orderId && transfer.object === "transfer") {
             try {
               const order = await db.order.findUnique({
                 where: { id: transfer.metadata.orderId },
-                select: { id: true, status: true, isDigital: true }
+                select: { id: true, status: true, isDigital: true },
               });
 
               if (order && order.status === ("HELD" as any)) {
                 await db.order.update({
                   where: { id: order.id },
-                  data: { 
+                  data: {
                     status: OrderStatus.PENDING,
-                    completedAt: new Date()
-                  }
+                    completedAt: new Date(),
+                  },
                 });
-                console.log(`✅ Updated order ${order.id} from HELD to PENDING after transfer completed`);
+                console.log(
+                  `✅ Updated order ${order.id} from HELD to PENDING after transfer completed`
+                );
               }
             } catch (error) {
-              console.error("❌ Error updating order status after transfer updated:", error);
+              console.error(
+                "❌ Error updating order status after transfer updated:",
+                error
+              );
             }
           }
-          
+
           return NextResponse.json({ received: true });
         }
         case "application_fee.created": {
           // We're not using application fees anymore, so just log this event
           const applicationFee = event.data.object as Stripe.ApplicationFee;
-          console.log(`💰 Application fee created: ${applicationFee.id} for amount: ${applicationFee.amount} (not used in manual transfer mode)`);
+          console.log(
+            `💰 Application fee created: ${applicationFee.id} for amount: ${applicationFee.amount} (not used in manual transfer mode)`
+          );
           return NextResponse.json({ received: true });
         }
         case "charge.refunded": {
           const charge = event.data.object as Stripe.Charge;
           console.log(`💰 Charge refunded: ${charge.id}`);
-          
+
           // Find the order associated with this charge and revoke download access
           if (charge.payment_intent) {
             try {
               const order = await db.order.findFirst({
-                where: { 
-                  stripeSessionId: { contains: charge.payment_intent as string }
+                where: {
+                  stripeSessionId: {
+                    contains: charge.payment_intent as string,
+                  },
                 },
-                select: { id: true, isDigital: true }
+                select: { id: true, isDigital: true },
               });
 
               if (order && order.isDigital) {
@@ -1697,27 +2396,45 @@ export async function POST(req: Request) {
                   data: {
                     status: "REFUNDED",
                     paymentStatus: "REFUNDED",
-                  }
+                  },
                 });
-                
-                console.log(`✅ Order ${order.id} marked as refunded. Download access revoked.`);
-                
+
+                console.log(
+                  `✅ Order ${order.id} marked as refunded. Download access revoked.`
+                );
+
                 // Note: The download API will now deny access because status is REFUNDED
               }
             } catch (error) {
               console.error("❌ Error updating order after refund:", error);
             }
           }
-          
+
           return NextResponse.json({ received: true });
         }
         default: {
           console.log(`🤷 Unhandled event type: ${event.type}`);
-          return NextResponse.json({ success: true, message: "Event type not handled" });
+          return NextResponse.json({
+            success: true,
+            message: "Event type not handled",
+          });
         }
       }
     } catch (error: any) {
       console.error("❌ Error processing webhook:", error);
+
+      // Log to error database
+      logError({
+        code: "WEBHOOK_PROCESSING_FAILED",
+        route: "/api/stripe/webhooks",
+        method: "POST",
+        error,
+        metadata: {
+          eventType: event?.type,
+          eventId: event?.id,
+        },
+      });
+
       return NextResponse.json(
         { error: "Webhook processing failed", message: error.message },
         { status: 500 }
@@ -1725,6 +2442,18 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error("❌ Error in webhook handler:", error);
+
+    // Log to error database
+    await logError({
+      code: "WEBHOOK_HANDLER_FAILED",
+      route: "/api/stripe/webhooks",
+      method: "POST",
+      error,
+      metadata: {
+        note: "Error occurred before webhook event could be parsed",
+      },
+    });
+
     return NextResponse.json(
       { error: "Webhook handler failed", message: error.message },
       { status: 500 }

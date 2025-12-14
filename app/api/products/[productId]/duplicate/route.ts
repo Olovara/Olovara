@@ -5,6 +5,7 @@ import { generateUniqueSKU } from "@/lib/sku-generator";
 import { generateBatchNumber } from "@/lib/batchNumber";
 import { ObjectId } from "mongodb";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/error-logger";
 
 /**
  * Duplicate/Copy a product
@@ -15,8 +16,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { productId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let originalProduct: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse(
         JSON.stringify({ success: false, error: "Unauthorized" }),
@@ -33,7 +38,7 @@ export async function POST(
     }
 
     // Get the original product with all fields
-    const originalProduct = await db.product.findUnique({
+    originalProduct = await db.product.findUnique({
       where: { id: params.productId },
       select: {
         userId: true,
@@ -195,8 +200,12 @@ export async function POST(
     const duplicatedProduct = await db.product.create({
       data: {
         ...duplicateData,
-        description: (duplicateData.description || { html: "", text: "" }) as Prisma.InputJsonValue, // Cast to InputJsonValue
-        options: (duplicateData.options ?? null) as Prisma.InputJsonValue | null, // Cast to InputJsonValue or null
+        description: (duplicateData.description || {
+          html: "",
+          text: "",
+        }) as Prisma.InputJsonValue, // Cast to InputJsonValue
+        options: (duplicateData.options ??
+          null) as Prisma.InputJsonValue | null, // Cast to InputJsonValue or null
         stock: duplicateData.stock ?? undefined, // Convert null to undefined for Prisma
       },
     });
@@ -224,14 +233,36 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
+    // Log to console (existing behavior)
     console.error("[DUPLICATE_PRODUCT] Error:", error);
+
+    // Log to error database
+    const userMessage = logError({
+      code: "PRODUCT_DUPLICATE_FAILED",
+      userId: session?.user?.id,
+      route: `/api/products/${params?.productId}/duplicate`,
+      method: "POST",
+      error,
+      metadata: {
+        originalProductId: params?.productId,
+        originalProductName: originalProduct?.name,
+        isDigital: originalProduct?.isDigital,
+        note: "Failed to duplicate product",
+      },
+    });
+
     return new NextResponse(
       JSON.stringify({
         success: false,
-        error: "Failed to duplicate product",
+        error: userMessage,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.stack
+              : String(error)
+            : undefined,
       }),
       { status: 500 }
     );
   }
 }
-

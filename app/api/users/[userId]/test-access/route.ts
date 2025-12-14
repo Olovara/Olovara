@@ -1,23 +1,29 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   req: Request,
   { params }: { params: { userId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let userId: string | undefined = undefined;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+    userId = params.userId;
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is checking their own access or is an admin
-    const isOwnAccess = session.user.id === params.userId;
+    const isOwnAccess = session.user.id === userId;
     const isAdmin = await db.admin.findUnique({
       where: { userId: session.user.id },
-      select: { role: true }
+      select: { role: true },
     });
 
     if (!isOwnAccess && !isAdmin) {
@@ -25,14 +31,14 @@ export async function GET(
     }
 
     const user = await db.user.findUnique({
-      where: { id: params.userId },
+      where: { id: userId },
       select: {
         canAccessTestEnvironment: true,
         role: true,
         admin: {
-          select: { role: true }
-        }
-      }
+          select: { role: true },
+        },
+      },
     });
 
     if (!user) {
@@ -41,18 +47,30 @@ export async function GET(
 
     // Admins always have access
     const userIsAdmin = user.role === "SUPER_ADMIN" || user.admin?.role;
-    const canAccessTestEnvironment = userIsAdmin || user.canAccessTestEnvironment;
+    const canAccessTestEnvironment =
+      userIsAdmin || user.canAccessTestEnvironment;
 
     return NextResponse.json({
       canAccessTestEnvironment,
       isAdmin: userIsAdmin,
     });
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error checking test environment access:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't check test access"
+    const userMessage = logError({
+      code: "USER_TEST_ACCESS_CHECK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/users/[userId]/test-access",
+      method: "GET",
+      error,
+      metadata: {
+        targetUserId: userId,
+        note: "Failed to check test environment access",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

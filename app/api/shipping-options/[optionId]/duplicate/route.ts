@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { getCountryByCode } from "@/data/countries";
+import { logError } from "@/lib/error-logger";
 
 /**
  * Duplicate/Copy a shipping option
@@ -13,8 +14,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { optionId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let optionId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    optionId = params.optionId;
     if (!session?.user?.id) {
       return new NextResponse(
         JSON.stringify({ success: false, error: "Unauthorized" }),
@@ -23,9 +29,12 @@ export async function POST(
     }
 
     // Validate that the ID is a valid ObjectID
-    if (!ObjectId.isValid(params.optionId)) {
+    if (!ObjectId.isValid(optionId)) {
       return new NextResponse(
-        JSON.stringify({ success: false, error: "Invalid shipping option ID format" }),
+        JSON.stringify({
+          success: false,
+          error: "Invalid shipping option ID format",
+        }),
         { status: 400 }
       );
     }
@@ -33,7 +42,7 @@ export async function POST(
     // Get the original shipping option with all rates
     const originalOption = await db.shippingOption.findUnique({
       where: {
-        id: params.optionId,
+        id: optionId,
         sellerId: session.user.id, // Ensure user owns this option
       },
       include: {
@@ -94,14 +103,28 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
+    // Log to console (always happens)
     console.error("[DUPLICATE_SHIPPING_OPTION] Error:", error);
+
+    // Log to database - user could email about "couldn't duplicate shipping option"
+    const userMessage = logError({
+      code: "SHIPPING_OPTION_DUPLICATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/shipping-options/[optionId]/duplicate",
+      method: "POST",
+      error,
+      metadata: {
+        optionId,
+        note: "Failed to duplicate shipping option",
+      },
+    });
+
     return new NextResponse(
       JSON.stringify({
         success: false,
-        error: "Failed to duplicate shipping option",
+        error: userMessage,
       }),
       { status: 500 }
     );
   }
 }
-

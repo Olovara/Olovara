@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let body: any = null;
+  let permissionCheck: any = null;
+
   try {
-    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -12,14 +17,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { title, description, content, contentBlocks, catSlug, status, isPrivate, tags, keywords, readTime, metaTitle, metaDescription } = body;
+    body = await request.json();
+    const {
+      title,
+      description,
+      content,
+      contentBlocks,
+      catSlug,
+      status,
+      isPrivate,
+      tags,
+      keywords,
+      readTime,
+      metaTitle,
+      metaDescription,
+    } = body;
 
     // Generate slug from title
     const slug = title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
 
     // Check if slug already exists
     const existingPost = await db.blogPost.findUnique({
@@ -55,17 +73,34 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(blogPost);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error creating blog post:", error);
-    return NextResponse.json(
-      { error: "Failed to create blog post" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't create blog post"
+    const userMessage = logError({
+      code: "BLOG_POST_CREATE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/blog/posts",
+      method: "POST",
+      error,
+      metadata: {
+        title: body?.title,
+        note: "Failed to create blog post",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+
   try {
-    const permissionCheck = await checkApiPermissions(['WRITE_BLOG']);
+    permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -79,7 +114,7 @@ export async function GET(request: NextRequest) {
         userEmail: permissionCheck.user!.email!,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       select: {
         id: true,
@@ -100,10 +135,21 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(posts);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching blog posts:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch blog posts" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load my blog posts"
+    const userMessage = logError({
+      code: "BLOG_POSTS_FETCH_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/blog/posts",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch blog posts",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

@@ -5,14 +5,20 @@ import { db } from "@/lib/db";
 import { SellerApplicationSchema } from "@/schemas/SellerApplicationSchema";
 import { auth } from "@/auth";
 import { updateOnboardingStep } from "@/lib/onboarding";
-import { ROLES, INITIAL_SELLER_PERMISSIONS } from "@/data/roles-and-permissions";
+import {
+  ROLES,
+  INITIAL_SELLER_PERMISSIONS,
+} from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
 import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { encryptData, encryptBirthdate } from "@/lib/encryption";
+import { logError } from "@/lib/error-logger";
 
 import { FOUNDING_SELLER_BENEFITS } from "@/lib/founding-seller";
 
-export const sellerApplication = async (values: z.infer<typeof SellerApplicationSchema>) => {
+export const sellerApplication = async (
+  values: z.infer<typeof SellerApplicationSchema>
+) => {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
@@ -24,7 +30,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
     // Check if user already has a seller profile (prevent duplicate applications)
     const existingSeller = await db.seller.findUnique({
       where: { userId },
-      select: { id: true, applicationAccepted: true }
+      select: { id: true, applicationAccepted: true },
     });
 
     if (existingSeller) {
@@ -41,23 +47,29 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       // First check the format
       const pattern = /^YARNNU-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
       if (!pattern.test(values.referralCode)) {
-        return { error: "Invalid referral code format. Please use the format YARNNU-XXXX-XXXX." };
+        return {
+          error:
+            "Invalid referral code format. Please use the format YARNNU-XXXX-XXXX.",
+        };
       }
 
       // Check if the referral code exists and belongs to a real user
       const referrer = await db.user.findUnique({
         where: { referralCode: values.referralCode },
-        select: { id: true, username: true }
+        select: { id: true, username: true },
       });
 
       if (!referrer) {
-        return { error: "Referral code not found. Please check the code and try again, or leave it blank if you don't have one." };
+        return {
+          error:
+            "Referral code not found. Please check the code and try again, or leave it blank if you don't have one.",
+        };
       }
 
       // Check if the user is trying to use their own referral code
       const currentUser = await db.user.findUnique({
         where: { id: userId },
-        select: { referralCode: true }
+        select: { referralCode: true },
       });
 
       if (currentUser?.referralCode === values.referralCode) {
@@ -67,21 +79,23 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       // Check if the user has already been referred by someone
       const existingReferral = await db.user.findUnique({
         where: { id: userId },
-        select: { referredBy: true }
+        select: { referredBy: true },
       });
 
       if (existingReferral?.referredBy) {
         return { error: "You have already been referred by someone else." };
       }
 
-      console.log(`Valid referral code provided: ${values.referralCode} by user ${referrer.username || referrer.id}`);
+      console.log(
+        `Valid referral code provided: ${values.referralCode} by user ${referrer.username || referrer.id}`
+      );
     }
 
     // Create seller application and seller document in a transaction
     const result = await db.$transaction(async (tx) => {
       // Encrypt birthdate data
       const birthdateEncryption = encryptBirthdate(values.birthdate);
-      
+
       // Create the seller application with all new fields
       const application = await tx.sellerApplication.create({
         data: {
@@ -106,7 +120,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       const randomString = Math.random().toString(36).substring(2, 8);
       const tempShopName = `Temporary Shop ${timestamp}-${randomString}`;
       const tempShopSlug = `temporary-shop-${timestamp}-${randomString}`;
-      
+
       // Generate a unique temporary connectedAccountId to avoid constraint issues
       const uniqueConnectedAccountId = `temp_${timestamp}_${randomString}`;
 
@@ -116,7 +130,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
       // Check if seller already exists (in case of retry or partial failure)
       let seller = await tx.seller.findUnique({
-        where: { userId }
+        where: { userId },
       });
 
       // Only create seller if it doesn't exist
@@ -126,15 +140,19 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         const newFoundingSellerCount = await tx.seller.count({
           where: {
             isFoundingSeller: true,
-            foundingSellerType: "NEW"
-          }
+            foundingSellerType: "NEW",
+          },
         });
 
         // Determine founding seller status based on availability (max 50)
         const isFoundingSeller = newFoundingSellerCount < 50;
         const foundingSellerType = isFoundingSeller ? "NEW" : null;
-        const foundingSellerNumber = isFoundingSeller ? newFoundingSellerCount + 1 : null;
-        const foundingSellerBenefits = isFoundingSeller ? FOUNDING_SELLER_BENEFITS : null;
+        const foundingSellerNumber = isFoundingSeller
+          ? newFoundingSellerCount + 1
+          : null;
+        const foundingSellerBenefits = isFoundingSeller
+          ? FOUNDING_SELLER_BENEFITS
+          : null;
 
         seller = await tx.seller.create({
           data: {
@@ -153,32 +171,38 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
             foundingSellerBenefits,
             user: {
               connect: {
-                id: userId
-              }
-            }
+                id: userId,
+              },
+            },
           },
         });
 
         // Log the founding seller assignment
         if (isFoundingSeller) {
-          console.log(`Assigned founding seller status to seller ${seller.id} as #${foundingSellerNumber} during signup (${newFoundingSellerCount + 1}/50)`);
+          console.log(
+            `Assigned founding seller status to seller ${seller.id} as #${foundingSellerNumber} during signup (${newFoundingSellerCount + 1}/50)`
+          );
         } else {
-          console.log(`Founding seller program is full (${newFoundingSellerCount}/50). Seller ${seller.id} did not receive founding seller status.`);
+          console.log(
+            `Founding seller program is full (${newFoundingSellerCount}/50). Seller ${seller.id} did not receive founding seller status.`
+          );
         }
       }
 
       // Get the STARTER plan (free plan)
       const starterPlan = await tx.subscriptionPlan.findUnique({
-        where: { name: 'STARTER' }
+        where: { name: "STARTER" },
       });
 
       if (!starterPlan) {
-        throw new Error('STARTER subscription plan not found. Please seed subscription plans first.');
+        throw new Error(
+          "STARTER subscription plan not found. Please seed subscription plans first."
+        );
       }
 
       // Check if subscription already exists for this seller
       const existingSubscription = await tx.sellerSubscription.findUnique({
-        where: { sellerId: seller.id }
+        where: { sellerId: seller.id },
       });
 
       if (existingSubscription) {
@@ -186,22 +210,28 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         // Also migrate null stripeSubscriptionId to the placeholder pattern if needed
         const updateData: any = {
           planId: starterPlan.id,
-          status: 'ACTIVE',
+          status: "ACTIVE",
         };
-        
+
         // If stripeSubscriptionId is null, migrate it to the placeholder pattern
-        if (!existingSubscription.stripeSubscriptionId || existingSubscription.stripeSubscriptionId === null) {
+        if (
+          !existingSubscription.stripeSubscriptionId ||
+          existingSubscription.stripeSubscriptionId === null
+        ) {
           updateData.stripeSubscriptionId = `free_${seller.id}`;
         }
-        
+
         // If websiteSlug is null, migrate it to the placeholder pattern (only STUDIO plans have websites)
-        if (!existingSubscription.websiteSlug || existingSubscription.websiteSlug === null) {
+        if (
+          !existingSubscription.websiteSlug ||
+          existingSubscription.websiteSlug === null
+        ) {
           updateData.websiteSlug = `no_website_${seller.id}`;
         }
-        
+
         await tx.sellerSubscription.update({
           where: { sellerId: seller.id },
-          data: updateData
+          data: updateData,
         });
       } else {
         // Create new subscription for free STARTER plan
@@ -213,20 +243,20 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           data: {
             sellerId: seller.id,
             planId: starterPlan.id,
-            status: 'ACTIVE',
+            status: "ACTIVE",
             currentPeriodStart: new Date(),
             currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now (free plan)
             stripeSubscriptionId: `free_${seller.id}`, // Unique placeholder for free plans
             websiteSlug: `no_website_${seller.id}`, // Unique placeholder for non-STUDIO plans (no website access)
             // No trialEndsAt for free plan
-          }
+          },
         });
       }
 
       // Update user role to SELLER
       await tx.user.update({
         where: { id: userId },
-        data: { 
+        data: {
           role: ROLES.SELLER,
         },
       });
@@ -236,7 +266,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         // Find the referrer and their seller info
         const referrer = await tx.user.findUnique({
           where: { referralCode: values.referralCode },
-          select: { 
+          select: {
             id: true,
             seller: {
               select: {
@@ -244,41 +274,47 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
                 hasCommissionDiscount: true,
                 commissionDiscountExpiresAt: true,
                 commissionDiscountMonths: true,
-                isFoundingSeller: true
-              }
-            }
-          }
+                isFoundingSeller: true,
+              },
+            },
+          },
         });
 
         if (referrer && referrer.seller) {
           // Update the applicant's referredBy field
           await tx.user.update({
             where: { id: userId },
-            data: { referredBy: values.referralCode }
+            data: { referredBy: values.referralCode },
           });
 
           // Increment the referrer's referral count
           await tx.user.update({
             where: { id: referrer.id },
-            data: { 
+            data: {
               referralCount: {
-                increment: 1
-              }
-            }
+                increment: 1,
+              },
+            },
           });
 
           // Calculate commission discount for referrer
-          const newReferralCount = (referrer.seller.commissionDiscountMonths || 0) + 1;
+          const newReferralCount =
+            (referrer.seller.commissionDiscountMonths || 0) + 1;
           const milestone = Math.floor(newReferralCount / 3);
-          
+
           if (milestone > 0) {
             // Calculate new expiration date
             const now = new Date();
             let newExpirationDate: Date;
-            
-            if (referrer.seller.hasCommissionDiscount && referrer.seller.commissionDiscountExpiresAt) {
+
+            if (
+              referrer.seller.hasCommissionDiscount &&
+              referrer.seller.commissionDiscountExpiresAt
+            ) {
               // Extend existing discount by 1 month
-              newExpirationDate = new Date(referrer.seller.commissionDiscountExpiresAt);
+              newExpirationDate = new Date(
+                referrer.seller.commissionDiscountExpiresAt
+              );
               newExpirationDate.setMonth(newExpirationDate.getMonth() + 1);
             } else {
               // Start new discount for 1 month
@@ -292,11 +328,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
               data: {
                 hasCommissionDiscount: true,
                 commissionDiscountExpiresAt: newExpirationDate,
-                commissionDiscountMonths: newReferralCount
-              }
+                commissionDiscountMonths: newReferralCount,
+              },
             });
 
-            console.log(`Commission discount updated for seller ${referrer.id}: ${milestone} month(s) discount until ${newExpirationDate.toISOString()}`);
+            console.log(
+              `Commission discount updated for seller ${referrer.id}: ${milestone} month(s) discount until ${newExpirationDate.toISOString()}`
+            );
           }
         }
       }
@@ -306,7 +344,9 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         // The applicant gets a 1-month commission discount for using a referral code
         const now = new Date();
         const applicantDiscountExpiration = new Date(now);
-        applicantDiscountExpiration.setMonth(applicantDiscountExpiration.getMonth() + 1);
+        applicantDiscountExpiration.setMonth(
+          applicantDiscountExpiration.getMonth() + 1
+        );
 
         // Update the newly created seller record with commission discount
         await tx.seller.update({
@@ -314,11 +354,13 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
           data: {
             hasCommissionDiscount: true,
             commissionDiscountExpiresAt: applicantDiscountExpiration,
-            commissionDiscountMonths: 1 // They get 1 month for using a referral code
-          }
+            commissionDiscountMonths: 1, // They get 1 month for using a referral code
+          },
         });
 
-        console.log(`Commission discount granted to applicant ${userId} for using referral code: 1 month discount until ${applicantDiscountExpiration.toISOString()}`);
+        console.log(
+          `Commission discount granted to applicant ${userId} for using referral code: 1 month discount until ${applicantDiscountExpiration.toISOString()}`
+        );
       }
 
       // Grant initial seller permissions (without product permissions)
@@ -328,33 +370,36 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
       });
 
       if (user) {
-        const existingPermissions = user.permissions as any[] || [];
-        
+        const existingPermissions = (user.permissions as any[]) || [];
+
         console.log("SellerApplication - Current user permissions:", {
           userId,
           existingPermissionsCount: existingPermissions.length,
-          existingPermissions: existingPermissions.map(p => p.permission)
+          existingPermissions: existingPermissions.map((p) => p.permission),
         });
-        
+
         // Create permission objects for initial seller permissions
-        const newPermissions = INITIAL_SELLER_PERMISSIONS.map(permission => ({
+        const newPermissions = INITIAL_SELLER_PERMISSIONS.map((permission) => ({
           permission,
           grantedAt: new Date(),
-          grantedBy: 'system',
-          reason: 'Initial seller permissions granted upon application submission',
+          grantedBy: "system",
+          reason:
+            "Initial seller permissions granted upon application submission",
           expiresAt: null,
         }));
 
         console.log("SellerApplication - Granting new permissions:", {
           userId,
           newPermissionsCount: newPermissions.length,
-          newPermissions: newPermissions.map(p => p.permission)
+          newPermissions: newPermissions.map((p) => p.permission),
         });
 
         // Combine existing and new permissions, avoiding duplicates
         const updatedPermissions = [...existingPermissions];
-        newPermissions.forEach(newPerm => {
-          const exists = updatedPermissions.some(existing => existing.permission === newPerm.permission);
+        newPermissions.forEach((newPerm) => {
+          const exists = updatedPermissions.some(
+            (existing) => existing.permission === newPerm.permission
+          );
           if (!exists) {
             updatedPermissions.push(newPerm);
           }
@@ -363,7 +408,7 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
         console.log("SellerApplication - Final permissions after update:", {
           userId,
           finalPermissionsCount: updatedPermissions.length,
-          finalPermissions: updatedPermissions.map(p => p.permission)
+          finalPermissions: updatedPermissions.map((p) => p.permission),
         });
 
         // Update user with new permissions
@@ -381,55 +426,66 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
     // Mark application_submitted step as completed
     await updateOnboardingStep(result.sellerId, "application_submitted", true);
 
-    console.log("Seller application submitted successfully. User role and permissions updated.");
+    console.log(
+      "Seller application submitted successfully. User role and permissions updated."
+    );
 
     // Send notifications to admins (outside of transaction to avoid blocking)
     try {
       console.log("Starting admin notification process...");
       const admins = await getAdminsForSellerApplicationNotification();
       console.log(`Found ${admins.length} admins to notify`);
-      
+
       const applicant = await db.user.findUnique({
         where: { id: userId },
-        select: { username: true, email: true }
+        select: { username: true, email: true },
       });
 
       console.log("Applicant details:", {
         username: applicant?.username,
         email: applicant?.email,
-        hasEmail: !!applicant?.email
+        hasEmail: !!applicant?.email,
       });
 
       if (applicant && applicant.email && admins.length > 0) {
         console.log(`Sending notifications to ${admins.length} admins...`);
-        
+
         // Send emails to all relevant admins
         const emailPromises = admins
-          .filter(admin => admin.user.email) // Only send to admins with valid emails
-          .map(admin => {
-            console.log(`Sending email to admin: ${admin.user.email} (${admin.user.username})`);
+          .filter((admin) => admin.user.email) // Only send to admins with valid emails
+          .map((admin) => {
+            console.log(
+              `Sending email to admin: ${admin.user.email} (${admin.user.username})`
+            );
             return sendSellerApplicationNotificationEmail(
               admin.user.email!,
-              admin.user.username || 'Admin',
-              applicant.username || 'Unknown',
+              admin.user.username || "Admin",
+              applicant.username || "Unknown",
               applicant.email!,
               result.application.id
-            ).catch(error => {
-              console.error(`Failed to send notification to admin ${admin.user.email}:`, error);
+            ).catch((error) => {
+              console.error(
+                `Failed to send notification to admin ${admin.user.email}:`,
+                error
+              );
               return null; // Don't fail the whole process if one email fails
             });
           });
 
         // Wait for all emails to be sent (but don't block the response)
         Promise.all(emailPromises).then((results) => {
-          const successfulEmails = results.filter(result => result !== null).length;
-          console.log(`Successfully sent seller application notifications to ${successfulEmails} out of ${emailPromises.length} admins`);
+          const successfulEmails = results.filter(
+            (result) => result !== null
+          ).length;
+          console.log(
+            `Successfully sent seller application notifications to ${successfulEmails} out of ${emailPromises.length} admins`
+          );
         });
       } else {
         console.log("No admins to notify or missing applicant email:", {
           hasApplicant: !!applicant,
           hasApplicantEmail: !!applicant?.email,
-          adminsCount: admins.length
+          adminsCount: admins.length,
         });
       }
     } catch (notificationError) {
@@ -439,7 +495,18 @@ export const sellerApplication = async (values: z.infer<typeof SellerApplication
 
     return { success: "Application submitted successfully!" };
   } catch (error) {
-    console.error("Error submitting seller application:", error);
-    return { error: "Something went wrong!" };
+    const userMessage = logError({
+      code: "SELLER_APPLICATION_FAILED",
+      userId,
+      route: "/actions/seller-application",
+      method: "POST",
+      error,
+      metadata: {
+        hasReferralCode: !!values.referralCode,
+        craftingProcess: values.craftingProcess,
+        productTypes: values.productTypes,
+      },
+    });
+    return { error: userMessage };
   }
 };

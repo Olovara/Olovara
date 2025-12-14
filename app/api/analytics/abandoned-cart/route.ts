@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getUserAnalytics } from "@/lib/ipinfo";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    const body = await req.json();
-    
+    session = await auth();
+    body = await req.json();
+
     const {
       sessionId,
       productId,
@@ -24,7 +29,7 @@ export async function POST(req: NextRequest) {
       fieldInteractions,
       pageViews,
       scrollDepth,
-      metadata
+      metadata,
     } = body;
 
     // Validate required fields
@@ -36,24 +41,28 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user analytics data
-    const forwarded = req.headers.get('x-forwarded-for');
-    const realIP = req.headers.get('x-real-ip');
-    const clientIP = forwarded?.split(',')[0] || realIP || req.ip || '';
-    
+    const forwarded = req.headers.get("x-forwarded-for");
+    const realIP = req.headers.get("x-real-ip");
+    const clientIP = forwarded?.split(",")[0] || realIP || req.ip || "";
+
     let locationData = null;
     try {
       locationData = await getUserAnalytics(clientIP);
     } catch (error) {
-      console.warn('Failed to get location data for abandoned cart:', error);
+      console.warn("Failed to get location data for abandoned cart:", error);
     }
 
     // Determine device type from user agent
-    const userAgent = req.headers.get('user-agent') || '';
-    let deviceType = 'desktop';
-    if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
-      deviceType = 'mobile';
-    } else if (userAgent.includes('iPad') || userAgent.includes('Tablet')) {
-      deviceType = 'tablet';
+    const userAgent = req.headers.get("user-agent") || "";
+    let deviceType = "desktop";
+    if (
+      userAgent.includes("Mobile") ||
+      userAgent.includes("Android") ||
+      userAgent.includes("iPhone")
+    ) {
+      deviceType = "mobile";
+    } else if (userAgent.includes("iPad") || userAgent.includes("Tablet")) {
+      deviceType = "tablet";
     }
 
     // Create abandoned cart record
@@ -83,27 +92,46 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log(`✅ Abandoned cart saved: ${abandonedCart.id} for product ${productName}`);
+    console.log(
+      `✅ Abandoned cart saved: ${abandonedCart.id} for product ${productName}`
+    );
 
     return NextResponse.json({
       success: true,
       abandonedCartId: abandonedCart.id,
     });
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("❌ Error saving abandoned cart:", error);
-    return NextResponse.json(
-      { error: "Failed to save abandoned cart data" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "abandoned cart not saving"
+    const userMessage = logError({
+      code: "ABANDONED_CART_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/abandoned-cart",
+      method: "POST",
+      error,
+      metadata: {
+        productId: body?.productId,
+        sessionId: body?.sessionId,
+        note: "Failed to save abandoned cart",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 // Get abandoned cart analytics (for admin dashboard)
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Only allow admins to view analytics
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -114,12 +142,15 @@ export async function GET(req: NextRequest) {
     });
 
     if (!admin) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(req.url);
-    const days = parseInt(searchParams.get('days') || '30');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const days = parseInt(searchParams.get("days") || "30");
+    const limit = parseInt(searchParams.get("limit") || "100");
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -133,7 +164,7 @@ export async function GET(req: NextRequest) {
         recovered: false,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       take: limit,
       include: {
@@ -164,11 +195,14 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const recoveryRate = totalAbandoned > 0 ? (totalRecovered / (totalAbandoned + totalRecovered)) * 100 : 0;
+    const recoveryRate =
+      totalAbandoned > 0
+        ? (totalRecovered / (totalAbandoned + totalRecovered)) * 100
+        : 0;
 
     // Get abandonment reasons breakdown
     const abandonmentReasons = await db.abandonedCart.groupBy({
-      by: ['abandonmentReason'],
+      by: ["abandonmentReason"],
       where: {
         createdAt: {
           gte: cutoffDate,
@@ -182,7 +216,7 @@ export async function GET(req: NextRequest) {
 
     // Get top abandoned products
     const topAbandonedProducts = await db.abandonedCart.groupBy({
-      by: ['productId', 'productName'],
+      by: ["productId", "productName"],
       where: {
         createdAt: {
           gte: cutoffDate,
@@ -197,7 +231,7 @@ export async function GET(req: NextRequest) {
       },
       orderBy: {
         _count: {
-          productId: 'desc',
+          productId: "desc",
         },
       },
       take: 10,
@@ -214,28 +248,45 @@ export async function GET(req: NextRequest) {
       abandonmentReasons,
       topAbandonedProducts,
     });
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("❌ Error fetching abandoned cart analytics:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch analytics data" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "can't load abandoned cart analytics"
+    const userMessage = logError({
+      code: "ABANDONED_CART_ANALYTICS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/abandoned-cart",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch abandoned cart analytics",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 // Delete abandoned cart record (when checkout is completed)
 export async function DELETE(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    const body = await req.json();
-    
+    session = await auth();
+    body = await req.json();
+
     const { sessionId, productId, userId } = body;
 
     // Validate required fields - either sessionId or productId+userId
     if (!productId || (!sessionId && !userId)) {
       return NextResponse.json(
-        { error: "Missing required fields: productId and either sessionId or userId" },
+        {
+          error:
+            "Missing required fields: productId and either sessionId or userId",
+        },
         { status: 400 }
       );
     }
@@ -261,18 +312,34 @@ export async function DELETE(req: NextRequest) {
       where: whereClause,
     });
 
-    console.log(`✅ Deleted ${deletedCart.count} abandoned cart record(s) for product ${productId}`);
+    console.log(
+      `✅ Deleted ${deletedCart.count} abandoned cart record(s) for product ${productId}`
+    );
 
     return NextResponse.json({
       success: true,
       deletedCount: deletedCart.count,
     });
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("❌ Error deleting abandoned cart:", error);
-    return NextResponse.json(
-      { error: "Failed to delete abandoned cart record" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't delete abandoned cart"
+    const userMessage = logError({
+      code: "ABANDONED_CART_DELETE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/abandoned-cart",
+      method: "DELETE",
+      error,
+      metadata: {
+        productId: body?.productId,
+        sessionId: body?.sessionId,
+        note: "Failed to delete abandoned cart",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

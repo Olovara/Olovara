@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import { SUPPORTED_CURRENCIES } from '@/data/units';
-import { db } from '@/lib/db';
+import { NextResponse } from "next/server";
+import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 // Simple in-memory rate limiter
 class RateLimiter {
@@ -16,12 +17,12 @@ class RateLimiter {
   canMakeRequest(): boolean {
     const now = Date.now();
     // Remove requests older than the window
-    this.requests = this.requests.filter(time => now - time < this.windowMs);
-    
+    this.requests = this.requests.filter((time) => now - time < this.windowMs);
+
     if (this.requests.length >= this.limit) {
       return false;
     }
-    
+
     this.requests.push(now);
     return true;
   }
@@ -37,10 +38,14 @@ class RateLimiter {
 
 // In-memory cache for exchange rates with TTL
 class ExchangeRateCache {
-  private cache: Map<string, { rates: Record<string, number>; timestamp: number }> = new Map();
+  private cache: Map<
+    string,
+    { rates: Record<string, number>; timestamp: number }
+  > = new Map();
   private readonly ttl: number; // Time to live in milliseconds
 
-  constructor(ttl: number = 60 * 60 * 1000) { // Default 1 hour
+  constructor(ttl: number = 60 * 60 * 1000) {
+    // Default 1 hour
     this.ttl = ttl;
   }
 
@@ -48,7 +53,7 @@ class ExchangeRateCache {
   get(baseCurrency: string): Record<string, number> | null {
     const key = baseCurrency.toLowerCase();
     const cached = this.cache.get(key);
-    
+
     if (!cached) {
       return null;
     }
@@ -69,7 +74,7 @@ class ExchangeRateCache {
     const key = baseCurrency.toLowerCase();
     this.cache.set(key, {
       rates,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -97,28 +102,32 @@ async function getExchangeRatesFromAPI(baseCurrency: string) {
     // Check rate limit before making request
     if (!rateLimiter.canMakeRequest()) {
       const waitTime = rateLimiter.getTimeUntilNextRequest();
-      throw new Error(`Rate limit exceeded. Please try again in ${Math.ceil(waitTime / 1000)} seconds.`);
+      throw new Error(
+        `Rate limit exceeded. Please try again in ${Math.ceil(waitTime / 1000)} seconds.`
+      );
     }
 
     const response = await fetch(
       `https://api.freecurrencyapi.com/v1/latest?base_currency=${baseCurrency.toUpperCase()}&apikey=${process.env.FREE_CURRENCY_API_KEY}`
     );
-    
+
     if (!response.ok) {
-      throw new Error(`Failed to fetch exchange rates from FreeCurrencyAPI for ${baseCurrency}`);
+      throw new Error(
+        `Failed to fetch exchange rates from FreeCurrencyAPI for ${baseCurrency}`
+      );
     }
-    
+
     const data = await response.json();
-    
-    if (!data.data || typeof data.data !== 'object') {
-      throw new Error('Invalid response format from FreeCurrencyAPI');
+
+    if (!data.data || typeof data.data !== "object") {
+      throw new Error("Invalid response format from FreeCurrencyAPI");
     }
 
     // Convert rates to lowercase keys for consistency and filter for supported currencies
     const rates: Record<string, number> = {};
     Object.entries(data.data).forEach(([currency, rate]) => {
       const currencyCode = currency.toUpperCase();
-      if (SUPPORTED_CURRENCIES.some(c => c.code === currencyCode)) {
+      if (SUPPORTED_CURRENCIES.some((c) => c.code === currencyCode)) {
         rates[currency.toLowerCase()] = rate as number;
       }
     });
@@ -128,7 +137,7 @@ async function getExchangeRatesFromAPI(baseCurrency: string) {
 
     return rates;
   } catch (error) {
-    console.error('Error fetching exchange rates from FreeCurrencyAPI:', error);
+    console.error("Error fetching exchange rates from FreeCurrencyAPI:", error);
     throw error;
   }
 }
@@ -145,8 +154,9 @@ async function retryOperation<T>(
       return await operation();
     } catch (error: any) {
       lastError = error;
-      if (error.code === 'P2034') { // Transaction conflict
-        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      if (error.code === "P2034") {
+        // Transaction conflict
+        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
         continue;
       }
       throw error;
@@ -171,24 +181,24 @@ async function getExchangeRates(baseCurrency: string) {
       where: {
         baseCurrency: baseCurrency.toUpperCase(),
         targetCurrency: {
-          in: SUPPORTED_CURRENCIES.map(c => c.code)
+          in: SUPPORTED_CURRENCIES.map((c) => c.code),
         },
         lastUpdated: {
-          gte: new Date(Date.now() - 60 * 60 * 1000) // Last 1 hour
+          gte: new Date(Date.now() - 60 * 60 * 1000), // Last 1 hour
         },
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     // Create a map of existing rates
     const existingRates: Record<string, number> = {};
-    recentRates.forEach(rate => {
+    recentRates.forEach((rate) => {
       existingRates[rate.targetCurrency.toLowerCase()] = rate.rate;
     });
 
     // Check if we have all the rates we need
     const missingCurrencies = SUPPORTED_CURRENCIES.filter(
-      currency => !existingRates[currency.code.toLowerCase()]
+      (currency) => !existingRates[currency.code.toLowerCase()]
     );
 
     // If we have all rates from database, cache them and return
@@ -202,7 +212,7 @@ async function getExchangeRates(baseCurrency: string) {
     try {
       newRates = await getExchangeRatesFromAPI(baseCurrency);
     } catch (error) {
-      console.error('Failed to get rates from FreeCurrencyAPI:', error);
+      console.error("Failed to get rates from FreeCurrencyAPI:", error);
       // If API fails but we have some rates, return what we have
       if (Object.keys(existingRates).length > 0) {
         return existingRates;
@@ -211,45 +221,56 @@ async function getExchangeRates(baseCurrency: string) {
     }
 
     // Update database with new rates using retry logic
-    await retryOperation(async () => {
-      // Use a transaction to ensure all updates succeed or fail together
-      await db.$transaction(async (tx) => {
-        await Promise.all(
-          Object.entries(newRates)
-            .filter(([currency]) => SUPPORTED_CURRENCIES.some(c => c.code === currency.toUpperCase()))
-            .map(([currency, rate]) => 
-              tx.exchangeRate.upsert({
-                where: {
-                  baseCurrency_targetCurrency: {
-                    baseCurrency: baseCurrency.toUpperCase(),
-                    targetCurrency: currency.toUpperCase()
-                  }
-                },
-                update: {
-                  rate,
-                  lastUpdated: new Date(),
-                  isActive: true
-                },
-                create: {
-                  baseCurrency: baseCurrency.toUpperCase(),
-                  targetCurrency: currency.toUpperCase(),
-                  rate,
-                  lastUpdated: new Date(),
-                  isActive: true
-                }
-              })
-            )
+    await retryOperation(
+      async () => {
+        // Use a transaction to ensure all updates succeed or fail together
+        await db.$transaction(
+          async (tx) => {
+            await Promise.all(
+              Object.entries(newRates)
+                .filter(([currency]) =>
+                  SUPPORTED_CURRENCIES.some(
+                    (c) => c.code === currency.toUpperCase()
+                  )
+                )
+                .map(([currency, rate]) =>
+                  tx.exchangeRate.upsert({
+                    where: {
+                      baseCurrency_targetCurrency: {
+                        baseCurrency: baseCurrency.toUpperCase(),
+                        targetCurrency: currency.toUpperCase(),
+                      },
+                    },
+                    update: {
+                      rate,
+                      lastUpdated: new Date(),
+                      isActive: true,
+                    },
+                    create: {
+                      baseCurrency: baseCurrency.toUpperCase(),
+                      targetCurrency: currency.toUpperCase(),
+                      rate,
+                      lastUpdated: new Date(),
+                      isActive: true,
+                    },
+                  })
+                )
+            );
+          },
+          {
+            maxWait: 10000, // 10 seconds
+            timeout: 15000, // 15 seconds
+          }
         );
-      }, {
-        maxWait: 10000, // 10 seconds
-        timeout: 15000 // 15 seconds
-      });
-    }, 5, 1000); // Increase retries to 5 and delay to 1 second
+      },
+      5,
+      1000
+    ); // Increase retries to 5 and delay to 1 second
 
     // Combine existing and new rates
     const combinedRates = {
       ...existingRates,
-      ...newRates
+      ...newRates,
     };
 
     // Cache the combined rates in memory
@@ -257,7 +278,7 @@ async function getExchangeRates(baseCurrency: string) {
 
     return combinedRates;
   } catch (error) {
-    console.error('Error in getExchangeRates:', error);
+    console.error("Error in getExchangeRates:", error);
     throw error;
   }
 }
@@ -304,13 +325,26 @@ async function convertPrice(
 
 // Batch convert multiple prices efficiently
 async function batchConvertPrices(
-  conversions: Array<{ amount: number; fromCurrency: string; toCurrency: string; isCents?: boolean }>
+  conversions: Array<{
+    amount: number;
+    fromCurrency: string;
+    toCurrency: string;
+    isCents?: boolean;
+  }>
 ): Promise<number[]> {
   try {
     // Group conversions by fromCurrency to minimize API calls
     // Since all products on a page use the same toCurrency, we can optimize further
-    const currencyGroups = new Map<string, Array<{ amount: number; toCurrency: string; isCents?: boolean; index: number }>>();
-    
+    const currencyGroups = new Map<
+      string,
+      Array<{
+        amount: number;
+        toCurrency: string;
+        isCents?: boolean;
+        index: number;
+      }>
+    >();
+
     conversions.forEach((conv, index) => {
       const fromCurrency = conv.fromCurrency.toLowerCase();
       if (!currencyGroups.has(fromCurrency)) {
@@ -320,14 +354,14 @@ async function batchConvertPrices(
         amount: conv.amount,
         toCurrency: conv.toCurrency.toLowerCase(),
         isCents: conv.isCents ?? false,
-        index
+        index,
       });
     });
 
     // Fetch exchange rates for all unique base currencies in parallel
     const baseCurrencies = Array.from(currencyGroups.keys());
     const ratesMap = new Map<string, Record<string, number>>();
-    
+
     await Promise.all(
       baseCurrencies.map(async (baseCurrency) => {
         const rates = await getExchangeRates(baseCurrency);
@@ -337,10 +371,10 @@ async function batchConvertPrices(
 
     // Convert all prices using cached rates
     const results = new Array(conversions.length);
-    
+
     currencyGroups.forEach((convs, fromCurrency) => {
       const rates = ratesMap.get(fromCurrency)!;
-      
+
       convs.forEach(({ amount, toCurrency, isCents, index }) => {
         // If currencies are the same, return the amount
         if (fromCurrency === toCurrency) {
@@ -371,8 +405,11 @@ async function batchConvertPrices(
 }
 
 export async function POST(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let body: any = null;
+
   try {
-    const body = await req.json();
+    body = await req.json();
 
     // Check if this is a batch request
     if (Array.isArray(body.conversions)) {
@@ -387,7 +424,9 @@ export async function POST(req: Request) {
       }
 
       // Validate all conversions
-      const supportedCurrencies = SUPPORTED_CURRENCIES.map(c => c.code.toLowerCase());
+      const supportedCurrencies = SUPPORTED_CURRENCIES.map((c) =>
+        c.code.toLowerCase()
+      );
       for (const conv of conversions) {
         if (!conv.amount || !conv.fromCurrency || !conv.toCurrency) {
           return NextResponse.json(
@@ -396,10 +435,14 @@ export async function POST(req: Request) {
           );
         }
 
-        if (!supportedCurrencies.includes(conv.fromCurrency.toLowerCase()) || 
-            !supportedCurrencies.includes(conv.toCurrency.toLowerCase())) {
+        if (
+          !supportedCurrencies.includes(conv.fromCurrency.toLowerCase()) ||
+          !supportedCurrencies.includes(conv.toCurrency.toLowerCase())
+        ) {
           return NextResponse.json(
-            { error: `Unsupported currency in conversion: ${conv.fromCurrency} -> ${conv.toCurrency}` },
+            {
+              error: `Unsupported currency in conversion: ${conv.fromCurrency} -> ${conv.toCurrency}`,
+            },
             { status: 400 }
           );
         }
@@ -419,9 +462,13 @@ export async function POST(req: Request) {
       }
 
       // Validate currencies
-      const supportedCurrencies = SUPPORTED_CURRENCIES.map(c => c.code.toLowerCase());
-      if (!supportedCurrencies.includes(fromCurrency.toLowerCase()) || 
-          !supportedCurrencies.includes(toCurrency.toLowerCase())) {
+      const supportedCurrencies = SUPPORTED_CURRENCIES.map((c) =>
+        c.code.toLowerCase()
+      );
+      if (
+        !supportedCurrencies.includes(fromCurrency.toLowerCase()) ||
+        !supportedCurrencies.includes(toCurrency.toLowerCase())
+      ) {
         return NextResponse.json(
           { error: "Unsupported currency" },
           { status: 400 }
@@ -438,10 +485,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ convertedAmount });
     }
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error in currency conversion API:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to convert currency" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "currency conversion not working"
+    const userMessage = logError({
+      code: "CURRENCY_CONVERT_FAILED",
+      userId: undefined, // Public route
+      route: "/api/currency/convert",
+      method: "POST",
+      error,
+      metadata: {
+        isBatch: Array.isArray(body?.conversions),
+        note: "Failed to convert currency",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

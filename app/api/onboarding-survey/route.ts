@@ -3,15 +3,20 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { OnboardingSurveySchema } from "@/schemas/OnboardingSurveySchema";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    body = await request.json();
     const validatedFields = OnboardingSurveySchema.safeParse(body);
 
     if (!validatedFields.success) {
@@ -27,7 +32,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingSurvey) {
-      return NextResponse.json({ error: "Survey already submitted" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Survey already submitted" },
+        { status: 400 }
+      );
     }
 
     // Check if user is a fully activated seller
@@ -37,7 +45,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!seller?.isFullyActivated) {
-      return NextResponse.json({ error: "Only fully activated sellers can submit this survey" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only fully activated sellers can submit this survey" },
+        { status: 403 }
+      );
     }
 
     // Create the survey response
@@ -56,14 +67,33 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, survey });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error submitting onboarding survey:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't submit survey"
+    const userMessage = logError({
+      code: "ONBOARDING_SURVEY_SUBMIT_FAILED",
+      userId: session?.user?.id,
+      route: "/api/onboarding-survey",
+      method: "POST",
+      error,
+      metadata: {
+        note: "Failed to submit onboarding survey",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -71,12 +101,17 @@ export async function GET(request: NextRequest) {
     // Fetch user permissions from database
     const dbUser = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { permissions: true }
+      select: { permissions: true },
     });
 
     // Check if user has permission to view onboarding surveys
-    if (!dbUser?.permissions?.includes(PERMISSIONS.VIEW_ONBOARDING_SURVEYS.value)) {
-      return NextResponse.json({ error: "Forbidden - Insufficient permissions" }, { status: 403 });
+    if (
+      !dbUser?.permissions?.includes(PERMISSIONS.VIEW_ONBOARDING_SURVEYS.value)
+    ) {
+      return NextResponse.json(
+        { error: "Forbidden - Insufficient permissions" },
+        { status: 403 }
+      );
     }
 
     const userId = session.user.id;
@@ -87,7 +122,21 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ hasSubmitted: !!survey });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error checking survey submission:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    // Log to database - user could email about "can't check survey status"
+    const userMessage = logError({
+      code: "ONBOARDING_SURVEY_CHECK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/onboarding-survey",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to check onboarding survey submission",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

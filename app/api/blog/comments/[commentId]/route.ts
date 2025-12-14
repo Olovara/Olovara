@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { logError } from "@/lib/error-logger";
 
 // Schema for updating a comment
 const updateCommentSchema = z.object({
-  content: z.string().min(1, "Comment content is required").max(1000, "Comment too long"),
+  content: z
+    .string()
+    .min(1, "Comment content is required")
+    .max(1000, "Comment too long"),
 });
 
 // PUT: Update a comment
@@ -13,8 +17,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { commentId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+  let commentId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    commentId = params.commentId;
     if (!session?.user?.email) {
       return NextResponse.json(
         { error: "You must be logged in to edit comments" },
@@ -22,8 +32,7 @@ export async function PUT(
       );
     }
 
-    const { commentId } = params;
-    const body = await request.json();
+    body = await request.json();
     const validatedData = updateCommentSchema.parse(body);
 
     // Find the comment and check ownership
@@ -33,10 +42,7 @@ export async function PUT(
     });
 
     if (!comment) {
-      return NextResponse.json(
-        { error: "Comment not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
     }
 
     if (comment.userEmail !== session.user.email) {
@@ -77,8 +83,10 @@ export async function PUT(
 
     return NextResponse.json(updatedComment);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating comment:", error);
-    
+
+    // Don't log Zod validation errors - they're expected client-side issues
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid comment data", details: error.errors },
@@ -86,10 +94,20 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to update comment" },
-      { status: 500 }
-    );
+    // Log to database - user could email about "couldn't update comment"
+    const userMessage = logError({
+      code: "BLOG_COMMENT_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/blog/comments/[commentId]",
+      method: "PUT",
+      error,
+      metadata: {
+        commentId,
+        note: "Failed to update blog comment",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -98,16 +116,19 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { commentId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let commentId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    commentId = params.commentId;
     if (!session?.user?.email) {
       return NextResponse.json(
         { error: "You must be logged in to delete comments" },
         { status: 401 }
       );
     }
-
-    const { commentId } = params;
 
     // Find the comment and check ownership
     const comment = await db.blogComment.findUnique({
@@ -116,10 +137,7 @@ export async function DELETE(
     });
 
     if (!comment) {
-      return NextResponse.json(
-        { error: "Comment not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
     }
 
     // Allow deletion if user owns the comment or is admin (you can add admin check here)
@@ -137,10 +155,22 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deleting comment:", error);
-    return NextResponse.json(
-      { error: "Failed to delete comment" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't delete comment"
+    const userMessage = logError({
+      code: "BLOG_COMMENT_DELETE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/blog/comments/[commentId]",
+      method: "DELETE",
+      error,
+      metadata: {
+        commentId,
+        note: "Failed to delete blog comment",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

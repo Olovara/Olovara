@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -43,11 +47,21 @@ export async function GET() {
       preferredDistanceUnit: seller.preferredDistanceUnit || "miles",
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SELLER_PREFERENCES_GET]", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see preferences"
+    const userMessage = logError({
+      code: "SELLER_PREFERENCES_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/preferences",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch seller preferences",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
-

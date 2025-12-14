@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
+import { logError } from "@/lib/error-logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     console.log("Session in conversations route:", session);
-    
+
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -17,7 +21,7 @@ export async function GET() {
     // First, find all UserConversation entries for this user
     const userConversations = await db.userConversation.findMany({
       where: {
-        userId: session.user.id
+        userId: session.user.id,
       },
       include: {
         conversation: {
@@ -28,37 +32,37 @@ export async function GET() {
                   select: {
                     id: true,
                     email: true,
-                    username: true
-                  }
-                }
-              }
+                    username: true,
+                  },
+                },
+              },
             },
             messages: {
               orderBy: {
-                createdAt: 'desc'
+                createdAt: "desc",
               },
-              take: 1
-            }
-          }
-        }
+              take: 1,
+            },
+          },
+        },
       },
       orderBy: {
         conversation: {
-          updatedAt: 'desc'
-        }
-      }
+          updatedAt: "desc",
+        },
+      },
     });
 
     console.log("Found user conversations:", userConversations);
 
     // Transform the data to a more usable format
-    const transformedConversations = userConversations.map(uc => {
+    const transformedConversations = userConversations.map((uc) => {
       const conversation = uc.conversation;
       // Find the other user in the conversation
       const otherUserConversation = conversation.users.find(
-        userConv => userConv.userId !== session.user.id
+        (userConv) => userConv.userId !== session.user.id
       );
-      
+
       const otherUser = otherUserConversation?.user;
       const lastMessage = conversation.messages[0];
 
@@ -79,8 +83,8 @@ export async function GET() {
         otherUser: {
           id: otherUser?.id || "unknown",
           email: otherUser?.email || "unknown",
-          name: otherUserName
-        }
+          name: otherUserName,
+        },
       };
     });
 
@@ -88,7 +92,21 @@ export async function GET() {
 
     return NextResponse.json(transformedConversations);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching conversations:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+
+    // Log to database - user could email about "can't load conversations"
+    const userMessage = logError({
+      code: "CONVERSATIONS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/messages/conversations",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch conversations",
+      },
+    });
+
+    return new NextResponse(userMessage, { status: 500 });
   }
-} 
+}

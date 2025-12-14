@@ -6,28 +6,57 @@ import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { calculateShippingCost } from "@/lib/shipping-calculator";
 import { decryptOrderData } from "@/lib/encryption";
 import { getCountryByCode } from "@/data/countries";
-import { validateDiscountCode, calculateDiscount, calculateProductSaleDiscount } from "@/lib/discount-calculator";
+import {
+  validateDiscountCode,
+  calculateDiscount,
+  calculateProductSaleDiscount,
+} from "@/lib/discount-calculator";
 import { verifyRecaptcha } from "@/lib/recaptcha";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    const body = await req.json();
-    const { productId, quantity, preferredCurrency, discountCode, buyerEmail, shippingAddress, billingAddress, recaptchaToken, abandonedCartSessionId } = body;
+    session = await auth();
+    body = await req.json();
+    const {
+      productId,
+      quantity,
+      preferredCurrency,
+      discountCode,
+      buyerEmail,
+      shippingAddress,
+      billingAddress,
+      recaptchaToken,
+      abandonedCartSessionId,
+    } = body;
 
     if (!productId || !quantity) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     // Verify reCAPTCHA token
-    const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'checkout', 0.5);
+    const recaptchaResult = await verifyRecaptcha(
+      recaptchaToken,
+      "checkout",
+      0.5
+    );
     if (!recaptchaResult.success) {
       console.error("reCAPTCHA verification failed:", recaptchaResult.error);
-      return NextResponse.json({ 
-        error: "Security verification failed. Please try again.",
-        details: "reCAPTCHA verification failed",
-        recaptchaError: recaptchaResult.error
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          error: "Security verification failed. Please try again.",
+          details: "reCAPTCHA verification failed",
+          recaptchaError: recaptchaResult.error,
+        },
+        { status: 403 }
+      );
     }
 
     // Fetch the product and seller information
@@ -60,7 +89,11 @@ export async function POST(req: Request) {
             commissionDiscountExpiresAt: true,
             addresses: {
               where: { isDefault: true },
-              select: { encryptedCountry: true, countryIV: true, countrySalt: true }
+              select: {
+                encryptedCountry: true,
+                countryIV: true,
+                countrySalt: true,
+              },
             },
             shippingOptions: {
               select: {
@@ -76,11 +109,11 @@ export async function POST(req: Request) {
                     additionalItem: true,
                     isFreeShipping: true,
                     type: true,
-                    countryCode: true
-                  }
-                }
-              }
-            }
+                    countryCode: true,
+                  },
+                },
+              },
+            },
           },
         },
         taxCode: true,
@@ -96,7 +129,7 @@ export async function POST(req: Request) {
     // Calculate shipping cost dynamically if seller has shipping profiles
     let finalShippingCost = product.shippingCost || 0;
     let sellerOriginCountry = "";
-    
+
     // Skip shipping calculation for digital products or if product has free shipping
     if (!product.isDigital && finalShippingCost > 0) {
       // Get seller's country from their default address or shipping profile
@@ -104,38 +137,47 @@ export async function POST(req: Request) {
         // Decrypt the seller's country from their default address
         const sellerAddress = product.seller.addresses[0];
         sellerOriginCountry = decryptOrderData(
-          sellerAddress.encryptedCountry, 
-          sellerAddress.countryIV, 
+          sellerAddress.encryptedCountry,
+          sellerAddress.countryIV,
           sellerAddress.countrySalt
         );
-      } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
+      } else if (
+        product.seller?.shippingOptions &&
+        product.seller.shippingOptions.length > 0
+      ) {
         // Fallback to shipping option country of origin
         const defaultOption = product.seller.shippingOptions[0];
         sellerOriginCountry = defaultOption.countryOfOrigin;
       }
-      
+
       // If still no country found, we can't calculate dynamic shipping
       if (!sellerOriginCountry) {
-        console.warn(`No seller country found for product ${productId}, using static shipping cost`);
-      } else if (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0) {
+        console.warn(
+          `No seller country found for product ${productId}, using static shipping cost`
+        );
+      } else if (
+        product.seller?.shippingOptions &&
+        product.seller.shippingOptions.length > 0
+      ) {
         // Get user's country from shipping address or fallback
-        const userCountry = shippingAddress?.country || req.headers.get('x-user-country') || 'US';
-        
+        const userCountry =
+          shippingAddress?.country || req.headers.get("x-user-country") || "US";
+
         // Use the product's selected shipping option, or fall back to default
         let selectedOption = product.seller.shippingOptions.find(
           (option) => option.id === product.shippingOptionId
         );
-        
+
         // If product doesn't have a selected shipping option, use default
         if (!selectedOption) {
-          selectedOption = product.seller.shippingOptions.find(
-            (option) => option.isDefault
-          ) || product.seller.shippingOptions[0];
+          selectedOption =
+            product.seller.shippingOptions.find((option) => option.isDefault) ||
+            product.seller.shippingOptions[0];
         }
-        
+
         // Calculate shipping cost based on origin and destination
         const shippingCalculation = calculateShippingCost(
-          selectedOption.rates.map(rate => {
+          selectedOption.rates.map((rate) => {
             // For country type, determine zone from country code if zone is not set
             let zoneValue = rate.zone;
             if (!zoneValue && rate.countryCode) {
@@ -149,7 +191,7 @@ export async function POST(req: Request) {
               additionalItem: rate.additionalItem,
               isFreeShipping: rate.isFreeShipping,
               type: (rate.type || "zone") as "zone" | "country",
-              countryCode: rate.countryCode || undefined
+              countryCode: rate.countryCode || undefined,
             };
           }),
           sellerOriginCountry,
@@ -158,13 +200,17 @@ export async function POST(req: Request) {
           selectedOption.defaultShipping ?? null,
           selectedOption.defaultShippingCurrency || "USD"
         );
-        
+
         if (shippingCalculation) {
           finalShippingCost = shippingCalculation.price;
-          console.log(`Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry} using shipping option ${selectedOption.id}`);
+          console.log(
+            `Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry} using shipping option ${selectedOption.id}`
+          );
         } else {
           // Fallback to static shipping cost if calculation fails
-          console.warn(`Shipping calculation failed for product ${productId}, using static shipping cost`);
+          console.warn(
+            `Shipping calculation failed for product ${productId}, using static shipping cost`
+          );
         }
       }
     } else if (product.isDigital) {
@@ -181,34 +227,53 @@ export async function POST(req: Request) {
     const productPriceInDollars = productPriceAfterSale / 100;
     const shippingCostInDollars = finalShippingCost / 100;
     const handlingFeeInDollars = (product.handlingFee || 0) / 100;
-    const totalOrderValue = (productPriceInDollars + shippingCostInDollars + handlingFeeInDollars) * parseInt(quantity.toString());
+    const totalOrderValue =
+      (productPriceInDollars + shippingCostInDollars + handlingFeeInDollars) *
+      parseInt(quantity.toString());
 
     // Check if authentication is required
     const requiresAuth = totalOrderValue >= 100 || product.isDigital;
 
     if (requiresAuth && !session?.user) {
-      return NextResponse.json({ 
-        error: "Authentication required", 
-        details: totalOrderValue >= 100 
-          ? "Orders over $100 require a signed-in account for fraud prevention." 
-          : "Digital items require a signed-in account for fraud prevention.",
-        requiresAuth: true,
-        orderValue: totalOrderValue,
-        isDigital: product.isDigital
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Authentication required",
+          details:
+            totalOrderValue >= 100
+              ? "Orders over $100 require a signed-in account for fraud prevention."
+              : "Digital items require a signed-in account for fraud prevention.",
+          requiresAuth: true,
+          orderValue: totalOrderValue,
+          isDigital: product.isDigital,
+        },
+        { status: 401 }
+      );
     }
 
     if (!product.seller?.connectedAccountId) {
-      return NextResponse.json({ error: "Seller's Stripe account not connected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Seller's Stripe account not connected" },
+        { status: 400 }
+      );
     }
 
     // Verify seller's Stripe account has required capabilities
-    const account = await stripeSecret.instance.accounts.retrieve(product.seller.connectedAccountId);
-    if (!account.capabilities?.transfers || account.capabilities.transfers !== 'active') {
-      return NextResponse.json({ 
-        error: "Seller's Stripe account is not fully set up. Please complete the onboarding process.",
-        details: "The seller needs to complete their Stripe account setup to receive payments."
-      }, { status: 400 });
+    const account = await stripeSecret.instance.accounts.retrieve(
+      product.seller.connectedAccountId
+    );
+    if (
+      !account.capabilities?.transfers ||
+      account.capabilities.transfers !== "active"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Seller's Stripe account is not fully set up. Please complete the onboarding process.",
+          details:
+            "The seller needs to complete their Stripe account setup to receive payments.",
+        },
+        { status: 400 }
+      );
     }
 
     // Calculate amounts in cents
@@ -219,110 +284,137 @@ export async function POST(req: Request) {
 
     // Convert prices to preferred currency if different from product currency
     let finalProductPriceInCents = productPriceInCents;
-    let finalShippingAndHandlingInCents = shippingCostInCents + handlingFeeInCents;
+    let finalShippingAndHandlingInCents =
+      shippingCostInCents + handlingFeeInCents;
     let checkoutCurrency = product.currency.toLowerCase();
 
-    if (preferredCurrency && preferredCurrency.toLowerCase() !== product.currency.toLowerCase()) {
+    if (
+      preferredCurrency &&
+      preferredCurrency.toLowerCase() !== product.currency.toLowerCase()
+    ) {
       try {
-        console.log('Converting currency:', {
+        console.log("Converting currency:", {
           from: product.currency,
           to: preferredCurrency,
-          amount: productPriceInCents
+          amount: productPriceInCents,
         });
-        
+
         // Convert product price
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: productPriceInCents,
-            fromCurrency: product.currency,
-            toCurrency: preferredCurrency,
-            isCents: true
-          })
-        });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: productPriceInCents,
+              fromCurrency: product.currency,
+              toCurrency: preferredCurrency,
+              isCents: true,
+            }),
+          }
+        );
 
         if (!response.ok) {
           const error = await response.json();
-          console.error('Currency conversion failed:', error);
-          throw new Error(`Currency conversion failed: ${error.error || 'Unknown error'}`);
+          console.error("Currency conversion failed:", error);
+          throw new Error(
+            `Currency conversion failed: ${error.error || "Unknown error"}`
+          );
         }
 
         const { convertedAmount } = await response.json();
-        console.log('Currency conversion result:', {
+        console.log("Currency conversion result:", {
           original: productPriceInCents,
           converted: convertedAmount,
-          currency: preferredCurrency
+          currency: preferredCurrency,
         });
 
         if (!convertedAmount || isNaN(convertedAmount)) {
-          throw new Error('Invalid conversion result');
+          throw new Error("Invalid conversion result");
         }
 
         finalProductPriceInCents = convertedAmount;
 
         // Convert shipping and handling
-        const shippingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: shippingCostInCents + handlingFeeInCents,
-            fromCurrency: product.currency,
-            toCurrency: preferredCurrency,
-            isCents: true
-          })
-        });
+        const shippingResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: shippingCostInCents + handlingFeeInCents,
+              fromCurrency: product.currency,
+              toCurrency: preferredCurrency,
+              isCents: true,
+            }),
+          }
+        );
 
         if (!shippingResponse.ok) {
           const error = await shippingResponse.json();
-          console.error('Shipping cost conversion failed:', error);
-          throw new Error(`Shipping cost conversion failed: ${error.error || 'Unknown error'}`);
+          console.error("Shipping cost conversion failed:", error);
+          throw new Error(
+            `Shipping cost conversion failed: ${error.error || "Unknown error"}`
+          );
         }
 
-        const { convertedAmount: convertedShipping } = await shippingResponse.json();
-        
+        const { convertedAmount: convertedShipping } =
+          await shippingResponse.json();
+
         if (!convertedShipping || isNaN(convertedShipping)) {
-          throw new Error('Invalid shipping cost conversion result');
+          throw new Error("Invalid shipping cost conversion result");
         }
 
         finalShippingAndHandlingInCents = convertedShipping;
         checkoutCurrency = preferredCurrency.toLowerCase();
       } catch (error) {
-        console.error('Error converting currency:', error);
-        console.log('Falling back to original currency:', product.currency);
+        console.error("Error converting currency:", error);
+        console.log("Falling back to original currency:", product.currency);
       }
     }
 
     const totalProductPriceInCents = finalProductPriceInCents * parsedQuantity;
-    const totalOrderAmountInCents = totalProductPriceInCents + finalShippingAndHandlingInCents;
+    const totalOrderAmountInCents =
+      totalProductPriceInCents + finalShippingAndHandlingInCents;
 
     // Validate discount code if provided
     let discountAmount = 0;
     let discountCodeId = null;
     let discountCodeUsed = null;
 
-          if (discountCode) {
-        const validationResult = await validateDiscountCode(
-          discountCode,
-          product.seller.userId,
-          productId,
-          totalOrderAmountInCents,
-          session?.user?.id
-        );
+    if (discountCode) {
+      const validationResult = await validateDiscountCode(
+        discountCode,
+        product.seller.userId,
+        productId,
+        totalOrderAmountInCents,
+        session?.user?.id
+      );
 
       if (!validationResult.isValid) {
-        return NextResponse.json({ 
-          error: validationResult.error,
-          details: "Discount code validation failed"
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            error: validationResult.error,
+            details: "Discount code validation failed",
+          },
+          { status: 400 }
+        );
       }
 
       // Check if discount can be stacked with product sale
-      if (product.onSale && validationResult.discountCode && !validationResult.discountCode.stackableWithProductSales) {
-        return NextResponse.json({ 
-          error: "This discount code cannot be used with products on sale",
-          details: "The discount code does not allow stacking with product sales"
-        }, { status: 400 });
+      if (
+        product.onSale &&
+        validationResult.discountCode &&
+        !validationResult.discountCode.stackableWithProductSales
+      ) {
+        return NextResponse.json(
+          {
+            error: "This discount code cannot be used with products on sale",
+            details:
+              "The discount code does not allow stacking with product sales",
+          },
+          { status: 400 }
+        );
       }
 
       if (validationResult.discountCode) {
@@ -333,32 +425,42 @@ export async function POST(req: Request) {
     }
 
     // Calculate final amount after discount
-    const finalOrderAmountInCents = Math.max(0, totalOrderAmountInCents - discountAmount);
-    
+    const finalOrderAmountInCents = Math.max(
+      0,
+      totalOrderAmountInCents - discountAmount
+    );
+
     // Calculate dynamic commission rate based on seller status and discount eligibility
     const commissionRate = calculateCommissionRate(
       product.seller?.isFoundingSeller || false,
       product.seller?.hasCommissionDiscount || false,
       product.seller?.commissionDiscountExpiresAt || null
     );
-    
+
     // Calculate platform fee on the total order amount (product + shipping + handling, before discounts)
-    const totalOrderAmountBeforeDiscount = totalProductPriceInCents + finalShippingAndHandlingInCents;
-    const platformFeeInCents = Math.round(totalOrderAmountBeforeDiscount * (commissionRate / 100));
-    
+    const totalOrderAmountBeforeDiscount =
+      totalProductPriceInCents + finalShippingAndHandlingInCents;
+    const platformFeeInCents = Math.round(
+      totalOrderAmountBeforeDiscount * (commissionRate / 100)
+    );
+
     console.log(`💰 Platform fee calculation:`);
-    console.log(`- Total order amount (before discount): ${totalOrderAmountBeforeDiscount} cents (${(totalOrderAmountBeforeDiscount / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`);
+    console.log(
+      `- Total order amount (before discount): ${totalOrderAmountBeforeDiscount} cents (${(totalOrderAmountBeforeDiscount / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`
+    );
     console.log(`- Commission rate: ${commissionRate}%`);
-    console.log(`- Platform fee: ${platformFeeInCents} cents (${(platformFeeInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`);
+    console.log(
+      `- Platform fee: ${platformFeeInCents} cents (${(platformFeeInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`
+    );
 
     // Create or get customer with address information if provided
     let customerId: string | undefined;
-    
+
     if (shippingAddress && billingAddress && session?.user?.email) {
       try {
         // Use the platform's Stripe instance for customer operations
         const stripe = stripeSecret.instance;
-        
+
         // Check if customer already exists
         const existingCustomers = await stripe.customers.list({
           email: session.user.email,
@@ -367,16 +469,9 @@ export async function POST(req: Request) {
 
         if (existingCustomers.data.length > 0) {
           // Update existing customer with new address information
-          const customer = await stripe.customers.update(existingCustomers.data[0].id, {
-            name: shippingAddress.name,
-            address: {
-              line1: shippingAddress.street,
-              city: shippingAddress.city,
-              state: shippingAddress.state,
-              postal_code: shippingAddress.postal,
-              country: shippingAddress.country,
-            },
-            shipping: {
+          const customer = await stripe.customers.update(
+            existingCustomers.data[0].id,
+            {
               name: shippingAddress.name,
               address: {
                 line1: shippingAddress.street,
@@ -385,8 +480,18 @@ export async function POST(req: Request) {
                 postal_code: shippingAddress.postal,
                 country: shippingAddress.country,
               },
-            },
-          });
+              shipping: {
+                name: shippingAddress.name,
+                address: {
+                  line1: shippingAddress.street,
+                  city: shippingAddress.city,
+                  state: shippingAddress.state,
+                  postal_code: shippingAddress.postal,
+                  country: shippingAddress.country,
+                },
+              },
+            }
+          );
           customerId = customer.id;
         } else {
           // Create new customer with address information
@@ -413,16 +518,18 @@ export async function POST(req: Request) {
           });
           customerId = customer.id;
         }
-        
-        console.log('Customer created/updated successfully:', customerId);
+
+        console.log("Customer created/updated successfully:", customerId);
       } catch (error) {
-        console.error('Error creating/updating customer:', error);
+        console.error("Error creating/updating customer:", error);
         // Continue without customer pre-filling if there's an error
       }
     }
 
     // Create payment intent with application fee
-    console.log(`💳 Creating payment intent: amount=${finalOrderAmountInCents}, currency=${checkoutCurrency}, productId=${productId}`);
+    console.log(
+      `💳 Creating payment intent: amount=${finalOrderAmountInCents}, currency=${checkoutCurrency}, productId=${productId}`
+    );
     const paymentIntent = await stripeSecret.instance.paymentIntents.create({
       amount: finalOrderAmountInCents,
       currency: checkoutCurrency,
@@ -434,7 +541,7 @@ export async function POST(req: Request) {
       metadata: {
         productId,
         quantity: parsedQuantity.toString(),
-        userId: session?.user?.id || 'guest',
+        userId: session?.user?.id || "guest",
         sellerId: product.seller.userId,
         productPrice: totalProductPriceInCents.toString(),
         shippingAndHandling: finalShippingAndHandlingInCents.toString(),
@@ -444,42 +551,58 @@ export async function POST(req: Request) {
         taxCategory: product.taxCategory,
         taxExempt: product.taxExempt.toString(),
         isDigital: product.isDigital.toString(),
-        abandonedCartSessionId: abandonedCartSessionId || '', // Store abandoned cart session ID
+        abandonedCartSessionId: abandonedCartSessionId || "", // Store abandoned cart session ID
         requiresAuth: requiresAuth.toString(),
         orderValue: totalOrderValue.toString(),
         sellerOriginCountry: sellerOriginCountry,
-        userCountry: shippingAddress?.country || req.headers.get('x-user-country') || 'US',
-        dynamicShipping: (product.seller?.shippingOptions && product.seller.shippingOptions.length > 0).toString(),
+        userCountry:
+          shippingAddress?.country || req.headers.get("x-user-country") || "US",
+        dynamicShipping: (
+          product.seller?.shippingOptions &&
+          product.seller.shippingOptions.length > 0
+        ).toString(),
         // Buyer information - store in metadata for webhook retrieval
         // Priority: 1) Explicit buyerEmail from form, 2) Logged in user email, 3) Empty string
-        buyerEmail: buyerEmail || session?.user?.email || '',
-        buyerName: shippingAddress?.name || billingAddress?.name || session?.user?.name || '',
+        buyerEmail: buyerEmail || session?.user?.email || "",
+        buyerName:
+          shippingAddress?.name ||
+          billingAddress?.name ||
+          session?.user?.name ||
+          "",
         // Discount information
-        discountCodeId: discountCodeId || '',
-        discountCodeUsed: discountCodeUsed || '',
+        discountCodeId: discountCodeId || "",
+        discountCodeUsed: discountCodeUsed || "",
         discountAmount: discountAmount.toString(),
         saleDiscount: saleDiscount.toString(),
         finalOrderAmount: finalOrderAmountInCents.toString(),
         // Shipping address information
-        shippingAddressProvided: shippingAddress ? 'true' : 'false',
-        shippingAddress: shippingAddress ? JSON.stringify({
-          name: shippingAddress.name,
-          street: shippingAddress.street,
-          city: shippingAddress.city,
-          state: shippingAddress.state,
-          postal: shippingAddress.postal,
-          country: shippingAddress.country,
-        }) : '',
+        shippingAddressProvided: shippingAddress ? "true" : "false",
+        shippingAddress: shippingAddress
+          ? JSON.stringify({
+              name: shippingAddress.name,
+              street: shippingAddress.street,
+              city: shippingAddress.city,
+              state: shippingAddress.state,
+              postal: shippingAddress.postal,
+              country: shippingAddress.country,
+            })
+          : "",
         // Billing address information
-        billingAddressProvided: billingAddress ? 'true' : 'false',
-        billingAddressSameAsShipping: billingAddress && shippingAddress && 
-          JSON.stringify(billingAddress) === JSON.stringify(shippingAddress) ? 'true' : 'false',
+        billingAddressProvided: billingAddress ? "true" : "false",
+        billingAddressSameAsShipping:
+          billingAddress &&
+          shippingAddress &&
+          JSON.stringify(billingAddress) === JSON.stringify(shippingAddress)
+            ? "true"
+            : "false",
       },
     });
 
-    console.log(`✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`);
+    console.log(
+      `✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`
+    );
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       customerId: customerId,
       amount: finalOrderAmountInCents,
@@ -488,9 +611,30 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("[PAYMENT_INTENT_ERROR]", error);
-    return NextResponse.json({ 
-      error: error.message || "Internal Error",
-      details: error.stack
-    }, { status: 500 });
+
+    // Log to error database
+    const userMessage = logError({
+      code: "PAYMENT_INTENT_FAILED",
+      userId: session?.user?.id,
+      route: "/api/stripe/create-payment-intent",
+      method: "POST",
+      error,
+      metadata: {
+        productId: body?.productId,
+        quantity: body?.quantity,
+        preferredCurrency: body?.preferredCurrency,
+        hasShippingAddress: !!body?.shippingAddress,
+        hasBillingAddress: !!body?.billingAddress,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        error: userMessage,
+        details:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
-} 
+}

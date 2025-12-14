@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
 import { updateHelpArticleSchema } from "@/schemas/HelpArticleSchema";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let slug: string | undefined = undefined;
+
   try {
-    const { slug } = params;
+    slug = params.slug;
 
     const article = await db.helpArticle.findUnique({
       where: { slug },
@@ -45,11 +49,23 @@ export async function GET(
 
     return NextResponse.json(article);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching help article:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch help article" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load help article"
+    const userMessage = logError({
+      code: "HELP_ARTICLE_FETCH_FAILED",
+      userId: undefined, // Public route
+      route: "/api/help/articles/[slug]",
+      method: "GET",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to fetch help article",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -57,8 +73,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  let body: any = null;
+  let slug: string | undefined = undefined;
+
   try {
-    const permissionCheck = await checkApiPermissions(["WRITE_HELP_ARTICLES"]);
+    permissionCheck = await checkApiPermissions(["WRITE_HELP_ARTICLES"]);
+    slug = params.slug;
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -66,9 +88,8 @@ export async function PUT(
       );
     }
 
-    const { slug } = params;
-    const body = await request.json();
-    
+    body = await request.json();
+
     // Validate request body
     const validation = updateHelpArticleSchema.safeParse(body);
     if (!validation.success) {
@@ -171,11 +192,26 @@ export async function PUT(
 
     return NextResponse.json(updatedArticle);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating help article:", error);
-    return NextResponse.json(
-      { error: "Failed to update help article" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - admin could email about "couldn't update help article"
+    const userMessage = logError({
+      code: "HELP_ARTICLE_UPDATE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/help/articles/[slug]",
+      method: "PUT",
+      error,
+      metadata: {
+        slug,
+        title: body?.title,
+        note: "Failed to update help article",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -183,8 +219,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  // Extract slug from params immediately to avoid scope issues
+  const slugParam = params.slug;
+  let slug: string | undefined = slugParam;
+
   try {
-    const permissionCheck = await checkApiPermissions(["DELETE_HELP_ARTICLES"]);
+    permissionCheck = await checkApiPermissions(["DELETE_HELP_ARTICLES"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -192,11 +234,9 @@ export async function DELETE(
       );
     }
 
-    const { slug } = params;
-
     // Check if article exists
     const article = await db.helpArticle.findUnique({
-      where: { slug },
+      where: { slug: slug },
     });
 
     if (!article) {
@@ -211,15 +251,27 @@ export async function DELETE(
 
     // Delete the article
     await db.helpArticle.delete({
-      where: { slug },
+      where: { slug: slug },
     });
 
     return NextResponse.json({ message: "Article deleted successfully" });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deleting help article:", error);
-    return NextResponse.json(
-      { error: "Failed to delete help article" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "couldn't delete help article"
+    const userMessage = logError({
+      code: "HELP_ARTICLE_DELETE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/help/articles/[slug]",
+      method: "DELETE",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to delete help article",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

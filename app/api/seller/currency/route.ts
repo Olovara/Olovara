@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -29,8 +33,21 @@ export async function GET() {
 
     return NextResponse.json({ currency });
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SELLER_CURRENCY_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Log to database - user could email about "can't see currency"
+    const userMessage = logError({
+      code: "SELLER_CURRENCY_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/currency",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch seller currency",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
-

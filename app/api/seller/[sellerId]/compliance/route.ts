@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptResponsiblePerson, decryptAddress } from "@/lib/encryption";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { sellerId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let sellerId: string | undefined = undefined;
+
   try {
-    const { sellerId } = params;
+    // Require authentication - this data is sensitive
+    session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    sellerId = params.sellerId;
 
     if (!sellerId) {
       return NextResponse.json(
@@ -23,10 +35,25 @@ export async function GET(
     });
 
     if (!seller) {
-      return NextResponse.json(
-        { error: "Seller not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Seller not found" }, { status: 404 });
+    }
+
+    // Verify the user is the seller or an admin
+    // This prevents unauthorized access to sensitive compliance data
+    if (session.user.id !== sellerId) {
+      const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        include: { admin: true },
+      });
+
+      if (!user?.admin) {
+        return NextResponse.json(
+          {
+            error: "Unauthorized - You can only view your own compliance data",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Fetch responsible person data
@@ -146,10 +173,23 @@ export async function GET(
       },
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching seller compliance data:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch compliance data" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see compliance data"
+    const userMessage = logError({
+      code: "SELLER_COMPLIANCE_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/[sellerId]/compliance",
+      method: "GET",
+      error,
+      metadata: {
+        sellerId,
+        requestedBy: session?.user?.id,
+        note: "Failed to fetch seller compliance data",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

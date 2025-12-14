@@ -6,6 +6,7 @@ import { generateUniqueSKU } from "@/lib/sku-generator";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
 import { generateBatchNumber } from "@/lib/batchNumber";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { logError } from "@/lib/error-logger";
 
 // 60 seconds timeout
 
@@ -17,7 +18,12 @@ export async function POST(req: NextRequest) {
 
   // Declare variables outside try block so they're accessible in catch
   let session: any = null;
-  let seller: { id: string; userId: string; isFullyActivated: boolean; applicationAccepted: boolean } | null = null;
+  let seller: {
+    id: string;
+    userId: string;
+    isFullyActivated: boolean;
+    applicationAccepted: boolean;
+  } | null = null;
   let data: any = null;
 
   try {
@@ -33,22 +39,24 @@ export async function POST(req: NextRequest) {
     }
 
     data = await req.json();
-    
+
     // Enhanced logging with currency context
-    const currencyInfo = data.currency 
+    const currencyInfo = data.currency
       ? SUPPORTED_CURRENCIES.find((c) => c.code === data.currency)
       : null;
-    
+
     console.log("[API INPUT] Received product data:", {
       name: data.name,
       status: data.status,
       isDigital: data.isDigital,
       currency: data.currency,
-      currencyInfo: currencyInfo ? {
-        name: currencyInfo.name,
-        symbol: currencyInfo.symbol,
-        decimals: currencyInfo.decimals,
-      } : "Currency not found or missing",
+      currencyInfo: currencyInfo
+        ? {
+            name: currencyInfo.name,
+            symbol: currencyInfo.symbol,
+            decimals: currencyInfo.decimals,
+          }
+        : "Currency not found or missing",
       monetaryValues: {
         price: data.price,
         shippingCost: data.shippingCost,
@@ -241,7 +249,10 @@ export async function POST(req: NextRequest) {
       sku: finalSku,
       // CRITICAL: Prisma requires shortDescription to be non-null
       // If it's empty or null, use empty string instead of null
-      shortDescription: shortDescription && shortDescription.trim() !== "" ? shortDescription.trim() : "",
+      shortDescription:
+        shortDescription && shortDescription.trim() !== ""
+          ? shortDescription.trim()
+          : "",
       shortDescriptionBullets: shortDescriptionBullets || [],
       description: description || { html: "", text: "" },
       // CRITICAL: Ensure monetary values are integers (Prisma Int type requires whole numbers)
@@ -250,12 +261,14 @@ export async function POST(req: NextRequest) {
       price: Math.floor(Number(rawPrice) || 0), // Price is already converted to cents by ProductSchema
       currency,
       status: isDraft ? "DRAFT" : status,
-      shippingCost: rawShippingCost !== null && rawShippingCost !== undefined 
-        ? Math.floor(Number(rawShippingCost) || 0)
-        : null, // Already converted to cents by ProductSchema
-      handlingFee: rawHandlingFee !== null && rawHandlingFee !== undefined
-        ? Math.floor(Number(rawHandlingFee) || 0)
-        : null, // Already converted to cents by ProductSchema
+      shippingCost:
+        rawShippingCost !== null && rawShippingCost !== undefined
+          ? Math.floor(Number(rawShippingCost) || 0)
+          : null, // Already converted to cents by ProductSchema
+      handlingFee:
+        rawHandlingFee !== null && rawHandlingFee !== undefined
+          ? Math.floor(Number(rawHandlingFee) || 0)
+          : null, // Already converted to cents by ProductSchema
       // CRITICAL: Dimensions and weight are OPTIONAL for all products
       // Use ?? to convert undefined/null to null (database-friendly)
       // Note: 0 values are invalid and will be caught by schema validation (must be > 0 if provided)
@@ -268,7 +281,10 @@ export async function POST(req: NextRequest) {
       itemWidth: itemWidth ?? null,
       itemHeight: itemHeight ?? null,
       itemDimensionUnit: data.itemDimensionUnit || "in", // Fallback to in if not provided (for backward compatibility)
-      shippingNotes: shippingNotes && shippingNotes.trim() !== "" ? shippingNotes.trim() : null,
+      shippingNotes:
+        shippingNotes && shippingNotes.trim() !== ""
+          ? shippingNotes.trim()
+          : null,
       freeShipping,
       isDigital: isDigital || false,
       // CRITICAL: Stock handling
@@ -284,9 +300,12 @@ export async function POST(req: NextRequest) {
       discount: discount ?? null, // Optional field - use null instead of undefined
       // For drafts, allow empty categories (use empty string, not null, since Prisma requires non-null)
       // For non-drafts, these are required and validated earlier
-      primaryCategory: isDraft ? (primaryCategory || "") : primaryCategory,
-      secondaryCategory: isDraft ? (secondaryCategory || "") : secondaryCategory,
-      tertiaryCategory: tertiaryCategory && tertiaryCategory.trim() !== "" ? tertiaryCategory.trim() : null, // This one is nullable in schema
+      primaryCategory: isDraft ? primaryCategory || "" : primaryCategory,
+      secondaryCategory: isDraft ? secondaryCategory || "" : secondaryCategory,
+      tertiaryCategory:
+        tertiaryCategory && tertiaryCategory.trim() !== ""
+          ? tertiaryCategory.trim()
+          : null, // This one is nullable in schema
       tags,
       materialTags,
       options,
@@ -294,17 +313,24 @@ export async function POST(req: NextRequest) {
       // Only convert undefined/null to null, not falsy values like 0
       inStockProcessingTime: inStockProcessingTime ?? null,
       outStockLeadTime: outStockLeadTime ?? null,
-      howItsMade: howItsMade && howItsMade.trim() !== "" ? howItsMade.trim() : null,
+      howItsMade:
+        howItsMade && howItsMade.trim() !== "" ? howItsMade.trim() : null,
       productDrop,
       NSFW,
       dropDate: dropDate ? new Date(dropDate) : null,
       dropTime: dropTime && dropTime.trim() !== "" ? dropTime.trim() : null, // Optional field - convert empty string to null
       // SEO fields - convert empty strings to null for optional fields
       metaTitle: metaTitle && metaTitle.trim() !== "" ? metaTitle.trim() : null,
-      metaDescription: metaDescription && metaDescription.trim() !== "" ? metaDescription.trim() : null,
+      metaDescription:
+        metaDescription && metaDescription.trim() !== ""
+          ? metaDescription.trim()
+          : null,
       keywords,
       ogTitle: ogTitle && ogTitle.trim() !== "" ? ogTitle.trim() : null,
-      ogDescription: ogDescription && ogDescription.trim() !== "" ? ogDescription.trim() : null,
+      ogDescription:
+        ogDescription && ogDescription.trim() !== ""
+          ? ogDescription.trim()
+          : null,
       ogImage: ogImage && ogImage.trim() !== "" ? ogImage.trim() : null,
       isTestProduct,
       // GPSR Compliance fields
@@ -326,7 +352,7 @@ export async function POST(req: NextRequest) {
     // The form has already validated and transformed the data (price to cents, etc.)
     // So we just need to ensure the data structure is valid, but use the data as-is
     // Note: Price, shippingCost, and handlingFee are already in cents from the form validation
-    
+
     // --- Step 4: Create the product ---
     // CRITICAL: Remove undefined values from productData (Prisma doesn't accept undefined, only null)
     // Convert all undefined to null for optional fields
@@ -334,7 +360,7 @@ export async function POST(req: NextRequest) {
     for (const [key, value] of Object.entries(productData)) {
       cleanedProductData[key] = value === undefined ? null : value;
     }
-    
+
     const product = await db.product.create({
       data: {
         ...cleanedProductData,
@@ -379,24 +405,22 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     // Enhanced error logging with currency context
-    const currencyInfo = data?.currency 
+    const currencyInfo = data?.currency
       ? SUPPORTED_CURRENCIES.find((c) => c.code === data.currency)
       : null;
-    
-    console.error("[API ERROR] Product creation failed:", {
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : error,
+
+    // Prepare metadata for error logging
+    const errorMetadata = {
       userId: session?.user?.id || "unknown",
       sellerId: seller?.id || "unknown",
       currency: data?.currency || "unknown",
-      currencyInfo: currencyInfo ? {
-        name: currencyInfo.name,
-        symbol: currencyInfo.symbol,
-        decimals: currencyInfo.decimals,
-      } : "Currency not found or missing",
+      currencyInfo: currencyInfo
+        ? {
+            name: currencyInfo.name,
+            symbol: currencyInfo.symbol,
+            decimals: currencyInfo.decimals,
+          }
+        : "Currency not found or missing",
       productData: {
         name: data?.name,
         status: data?.status,
@@ -411,27 +435,43 @@ export async function POST(req: NextRequest) {
         hasProductFile: !!data?.productFile,
       },
       // Check if error is related to currency conversion
-      isCurrencyError: error instanceof Error && (
-        error.message.includes("currency") ||
-        error.message.includes("Currency") ||
-        error.message.includes("decimal") ||
-        error.message.includes("conversion")
-      ),
+      isCurrencyError:
+        error instanceof Error &&
+        (error.message.includes("currency") ||
+          error.message.includes("Currency") ||
+          error.message.includes("decimal") ||
+          error.message.includes("conversion")),
+    };
+
+    // Log to console (existing behavior)
+    console.error("[API ERROR] Product creation failed:", {
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+      ...errorMetadata,
       timestamp: new Date().toISOString(),
     });
-    
-    // Check if it's a ZodError
-    if (error && typeof error === 'object' && 'issues' in error) {
-      const zodError = error as { issues: Array<{ message: string; path: (string | number)[] }> };
-      
+
+    // Check if it's a ZodError (validation error)
+    if (error && typeof error === "object" && "issues" in error) {
+      const zodError = error as {
+        issues: Array<{ message: string; path: (string | number)[] }>;
+      };
+
       // Check for currency-related validation errors
-      const currencyErrors = zodError.issues.filter(issue => 
-        issue.path.includes("currency") || 
-        issue.path.includes("price") ||
-        issue.message.toLowerCase().includes("currency") ||
-        issue.message.toLowerCase().includes("decimal")
+      const currencyErrors = zodError.issues.filter(
+        (issue) =>
+          issue.path.includes("currency") ||
+          issue.path.includes("price") ||
+          issue.message.toLowerCase().includes("currency") ||
+          issue.message.toLowerCase().includes("decimal")
       );
-      
+
       if (currencyErrors.length > 0 && currencyInfo) {
         console.error("[API ERROR] Currency validation errors detected:", {
           currencyErrors,
@@ -439,49 +479,79 @@ export async function POST(req: NextRequest) {
           currencyInfo,
         });
       }
-      
+
+      // Log validation errors to database
+      logError({
+        code: "PRODUCT_VALIDATION_FAILED",
+        userId: session?.user?.id,
+        route: "/api/products/create-product",
+        method: "POST",
+        error,
+        metadata: {
+          ...errorMetadata,
+          validationErrors: zodError.issues,
+          currencyErrors:
+            currencyErrors.length > 0 ? currencyErrors : undefined,
+        },
+      });
+
       return new Response(
         JSON.stringify({
           success: false,
           error: "Validation failed",
           details: zodError.issues,
           // Add helpful context for currency errors
-          currencyContext: currencyErrors.length > 0 && currencyInfo ? {
-            currency: data?.currency,
-            currencyName: currencyInfo.name,
-            currencySymbol: currencyInfo.symbol,
-            currencyDecimals: currencyInfo.decimals,
-            hint: currencyInfo.decimals === 0 
-              ? "This currency only accepts whole numbers (no decimals)"
-              : `This currency accepts up to ${currencyInfo.decimals} decimal places`,
-          } : undefined,
+          currencyContext:
+            currencyErrors.length > 0 && currencyInfo
+              ? {
+                  currency: data?.currency,
+                  currencyName: currencyInfo.name,
+                  currencySymbol: currencyInfo.symbol,
+                  currencyDecimals: currencyInfo.decimals,
+                  hint:
+                    currencyInfo.decimals === 0
+                      ? "This currency only accepts whole numbers (no decimals)"
+                      : `This currency accepts up to ${currencyInfo.decimals} decimal places`,
+                }
+              : undefined,
         }),
         { status: 400 }
       );
     }
-    
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Failed to create product";
-    
+
+    // Log to database for non-validation errors
+    const userMessage = logError({
+      code: "PRODUCT_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/products/create-product",
+      method: "POST",
+      error,
+      metadata: errorMetadata,
+    });
+
     // Provide more helpful error messages for currency-related issues
-    let userFriendlyError = errorMessage;
-    if (error instanceof Error && (
-      error.message.includes("currency") ||
-      error.message.includes("Currency") ||
-      error.message.includes("decimal") ||
-      error.message.includes("conversion")
-    ) && currencyInfo) {
-      userFriendlyError = `Currency error: ${errorMessage}. Please check that your prices are valid for ${currencyInfo.name} (${currencyInfo.code}). ${currencyInfo.decimals === 0 ? "This currency only accepts whole numbers." : `This currency accepts up to ${currencyInfo.decimals} decimal places.`}`;
+    let userFriendlyError = userMessage;
+    if (
+      error instanceof Error &&
+      (error.message.includes("currency") ||
+        error.message.includes("Currency") ||
+        error.message.includes("decimal") ||
+        error.message.includes("conversion")) &&
+      currencyInfo
+    ) {
+      userFriendlyError = `Currency error: ${error.message}. Please check that your prices are valid for ${currencyInfo.name} (${currencyInfo.code}). ${currencyInfo.decimals === 0 ? "This currency only accepts whole numbers." : `This currency accepts up to ${currencyInfo.decimals} decimal places.`}`;
     }
-    
+
     return new Response(
       JSON.stringify({
         success: false,
         error: userFriendlyError,
-        details: process.env.NODE_ENV === "development" 
-          ? (error instanceof Error ? error.stack : String(error))
-          : undefined,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.stack
+              : String(error)
+            : undefined,
       }),
       { status: 500 }
     );

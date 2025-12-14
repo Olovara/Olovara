@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { NewsletterSubscriptionWithTrackingSchema } from "@/schemas/NewsletterSubscriptionSchema";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let body: any = null;
+
   try {
-    const body = await req.json();
+    body = await req.json();
 
     // Get client IP and user agent for tracking
     const ipAddress =
@@ -73,8 +77,10 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    // Log to console (always happens)
     console.error("Newsletter subscription error:", error);
 
+    // Don't log validation errors - they're expected client-side issues
     if (error instanceof Error && error.message.includes("Invalid email")) {
       return NextResponse.json(
         { error: "Please enter a valid email address" },
@@ -82,10 +88,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to subscribe to newsletter. Please try again." },
-      { status: 500 }
-    );
+    // Log to database - user could email about "couldn't subscribe to newsletter"
+    const userMessage = logError({
+      code: "NEWSLETTER_SUBSCRIBE_FAILED",
+      userId: undefined, // Public route
+      route: "/api/newsletter/subscribe",
+      method: "POST",
+      error,
+      metadata: {
+        email: body?.email,
+        note: "Failed to subscribe to newsletter",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -117,10 +133,23 @@ export async function GET(req: NextRequest) {
       subscription,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Newsletter subscription check error:", error);
-    return NextResponse.json(
-      { error: "Failed to check subscription status" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "can't check subscription status"
+    const userMessage = logError({
+      code: "NEWSLETTER_SUBSCRIPTION_CHECK_FAILED",
+      userId: undefined, // Public route
+      route: "/api/newsletter/subscribe",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to check subscription status",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

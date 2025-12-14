@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getCurrencyDecimals } from "@/data/units";
+import { logError } from "@/lib/error-logger";
 
 // Schema for updating discount codes - now accepts currency amounts instead of cents
 const updateDiscountCodeSchema = z.object({
@@ -27,8 +28,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let discountCodeId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    discountCodeId = params.id;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -39,7 +45,10 @@ export async function GET(
     });
 
     if (!discountCode) {
-      return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Discount code not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user is the seller or has admin permissions
@@ -56,11 +65,23 @@ export async function GET(
 
     return NextResponse.json(discountCode);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching discount code:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch discount code" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see discount code"
+    const userMessage = logError({
+      code: "DISCOUNT_CODE_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes/[id]",
+      method: "GET",
+      error,
+      metadata: {
+        discountCodeId,
+        note: "Failed to fetch discount code",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -69,13 +90,19 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+  let discountCodeId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    discountCodeId = params.id;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    body = await request.json();
     const validatedData = updateDiscountCodeSchema.parse(body);
 
     // Get the existing discount code to check permissions
@@ -85,7 +112,10 @@ export async function PUT(
     });
 
     if (!existingCode) {
-      return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Discount code not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user is the seller
@@ -95,7 +125,8 @@ export async function PUT(
 
     // Validate discount value if being updated
     if (validatedData.discountValue !== undefined) {
-      const discountType = validatedData.discountType || existingCode.discountType;
+      const discountType =
+        validatedData.discountType || existingCode.discountType;
       if (discountType === "PERCENTAGE" && validatedData.discountValue > 100) {
         return NextResponse.json(
           { error: "Percentage discount cannot exceed 100%" },
@@ -110,47 +141,80 @@ export async function PUT(
 
     let discountValueInCents = undefined;
     if (validatedData.discountValue !== undefined) {
-      const discountType = validatedData.discountType || existingCode.discountType;
-      discountValueInCents = discountType === "PERCENTAGE" 
-        ? validatedData.discountValue // Keep percentage as-is
-        : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
+      const discountType =
+        validatedData.discountType || existingCode.discountType;
+      discountValueInCents =
+        discountType === "PERCENTAGE"
+          ? validatedData.discountValue // Keep percentage as-is
+          : Math.round(validatedData.discountValue * multiplier); // Convert currency to cents
     }
 
-    const minimumOrderAmountInCents = validatedData.minimumOrderAmount !== undefined
-      ? validatedData.minimumOrderAmount 
-        ? Math.round(validatedData.minimumOrderAmount * multiplier)
-        : null
-      : undefined;
+    const minimumOrderAmountInCents =
+      validatedData.minimumOrderAmount !== undefined
+        ? validatedData.minimumOrderAmount
+          ? Math.round(validatedData.minimumOrderAmount * multiplier)
+          : null
+        : undefined;
 
-    const maximumDiscountAmountInCents = validatedData.maximumDiscountAmount !== undefined
-      ? validatedData.maximumDiscountAmount
-        ? Math.round(validatedData.maximumDiscountAmount * multiplier)
-        : null
-      : undefined;
+    const maximumDiscountAmountInCents =
+      validatedData.maximumDiscountAmount !== undefined
+        ? validatedData.maximumDiscountAmount
+          ? Math.round(validatedData.maximumDiscountAmount * multiplier)
+          : null
+        : undefined;
 
     // Update the discount code
     const updatedCode = await db.discountCode.update({
       where: { id: params.id },
       data: {
         ...(validatedData.name !== undefined && { name: validatedData.name }),
-        ...(validatedData.description !== undefined && { description: validatedData.description }),
-        ...(validatedData.discountType !== undefined && { discountType: validatedData.discountType }),
-        ...(discountValueInCents !== undefined && { discountValue: discountValueInCents }),
-        ...(minimumOrderAmountInCents !== undefined && { minimumOrderAmount: minimumOrderAmountInCents }),
-        ...(maximumDiscountAmountInCents !== undefined && { maximumDiscountAmount: maximumDiscountAmountInCents }),
-        ...(validatedData.maxUses !== undefined && { maxUses: validatedData.maxUses || null }),
-        ...(validatedData.maxUsesPerCustomer !== undefined && { maxUsesPerCustomer: validatedData.maxUsesPerCustomer || null }),
-        ...(validatedData.expiresAt !== undefined && { expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null }),
-        ...(validatedData.isActive !== undefined && { isActive: validatedData.isActive }),
-        ...(validatedData.appliesToAllProducts !== undefined && { appliesToAllProducts: validatedData.appliesToAllProducts }),
-        ...(validatedData.applicableProductIds !== undefined && { applicableProductIds: validatedData.applicableProductIds }),
-        ...(validatedData.applicableCategories !== undefined && { applicableCategories: validatedData.applicableCategories }),
-        ...(validatedData.stackableWithProductSales !== undefined && { stackableWithProductSales: validatedData.stackableWithProductSales }),
+        ...(validatedData.description !== undefined && {
+          description: validatedData.description,
+        }),
+        ...(validatedData.discountType !== undefined && {
+          discountType: validatedData.discountType,
+        }),
+        ...(discountValueInCents !== undefined && {
+          discountValue: discountValueInCents,
+        }),
+        ...(minimumOrderAmountInCents !== undefined && {
+          minimumOrderAmount: minimumOrderAmountInCents,
+        }),
+        ...(maximumDiscountAmountInCents !== undefined && {
+          maximumDiscountAmount: maximumDiscountAmountInCents,
+        }),
+        ...(validatedData.maxUses !== undefined && {
+          maxUses: validatedData.maxUses || null,
+        }),
+        ...(validatedData.maxUsesPerCustomer !== undefined && {
+          maxUsesPerCustomer: validatedData.maxUsesPerCustomer || null,
+        }),
+        ...(validatedData.expiresAt !== undefined && {
+          expiresAt: validatedData.expiresAt
+            ? new Date(validatedData.expiresAt)
+            : null,
+        }),
+        ...(validatedData.isActive !== undefined && {
+          isActive: validatedData.isActive,
+        }),
+        ...(validatedData.appliesToAllProducts !== undefined && {
+          appliesToAllProducts: validatedData.appliesToAllProducts,
+        }),
+        ...(validatedData.applicableProductIds !== undefined && {
+          applicableProductIds: validatedData.applicableProductIds,
+        }),
+        ...(validatedData.applicableCategories !== undefined && {
+          applicableCategories: validatedData.applicableCategories,
+        }),
+        ...(validatedData.stackableWithProductSales !== undefined && {
+          stackableWithProductSales: validatedData.stackableWithProductSales,
+        }),
       },
     });
 
     return NextResponse.json(updatedCode);
   } catch (error) {
+    // Check if it's a ZodError (validation error) - don't log these to DB
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid data", details: error.errors },
@@ -158,11 +222,23 @@ export async function PUT(
       );
     }
 
+    // Log to console (always happens)
     console.error("Error updating discount code:", error);
-    return NextResponse.json(
-      { error: "Failed to update discount code" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't update discount code"
+    const userMessage = logError({
+      code: "DISCOUNT_CODE_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes/[id]",
+      method: "PUT",
+      error,
+      metadata: {
+        discountCodeId,
+        note: "Failed to update discount code",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -171,13 +247,19 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+  let discountCodeId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    discountCodeId = params.id;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    body = await request.json();
     const { isActive } = body;
 
     // Get the existing discount code to check permissions
@@ -186,7 +268,10 @@ export async function PATCH(
     });
 
     if (!existingCode) {
-      return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Discount code not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user is the seller
@@ -202,11 +287,24 @@ export async function PATCH(
 
     return NextResponse.json(updatedCode);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating discount code:", error);
-    return NextResponse.json(
-      { error: "Failed to update discount code" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't toggle discount code"
+    const userMessage = logError({
+      code: "DISCOUNT_CODE_TOGGLE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes/[id]",
+      method: "PATCH",
+      error,
+      metadata: {
+        discountCodeId,
+        isActive: body?.isActive,
+        note: "Failed to toggle discount code active status",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -215,8 +313,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let discountCodeId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
+    discountCodeId = params.id;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -227,7 +330,10 @@ export async function DELETE(
     });
 
     if (!existingCode) {
-      return NextResponse.json({ error: "Discount code not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Discount code not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user is the seller
@@ -254,10 +360,22 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Discount code deleted successfully" });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deleting discount code:", error);
-    return NextResponse.json(
-      { error: "Failed to delete discount code" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't delete discount code"
+    const userMessage = logError({
+      code: "DISCOUNT_CODE_DELETE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/discount-codes/[id]",
+      method: "DELETE",
+      error,
+      metadata: {
+        discountCodeId,
+        note: "Failed to delete discount code",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

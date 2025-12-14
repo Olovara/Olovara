@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermissions } from "@/lib/api-permissions";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  // Extract slug from params immediately to avoid scope issues
+  const slugParam = params.slug;
+  let slug: string | undefined = slugParam;
+
   try {
-    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
+    permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
         { status: permissionCheck.status }
       );
     }
-
-    const { slug } = params;
 
     // Get the blog post by slug and check if it belongs to the user
     const post = await db.blogPost.findUnique({
@@ -56,11 +61,23 @@ export async function GET(
 
     return NextResponse.json(post);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching blog post:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch blog post" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't load blog post"
+    const userMessage = logError({
+      code: "BLOG_POST_FETCH_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/blog/posts/[slug]",
+      method: "GET",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to fetch blog post",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -68,8 +85,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  let body: any = null;
+  let slug: string | undefined = undefined;
+
   try {
-    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
+    permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
+    slug = params.slug;
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -77,8 +100,7 @@ export async function PUT(
       );
     }
 
-    const { slug } = params;
-    const body = await request.json();
+    body = await request.json();
     const {
       title,
       description,
@@ -161,11 +183,26 @@ export async function PUT(
 
     return NextResponse.json(updatedPost);
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating blog post:", error);
-    return NextResponse.json(
-      { error: "Failed to update blog post" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't update blog post"
+    const userMessage = logError({
+      code: "BLOG_POST_UPDATE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/blog/posts/[slug]",
+      method: "PUT",
+      error,
+      metadata: {
+        slug,
+        title: body?.title,
+        note: "Failed to update blog post",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -173,16 +210,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let permissionCheck: any = null;
+  // Extract slug from params immediately to avoid scope issues
+  const slugParam = params.slug;
+  let slug: string | undefined = slugParam;
+
   try {
-    const permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
+    permissionCheck = await checkApiPermissions(["WRITE_BLOG"]);
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
         { status: permissionCheck.status }
       );
     }
-
-    const { slug } = params;
 
     // Check if the post exists and belongs to the user
     const post = await db.blogPost.findUnique({
@@ -211,10 +252,22 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Blog post deleted successfully" });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error deleting blog post:", error);
-    return NextResponse.json(
-      { error: "Failed to delete blog post" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't delete blog post"
+    const userMessage = logError({
+      code: "BLOG_POST_DELETE_FAILED",
+      userId: permissionCheck?.user?.id,
+      route: "/api/blog/posts/[slug]",
+      method: "DELETE",
+      error,
+      metadata: {
+        slug,
+        note: "Failed to delete blog post",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

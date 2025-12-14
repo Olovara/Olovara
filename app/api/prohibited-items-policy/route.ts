@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ROLES } from "@/data/roles-and-permissions";
+import { logError } from "@/lib/error-logger";
 
 const defaultPolicy = {
   html: `
@@ -82,14 +83,14 @@ Items that are age-restricted or require special handling:
 5. Contact Us
 If you have any questions about our prohibited items policy, please contact us at:
 - Email: compliance@yarnnu.com
-- Address: [Your Business Address]`
+- Address: [Your Business Address]`,
 };
 
 // Add CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 // Handle OPTIONS request for CORS
@@ -101,19 +102,19 @@ export async function GET() {
   try {
     // Try to get existing policy
     const policy = await db.prohibitedItemsPolicy.findFirst();
-    
+
     if (!policy) {
       // If no policy exists, return default policy
       return NextResponse.json({
         content: defaultPolicy,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
     }
 
     // Process the content
     let responseContent = { html: "", text: "" };
 
-    if (policy.content && typeof policy.content === 'object') {
+    if (policy.content && typeof policy.content === "object") {
       const content = policy.content as any;
       responseContent.html = content.html || defaultPolicy.html;
       responseContent.text = content.text || defaultPolicy.text;
@@ -121,77 +122,109 @@ export async function GET() {
       // If content is not in expected format, return default policy
       return NextResponse.json({
         content: defaultPolicy,
-        updatedAt: policy.updatedAt
+        updatedAt: policy.updatedAt,
       });
     }
 
     return NextResponse.json({
       content: responseContent,
-      updatedAt: policy.updatedAt
+      updatedAt: policy.updatedAt,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error in GET /api/prohibited-items-policy:", error);
+
+    // Log to database - user could email about "can't load policy"
+    logError({
+      code: "PROHIBITED_ITEMS_POLICY_FETCH_FAILED",
+      userId: undefined, // Public route
+      route: "/api/prohibited-items-policy",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch prohibited items policy",
+      },
+    });
+
     // Return default policy in case of error
     return NextResponse.json({
       content: defaultPolicy,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
   }
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  // Check if user is authenticated
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
 
-  // Fetch user permissions from database
-  const dbUser = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { permissions: true }
-  });
+  try {
+    session = await auth();
+    // Check if user is authenticated
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
-  if (!dbUser?.permissions?.includes('MANAGE_POLICIES')) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
-
-  const { content } = await req.json();
-  
-  // Ensure content is in the correct format
-  const formattedContent = {
-    html: content.html || "",
-    text: content.text || content.html?.replace(/<[^>]*>?/gm, '') || ""
-  };
-  
-  // First, try to find existing policy
-  const existingPolicy = await db.prohibitedItemsPolicy.findFirst();
-  
-  if (existingPolicy) {
-    // Update existing policy
-    const updatedPolicy = await db.prohibitedItemsPolicy.update({
-      where: { id: existingPolicy.id },
-      data: { 
-        content: formattedContent,
-        updatedAt: new Date()
-      }
+    // Fetch user permissions from database
+    const dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { permissions: true },
     });
-    return NextResponse.json(updatedPolicy);
-  } else {
-    // Create new policy if none exist
-    const newPolicy = await db.prohibitedItemsPolicy.create({
-      data: { 
-        content: formattedContent,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
+
+    if (!dbUser?.permissions?.includes("MANAGE_POLICIES")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    body = await req.json();
+    const { content } = body;
+
+    // Ensure content is in the correct format
+    const formattedContent = {
+      html: content?.html || "",
+      text: content?.text || content?.html?.replace(/<[^>]*>?/gm, "") || "",
+    };
+
+    // First, try to find existing policy
+    const existingPolicy = await db.prohibitedItemsPolicy.findFirst();
+
+    if (existingPolicy) {
+      // Update existing policy
+      const updatedPolicy = await db.prohibitedItemsPolicy.update({
+        where: { id: existingPolicy.id },
+        data: {
+          content: formattedContent,
+          updatedAt: new Date(),
+        },
+      });
+      return NextResponse.json(updatedPolicy);
+    } else {
+      // Create new policy if none exist
+      const newPolicy = await db.prohibitedItemsPolicy.create({
+        data: {
+          content: formattedContent,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      return NextResponse.json(newPolicy);
+    }
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error in POST /api/prohibited-items-policy:", error);
+
+    // Log to database - admin could email about "couldn't update policy"
+    const userMessage = logError({
+      code: "PROHIBITED_ITEMS_POLICY_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/prohibited-items-policy",
+      method: "POST",
+      error,
+      metadata: {
+        note: "Failed to update prohibited items policy",
+      },
     });
-    return NextResponse.json(newPolicy);
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

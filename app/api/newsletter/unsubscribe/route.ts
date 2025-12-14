@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let email: string | null = null;
+
   try {
     const { searchParams } = new URL(req.url);
-    const email = searchParams.get("email");
+    email = searchParams.get("email");
 
     if (!email) {
       return NextResponse.json(
@@ -35,7 +39,7 @@ export async function GET(req: NextRequest) {
     // Deactivate the subscription
     await db.newsletterSubscription.update({
       where: { email },
-      data: { 
+      data: {
         isActive: false,
         updatedAt: new Date(),
       },
@@ -45,12 +49,25 @@ export async function GET(req: NextRequest) {
       { message: "Successfully unsubscribed from newsletter" },
       { status: 200 }
     );
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("Newsletter unsubscribe error:", error);
-    return NextResponse.json(
-      { error: "Failed to unsubscribe" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't unsubscribe"
+    const userMessage = logError({
+      code: "NEWSLETTER_UNSUBSCRIBE_FAILED",
+      userId: undefined, // Public route
+      route: "/api/newsletter/unsubscribe",
+      method: "GET",
+      error,
+      metadata: {
+        email,
+        note: "Failed to unsubscribe from newsletter",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

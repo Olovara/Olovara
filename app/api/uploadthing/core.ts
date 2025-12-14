@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 const f = createUploadthing();
 
@@ -36,6 +37,22 @@ export const ourFileRouter = {
         console.log("Temporary upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record temporary upload:", error);
+
+        // Log to error database
+        logError({
+          code: "IMAGE_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "imageUploader",
+          },
+        });
+
         throw new UploadThingError("Failed to record upload");
       }
 
@@ -71,6 +88,22 @@ export const ourFileRouter = {
         console.log("Temporary upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record temporary upload:", error);
+
+        // Log to error database
+        logError({
+          code: "IMAGE_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "singleImageUploader",
+          },
+        });
+
         throw new UploadThingError("Failed to record upload");
       }
 
@@ -105,6 +138,22 @@ export const ourFileRouter = {
         console.log("Temporary upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record temporary upload:", error);
+
+        // Log to error database
+        logError({
+          code: "FILE_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "productFileUpload",
+          },
+        });
+
         throw new UploadThingError("Failed to record upload");
       }
 
@@ -112,12 +161,15 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
-  dmcaDocumentUpload: f({ 
+  dmcaDocumentUpload: f({
     "application/pdf": { maxFileSize: "8MB", maxFileCount: 1 },
     "application/msword": { maxFileSize: "8MB", maxFileCount: 1 },
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "8MB", maxFileCount: 1 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+      maxFileSize: "8MB",
+      maxFileCount: 1,
+    },
     "image/jpeg": { maxFileSize: "8MB", maxFileCount: 1 },
-    "image/png": { maxFileSize: "8MB", maxFileCount: 1 }
+    "image/png": { maxFileSize: "8MB", maxFileCount: 1 },
   })
     .middleware(async ({ req }) => {
       // For DMCA documents, we don't require authentication since it's a public form
@@ -141,6 +193,22 @@ export const ourFileRouter = {
         console.log("DMCA document upload recorded:", file.key);
       } catch (error) {
         console.error("Failed to record DMCA document upload:", error);
+        
+        // Log to error database
+        logError({
+          code: "DMCA_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "dmcaDocumentUpload",
+          },
+        });
+        
         throw new UploadThingError("Failed to record upload");
       }
 

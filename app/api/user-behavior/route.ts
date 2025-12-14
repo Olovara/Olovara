@@ -3,12 +3,17 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { MouseMovementAnalyzer, FraudDetectionService } from "@/lib/analytics";
 import { getIPInfo, checkIPSuspicious } from "@/lib/ipinfo";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    const body = await req.json();
-    
+    session = await auth();
+    body = await req.json();
+
     const {
       sessionId,
       eventType,
@@ -21,7 +26,7 @@ export async function POST(req: NextRequest) {
       mouseX,
       mouseY,
       deviceId,
-      userId
+      userId,
     } = body;
 
     // Validate required fields
@@ -33,9 +38,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Get client IP
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                    req.headers.get('x-real-ip') || 
-                    req.ip || 'unknown';
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0] ||
+      req.headers.get("x-real-ip") ||
+      req.ip ||
+      "unknown";
 
     // Enhanced IP analysis for fraud detection
     let ipAnalysis = null;
@@ -47,7 +54,7 @@ export async function POST(req: NextRequest) {
       // Get detailed IP information
       const ipInfo = await getIPInfo(clientIP);
       const suspiciousCheck = await checkIPSuspicious(clientIP);
-      
+
       ipAnalysis = {
         ip: ipInfo.ip,
         country: ipInfo.country,
@@ -79,9 +86,9 @@ export async function POST(req: NextRequest) {
       if (isProxy && userId) {
         await FraudDetectionService.createFraudEvent({
           userId,
-          eventType: 'SUSPICIOUS_IP_BEHAVIOR',
-          severity: 'MEDIUM',
-          description: `Suspicious IP during user behavior: ${suspiciousReasons.join(', ')}`,
+          eventType: "SUSPICIOUS_IP_BEHAVIOR",
+          severity: "MEDIUM",
+          description: `Suspicious IP during user behavior: ${suspiciousReasons.join(", ")}`,
           evidence: {
             ip: clientIP,
             ipAnalysis,
@@ -92,25 +99,25 @@ export async function POST(req: NextRequest) {
             pageUrl,
           },
           ipAddress: clientIP,
-          userAgent: req.headers.get('user-agent') || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
         });
       }
     } catch (error) {
-      console.warn('Error analyzing IP for behavior tracking:', error);
+      console.warn("Error analyzing IP for behavior tracking:", error);
       // Continue without IP analysis if it fails
     }
 
     let suspiciousBehavior = false;
     let botProbability = 0;
     let riskScore = 0;
-    let movementPattern = 'NATURAL';
+    let movementPattern = "NATURAL";
 
     // Enhanced analysis for mouse movement events
-    if (eventType === 'MOUSE_MOVEMENT' && interactionData?.movements) {
+    if (eventType === "MOUSE_MOVEMENT" && interactionData?.movements) {
       const analysis = MouseMovementAnalyzer.analyzeMovementPattern(
         interactionData.movements
       );
-      
+
       suspiciousBehavior = analysis.botProbability > 0.7;
       botProbability = analysis.botProbability;
       movementPattern = analysis.pattern;
@@ -120,8 +127,8 @@ export async function POST(req: NextRequest) {
       if (suspiciousBehavior && userId) {
         await FraudDetectionService.createFraudEvent({
           userId,
-          eventType: 'SUSPICIOUS_MOUSE_BEHAVIOR',
-          severity: 'MEDIUM',
+          eventType: "SUSPICIOUS_MOUSE_BEHAVIOR",
+          severity: "MEDIUM",
           description: `Suspicious mouse movement pattern detected: ${analysis.pattern}`,
           evidence: {
             botProbability: analysis.botProbability,
@@ -133,7 +140,7 @@ export async function POST(req: NextRequest) {
             locationData,
           },
           ipAddress: clientIP,
-          userAgent: req.headers.get('user-agent') || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
         });
       }
     }
@@ -150,7 +157,7 @@ export async function POST(req: NextRequest) {
         elementType: elementType || null,
         elementText: elementText || null,
         interactionData: interactionData || null,
-        
+
         // Mouse movement specific data
         mouseX: mouseX || null,
         mouseY: mouseY || null,
@@ -159,57 +166,77 @@ export async function POST(req: NextRequest) {
         mouseDirection: interactionData?.direction || null,
         mouseDistance: interactionData?.distance || null,
         mousePauseTime: interactionData?.pauseTime || null,
-        
+
         // Pattern analysis
-        movementPattern: eventType === 'MOUSE_MOVEMENT' ? movementPattern : null,
-        clickPattern: eventType === 'CLICK' ? interactionData?.pattern : null,
-        scrollPattern: eventType === 'SCROLL' ? interactionData?.pattern : null,
-        
+        movementPattern:
+          eventType === "MOUSE_MOVEMENT" ? movementPattern : null,
+        clickPattern: eventType === "CLICK" ? interactionData?.pattern : null,
+        scrollPattern: eventType === "SCROLL" ? interactionData?.pattern : null,
+
         // Device and location with enhanced data
         deviceId: deviceId || null,
         ipAddress: clientIP,
-        userAgent: req.headers.get('user-agent'),
+        userAgent: req.headers.get("user-agent"),
         location: locationData, // Enhanced location data from IP geolocation
-        
+
         // Fraud detection flags
         suspiciousBehavior: suspiciousBehavior || isProxy, // Include IP-based suspicion
         botProbability,
         riskScore: Math.max(riskScore, isProxy ? 0.3 : 0), // Boost risk score for proxy IPs
-      }
+      },
     });
 
     return NextResponse.json({
       success: true,
       event: behaviorEvent,
-      analysis: eventType === 'MOUSE_MOVEMENT' ? {
-        pattern: movementPattern,
-        botProbability,
-        suspiciousBehavior,
-        riskScore
-      } : null,
+      analysis:
+        eventType === "MOUSE_MOVEMENT"
+          ? {
+              pattern: movementPattern,
+              botProbability,
+              suspiciousBehavior,
+              riskScore,
+            }
+          : null,
       ipAnalysis: {
         isProxy,
         suspiciousReasons,
         location: locationData,
-      }
+      },
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error tracking user behavior:", error);
+
+    // Log to database - user could email about "behavior not being tracked"
+    const userMessage = logError({
+      code: "USER_BEHAVIOR_TRACK_FAILED",
+      userId: session?.user?.id || body?.userId,
+      route: "/api/user-behavior",
+      method: "POST",
+      error,
+      metadata: {
+        eventType: body?.eventType,
+        sessionId: body?.sessionId,
+        pageUrl: body?.pageUrl,
+        note: "Failed to track user behavior",
+      },
     });
 
-  } catch (error) {
-    console.error('Error tracking user behavior:', error);
-    return NextResponse.json(
-      { error: "Failed to track user behavior" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     const { searchParams } = new URL(req.url);
-    const sessionId = searchParams.get('sessionId');
-    const userId = searchParams.get('userId');
-    const deviceId = searchParams.get('deviceId');
+    const sessionId = searchParams.get("sessionId");
+    const userId = searchParams.get("userId");
+    const deviceId = searchParams.get("deviceId");
 
     if (!sessionId && !userId && !deviceId) {
       return NextResponse.json(
@@ -227,16 +254,18 @@ export async function GET(req: NextRequest) {
     // Get behavior events
     const events = await db.userBehaviorEvent.findMany({
       where,
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       take: 100, // Limit to recent events
     });
 
     // Analyze patterns if mouse movements are present
-    const mouseMovements = events.filter(e => e.eventType === 'MOUSE_MOVEMENT');
+    const mouseMovements = events.filter(
+      (e) => e.eventType === "MOUSE_MOVEMENT"
+    );
     let sessionAnalysis = null;
 
     if (mouseMovements.length > 0) {
-      const movements = mouseMovements.map(e => ({
+      const movements = mouseMovements.map((e) => ({
         x: e.mouseX || 0,
         y: e.mouseY || 0,
         timestamp: e.timestamp.getTime(),
@@ -248,28 +277,43 @@ export async function GET(req: NextRequest) {
     // Calculate session statistics
     const sessionStats = {
       totalEvents: events.length,
-      eventTypes: events.reduce((acc, e) => {
-        acc[e.eventType] = (acc[e.eventType] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      suspiciousEvents: events.filter(e => e.suspiciousBehavior).length,
-      averageRiskScore: events.length > 0 
-        ? events.reduce((sum, e) => sum + (e.riskScore || 0), 0) / events.length 
-        : 0,
+      eventTypes: events.reduce(
+        (acc, e) => {
+          acc[e.eventType] = (acc[e.eventType] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
+      suspiciousEvents: events.filter((e) => e.suspiciousBehavior).length,
+      averageRiskScore:
+        events.length > 0
+          ? events.reduce((sum, e) => sum + (e.riskScore || 0), 0) /
+            events.length
+          : 0,
       sessionAnalysis,
     };
 
     return NextResponse.json({
       success: true,
       events,
-      sessionStats
+      sessionStats,
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error getting user behavior:", error);
+
+    // Log to database - user could email about "can't see behavior data"
+    const userMessage = logError({
+      code: "USER_BEHAVIOR_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/user-behavior",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch user behavior",
+      },
     });
 
-  } catch (error) {
-    console.error('Error getting user behavior:', error);
-    return NextResponse.json(
-      { error: "Failed to get user behavior" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

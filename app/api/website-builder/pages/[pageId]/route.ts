@@ -1,47 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { 
-  updateWebsitePage, 
-  deleteWebsitePage, 
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import {
+  updateWebsitePage,
+  deleteWebsitePage,
   getWebsitePageDetails,
-  getSellerByUserId
-} from '@/lib/queries'
-import { UpdateWebsitePageSchema } from '@/types/websiteBuilder'
+  getSellerByUserId,
+} from "@/lib/queries";
+import { UpdateWebsitePageSchema } from "@/types/websiteBuilder";
+import { logError } from "@/lib/error-logger";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { pageId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+  let pageId: string | undefined = undefined;
+
   try {
-    const session = await auth()
-    
+    session = await auth();
+    pageId = params.pageId;
+
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const seller = await getSellerByUserId(session.user.id)
+    const seller = await getSellerByUserId(session.user.id);
     if (!seller) {
-      return NextResponse.json({ error: 'Seller not found' }, { status: 404 })
+      return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
-    const body = await request.json()
-    const validatedData = UpdateWebsitePageSchema.parse(body)
+    body = await request.json();
+    const validatedData = UpdateWebsitePageSchema.parse(body);
 
     // Verify the page belongs to the seller
-    const page = await getWebsitePageDetails(params.pageId)
+    const page = await getWebsitePageDetails(pageId);
     if (!page || page.website.sellerId !== seller.id) {
-      return NextResponse.json({ error: 'Page not found' }, { status: 404 })
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
-    const updatedPage = await updateWebsitePage(params.pageId, validatedData)
-    
-    return NextResponse.json({ page: updatedPage })
+    const updatedPage = await updateWebsitePage(pageId, validatedData);
+
+    return NextResponse.json({ page: updatedPage });
   } catch (error) {
-    console.error('Error updating page:', error)
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+    // Log to console (always happens)
+    console.error("Error updating page:", error);
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof Error && error.name === "ZodError") {
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+    // Log to database - user could email about "couldn't update page"
+    const userMessage = logError({
+      code: "WEBSITE_PAGE_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/website-builder/pages/[pageId]",
+      method: "PUT",
+      error,
+      metadata: {
+        pageId,
+        note: "Failed to update website page",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -49,29 +73,49 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { pageId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let pageId: string | undefined = undefined;
+
   try {
-    const session = await auth()
-    
+    session = await auth();
+    pageId = params.pageId;
+
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const seller = await getSellerByUserId(session.user.id)
+    const seller = await getSellerByUserId(session.user.id);
     if (!seller) {
-      return NextResponse.json({ error: 'Seller not found' }, { status: 404 })
+      return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
     // Verify the page belongs to the seller
-    const page = await getWebsitePageDetails(params.pageId)
+    const page = await getWebsitePageDetails(pageId);
     if (!page || page.website.sellerId !== seller.id) {
-      return NextResponse.json({ error: 'Page not found' }, { status: 404 })
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
-    await deleteWebsitePage(params.pageId)
-    
-    return NextResponse.json({ success: true })
+    await deleteWebsitePage(pageId);
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting page:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Log to console (always happens)
+    console.error("Error deleting page:", error);
+
+    // Log to database - user could email about "couldn't delete page"
+    const userMessage = logError({
+      code: "WEBSITE_PAGE_DELETE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/website-builder/pages/[pageId]",
+      method: "DELETE",
+      error,
+      metadata: {
+        pageId,
+        note: "Failed to delete website page",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { FraudDetectionService } from "@/lib/analytics";
 import { hasPermission } from "@/lib/permissions";
+import { db } from "@/lib/db";
+import { logError } from "@/lib/error-logger";
 
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Only users with VIEW_FRAUD_DETECTION permission can access fraud detection
-    if (!session?.user?.id || !(await hasPermission(session.user.id, 'VIEW_FRAUD_DETECTION'))) {
+    if (
+      !session?.user?.id ||
+      !(await hasPermission(session.user.id, "VIEW_FRAUD_DETECTION"))
+    ) {
       return NextResponse.json(
         { error: "Unauthorized - Fraud detection access required" },
         { status: 401 }
@@ -16,11 +24,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const severity = searchParams.get('severity');
-    const eventType = searchParams.get('eventType');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const status = searchParams.get("status");
+    const severity = searchParams.get("severity");
+    const eventType = searchParams.get("eventType");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const offset = parseInt(searchParams.get("offset") || "0");
 
     // Get fraud events
     const events = await FraudDetectionService.getFraudEvents({
@@ -28,7 +36,7 @@ export async function GET(req: NextRequest) {
       severity: severity || undefined,
       eventType: eventType || undefined,
       limit,
-      offset
+      offset,
     });
 
     return NextResponse.json({
@@ -37,25 +45,42 @@ export async function GET(req: NextRequest) {
       pagination: {
         limit,
         offset,
-        hasMore: events.length === limit
-      }
+        hasMore: events.length === limit,
+      },
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error fetching fraud events:", error);
+
+    // Log to database - admin could email about "can't load fraud events"
+    const userMessage = logError({
+      code: "FRAUD_EVENTS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/fraud",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch fraud events",
+      },
     });
 
-  } catch (error) {
-    console.error('Error fetching fraud events:', error);
-    return NextResponse.json(
-      { error: "Failed to fetch fraud events" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Only users with CREATE_FRAUD_EVENTS permission can create fraud events
-    if (!session?.user?.id || !(await hasPermission(session.user.id, 'CREATE_FRAUD_EVENTS'))) {
+    if (
+      !session?.user?.id ||
+      !(await hasPermission(session.user.id, "CREATE_FRAUD_EVENTS"))
+    ) {
       return NextResponse.json(
         { error: "Unauthorized - Fraud event creation access required" },
         { status: 401 }
@@ -74,7 +99,7 @@ export async function POST(req: NextRequest) {
       orderId,
       productId,
       sellerId,
-      actionsTaken
+      actionsTaken,
     } = body;
 
     // Validate required fields
@@ -97,37 +122,58 @@ export async function POST(req: NextRequest) {
       orderId,
       productId,
       sellerId,
-      actionsTaken
+      actionsTaken,
     });
 
     return NextResponse.json({
       success: true,
       message: "Fraud event created successfully",
-      event
+      event,
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error creating fraud event:", error);
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - admin could email about "couldn't create fraud event"
+    const userMessage = logError({
+      code: "FRAUD_EVENT_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/fraud",
+      method: "POST",
+      error,
+      metadata: {
+        eventType: body?.eventType,
+        severity: body?.severity,
+        note: "Failed to create fraud event",
+      },
     });
 
-  } catch (error) {
-    console.error('Error creating fraud event:', error);
-    return NextResponse.json(
-      { error: "Failed to create fraud event" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Only users with MANAGE_FRAUD_DETECTION permission can update fraud events
-    if (!session?.user?.id || !(await hasPermission(session.user.id, 'MANAGE_FRAUD_DETECTION'))) {
+    if (
+      !session?.user?.id ||
+      !(await hasPermission(session.user.id, "MANAGE_FRAUD_DETECTION"))
+    ) {
       return NextResponse.json(
         { error: "Unauthorized - Fraud detection management access required" },
         { status: 401 }
       );
     }
 
-    const body = await req.json();
+    body = await req.json();
     const { eventId, status, resolutionNotes, actionsTaken } = body;
 
     if (!eventId) {
@@ -146,21 +192,34 @@ export async function PATCH(req: NextRequest) {
         actionsTaken: actionsTaken || undefined,
         resolvedBy: session.user.id,
         resolvedAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return NextResponse.json({
       success: true,
       message: "Fraud event updated successfully",
-      event: updatedEvent
+      event: updatedEvent,
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error updating fraud event:", error);
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - admin could email about "couldn't update fraud event"
+    const userMessage = logError({
+      code: "FRAUD_EVENT_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/analytics/fraud",
+      method: "PATCH",
+      error,
+      metadata: {
+        eventId: body?.eventId,
+        note: "Failed to update fraud event",
+      },
     });
 
-  } catch (error) {
-    console.error('Error updating fraud event:', error);
-    return NextResponse.json(
-      { error: "Failed to update fraud event" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

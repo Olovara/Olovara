@@ -2,18 +2,23 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(
   req: Request,
   { params }: { params: { suggestionId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let suggestionId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { suggestionId } = params;
+    suggestionId = params.suggestionId;
 
     // Validate that the suggestionId is a valid ObjectID
     if (!ObjectId.isValid(suggestionId)) {
@@ -54,8 +59,26 @@ export async function POST(
 
     return new NextResponse("Upvoted successfully");
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SUGGESTION_UPVOTE_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Don't log validation errors - they're expected client-side issues
+    // (Invalid ID format, already upvoted are handled with 400 status)
+
+    // Log to database - user could email about "couldn't upvote suggestion"
+    const userMessage = logError({
+      code: "SUGGESTION_UPVOTE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/suggestions/[suggestionId]/upvote",
+      method: "POST",
+      error,
+      metadata: {
+        suggestionId,
+        note: "Failed to upvote suggestion",
+      },
+    });
+
+    return new NextResponse(userMessage, { status: 500 });
   }
 }
 
@@ -63,13 +86,17 @@ export async function DELETE(
   req: Request,
   { params }: { params: { suggestionId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let suggestionId: string | undefined = undefined;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { suggestionId } = params;
+    suggestionId = params.suggestionId;
 
     // Validate that the suggestionId is a valid ObjectID
     if (!ObjectId.isValid(suggestionId)) {
@@ -112,7 +139,25 @@ export async function DELETE(
 
     return new NextResponse("Upvote removed successfully");
   } catch (error) {
+    // Log to console (always happens)
     console.error("[SUGGESTION_UPVOTE_DELETE]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Don't log validation errors - they're expected client-side issues
+    // (Invalid ID format, not upvoted are handled with 400 status)
+
+    // Log to database - user could email about "couldn't remove upvote"
+    const userMessage = logError({
+      code: "SUGGESTION_UPVOTE_REMOVE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/suggestions/[suggestionId]/upvote",
+      method: "DELETE",
+      error,
+      metadata: {
+        suggestionId,
+        note: "Failed to remove upvote from suggestion",
+      },
+    });
+
+    return new NextResponse(userMessage, { status: 500 });
   }
-} 
+}

@@ -4,36 +4,41 @@ import { NewsletterSendSchema } from "@/schemas/NewsletterSchema";
 import { Resend } from "resend";
 import NewsletterEmail from "@/components/emails/NewsletterEmail";
 import { auth } from "@/auth";
+import { logError } from "@/lib/error-logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     // Check if user is authenticated
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch user permissions and role from database
     const dbUser = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { permissions: true, role: true }
+      select: { permissions: true, role: true },
     });
 
     // SUPER_ADMIN has all permissions, so bypass the check
-    if (dbUser?.role !== 'SUPER_ADMIN' && !dbUser?.permissions?.includes('SEND_BROADCASTS')) {
+    if (
+      dbUser?.role !== "SUPER_ADMIN" &&
+      !dbUser?.permissions?.includes("SEND_BROADCASTS")
+    ) {
       return NextResponse.json(
         { error: "Insufficient permissions to send newsletters" },
         { status: 403 }
       );
     }
 
-    const body = await req.json();
+    body = await req.json();
     const validatedData = NewsletterSendSchema.parse(body);
 
     // Get subscribers based on target audience
@@ -126,8 +131,10 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Newsletter sending error:", error);
 
+    // Don't log validation errors - they're expected client-side issues
     if (error instanceof Error && error.message.includes("validation")) {
       return NextResponse.json(
         { error: "Invalid newsletter data" },
@@ -135,34 +142,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to send newsletter" },
-      { status: 500 }
-    );
+    // Log to database - admin could email about "couldn't send newsletter"
+    const userMessage = logError({
+      code: "NEWSLETTER_SEND_FAILED",
+      userId: session?.user?.id,
+      route: "/api/newsletter/send",
+      method: "POST",
+      error,
+      metadata: {
+        targetAudience: body?.targetAudience,
+        testMode: body?.testMode,
+        note: "Failed to send newsletter",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
 // GET endpoint to get subscriber statistics
 export async function GET(req: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
 
     // Check if user is authenticated
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch user permissions and role from database
     const dbUser = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { permissions: true, role: true }
+      select: { permissions: true, role: true },
     });
 
     // SUPER_ADMIN has all permissions, so bypass the check
-    if (dbUser?.role !== 'SUPER_ADMIN' && !dbUser?.permissions?.includes('SEND_BROADCASTS')) {
+    if (
+      dbUser?.role !== "SUPER_ADMIN" &&
+      !dbUser?.permissions?.includes("SEND_BROADCASTS")
+    ) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }
@@ -203,10 +224,21 @@ export async function GET(req: NextRequest) {
       recentSubscribers,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Newsletter statistics error:", error);
-    return NextResponse.json(
-      { error: "Failed to get newsletter statistics" },
-      { status: 500 }
-    );
+
+    // Log to database - admin could email about "can't load newsletter statistics"
+    const userMessage = logError({
+      code: "NEWSLETTER_STATISTICS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/newsletter/send",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to get newsletter statistics",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

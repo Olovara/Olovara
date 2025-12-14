@@ -2,15 +2,19 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isSellerGPSRComplianceRequired } from "@/lib/gpsr-compliance";
+import { logError } from "@/lib/error-logger";
 
 /**
  * GET /api/seller/gpsr-requirement
  * Check if GPSR compliance is required for the authenticated seller
  */
 export async function GET() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -21,8 +25,8 @@ export async function GET() {
       select: {
         id: true,
         shopCountry: true,
-        excludedCountries: true
-      }
+        excludedCountries: true,
+      },
     });
 
     if (!seller) {
@@ -38,14 +42,24 @@ export async function GET() {
     return NextResponse.json({
       isGPSRRequired,
       shopCountry: seller.shopCountry,
-      excludedCountries: seller.excludedCountries || []
+      excludedCountries: seller.excludedCountries || [],
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error checking GPSR requirement:", error);
+
+    // Log to database - user could email about "can't check GPSR requirement"
+    const userMessage = logError({
+      code: "SELLER_GPSR_CHECK_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/gpsr-requirement",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to check GPSR requirement",
+      },
     });
 
-  } catch (error) {
-    console.error("Error checking GPSR requirement:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

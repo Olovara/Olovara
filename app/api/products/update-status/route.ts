@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
+import { logError } from "@/lib/error-logger";
 
 export async function PUT(req: NextRequest) {
   // Declare variables outside try block so they're accessible in catch
@@ -139,12 +140,13 @@ export async function PUT(req: NextRequest) {
         return new Response(
           JSON.stringify({
             success: false,
-            error: "You must complete your seller onboarding before activating products. Please complete all onboarding steps first.",
+            error:
+              "You must complete your seller onboarding before activating products. Please complete all onboarding steps first.",
             onboardingIncomplete: true,
             onboardingStatus: {
               isFullyActivated: seller.isFullyActivated,
-              steps: onboardingSteps
-            }
+              steps: onboardingSteps,
+            },
           }),
           { status: 403 }
         );
@@ -164,7 +166,9 @@ export async function PUT(req: NextRequest) {
             success: false,
             error: "Product does not meet requirements for active status",
             details: validationResult.error.errors,
-            missingFields: validationResult.error.errors.map(err => err.path.join('.')),
+            missingFields: validationResult.error.errors.map((err) =>
+              err.path.join(".")
+            ),
           }),
           { status: 400 }
         );
@@ -180,40 +184,61 @@ export async function PUT(req: NextRequest) {
     return new Response(
       JSON.stringify({
         success: true,
-        message: newStatus === "ACTIVE" 
-          ? "Product activated successfully!" 
-          : `Product status updated to ${newStatus}`,
+        message:
+          newStatus === "ACTIVE"
+            ? "Product activated successfully!"
+            : `Product status updated to ${newStatus}`,
         product: updatedProduct,
       }),
       { status: 200 }
     );
   } catch (error) {
+    // Log to console (always happens)
     console.error("[API ERROR] Product status update failed:", {
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : error,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
       productId: productId,
       newStatus: newStatus || data?.newStatus,
       userId: session?.user?.id || "unknown",
       productStatus: product?.status,
       timestamp: new Date().toISOString(),
     });
-    
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Failed to update product status";
-    
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't update product status"
+    const userMessage = logError({
+      code: "PRODUCT_STATUS_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/products/update-status",
+      method: "PUT",
+      error,
+      metadata: {
+        productId,
+        newStatus: newStatus || data?.newStatus,
+        currentStatus: product?.status,
+        note: "Failed to update product status",
+      },
+    });
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
-        details: process.env.NODE_ENV === "development" 
-          ? (error instanceof Error ? error.stack : String(error))
-          : undefined,
+        error: userMessage,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.stack
+              : String(error)
+            : undefined,
       }),
       { status: 500 }
     );
   }
-} 
+}

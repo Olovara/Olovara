@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { headers } from "next/headers";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const body = await request.json();
+    body = await request.json();
     const {
       reportType,
       targetId,
@@ -37,24 +42,21 @@ export async function POST(request: NextRequest) {
     // Validate category
     const validCategories = [
       "INAPPROPRIATE_CONTENT",
-      "COPYRIGHT_INFRINGEMENT", 
+      "COPYRIGHT_INFRINGEMENT",
       "MISLEADING_INFORMATION",
       "POOR_QUALITY",
       "FAKE_PRODUCTS",
       "HARASSMENT",
       "SPAM",
-      "OTHER"
+      "OTHER",
     ];
 
     if (!validCategories.includes(category)) {
-      return NextResponse.json(
-        { error: "Invalid category" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
 
     // Get user session if authenticated
-    const session = await auth();
+    session = await auth();
     const reporterId = session?.user?.id || null;
 
     // Get request metadata
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (reportType === "SELLER") {
       const seller = await db.seller.findUnique({
         where: { userId: targetId },
-        select: { id: true }
+        select: { id: true },
       });
       if (!seller) {
         return NextResponse.json(
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
     } else if (reportType === "PRODUCT") {
       const product = await db.product.findUnique({
         where: { id: targetId },
-        select: { id: true }
+        select: { id: true },
       });
       if (!product) {
         return NextResponse.json(
@@ -97,14 +99,17 @@ export async function POST(request: NextRequest) {
           targetId,
           reportType,
           createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours ago
-          }
-        }
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
+          },
+        },
       });
 
       if (existingReport) {
         return NextResponse.json(
-          { error: "You have already reported this item within the last 24 hours" },
+          {
+            error:
+              "You have already reported this item within the last 24 hours",
+          },
           { status: 429 }
         );
       }
@@ -134,20 +139,35 @@ export async function POST(request: NextRequest) {
     console.log(`Report created: ${report.id} for ${reportType} ${targetId}`);
 
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         reportId: report.id,
-        message: "Report submitted successfully" 
+        message: "Report submitted successfully",
       },
       { status: 201 }
     );
-
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error creating report:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Don't log validation errors - they're expected client-side issues
+
+    // Log to database - user could email about "couldn't submit report"
+    const userMessage = logError({
+      code: "REPORT_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/reports",
+      method: "POST",
+      error,
+      metadata: {
+        reportType: body?.reportType,
+        targetId: body?.targetId,
+        category: body?.category,
+        note: "Failed to create report",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
 
@@ -161,7 +181,7 @@ function getSeverityForCategory(category: string): string {
     FAKE_PRODUCTS: "CRITICAL",
     HARASSMENT: "CRITICAL",
     SPAM: "LOW",
-    OTHER: "MEDIUM"
+    OTHER: "MEDIUM",
   };
 
   return severityMap[category] || "MEDIUM";
@@ -169,20 +189,20 @@ function getSeverityForCategory(category: string): string {
 
 // GET endpoint for admins to retrieve reports (with pagination and filtering)
 export async function GET(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     // Check if user is admin
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const admin = await db.admin.findUnique({
       where: { userId: session.user.id },
-      select: { id: true, role: true }
+      select: { id: true, role: true },
     });
 
     if (!admin) {
@@ -215,12 +235,12 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             username: true,
-            email: true
-          }
-        }
+            email: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -235,15 +255,25 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error fetching reports:", error);
+
+    // Log to database - admin could email about "can't load reports"
+    const userMessage = logError({
+      code: "REPORTS_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/reports",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch reports",
+      },
     });
 
-  } catch (error) {
-    console.error("Error fetching reports:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

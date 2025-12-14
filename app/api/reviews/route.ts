@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ObjectId } from "mongodb";
+import { logError } from "@/lib/error-logger";
 
 const reviewSchema = z.object({
   orderId: z.string(),
@@ -15,13 +16,17 @@ const reviewSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let body: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const body = await req.json();
+    body = await req.json();
     const validatedData = reviewSchema.parse(body);
 
     // Validate ObjectIDs
@@ -56,7 +61,9 @@ export async function POST(req: Request) {
       },
     });
 
-    const allCompleted = allReviews.every((review) => review.status === "COMPLETED" || review.status === "PUBLISHED");
+    const allCompleted = allReviews.every(
+      (review) => review.status === "COMPLETED" || review.status === "PUBLISHED"
+    );
     if (allCompleted) {
       // Update all reviews to PUBLISHED
       await db.review.updateMany({
@@ -91,7 +98,9 @@ export async function POST(req: Request) {
             },
           });
           return new NextResponse(
-            JSON.stringify({ message: "This review has expired and has been deleted." }),
+            JSON.stringify({
+              message: "This review has expired and has been deleted.",
+            }),
             { status: 400, headers: { "Content-Type": "application/json" } }
           );
         }
@@ -127,7 +136,9 @@ export async function POST(req: Request) {
       },
     });
 
-    const allNowCompleted = updatedAllReviews.every((review) => review.status === "COMPLETED");
+    const allNowCompleted = updatedAllReviews.every(
+      (review) => review.status === "COMPLETED"
+    );
     if (allNowCompleted) {
       // Update all reviews to PUBLISHED
       await db.review.updateMany({
@@ -142,14 +153,55 @@ export async function POST(req: Request) {
 
     return NextResponse.json(review);
   } catch (error) {
+    // Log to console (always happens)
     console.error("[REVIEWS_POST]", error);
-    return new NextResponse("Internal error", { status: 500 });
+
+    // Check if it's a ZodError (validation error) - don't log these to DB
+    if (error && typeof error === "object" && "issues" in error) {
+      // Validation errors are expected - just return error, don't log to DB
+      const zodError = error as {
+        issues: Array<{ message: string; path: (string | number)[] }>;
+      };
+      return new NextResponse(
+        JSON.stringify({
+          error: "Validation failed",
+          details: zodError.issues,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Log to database - user could email about "couldn't submit my review"
+    const userMessage = logError({
+      code: "REVIEW_CREATE_FAILED",
+      userId: session?.user?.id,
+      route: "/api/reviews",
+      method: "POST",
+      error,
+      metadata: {
+        orderId: body?.orderId,
+        reviewerId: body?.reviewerId,
+        reviewedId: body?.reviewedId,
+        productId: body?.productId,
+        reviewType: body?.type,
+        rating: body?.rating,
+        note: "Failed to create or update review",
+      },
+    });
+
+    return new NextResponse(JSON.stringify({ error: userMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 
 export async function GET(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -169,10 +221,7 @@ export async function GET(req: Request) {
 
     const reviews = await db.review.findMany({
       where: {
-        OR: [
-          { reviewerId: userId },
-          { reviewedId: userId },
-        ],
+        OR: [{ reviewerId: userId }, { reviewedId: userId }],
         ...(type ? { type } : {}),
       },
       include: {
@@ -202,7 +251,24 @@ export async function GET(req: Request) {
 
     return NextResponse.json(reviews);
   } catch (error) {
+    // Log to console (always happens)
     console.error("[REVIEWS_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+
+    // Log to database - user could email about "can't see reviews"
+    const userMessage = logError({
+      code: "REVIEW_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/reviews",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch reviews",
+      },
+    });
+
+    return new NextResponse(JSON.stringify({ error: userMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-} 
+}

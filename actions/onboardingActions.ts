@@ -7,6 +7,7 @@ import { encryptData, decryptData } from "@/lib/encryption";
 import { updateOnboardingStep } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
 import { recalculateOnboardingSteps } from "@/lib/onboarding";
+import { logError } from "@/lib/error-logger";
 
 /**
  * Recalculate onboarding steps when seller settings change
@@ -16,9 +17,12 @@ import { recalculateOnboardingSteps } from "@/lib/onboarding";
  * - Seller creates/updates products
  */
 export async function recalculateSellerOnboardingSteps() {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     if (!session?.user?.id) {
       return { error: "Unauthorized" };
     }
@@ -26,7 +30,7 @@ export async function recalculateSellerOnboardingSteps() {
     // Get the seller record
     const seller = await prisma.seller.findUnique({
       where: { userId: session.user.id },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!seller) {
@@ -38,8 +42,22 @@ export async function recalculateSellerOnboardingSteps() {
 
     return { success: true };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error recalculating onboarding steps:", error);
-    return { error: "Failed to recalculate onboarding steps" };
+
+    // Log to database - user could email about "onboarding steps not updating"
+    const userMessage = logError({
+      code: "ONBOARDING_STEPS_RECALCULATE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "recalculateSellerOnboardingSteps",
+      error,
+      metadata: {
+        note: "Failed to recalculate onboarding steps",
+      },
+    });
+
+    return { error: userMessage };
   }
 }
 
@@ -47,9 +65,12 @@ export async function recalculateSellerOnboardingSteps() {
  * Update seller shop country and recalculate onboarding steps
  */
 export async function updateSellerShopCountry(countryCode: string) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     if (!session?.user?.id) {
       return { error: "Unauthorized" };
     }
@@ -57,7 +78,7 @@ export async function updateSellerShopCountry(countryCode: string) {
     // Update seller shop country
     await prisma.seller.update({
       where: { userId: session.user.id },
-      data: { shopCountry: countryCode }
+      data: { shopCountry: countryCode },
     });
 
     // Recalculate onboarding steps
@@ -65,18 +86,38 @@ export async function updateSellerShopCountry(countryCode: string) {
 
     return { success: true };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating seller shop country:", error);
-    return { error: "Failed to update shop country" };
+
+    // Log to database - user could email about "couldn't update shop country"
+    const userMessage = logError({
+      code: "ONBOARDING_SHOP_COUNTRY_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "updateSellerShopCountry",
+      error,
+      metadata: {
+        countryCode,
+        note: "Failed to update shop country",
+      },
+    });
+
+    return { error: userMessage };
   }
 }
 
 /**
  * Update seller shipping exclusions and recalculate onboarding steps
  */
-export async function updateSellerShippingExclusions(excludedCountries: string[]) {
+export async function updateSellerShippingExclusions(
+  excludedCountries: string[]
+) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
-    
+    session = await auth();
+
     if (!session?.user?.id) {
       return { error: "Unauthorized" };
     }
@@ -84,7 +125,7 @@ export async function updateSellerShippingExclusions(excludedCountries: string[]
     // Update seller shipping exclusions
     await prisma.seller.update({
       where: { userId: session.user.id },
-      data: { excludedCountries }
+      data: { excludedCountries },
     });
 
     // Recalculate onboarding steps
@@ -92,8 +133,23 @@ export async function updateSellerShippingExclusions(excludedCountries: string[]
 
     return { success: true };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error updating shipping exclusions:", error);
-    return { error: "Failed to update shipping exclusions" };
+
+    // Log to database - user could email about "couldn't update shipping exclusions"
+    const userMessage = logError({
+      code: "ONBOARDING_SHIPPING_EXCLUSIONS_UPDATE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "updateSellerShippingExclusions",
+      error,
+      metadata: {
+        excludedCountriesCount: excludedCountries?.length,
+        note: "Failed to update shipping exclusions",
+      },
+    });
+
+    return { error: userMessage };
   }
 }
 
@@ -129,7 +185,10 @@ const FirstProductSchema = z.object({
     .min(10, "Description must be at least 10 characters")
     .max(1000, "Description must be 1000 characters or less"),
   shortDescription: z.string(),
-  shortDescriptionBullets: z.array(z.string()).max(5, "Maximum 5 bullet points allowed").default([]),
+  shortDescriptionBullets: z
+    .array(z.string())
+    .max(5, "Maximum 5 bullet points allowed")
+    .default([]),
   price: z.number().positive("Price must be greater than 0"),
   materials: z.string().optional(),
   dimensions: z.string().optional(),
@@ -152,12 +211,15 @@ const FirstNameSchema = z.object({
 export const saveHelpPreferences = async (
   data: z.infer<typeof HelpPreferencesSchema>
 ) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     // Validate the data
     const validatedData = HelpPreferencesSchema.parse(data);
 
@@ -174,8 +236,27 @@ export const saveHelpPreferences = async (
     console.log("Help preferences saved successfully:", validatedData);
     return { success: "Help preferences saved successfully!" };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error saving help preferences:", error);
-    return { error: "Failed to save help preferences." };
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid help preferences data." };
+    }
+
+    // Log to database - user could email about "couldn't save help preferences"
+    const userMessage = logError({
+      code: "ONBOARDING_HELP_PREFERENCES_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "saveHelpPreferences",
+      error,
+      metadata: {
+        note: "Failed to save help preferences",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
@@ -232,8 +313,22 @@ export const getHelpPreferencesAnalytics = async () => {
       categoryCounts,
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting help preferences analytics:", error);
-    return { error: "Failed to get analytics." };
+
+    // Log to database - admin could email about "can't get analytics"
+    const userMessage = logError({
+      code: "ONBOARDING_HELP_PREFERENCES_ANALYTICS_FAILED",
+      userId: undefined, // Admin function
+      route: "actions/onboardingActions",
+      method: "getHelpPreferencesAnalytics",
+      error,
+      metadata: {
+        note: "Failed to get help preferences analytics",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
@@ -261,19 +356,37 @@ export const getUsersByHelpCategory = async (category: string) => {
 
     return { users, count: users.length };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting users by help category:", error);
-    return { error: "Failed to get users." };
+
+    // Log to database - admin could email about "can't get users by category"
+    const userMessage = logError({
+      code: "ONBOARDING_GET_USERS_BY_CATEGORY_FAILED",
+      userId: undefined, // Admin function
+      route: "actions/onboardingActions",
+      method: "getUsersByHelpCategory",
+      error,
+      metadata: {
+        category,
+        note: "Failed to get users by help category",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 // Get user's help preferences for personalized guidance
 export const getUserHelpPreferences = async () => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     const user = await db.user.findUnique({
       where: {
         id: session.user.id,
@@ -285,20 +398,37 @@ export const getUserHelpPreferences = async () => {
 
     return { helpPreferences: user?.helpPreferences || [] };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting user help preferences:", error);
-    return { error: "Failed to get help preferences." };
+
+    // Log to database - user could email about "can't load help preferences"
+    const userMessage = logError({
+      code: "ONBOARDING_GET_HELP_PREFERENCES_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "getUserHelpPreferences",
+      error,
+      metadata: {
+        note: "Failed to get user help preferences",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const saveShopPreferences = async (
   data: z.infer<typeof ShopPreferencesSchema>
 ) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     // Validate the data
     const validatedData = ShopPreferencesSchema.parse(data);
 
@@ -327,18 +457,42 @@ export const saveShopPreferences = async (
     console.log("Shop preferences saved successfully:", validatedData);
     return { success: "Shop preferences saved successfully!" };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error saving shop preferences:", error);
-    return { error: "Failed to save shop preferences." };
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid shop preferences data." };
+    }
+
+    // Log to database - user could email about "couldn't save shop preferences"
+    const userMessage = logError({
+      code: "ONBOARDING_SHOP_PREFERENCES_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "saveShopPreferences",
+      error,
+      metadata: {
+        country: data?.country,
+        currency: data?.currency,
+        note: "Failed to save shop preferences",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     // Validate the data
     const validatedData = ShopNameSchema.parse(data);
 
@@ -416,30 +570,56 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
     console.log("Shop name saved successfully:", shopName);
     return { success: "Shop name saved successfully!", shopName: shopName };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error saving shop name:", error);
-    return { error: "Failed to save shop name." };
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid shop name data." };
+    }
+
+    // Log to database - user could email about "couldn't save shop name"
+    const userMessage = logError({
+      code: "ONBOARDING_SHOP_NAME_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "saveShopName",
+      error,
+      metadata: {
+        shopName: data?.shopName,
+        note: "Failed to save shop name",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const createFirstProduct = async (
   data: z.infer<typeof FirstProductSchema>
 ) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
-
-  // Extract userId to ensure TypeScript knows it's defined
-  const userId = session.user.id;
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let userId: string | undefined = undefined;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
+    // Extract userId to ensure TypeScript knows it's defined
+    // Create const for TypeScript type narrowing
+    const currentUserId: string = session.user.id;
+    userId = currentUserId; // Also assign to outer variable for catch block
+
     // Validate the data
     const validatedData = FirstProductSchema.parse(data);
 
     // Check if user has a seller account
     const seller = await db.seller.findUnique({
       where: {
-        userId: userId,
+        userId: currentUserId,
       },
       select: {
         id: true,
@@ -458,9 +638,9 @@ export const createFirstProduct = async (
     // Determine product status based on seller approval and activation
     // Only allow ACTIVE status if seller is approved and fully activated
     // Otherwise, create as DRAFT so seller can complete onboarding first
-    const productStatus = 
-      seller.applicationAccepted && seller.isFullyActivated 
-        ? "ACTIVE" 
+    const productStatus =
+      seller.applicationAccepted && seller.isFullyActivated
+        ? "ACTIVE"
         : "DRAFT";
 
     // Use transaction to ensure atomicity
@@ -468,7 +648,7 @@ export const createFirstProduct = async (
       // Create the product
       const product = await tx.product.create({
         data: {
-          userId: userId,
+          userId: currentUserId,
           name: validatedData.name,
           shortDescription: validatedData.shortDescription,
           shortDescriptionBullets: validatedData.shortDescriptionBullets || [],
@@ -488,13 +668,17 @@ export const createFirstProduct = async (
           stock: 1, // Default stock
           images: [], // Empty array for now, can be updated later
           tags: [], // Empty array for now
-          materialTags: validatedData.materials ? [validatedData.materials] : [],
+          materialTags: validatedData.materials
+            ? [validatedData.materials]
+            : [],
           inStockProcessingTime: validatedData.processingTime
             ? parseInt(validatedData.processingTime.split("-")[0])
             : 3,
           itemWeightUnit: "lbs", // Default weight unit
           itemDimensionUnit: "in", // Default dimension unit
-          taxCategory: validatedData.isDigital ? "DIGITAL_GOODS" : "PHYSICAL_GOODS",
+          taxCategory: validatedData.isDigital
+            ? "DIGITAL_GOODS"
+            : "PHYSICAL_GOODS",
           freeShipping: validatedData.freeShipping || false,
           shippingCost: Math.round((validatedData.shippingCost || 0) * 100), // Convert to cents
           shippingOptionId: validatedData.shippingOptionId || null,
@@ -520,12 +704,18 @@ export const createFirstProduct = async (
     // Note: We don't mark first_product as completed since it's not a required step
     // Product creation is optional and sellers can create products whenever they want
 
-    console.log("First product created successfully:", result.id, "Status:", productStatus);
-    
+    console.log(
+      "First product created successfully:",
+      result.id,
+      "Status:",
+      productStatus
+    );
+
     // Return appropriate message based on status
-    const message = productStatus === "DRAFT" 
-      ? "Product created as draft. Complete your onboarding to activate it."
-      : "First product created successfully!";
+    const message =
+      productStatus === "DRAFT"
+        ? "Product created as draft. Complete your onboarding to activate it."
+        : "First product created successfully!";
 
     return {
       success: message,
@@ -534,26 +724,46 @@ export const createFirstProduct = async (
       isDraft: productStatus === "DRAFT",
     };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error creating first product:", error);
     // Provide more detailed error message
     if (error instanceof Error) {
       console.error("Error details:", error.message, error.stack);
     }
-    return { 
-      error: error instanceof Error 
-        ? `Failed to create first product: ${error.message}` 
-        : "Failed to create first product." 
-    };
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid product data." };
+    }
+
+    // Log to database - user could email about "couldn't create first product"
+    const userMessage = logError({
+      code: "ONBOARDING_FIRST_PRODUCT_CREATE_FAILED",
+      userId,
+      route: "actions/onboardingActions",
+      method: "createFirstProduct",
+      error,
+      metadata: {
+        productName: data?.name,
+        category: data?.category,
+        note: "Failed to create first product",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const setupStripeAccount = async () => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     console.log("Setting up Stripe account for user:", session.user.id); // Placeholder for Stripe Connect setup
     // In a real implementation, this would:
     // 1. Create a Stripe Connect account link
@@ -561,18 +771,35 @@ export const setupStripeAccount = async () => {
     // 3. Handle the return callback
     return { success: "Stripe account setup initiated!" };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error setting up Stripe account:", error);
-    return { error: "Failed to setup Stripe account." };
+
+    // Log to database - user could email about "couldn't setup Stripe"
+    const userMessage = logError({
+      code: "ONBOARDING_STRIPE_SETUP_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "setupStripeAccount",
+      error,
+      metadata: {
+        note: "Failed to setup Stripe account",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const saveFirstName = async (data: z.infer<typeof FirstNameSchema>) => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     // Validate the data
     const validatedData = FirstNameSchema.parse(data);
 
@@ -599,18 +826,40 @@ export const saveFirstName = async (data: z.infer<typeof FirstNameSchema>) => {
     console.log("First name saved successfully");
     return { success: "First name saved successfully!" };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error saving first name:", error);
-    return { error: "Failed to save first name." };
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid first name data." };
+    }
+
+    // Log to database - user could email about "couldn't save first name"
+    const userMessage = logError({
+      code: "ONBOARDING_FIRST_NAME_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "saveFirstName",
+      error,
+      metadata: {
+        note: "Failed to save first name",
+      },
+    });
+
+    return { error: userMessage };
   }
 };
 
 export const getUserFirstName = async () => {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "User not authenticated." };
-  }
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
 
   try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
     // Get user data with encrypted first name
     const user = await db.user.findUnique({
       where: {
@@ -636,7 +885,21 @@ export const getUserFirstName = async () => {
 
     return { firstName: firstName || null };
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error getting user first name:", error);
+
+    // Log to database - user could email about "can't load first name"
+    logError({
+      code: "ONBOARDING_GET_FIRST_NAME_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "getUserFirstName",
+      error,
+      metadata: {
+        note: "Failed to get user first name",
+      },
+    });
+
     return { firstName: null };
   }
 };

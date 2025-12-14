@@ -2,10 +2,15 @@ import { db } from "@/lib/db";
 import { stripeSecret } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(req: Request) {
+  // Declare variables outside try block so they're accessible in catch
+  let user: any = null;
+  let body: any = null;
+
   try {
-    const user = await currentUser();
+    user = await currentUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +29,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { customerId, priceId } = await req.json();
+    body = await req.json();
+    const { customerId, priceId } = body;
 
     if (!customerId || !priceId) {
       return NextResponse.json(
@@ -80,8 +86,8 @@ export async function POST(req: Request) {
         return NextResponse.json({
           subscriptionId: subscription.id,
           clientSecret:
-            typeof subscription.latest_invoice === 'object' && 
-            typeof subscription.latest_invoice?.payment_intent === 'object' && 
+            typeof subscription.latest_invoice === "object" &&
+            typeof subscription.latest_invoice?.payment_intent === "object" &&
             subscription.latest_invoice.payment_intent?.client_secret,
         });
       } else {
@@ -141,23 +147,49 @@ export async function POST(req: Request) {
         return NextResponse.json({
           subscriptionId: subscription.id,
           clientSecret:
-            typeof subscription.latest_invoice === 'object' && 
-            typeof subscription.latest_invoice?.payment_intent === 'object' && 
+            typeof subscription.latest_invoice === "object" &&
+            typeof subscription.latest_invoice?.payment_intent === "object" &&
             subscription.latest_invoice.payment_intent?.client_secret,
         });
       }
     } catch (error) {
+      // Log to console (always happens)
       console.log("🔴 Stripe Error:", error);
-      return NextResponse.json(
-        { error: "Stripe error occurred" },
-        { status: 500 }
-      );
+
+      // Log to database - user could email about "couldn't create/update subscription"
+      const userMessage = logError({
+        code: "STRIPE_SUBSCRIPTION_CREATE_FAILED",
+        userId: user?.id,
+        route: "/api/stripe/create-subscription",
+        method: "POST",
+        error,
+        metadata: {
+          customerId: body?.customerId,
+          priceId: body?.priceId,
+          note: "Stripe subscription creation/update failed",
+        },
+      });
+
+      return NextResponse.json({ error: userMessage }, { status: 500 });
     }
   } catch (error) {
+    // Log to console (always happens)
     console.log("🔴 Error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "couldn't create subscription"
+    const userMessage = logError({
+      code: "STRIPE_SUBSCRIPTION_CREATE_FAILED",
+      userId: user?.id,
+      route: "/api/stripe/create-subscription",
+      method: "POST",
+      error,
+      metadata: {
+        customerId: body?.customerId,
+        priceId: body?.priceId,
+        note: "Failed to create subscription",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

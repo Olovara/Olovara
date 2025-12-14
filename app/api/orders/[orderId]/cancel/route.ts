@@ -4,11 +4,16 @@ import { db } from "@/lib/db";
 import { OrderStatus } from "@prisma/client";
 import { ObjectId } from "mongodb";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { logError } from "@/lib/error-logger";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+  let order: any = null;
+
   try {
     // Validate that the orderId is a valid ObjectID
     if (!ObjectId.isValid(params.orderId)) {
@@ -19,12 +24,9 @@ export async function POST(
     }
 
     // Check authentication
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -32,7 +34,7 @@ export async function POST(
     // Fetch user permissions from database
     const dbUser = await db.user.findUnique({
       where: { id: userId },
-      select: { permissions: true }
+      select: { permissions: true },
     });
 
     // Check if user has permission to manage orders
@@ -42,18 +44,15 @@ export async function POST(
         { status: 403 }
       );
     }
-    
+
     // Get the order
-    const order = await db.order.findUnique({
+    order = await db.order.findUnique({
       where: { id: params.orderId },
       include: { seller: true },
     });
 
     if (!order) {
-      return NextResponse.json(
-        { error: "Order not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
     // Verify the user is the seller of this order
@@ -88,9 +87,22 @@ export async function POST(
     return NextResponse.json({ success: "Order cancelled successfully." });
   } catch (error) {
     console.error("Error in cancel order API:", error);
-    return NextResponse.json(
-      { error: "Failed to cancel order" },
-      { status: 500 }
-    );
+
+    // Log to error database
+    const userMessage = logError({
+      code: "ORDER_CANCEL_FAILED",
+      userId: session?.user?.id,
+      route: `/api/orders/${params?.orderId}/cancel`,
+      method: "POST",
+      error,
+      metadata: {
+        orderId: params?.orderId,
+        orderStatus: order?.status,
+        sellerId: order?.sellerId,
+        note: "Failed to cancel order",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
-} 
+}

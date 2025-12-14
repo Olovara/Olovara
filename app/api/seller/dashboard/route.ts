@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
+import { logError } from "@/lib/error-logger";
 
 // GET - Fetch seller dashboard data
 export async function GET(request: NextRequest) {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -15,7 +19,10 @@ export async function GET(request: NextRequest) {
     const sellerId = searchParams.get("sellerId");
 
     if (!sellerId) {
-      return NextResponse.json({ error: "Seller ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Seller ID is required" },
+        { status: 400 }
+      );
     }
 
     // Verify the user is the seller or an admin
@@ -62,13 +69,24 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ...seller,
-      onboardingSteps
+      onboardingSteps,
     });
   } catch (error) {
+    // Log to console (always happens)
     console.error("Error fetching seller dashboard data:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch seller dashboard data" },
-      { status: 500 }
-    );
+
+    // Log to database - user could email about "can't see dashboard"
+    const userMessage = logError({
+      code: "SELLER_DASHBOARD_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: "/api/seller/dashboard",
+      method: "GET",
+      error,
+      metadata: {
+        note: "Failed to fetch seller dashboard data",
+      },
+    });
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
