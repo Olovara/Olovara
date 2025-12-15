@@ -2,7 +2,24 @@
 
 import { Separator } from "@/components/ui/separator";
 import clsx from "clsx";
-import { HomeIcon, Mail, Settings, FileQuestion, User, Package, ShoppingCart, BarChart3, Send, MessageSquare, FileText, Shield, TrendingUp, Flag, HelpCircle } from "lucide-react";
+import {
+  HomeIcon,
+  Mail,
+  Settings,
+  FileQuestion,
+  User,
+  Package,
+  ShoppingCart,
+  BarChart3,
+  Send,
+  MessageSquare,
+  FileText,
+  Shield,
+  TrendingUp,
+  Flag,
+  HelpCircle,
+  Bug,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
@@ -10,10 +27,10 @@ import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 export default function AdminDashboardSideNavbar() {
   const pathname = usePathname();
   const { hasPermission } = useCurrentPermissions();
-  const hasBlogPermission = hasPermission('WRITE_BLOG');
-  const hasHelpPermission = hasPermission('WRITE_HELP_ARTICLES');
-  const hasFraudPermission = hasPermission('VIEW_FRAUD_DETECTION');
-  const hasAnalyticsPermission = hasPermission('VIEW_ANALYTICS');
+  const hasBlogPermission = hasPermission("WRITE_BLOG");
+  const hasHelpPermission = hasPermission("WRITE_HELP_ARTICLES");
+  const hasFraudPermission = hasPermission("VIEW_FRAUD_DETECTION");
+  const hasAnalyticsPermission = hasPermission("VIEW_ANALYTICS");
 
   return (
     <div className="lg:block border-r hidden h-full">
@@ -175,7 +192,7 @@ export default function AdminDashboardSideNavbar() {
               </div>
               Onboarding Surveys
             </Link>
-            
+
             {hasFraudPermission && (
               <Link
                 className={clsx(
@@ -193,7 +210,7 @@ export default function AdminDashboardSideNavbar() {
                 Fraud Detection
               </Link>
             )}
-            
+
             {hasAnalyticsPermission && (
               <Link
                 className={clsx(
@@ -211,7 +228,23 @@ export default function AdminDashboardSideNavbar() {
                 Analytics
               </Link>
             )}
-            
+
+            <Link
+              className={clsx(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                {
+                  "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                    pathname === "/admin/dashboard/qa",
+                }
+              )}
+              href="/admin/dashboard/qa"
+            >
+              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                <Bug className="h-3 w-3" />
+              </div>
+              QA Management
+            </Link>
+
             {hasBlogPermission && (
               <Link
                 className={clsx(
@@ -229,7 +262,7 @@ export default function AdminDashboardSideNavbar() {
                 Blog
               </Link>
             )}
-            
+
             {hasHelpPermission && (
               <Link
                 className={clsx(
@@ -247,7 +280,7 @@ export default function AdminDashboardSideNavbar() {
                 Help Center
               </Link>
             )}
-            
+
             <Link
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
@@ -263,7 +296,7 @@ export default function AdminDashboardSideNavbar() {
               </div>
               Profile
             </Link>
-            
+
             <Separator className="my-3" />
             <Link
               className={clsx(

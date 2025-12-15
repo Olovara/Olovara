@@ -40,6 +40,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { isGPSRComplianceRequired } from "@/lib/gpsr-compliance";
 import { uploadProcessedFiles } from "@/lib/upload-files";
+import { logQaStep } from "@/lib/qa-logger";
+import { getQaSessionId } from "@/lib/qa-session";
+import { PRODUCT_STEPS, QA_EVENTS } from "@/lib/qa-steps";
+import { useSession } from "next-auth/react";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
@@ -64,6 +68,11 @@ type SchemaOption = {
 
 export function ProductForm({ initialData }: ProductFormProps) {
   console.log("[DEBUG] ProductForm - Initial data:", initialData);
+
+  // QA logging setup
+  const { data: session } = useSession();
+  const sessionId = getQaSessionId();
+  const userId = session?.user?.id;
 
   const [description, setDescription] = useState<string>(
     initialData?.description?.html || ""
@@ -303,6 +312,25 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
     fetchExcludedCountries();
   }, [initialData?.id]);
+
+  // QA logging: Log when user enters product form
+  useEffect(() => {
+    if (!userId) return;
+
+    logQaStep({
+      userId,
+      sessionId,
+      event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+      step: PRODUCT_STEPS.DETAILS,
+      status: "started",
+      route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+      metadata: {
+        isEdit: !!initialData,
+        productId: initialData?.id,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, sessionId]); // Only log once when component mounts, not on every initialData change
 
   // Determine initial schema based on initial status (defaults to DRAFT for new products)
   const initialStatus = initialData?.status || "DRAFT";
@@ -1309,6 +1337,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
               `${validUploadedUrls.length} image${validUploadedUrls.length === 1 ? "" : "s"} uploaded successfully`
             );
           }
+
+          // QA logging: Log successful image upload
+          if (userId) {
+            logQaStep({
+              userId,
+              sessionId,
+              event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+              step: PRODUCT_STEPS.IMAGES,
+              status: "completed",
+              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+              metadata: {
+                imageCount: validUploadedUrls.length,
+                totalImages: finalImageUrls.length,
+              },
+            });
+          }
         } catch (uploadError) {
           // Clean up blob URLs on error to prevent memory leaks
           newProcessedImages.forEach((img) => {
@@ -1342,6 +1386,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
             isDraft,
             timestamp: new Date().toISOString(),
           });
+
+          // QA logging: Log image upload failure
+          if (userId) {
+            logQaStep({
+              userId,
+              sessionId,
+              event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+              step: PRODUCT_STEPS.IMAGES,
+              status: "failed",
+              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+              metadata: {
+                error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+                imageCount: newProcessedImages.length,
+              },
+            });
+          }
 
           toast.dismiss(uploadToastId);
 
@@ -1535,6 +1595,26 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // CRITICAL: Create product AFTER images are uploaded
       // If this fails, we'll have orphaned images, but at least validation passed
       console.log("[PRODUCT FORM] Creating product with uploaded images...");
+
+      // QA logging: Log submission start
+      if (userId) {
+        logQaStep({
+          userId,
+          sessionId,
+          event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+          step: PRODUCT_STEPS.SUBMIT,
+          status: "started",
+          route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+          metadata: {
+            isDraft: isDraft,
+            isDigital: data.isDigital,
+            imageCount: finalImageUrls.length,
+            hasProductFile: !!finalFileUrl,
+            isEdit: !!initialData,
+          },
+        });
+      }
+
       const response = await fetch(
         initialData
           ? `/api/products/${initialData.id}`
@@ -1543,6 +1623,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
           method: initialData ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-qa-session-id": sessionId, // Send session ID to server
           },
           body: JSON.stringify(formData),
         }
@@ -1668,6 +1749,26 @@ export function ProductForm({ initialData }: ProductFormProps) {
           "[DEBUG] Product created/updated successfully, cleaning up temporary uploads"
         );
 
+        // QA logging: Log successful submission
+        if (userId) {
+          logQaStep({
+            userId,
+            sessionId,
+            event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+            step: PRODUCT_STEPS.SUBMIT,
+            status: "completed",
+            route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+            metadata: {
+              productId: responseData.product.id,
+              isDraft: isDraft,
+              isDigital: data.isDigital,
+              imageCount: finalImageUrls.length,
+              hasProductFile: !!finalFileUrl,
+              isEdit: !!initialData,
+            },
+          });
+        }
+
         // Set the flag to indicate successful submission
         formSubmittedRef.current = true;
 
@@ -1704,6 +1805,23 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setTempImages([]); // Clear temp images after successful submission
       setProcessedFile(null); // Clear processed file after successful submission
     } catch (error) {
+      // QA logging: Log catch block error
+      if (userId) {
+        logQaStep({
+          userId,
+          sessionId,
+          event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+          step: PRODUCT_STEPS.SUBMIT,
+          status: "failed",
+          route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+            isDraft: isDraft,
+            isEdit: !!initialData,
+          },
+        });
+      }
+
       // Enhanced error logging with full context
       const currencyInfo = SUPPORTED_CURRENCIES.find(
         (c) => c.code === data.currency

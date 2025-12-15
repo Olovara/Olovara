@@ -7,9 +7,11 @@ import { getSellerOnboardingSteps } from "@/lib/onboarding";
 import { generateBatchNumber } from "@/lib/batchNumber";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { logError } from "@/lib/error-logger";
+import { logQaEvent } from "@/lib/qa-logger";
+import { QA_EVENTS, PRODUCT_STEPS } from "@/lib/qa-steps";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // 60 seconds timeout
 
@@ -32,6 +34,7 @@ export async function POST(req: NextRequest) {
   try {
     session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -40,6 +43,9 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Get QA session ID from header
+    const qaSessionId = req.headers.get("x-qa-session-id") || "";
 
     data = await req.json();
 
@@ -146,6 +152,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!seller) {
+      // Expected - user may not have seller profile yet - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -165,6 +172,7 @@ export async function POST(req: NextRequest) {
     if (!isDraft && status === "ACTIVE") {
       // Check seller approval first
       if (!seller.applicationAccepted) {
+        // Expected business logic - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,
@@ -178,6 +186,7 @@ export async function POST(req: NextRequest) {
 
       // Check onboarding completion
       if (!seller.isFullyActivated) {
+        // Expected business logic - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,
@@ -199,6 +208,7 @@ export async function POST(req: NextRequest) {
     if (isDraft) {
       // Only name is required for drafts
       if (!name || name.trim() === "") {
+        // Expected validation - no DB logging needed
         console.warn("Missing required field for draft:", { name });
         return new Response(
           JSON.stringify({
@@ -211,6 +221,7 @@ export async function POST(req: NextRequest) {
     } else {
       // For non-draft products, require name, price, and primaryCategory
       if (!name || !rawPrice || !primaryCategory) {
+        // Expected validation - no DB logging needed
         console.warn("Missing required fields:", {
           name,
           price: rawPrice,
@@ -235,7 +246,20 @@ export async function POST(req: NextRequest) {
         finalSku = await generateUniqueSKU(name, seller.userId);
         console.log("[SKU GENERATION] Generated SKU:", finalSku);
       } catch (error) {
+        // Log SKU generation failure
         console.error("[SKU GENERATION] Error generating SKU:", error);
+        logError({
+          code: "PRODUCT_CREATE_SKU_GENERATION_FAILED",
+          userId: session.user.id,
+          route: "/api/products/create-product",
+          method: "POST",
+          error,
+          metadata: {
+            productName: name,
+            sellerId: seller.id,
+            note: "Failed to generate unique SKU for product",
+          },
+        });
         return new Response(
           JSON.stringify({
             success: false,
@@ -390,14 +414,45 @@ export async function POST(req: NextRequest) {
         });
         console.log("[BATCH NUMBER] Generated:", batchNumber);
       } catch (error) {
+        // Log batch number generation failure (non-critical, but should be tracked)
         console.error("[BATCH NUMBER] Error generating batch number:", error);
+        logError({
+          code: "PRODUCT_CREATE_BATCH_NUMBER_FAILED",
+          userId: session.user.id,
+          route: "/api/products/create-product",
+          method: "POST",
+          error,
+          metadata: {
+            productId: product.id,
+            isDigital: productData.isDigital,
+            note: "Failed to generate batch number for physical product (non-critical)",
+          },
+        });
         // Don't fail the entire request if batch number generation fails
       }
     }
 
+    // QA logging: Log successful product creation
+    logQaEvent({
+      userId: session.user.id,
+      sessionId: qaSessionId,
+      event: QA_EVENTS.PRODUCT_CREATE,
+      step: PRODUCT_STEPS.SUBMIT,
+      status: "completed",
+      route: "/api/products/create-product",
+      metadata: {
+        productId: product.id,
+        isDraft,
+        isDigital: data.isDigital,
+        imageCount: data.images?.length || 0,
+        hasProductFile: !!data.productFile,
+      },
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
+        product: product, // Include full product object for client
         productId: product.id,
         message: isDraft
           ? "Product draft saved successfully! Complete the required fields to make it active."
@@ -407,6 +462,24 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    // QA logging: Log product creation failure
+    const qaSessionId = req.headers.get("x-qa-session-id") || "";
+    if (session?.user?.id) {
+      logQaEvent({
+        userId: session.user.id,
+        sessionId: qaSessionId,
+        event: QA_EVENTS.PRODUCT_CREATE,
+        step: PRODUCT_STEPS.SUBMIT,
+        status: "failed",
+        route: "/api/products/create-product",
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          isDraft: data?.status === "DRAFT",
+          isDigital: data?.isDigital,
+        },
+      });
+    }
+
     // Enhanced error logging with currency context
     const currencyInfo = data?.currency
       ? SUPPORTED_CURRENCIES.find((c) => c.code === data.currency)

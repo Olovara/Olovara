@@ -180,9 +180,13 @@ model User {
   testEnvironmentAccessGrantedAt DateTime? // When test access was granted
   testEnvironmentAccessGrantedBy String? // Who granted test access (admin ID)
   
+  // QA Mode - Full behavioral telemetry for controlled group
+  isQaUser Boolean @default(false) // Enable comprehensive event logging for this user
+  
   DeviceFingerprint DeviceFingerprint[]
   UserActivityLog   UserActivityLog[]
   temporaryUploads  TemporaryUpload[]
+  qaEvents          QaEvent[]
 }
 
 model RolePermission {
@@ -1860,6 +1864,29 @@ model ErrorLog {
   @@index([route])
   @@index([createdAt])
   @@index([code, createdAt])
+}
+
+// QA Event Logging System - Separate from error logs
+// This tracks behavioral telemetry for QA users (success + failure events)
+model QaEvent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   // Required - only QA users generate these events
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String   // Session identifier for replaying user flows
+  event     String   // Event category like "PRODUCT_CREATE", "CHECKOUT", "SELLER_ONBOARDING"
+  step      String?  // Specific step within the event flow (e.g., "IMAGES", "PRICING")
+  status    String   // "started" | "completed" | "failed"
+  route     String?  // Current route/page where event occurred
+  metadata  Json?    // Additional context (form data, API payload, browser info, etc.)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([event])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, sessionId]) // For replaying specific user sessions
+  @@index([event, status]) // For finding failure patterns
 }
 
 

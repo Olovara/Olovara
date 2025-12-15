@@ -6,7 +6,7 @@ import { Permission } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const utapi = new UTApi();
 
@@ -19,6 +19,7 @@ export async function PATCH(req: Request) {
     session = await auth();
 
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401 }
@@ -30,6 +31,7 @@ export async function PATCH(req: Request) {
       "EDIT_PRODUCTS" as Permission
     );
     if (!canEditProducts) {
+      // Expected permission check - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -45,6 +47,7 @@ export async function PATCH(req: Request) {
     const { id, ...updateData } = data;
 
     if (!id) {
+      // Expected validation - no DB logging needed
       return new Response(
         JSON.stringify({ success: false, error: "Product ID is required" }),
         { status: 400 }
@@ -58,6 +61,7 @@ export async function PATCH(req: Request) {
     });
 
     if (!currentProduct) {
+      // Expected - product may not exist - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -81,10 +85,12 @@ export async function PATCH(req: Request) {
       console.log("[DEBUG] Calculated removedImages:", removedImages);
 
       if (removedImages.length > 0) {
+        // Calculate file keys outside try block so they're accessible in catch
+        const removedFileKeys = removedImages.map((url) =>
+          url.substring(url.lastIndexOf("/") + 1)
+        );
+
         try {
-          const removedFileKeys = removedImages.map((url) =>
-            url.substring(url.lastIndexOf("/") + 1)
-          );
           console.log(
             "[DEBUG] Attempting to delete fileKeys:",
             removedFileKeys
@@ -103,6 +109,20 @@ export async function PATCH(req: Request) {
             "[DEBUG] Successfully deleted TemporaryUpload records for removed images"
           );
         } catch (deleteError) {
+          // Log file deletion failure
+          logError({
+            code: "PRODUCT_EDIT_FILE_DELETE_FAILED",
+            userId: session.user.id,
+            route: "/api/products/edit-product",
+            method: "PATCH",
+            error: deleteError,
+            metadata: {
+              productId: id,
+              removedImages,
+              removedFileKeys,
+              note: "Failed to delete removed images from UploadThing",
+            },
+          });
           console.error(
             "[ERROR] Failed to delete files from UploadThing:",
             deleteError
@@ -115,10 +135,12 @@ export async function PATCH(req: Request) {
     // Handle productFile deletion if needed
     if (updateData.productFile !== currentProduct.productFile) {
       if (currentProduct.productFile) {
+        // Calculate file key outside try block so it's accessible in catch
+        const removedFileKey = currentProduct.productFile.substring(
+          currentProduct.productFile.lastIndexOf("/") + 1
+        );
+
         try {
-          const removedFileKey = currentProduct.productFile.substring(
-            currentProduct.productFile.lastIndexOf("/") + 1
-          );
           console.log(
             "[DEBUG] Attempting to delete productFile:",
             removedFileKey
@@ -139,6 +161,20 @@ export async function PATCH(req: Request) {
             "[DEBUG] Successfully deleted TemporaryUpload record for removed productFile"
           );
         } catch (deleteError) {
+          // Log product file deletion failure
+          logError({
+            code: "PRODUCT_EDIT_PRODUCT_FILE_DELETE_FAILED",
+            userId: session.user.id,
+            route: "/api/products/edit-product",
+            method: "PATCH",
+            error: deleteError,
+            metadata: {
+              productId: id,
+              removedFileKey,
+              oldProductFile: currentProduct.productFile,
+              note: "Failed to delete product file from UploadThing",
+            },
+          });
           console.error(
             "[ERROR] Failed to delete productFile from UploadThing:",
             deleteError

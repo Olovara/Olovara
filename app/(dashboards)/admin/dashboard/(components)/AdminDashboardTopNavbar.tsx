@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Flag,
   HelpCircle,
+  Bug,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
@@ -148,6 +149,14 @@ export default async function AdminDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <TrendingUp className="mr-2 h-4 w-4" />
                     Analytics
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/qa">
+                  <Button variant="outline" className="w-full">
+                    <Bug className="mr-2 h-4 w-4" />
+                    QA Management
                   </Button>
                 </Link>
               </DialogClose>

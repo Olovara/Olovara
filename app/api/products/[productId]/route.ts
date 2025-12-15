@@ -10,9 +10,11 @@ import {
   hasStockIncreased,
 } from "@/lib/batchNumber";
 import { logError } from "@/lib/error-logger";
+import { logQaEvent } from "@/lib/qa-logger";
+import { QA_EVENTS, PRODUCT_STEPS } from "@/lib/qa-steps";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const utapi = new UTApi();
 
@@ -30,14 +32,17 @@ export async function GET(
   req: Request,
   { params }: { params: { productId: string } }
 ) {
+  let session: any = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     // Validate that the ID is a valid ObjectID before querying
     if (!ObjectId.isValid(params.productId)) {
+      // Expected validation - no DB logging needed
       return new NextResponse("Invalid product ID format", { status: 400 });
     }
 
@@ -122,11 +127,13 @@ export async function GET(
     });
 
     if (!product) {
+      // Expected - product may not exist - no DB logging needed
       return new NextResponse("Product not found", { status: 404 });
     }
 
     return NextResponse.json(product);
   } catch (error) {
+    // Log unexpected errors to both console and database
     console.error("[API ERROR] Product GET failed:", {
       error:
         error instanceof Error
@@ -139,7 +146,23 @@ export async function GET(
       productId: params?.productId,
       timestamp: new Date().toISOString(),
     });
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // Log to database
+    const userMessage = logError({
+      code: "PRODUCT_FETCH_FAILED",
+      userId: session?.user?.id,
+      route: `/api/products/${params?.productId}`,
+      method: "GET",
+      error,
+      metadata: {
+        productId: params?.productId,
+        note: "Unexpected error fetching product",
+      },
+    });
+
+    return new NextResponse(JSON.stringify({ error: userMessage }), {
+      status: 500,
+    });
   }
 }
 
@@ -155,11 +178,15 @@ export async function PATCH(
     session = await auth();
 
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401 }
       );
     }
+
+    // Get QA session ID from header
+    const qaSessionId = req.headers.get("x-qa-session-id") || "";
 
     data = await req.json();
     console.log("[API INPUT] Received update data:", data);
@@ -178,6 +205,7 @@ export async function PATCH(
       });
 
       if (!seller?.applicationAccepted) {
+        // Expected business logic - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,
@@ -190,6 +218,7 @@ export async function PATCH(
       }
 
       if (!seller.isFullyActivated) {
+        // Expected business logic - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,
@@ -203,6 +232,7 @@ export async function PATCH(
     }
 
     if (!productId) {
+      // Expected validation - no DB logging needed
       return new Response(
         JSON.stringify({ success: false, error: "Product ID is required" }),
         { status: 400 }
@@ -232,6 +262,7 @@ export async function PATCH(
         });
 
         if (!product) {
+          // Expected - product may not exist or user doesn't own it - no DB logging needed
           return new Response(
             JSON.stringify({
               success: false,
@@ -267,12 +298,27 @@ export async function PATCH(
           data: saleUpdateData,
         });
 
+        // QA logging: Log successful sale update
+        logQaEvent({
+          userId: session.user.id,
+          sessionId: qaSessionId,
+          event: QA_EVENTS.PRODUCT_EDIT,
+          step: "sale_update",
+          status: "completed",
+          route: `/api/products/${productId}`,
+          metadata: {
+            productId: updatedProduct.id,
+            onSale: updatedProduct.onSale,
+          },
+        });
+
         return new Response(
           JSON.stringify({ success: true, product: updatedProduct }),
           { status: 200 }
         );
       } catch (error) {
         if (error instanceof z.ZodError) {
+          // Expected validation - no DB logging needed
           return new Response(
             JSON.stringify({
               success: false,
@@ -306,6 +352,7 @@ export async function PATCH(
     });
 
     if (!currentProduct) {
+      // Expected - product may not exist or user doesn't own it - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -348,10 +395,12 @@ export async function PATCH(
       );
 
       if (removedImages.length > 0) {
+        // Calculate file keys outside try block so they're accessible in catch
+        const removedFileKeys = removedImages.map((url) =>
+          url.substring(url.lastIndexOf("/") + 1)
+        );
+
         try {
-          const removedFileKeys = removedImages.map((url) =>
-            url.substring(url.lastIndexOf("/") + 1)
-          );
           await utapi.deleteFiles(removedFileKeys);
 
           // Delete the TemporaryUpload records for removed images
@@ -362,6 +411,20 @@ export async function PATCH(
             },
           });
         } catch (deleteError) {
+          // Log file deletion failure - this is important for cleanup tracking
+          logError({
+            code: "PRODUCT_UPDATE_FILE_DELETE_FAILED",
+            userId: session.user.id,
+            route: `/api/products/${productId}`,
+            method: "PATCH",
+            error: deleteError,
+            metadata: {
+              productId,
+              removedImages,
+              removedFileKeys,
+              note: "Failed to delete removed images from UploadThing",
+            },
+          });
           console.error(
             "[ERROR] Failed to delete files from UploadThing:",
             deleteError
@@ -373,10 +436,12 @@ export async function PATCH(
     // Handle productFile deletion if needed
     if (updateData.productFile !== currentProduct.productFile) {
       if (currentProduct.productFile) {
+        // Calculate file key outside try block so it's accessible in catch
+        const removedFileKey = currentProduct.productFile.substring(
+          currentProduct.productFile.lastIndexOf("/") + 1
+        );
+
         try {
-          const removedFileKey = currentProduct.productFile.substring(
-            currentProduct.productFile.lastIndexOf("/") + 1
-          );
           await utapi.deleteFiles([removedFileKey]);
 
           // Delete the TemporaryUpload record for the removed productFile
@@ -387,6 +452,20 @@ export async function PATCH(
             },
           });
         } catch (deleteError) {
+          // Log product file deletion failure
+          logError({
+            code: "PRODUCT_UPDATE_PRODUCT_FILE_DELETE_FAILED",
+            userId: session.user.id,
+            route: `/api/products/${productId}`,
+            method: "PATCH",
+            error: deleteError,
+            metadata: {
+              productId,
+              removedFileKey,
+              oldProductFile: currentProduct.productFile,
+              note: "Failed to delete product file from UploadThing",
+            },
+          });
           console.error(
             "[ERROR] Failed to delete productFile from UploadThing:",
             deleteError
@@ -506,6 +585,8 @@ export async function PATCH(
     );
 
     let updatedProduct: any;
+    // Declare chunks outside try block so it's accessible in catch
+    let chunks: any[] = [];
     try {
       // Perform multiple smaller updates to avoid MongoDB Atlas pipeline limit
       console.log(
@@ -518,7 +599,7 @@ export async function PATCH(
       // Combine all groups and split into chunks
       const allFields = Object.assign({}, ...updateGroups);
       const fieldEntries = Object.entries(allFields);
-      const chunks = [];
+      chunks = [];
 
       for (let i = 0; i < fieldEntries.length; i += MAX_FIELDS_PER_UPDATE) {
         chunks.push(
@@ -553,15 +634,66 @@ export async function PATCH(
 
       console.log("[API] All chunks updated successfully:", updatedProduct.id);
     } catch (dbError) {
+      // Log database update errors
       console.error("[API] Database update error:", dbError);
+      logError({
+        code: "PRODUCT_UPDATE_DB_ERROR",
+        userId: session.user.id,
+        route: `/api/products/${productId}`,
+        method: "PATCH",
+        error: dbError,
+        metadata: {
+          productId,
+          updateGroups: updateGroups.map((group) => ({
+            fields: Object.keys(group),
+            count: Object.keys(group).length,
+          })),
+          chunksCount: chunks.length,
+          note: "Database update failed during chunked update",
+        },
+      });
       throw dbError;
     }
+
+    // QA logging: Log successful product update
+    logQaEvent({
+      userId: session.user.id,
+      sessionId: qaSessionId,
+      event: QA_EVENTS.PRODUCT_EDIT,
+      step: PRODUCT_STEPS.SUBMIT,
+      status: "completed",
+      route: `/api/products/${productId}`,
+      metadata: {
+        productId: updatedProduct.id,
+        isDraft: updatedProduct.status === "DRAFT",
+        isDigital: updatedProduct.isDigital,
+        imageCount: updatedProduct.images?.length || 0,
+        hasProductFile: !!updatedProduct.productFile,
+      },
+    });
 
     return new Response(
       JSON.stringify({ success: true, product: updatedProduct }),
       { status: 200 }
     );
   } catch (error) {
+    // QA logging: Log product update failure
+    const qaSessionId = req.headers.get("x-qa-session-id") || "";
+    if (session?.user?.id) {
+      logQaEvent({
+        userId: session.user.id,
+        sessionId: qaSessionId,
+        event: QA_EVENTS.PRODUCT_EDIT,
+        step: PRODUCT_STEPS.SUBMIT,
+        status: "failed",
+        route: `/api/products/${params?.productId}`,
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          productId: params?.productId,
+        },
+      });
+    }
+
     // Log to console (existing behavior)
     console.error("[API ERROR] Product PATCH failed:", {
       error:

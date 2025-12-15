@@ -8,7 +8,7 @@ import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Duplicate/Copy a product
@@ -26,6 +26,7 @@ export async function POST(
   try {
     session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new NextResponse(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401 }
@@ -34,6 +35,7 @@ export async function POST(
 
     // Validate that the ID is a valid ObjectID
     if (!ObjectId.isValid(params.productId)) {
+      // Expected validation - no DB logging needed
       return new NextResponse(
         JSON.stringify({ success: false, error: "Invalid product ID format" }),
         { status: 400 }
@@ -110,6 +112,7 @@ export async function POST(
     });
 
     if (!originalProduct) {
+      // Expected - product may not exist - no DB logging needed
       return new NextResponse(
         JSON.stringify({ success: false, error: "Product not found" }),
         { status: 404 }
@@ -118,6 +121,7 @@ export async function POST(
 
     // Verify the user owns this product
     if (originalProduct.userId !== session.user.id) {
+      // Expected security check - no DB logging needed
       return new NextResponse(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 403 }
@@ -125,10 +129,25 @@ export async function POST(
     }
 
     // Generate new SKU for the duplicate
-    const newSku = await generateUniqueSKU(
-      originalProduct.name,
-      session.user.id
-    );
+    let newSku: string;
+    try {
+      newSku = await generateUniqueSKU(originalProduct.name, session.user.id);
+    } catch (error) {
+      // Log SKU generation failure
+      logError({
+        code: "PRODUCT_DUPLICATE_SKU_GENERATION_FAILED",
+        userId: session.user.id,
+        route: `/api/products/${params.productId}/duplicate`,
+        method: "POST",
+        error,
+        metadata: {
+          productId: params.productId,
+          productName: originalProduct.name,
+          note: "Failed to generate SKU for duplicated product",
+        },
+      });
+      throw error; // Re-throw to be caught by outer catch
+    }
 
     // Create the duplicate product data
     // Append " (Copy)" to the name and set status to DRAFT
@@ -222,7 +241,21 @@ export async function POST(
           data: { batchNumber },
         });
       } catch (error) {
+        // Log batch number generation failure (non-critical)
         console.error("[BATCH NUMBER] Error generating batch number:", error);
+        logError({
+          code: "PRODUCT_DUPLICATE_BATCH_NUMBER_FAILED",
+          userId: session.user.id,
+          route: `/api/products/${params.productId}/duplicate`,
+          method: "POST",
+          error,
+          metadata: {
+            originalProductId: params.productId,
+            duplicatedProductId: duplicatedProduct.id,
+            isDigital: duplicateData.isDigital,
+            note: "Failed to generate batch number for duplicated physical product (non-critical)",
+          },
+        });
         // Don't fail the entire request if batch number generation fails
       }
     }

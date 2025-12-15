@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       typeof productName !== "string" ||
       productName.trim() === ""
     ) {
+      // Expected validation - no DB logging needed
       return NextResponse.json(
         { error: "Product name is required" },
         { status: 400 }

@@ -972,6 +972,7 @@ export async function getAllUsers() {
         status: true,
         createdAt: true,
         image: true,
+        isQaUser: true, // Include QA mode status
       },
       orderBy: {
         createdAt: "desc",

@@ -19,6 +19,7 @@ export async function PUT(req: NextRequest) {
   try {
     session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -34,6 +35,7 @@ export async function PUT(req: NextRequest) {
     newStatus = ns;
 
     if (!productId || !newStatus) {
+      // Expected validation - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -54,6 +56,7 @@ export async function PUT(req: NextRequest) {
     });
 
     if (!seller) {
+      // Expected - user may not have seller profile - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -118,6 +121,7 @@ export async function PUT(req: NextRequest) {
     });
 
     if (!product) {
+      // Expected - product may not exist - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -128,6 +132,7 @@ export async function PUT(req: NextRequest) {
     }
 
     if (product.userId !== session.user.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,
@@ -140,6 +145,7 @@ export async function PUT(req: NextRequest) {
     // If trying to set status to ACTIVE, check onboarding completion
     if (newStatus === "ACTIVE") {
       if (!seller.isFullyActivated) {
+        // Expected business logic - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,
@@ -164,6 +170,7 @@ export async function PUT(req: NextRequest) {
       });
 
       if (!validationResult.success) {
+        // Expected validation - no DB logging needed
         return new Response(
           JSON.stringify({
             success: false,

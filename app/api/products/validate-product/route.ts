@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     session = await auth();
     if (!session?.user?.id) {
+      // Expected security check - no DB logging needed
       return new Response(
         JSON.stringify({
           success: false,

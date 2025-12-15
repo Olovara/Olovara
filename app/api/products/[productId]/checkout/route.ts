@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,
@@ -13,6 +13,7 @@ export async function GET(
     const productId = params.productId;
 
     if (!productId) {
+      // Expected validation - no DB logging needed
       return NextResponse.json(
         { error: "Product ID is required" },
         { status: 400 }
@@ -50,10 +51,21 @@ export async function GET(
     });
 
     if (!product) {
+      // Expected - product may not exist - no DB logging needed
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
     if (!product.seller) {
+      // This could be a data integrity issue - log to DB
+      logError({
+        code: "CHECKOUT_PRODUCT_SELLER_NOT_FOUND",
+        route: `/api/products/${productId}/checkout`,
+        method: "GET",
+        metadata: {
+          productId,
+          note: "Product exists but seller is missing - data integrity issue",
+        },
+      });
       return NextResponse.json(
         { error: "Product seller not found" },
         { status: 404 }
@@ -62,6 +74,7 @@ export async function GET(
 
     // Check if product is active
     if (product.stock <= 0 && !product.isDigital) {
+      // Expected business logic - no DB logging needed
       return NextResponse.json(
         { error: "Product is out of stock" },
         { status: 400 }
