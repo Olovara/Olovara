@@ -8,46 +8,46 @@ const path = require("path");
 
 // CRITICAL: Handle uncaught exceptions and unhandled rejections
 // These prevent the server from crashing on connection resets and other errors
-process.on('uncaughtException', (error) => {
+process.on("uncaughtException", (error) => {
   // ECONNRESET, EPIPE, and "aborted" errors are normal client disconnects - don't log or crash
-  const errorMessage = error?.message || '';
-  const errorCode = error?.code || '';
-  const errorStack = error?.stack || '';
-  
-  const isNormalDisconnect = 
-    errorCode === 'ECONNRESET' || 
-    errorCode === 'EPIPE' || 
-    errorMessage === 'aborted' ||
-    errorMessage.includes('aborted') ||
-    errorStack.includes('abortIncoming') ||
-    errorStack.includes('socketOnClose');
-  
+  const errorMessage = error?.message || "";
+  const errorCode = error?.code || "";
+  const errorStack = error?.stack || "";
+
+  const isNormalDisconnect =
+    errorCode === "ECONNRESET" ||
+    errorCode === "EPIPE" ||
+    errorMessage === "aborted" ||
+    errorMessage.includes("aborted") ||
+    errorStack.includes("abortIncoming") ||
+    errorStack.includes("socketOnClose");
+
   if (isNormalDisconnect) {
     // Silently ignore - these are normal when clients disconnect
     return;
   }
-  
+
   // Log other uncaught exceptions but don't crash
-  console.error('[UNCAUGHT_EXCEPTION]', {
+  console.error("[UNCAUGHT_EXCEPTION]", {
     error: errorMessage,
     code: errorCode,
     stack: errorStack,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
-  
+
   // Don't exit - let the server continue running
   // process.exit(1) would crash the entire server
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on("unhandledRejection", (reason, promise) => {
   // Log unhandled promise rejections but don't crash
-  console.error('[UNHANDLED_REJECTION]', {
+  console.error("[UNHANDLED_REJECTION]", {
     reason: reason instanceof Error ? reason.message : String(reason),
     code: reason?.code,
     stack: reason instanceof Error ? reason.stack : undefined,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
-  
+
   // Don't exit - let the server continue running
 });
 
@@ -89,7 +89,7 @@ const emitSessionUpdate = (userId, updatedBy, reason) => {
       message: "Your session has been updated. Please refresh to see changes.",
       updatedBy,
       reason,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     console.log(`Session update sent to user ${userId}`);
     return true;
@@ -104,360 +104,363 @@ global.emitSessionUpdate = emitSessionUpdate;
 
 let appReady = false;
 
-app.prepare().then(() => {
-  appReady = true;
-  console.log('[SERVER] Next.js app prepared and ready');
-  
-  const httpServer = createServer();
-  
-  // Configure Socket.IO with CORS and secure options
-  const io = new Server(httpServer, {
-    cors: {
-      origin: process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.HOSTNAME}`
-        : "http://localhost:3000",
-      methods: ["GET", "POST"],
-      credentials: true
-    },
-    transports: ['websocket', 'polling'],
-    allowEIO3: true
-  });
+app
+  .prepare()
+  .then(() => {
+    appReady = true;
+    console.log("[SERVER] Next.js app prepared and ready");
 
-  // Handle Socket.IO connections
-  io.on("connection", (socket) => {
-    console.log("New client connected:", socket.id);
+    const httpServer = createServer();
 
-    socket.on("newUser", (userId) => {
-      console.log("Received newUser event:", { userId, socketId: socket.id });
-      addUser(userId, socket.id);
-      console.log("Broadcasting updated online users:", onlineUsers);
-      io.emit("getOnlineUsers", onlineUsers);
+    // Configure Socket.IO with CORS and secure options
+    const io = new Server(httpServer, {
+      cors: {
+        origin:
+          process.env.NODE_ENV === "production"
+            ? `https://${process.env.HOSTNAME}`
+            : "http://localhost:3000",
+        methods: ["GET", "POST"],
+        credentials: true,
+      },
+      transports: ["websocket", "polling"],
+      allowEIO3: true,
     });
 
-    socket.on("sendMessage", async ({ senderId, conversationId, content }) => {
-      console.log("Received message:", { senderId, conversationId, content });
-      try {
-        // Get sender details
-        const sender = await prisma.user.findUnique({
-          where: { id: senderId },
-          select: { id: true, email: true, username: true },
-        });
+    // Handle Socket.IO connections
+    io.on("connection", (socket) => {
+      console.log("New client connected:", socket.id);
 
-        if (!sender) {
-          console.error("Sender not found");
-          return;
-        }
+      socket.on("newUser", (userId) => {
+        console.log("Received newUser event:", { userId, socketId: socket.id });
+        addUser(userId, socket.id);
+        console.log("Broadcasting updated online users:", onlineUsers);
+        io.emit("getOnlineUsers", onlineUsers);
+      });
 
-        // Create message in database first
-        const message = await prisma.message.create({
-          data: {
+      socket.on(
+        "sendMessage",
+        async ({ senderId, conversationId, content }) => {
+          console.log("Received message:", {
+            senderId,
+            conversationId,
             content,
-            conversation: {
-              connect: {
-                id: conversationId
-              }
-            },
-            sender: {
-              connect: {
-                id: senderId
-              }
-            }
-          },
-          include: {
-            sender: {
-              select: {
-                id: true,
-                email: true,
-                username: true
-              }
-            }
-          }
-        });
-
-        console.log("Created message:", message);
-
-        // Update conversation's updatedAt timestamp
-        await prisma.conversation.update({
-          where: { id: conversationId },
-          data: { updatedAt: new Date() }
-        });
-
-        // Get all users in the conversation
-        const conversation = await prisma.conversation.findUnique({
-          where: { id: conversationId },
-          include: {
-            users: {
-              select: {
-                userId: true
-              }
-            }
-          }
-        });
-
-        if (!conversation) {
-          console.error("Conversation not found");
-          return;
-        }
-
-        // Send message to all users in the conversation
-        conversation.users.forEach(user => {
-          const userSocket = onlineUsers.find(u => u.userId === user.userId);
-          if (userSocket) {
-            io.to(userSocket.socketId).emit("newMessage", {
-              id: message.id,
-              content: message.content,
-              sender: message.sender.username || message.sender.email || "Unknown User",
-              senderId: message.sender.id,
-              createdAt: message.createdAt,
-              conversationId: conversationId
-            });
-          }
-        });
-      } catch (error) {
-        console.error("Error sending message:", error);
-      }
-    });
-
-    // Handle session updates for role/permission changes
-    socket.on("sessionUpdate", async ({ userId, updatedBy, reason }) => {
-      console.log("Session update requested:", { userId, updatedBy, reason });
-      
-      try {
-        // Find the user's socket connection
-        const userSocket = onlineUsers.find(u => u.userId === userId);
-        
-        if (userSocket) {
-          // Send session update notification to the specific user
-          io.to(userSocket.socketId).emit("sessionUpdated", {
-            message: "Your session has been updated. Please refresh to see changes.",
-            updatedBy,
-            reason,
-            timestamp: new Date().toISOString()
           });
-          
-          console.log(`Session update sent to user ${userId}`);
-        } else {
-          console.log(`User ${userId} is not currently online`);
-        }
-      } catch (error) {
-        console.error("Error sending session update:", error);
-      }
-    });
+          try {
+            // Get sender details
+            const sender = await prisma.user.findUnique({
+              where: { id: senderId },
+              select: { id: true, email: true, username: true },
+            });
 
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-      removeUser(socket.id);
-      io.emit("getOnlineUsers", onlineUsers);
-    });
-  });
+            if (!sender) {
+              console.error("Sender not found");
+              return;
+            }
 
-  // Handle all other requests with Next.js
-  httpServer.on('request', async (req, res) => {
-    // Check if app is ready before handling requests
-    if (!appReady) {
-      console.error(`[ERROR] Request to ${req.url} received before app is ready`);
-      if (!res.headersSent) {
-        res.statusCode = 503;
-        res.end('Service Unavailable - App is still initializing');
-      }
-      return;
-    }
-    
-    const requestStart = Date.now();
-    const url = req.url || 'unknown';
-    
-    // Log incoming requests (but not for static assets to reduce noise)
-    if (!url.includes('/_next/static') && !url.includes('/favicon.ico')) {
-      console.log(`[REQUEST] ${req.method} ${url}`);
-    }
-    
-    // Set request timeout (60 seconds - server actions may take time)
-    // CRITICAL: Don't destroy request immediately - let Next.js handle it
-    req.setTimeout(60000, () => {
-      if (!res.headersSent && !res.writableEnded) {
-        console.warn(`[TIMEOUT] Request to ${url} timed out after 60s`);
-        try {
-          res.statusCode = 408;
-          res.end('Request Timeout');
-        } catch (e) {
-          // Response might be destroyed - ignore
-        }
-      }
-    });
+            // Create message in database first
+            const message = await prisma.message.create({
+              data: {
+                content,
+                conversation: {
+                  connect: {
+                    id: conversationId,
+                  },
+                },
+                sender: {
+                  connect: {
+                    id: senderId,
+                  },
+                },
+              },
+              include: {
+                sender: {
+                  select: {
+                    id: true,
+                    email: true,
+                    username: true,
+                  },
+                },
+              },
+            });
 
-    // Set response timeout to prevent hanging connections
-    // CRITICAL: Don't interfere with Next.js response handling
-    res.setTimeout(60000, () => {
-      if (!res.headersSent && !res.writableEnded) {
-        console.warn(`[TIMEOUT] Response for ${url} timed out after 60s`);
-        try {
-          res.statusCode = 504;
-          res.end('Gateway Timeout');
-        } catch (e) {
-          // Response might be destroyed - ignore
-        }
-      }
-    });
+            console.log("Created message:", message);
 
-    // Handle connection errors - these are SYMPTOMS of underlying issues
-    // Log them to track when they occur (they indicate server action failures or slow responses)
-    req.on('error', (error) => {
-      // Log connection errors that indicate problems (not just normal disconnects)
-      if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.warn(`[TIMEOUT] Request to ${req.url} timed out - server too slow`);
-      } else if (error.code === 'HPE_INVALID_EOF_STATE') {
-        // This often happens when server actions fail and client disconnects
-        console.warn(`[PARSE_ERROR] Parse error on ${req.url} - possible server action failure`);
-      } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
-        // ECONNRESET/EPIPE are normal client disconnects, but log others
-        console.error('Request error:', error);
-      }
-    });
+            // Update conversation's updatedAt timestamp
+            await prisma.conversation.update({
+              where: { id: conversationId },
+              data: { updatedAt: new Date() },
+            });
 
-    res.on('error', (error) => {
-      // Log response errors that indicate problems
-      if (error.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.warn(`[TIMEOUT] Response for ${req.url} timed out - server too slow`);
-      } else if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
-        console.error('Response error:', error);
-      }
-    });
+            // Get all users in the conversation
+            const conversation = await prisma.conversation.findUnique({
+              where: { id: conversationId },
+              include: {
+                users: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            });
 
-    // Handle client disconnect gracefully
-    // CRITICAL: Don't destroy response - let Next.js handle it completely
-    // Destroying the response prevents server actions from sending their responses
-    req.on('close', () => {
-      // Don't destroy the response - Next.js needs to send it
-      // Even if client disconnects, the server action should complete
-      // The response will be cleaned up automatically by Node.js
-    });
+            if (!conversation) {
+              console.error("Conversation not found");
+              return;
+            }
 
-    try {
-      // CRITICAL: Server actions MUST be handled by Next.js handler directly
-      // They use routes like /_next/server-actions/[actionId] and need proper routing
-      // Don't interfere with Next.js internal routes - let Next.js handle everything
-      
-      // Log server action requests specifically
-      if (url.includes('/_next/server-actions') || (req.method === 'POST' && !url.startsWith('/api/'))) {
-        console.log(`[SERVER_ACTION] ${req.method} ${url} - handling via Next.js`);
-      }
-      
-      // Call Next.js handler - this handles all routes including server actions
-      // CRITICAL: Properly await the handler but don't interfere with response
-      try {
-        await handler(req, res);
-        
-        // For server actions, check response status
-        if (url.includes('/_next/server-actions') || (req.method === 'POST' && !url.startsWith('/api/'))) {
-          // Give Next.js time to send the response
-          await new Promise(resolve => setTimeout(resolve, 10));
-          
-          const duration = Date.now() - requestStart;
-          const responseSent = res.headersSent || res.writableEnded;
-          
-          console.log(`[SERVER_ACTION] ${req.method} ${url} completed in ${duration}ms, responseSent: ${responseSent}`);
-        } else {
-          // For regular requests, log completion
-          const duration = Date.now() - requestStart;
-          if (!url.includes('/_next/static') && !url.includes('/favicon.ico')) {
-            console.log(`[REQUEST_SUCCESS] ${req.method} ${url} completed in ${duration}ms`);
+            // Send message to all users in the conversation
+            conversation.users.forEach((user) => {
+              const userSocket = onlineUsers.find(
+                (u) => u.userId === user.userId
+              );
+              if (userSocket) {
+                io.to(userSocket.socketId).emit("newMessage", {
+                  id: message.id,
+                  content: message.content,
+                  sender:
+                    message.sender.username ||
+                    message.sender.email ||
+                    "Unknown User",
+                  senderId: message.sender.id,
+                  createdAt: message.createdAt,
+                  conversationId: conversationId,
+                });
+              }
+            });
+          } catch (error) {
+            console.error("Error sending message:", error);
           }
         }
-      } catch (handlerError) {
-        // Only handle errors if response hasn't been sent
-        if (!res.headersSent && !res.writableEnded && !res.destroyed) {
-          console.error(`[HANDLER_ERROR] Error in Next.js handler for ${url}:`, handlerError);
-          // Try to send error response if possible
+      );
+
+      // Handle session updates for role/permission changes
+      socket.on("sessionUpdate", async ({ userId, updatedBy, reason }) => {
+        console.log("Session update requested:", { userId, updatedBy, reason });
+
+        try {
+          // Find the user's socket connection
+          const userSocket = onlineUsers.find((u) => u.userId === userId);
+
+          if (userSocket) {
+            // Send session update notification to the specific user
+            io.to(userSocket.socketId).emit("sessionUpdated", {
+              message:
+                "Your session has been updated. Please refresh to see changes.",
+              updatedBy,
+              reason,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log(`Session update sent to user ${userId}`);
+          } else {
+            console.log(`User ${userId} is not currently online`);
+          }
+        } catch (error) {
+          console.error("Error sending session update:", error);
+        }
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Client disconnected:", socket.id);
+        removeUser(socket.id);
+        io.emit("getOnlineUsers", onlineUsers);
+      });
+    });
+
+    // Handle all other requests with Next.js
+    httpServer.on("request", async (req, res) => {
+      // Check if app is ready before handling requests
+      if (!appReady) {
+        console.error(
+          `[ERROR] Request to ${req.url} received before app is ready`
+        );
+        if (!res.headersSent) {
+          res.statusCode = 503;
+          res.end("Service Unavailable - App is still initializing");
+        }
+        return;
+      }
+
+      const requestStart = Date.now();
+      const url = req.url || "unknown";
+
+      // Don't log requests - only log errors to reduce noise
+
+      // Set request timeout (60 seconds - server actions may take time)
+      // CRITICAL: Don't destroy request immediately - let Next.js handle it
+      req.setTimeout(60000, () => {
+        if (!res.headersSent && !res.writableEnded) {
+          console.warn(`[TIMEOUT] Request to ${url} timed out after 60s`);
           try {
-            res.statusCode = 500;
-            res.end('Internal Server Error');
+            res.statusCode = 408;
+            res.end("Request Timeout");
           } catch (e) {
             // Response might be destroyed - ignore
           }
         }
-        // Re-throw to be caught by outer catch block for logging
-        throw handlerError;
-      }
-    } catch (error) {
-      const duration = Date.now() - requestStart;
-      // These errors are SYMPTOMS - they happen when:
-      // 1. Server actions fail (causing clients to disconnect)
-      // 2. Server is too slow (causing timeouts)
-      // 3. Build ID mismatch (causing server action registry errors)
-      
-      // Check if response was already sent or connection closed
-      if (res.headersSent || res.destroyed || res.writableEnded) {
-        // Response already sent or connection closed - nothing to do
-        return;
-      }
-      
-      if (error?.code === 'ERR_HTTP_REQUEST_TIMEOUT') {
-        console.error(`[CRITICAL] Request to ${req.url} timed out - server performance issue`);
+      });
+
+      // Set response timeout to prevent hanging connections
+      // CRITICAL: Don't interfere with Next.js response handling
+      res.setTimeout(60000, () => {
+        if (!res.headersSent && !res.writableEnded) {
+          console.warn(`[TIMEOUT] Response for ${url} timed out after 60s`);
+          try {
+            res.statusCode = 504;
+            res.end("Gateway Timeout");
+          } catch (e) {
+            // Response might be destroyed - ignore
+          }
+        }
+      });
+
+      // Handle connection errors - these are SYMPTOMS of underlying issues
+      // Log them to track when they occur (they indicate server action failures or slow responses)
+      req.on("error", (error) => {
+        // Log connection errors that indicate problems (not just normal disconnects)
+        if (error.code === "ERR_HTTP_REQUEST_TIMEOUT") {
+          console.warn(
+            `[TIMEOUT] Request to ${req.url} timed out - server too slow`
+          );
+        } else if (error.code === "HPE_INVALID_EOF_STATE") {
+          // This often happens when server actions fail and client disconnects
+          console.warn(
+            `[PARSE_ERROR] Parse error on ${req.url} - possible server action failure`
+          );
+        } else if (error.code !== "ECONNRESET" && error.code !== "EPIPE") {
+          // ECONNRESET/EPIPE are normal client disconnects, but log others
+          console.error("Request error:", error);
+        }
+      });
+
+      res.on("error", (error) => {
+        // Log response errors that indicate problems
+        if (error.code === "ERR_HTTP_REQUEST_TIMEOUT") {
+          console.warn(
+            `[TIMEOUT] Response for ${req.url} timed out - server too slow`
+          );
+        } else if (error.code !== "ECONNRESET" && error.code !== "EPIPE") {
+          console.error("Response error:", error);
+        }
+      });
+
+      // Handle client disconnect gracefully
+      // CRITICAL: Don't destroy response - let Next.js handle it completely
+      // Destroying the response prevents server actions from sending their responses
+      req.on("close", () => {
+        // Don't destroy the response - Next.js needs to send it
+        // Even if client disconnects, the server action should complete
+        // The response will be cleaned up automatically by Node.js
+      });
+
+      try {
+        // CRITICAL: Server actions MUST be handled by Next.js handler directly
+        // They use routes like /_next/server-actions/[actionId] and need proper routing
+        // Don't interfere with Next.js internal routes - let Next.js handle everything
+
+        // Call Next.js handler - this handles all routes including server actions
+        // CRITICAL: Properly await the handler but don't interfere with response
         try {
-          res.statusCode = 504;
-          res.end('Gateway Timeout');
+          await handler(req, res);
+
+          // For server actions, give Next.js time to send the response
+          if (
+            url.includes("/_next/server-actions") ||
+            (req.method === "POST" && !url.startsWith("/api/"))
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+        } catch (handlerError) {
+          // Only handle errors if response hasn't been sent
+          if (!res.headersSent && !res.writableEnded && !res.destroyed) {
+            console.error(
+              `[HANDLER_ERROR] Error in Next.js handler for ${url}:`,
+              handlerError
+            );
+            // Try to send error response if possible
+            try {
+              res.statusCode = 500;
+              res.end("Internal Server Error");
+            } catch (e) {
+              // Response might be destroyed - ignore
+            }
+          }
+          // Re-throw to be caught by outer catch block for logging
+          throw handlerError;
+        }
+      } catch (error) {
+        // Only log actual errors (not normal disconnects)
+        if (error?.code !== "ECONNRESET" && error?.code !== "EPIPE") {
+          // Filter out noise from static assets and images
+          const isStaticAsset =
+            url.includes("/_next/static") ||
+            url.includes("/_next/image") ||
+            url.includes("/favicon.ico");
+
+          if (!isStaticAsset) {
+            console.error(`[ERROR] Error handling request to ${url}:`, {
+              message: error?.message,
+              code: error?.code,
+            });
+          }
+        }
+
+        // Check if response was already sent or connection closed
+        if (res.headersSent || res.destroyed || res.writableEnded) {
+          return;
+        }
+
+        // Try to send error response if possible
+        try {
+          if (!res.destroyed) {
+            if (error?.code === "ERR_HTTP_REQUEST_TIMEOUT") {
+              res.statusCode = 504;
+              res.end("Gateway Timeout");
+            } else {
+              res.statusCode = 500;
+              res.end("Internal Server Error");
+            }
+          }
         } catch (e) {
           // Response might be destroyed - ignore
         }
-        return;
       }
-      
-      // HPE_INVALID_EOF_STATE often indicates server action failure
-      if (error?.code === 'HPE_INVALID_EOF_STATE') {
-        console.error(`[CRITICAL] Parse error on ${req.url} - likely server action failure or build mismatch`);
-        // Don't return silently - this indicates a real problem
-      }
-      
-      // Log all errors except normal client disconnects
-      if (error?.code !== 'ECONNRESET' && error?.code !== 'EPIPE') {
-        console.error(`[ERROR] Error handling request to ${req.url}:`, {
-          message: error?.message,
-          code: error?.code,
-          stack: error?.stack
-        });
-      }
-      
-      // Always try to send an error response if possible
-      try {
-        if (!res.headersSent && !res.destroyed) {
-          res.statusCode = 500;
-          res.end('Internal Server Error');
-        }
-      } catch (e) {
-        // Response might be destroyed - ignore
-      }
-    }
-  });
-
-  // Handle server-level connection errors
-  httpServer.on('clientError', (err, socket) => {
-    // Log errors that indicate problems (not just normal disconnects)
-    if (err.code === 'HPE_INVALID_EOF_STATE') {
-      console.error('[CRITICAL] Client parse error - possible server action/build mismatch');
-    } else if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
-      console.error('Client error:', err);
-    }
-    
-    // Only send error response if socket is still writable
-    if (!socket.destroyed && socket.writable) {
-      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
-    }
-  });
-
-  httpServer
-    .once("error", (err) => {
-      // Only exit on critical errors, not connection resets
-      if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
-        return;
-      }
-      console.error('Server error:', err);
-      process.exit(1);
-    })
-    .listen(port, () => {
-      console.log(`> Ready on ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${hostname}:${port}`);
-      console.log(`> Socket.IO server is running on the same port`);
     });
-}).catch((error) => {
-  console.error('[CRITICAL] Failed to prepare Next.js app:', error);
-  process.exit(1);
-});
+
+    // Handle server-level connection errors
+    httpServer.on("clientError", (err, socket) => {
+      // Log errors that indicate problems (not just normal disconnects)
+      if (err.code === "HPE_INVALID_EOF_STATE") {
+        console.error(
+          "[CRITICAL] Client parse error - possible server action/build mismatch"
+        );
+      } else if (err.code !== "ECONNRESET" && err.code !== "EPIPE") {
+        console.error("Client error:", err);
+      }
+
+      // Only send error response if socket is still writable
+      if (!socket.destroyed && socket.writable) {
+        socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+      }
+    });
+
+    httpServer
+      .once("error", (err) => {
+        // Only exit on critical errors, not connection resets
+        if (err.code === "ECONNRESET" || err.code === "EPIPE") {
+          return;
+        }
+        console.error("Server error:", err);
+        process.exit(1);
+      })
+      .listen(port, () => {
+        console.log(
+          `> Ready on ${process.env.NODE_ENV === "production" ? "https" : "http"}://${hostname}:${port}`
+        );
+        console.log(`> Socket.IO server is running on the same port`);
+      });
+  })
+  .catch((error) => {
+    console.error("[CRITICAL] Failed to prepare Next.js app:", error);
+    process.exit(1);
+  });

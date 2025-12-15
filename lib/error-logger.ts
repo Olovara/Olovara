@@ -245,6 +245,22 @@ export function logError(options: LogErrorOptions): string {
     ONBOARDING_STATUS_FETCH_FAILED:
       "We couldn't load your onboarding status. Please refresh the page and try again.",
 
+    // Seller Onboarding Actions
+    SELLER_ONBOARDING_MARK_SHOP_NAMING_FAILED:
+      "We couldn't mark your shop naming step as complete. Please try again or contact support.",
+    SELLER_ONBOARDING_MARK_SHOP_PREFERENCES_FAILED:
+      "We couldn't mark your shop preferences step as complete. Please try again or contact support.",
+    SELLER_ONBOARDING_MARK_PAYMENT_SETUP_FAILED:
+      "We couldn't mark your payment setup step as complete. Please try again or contact support.",
+    SELLER_ONBOARDING_MARK_APPLICATION_SUBMITTED_FAILED:
+      "We couldn't mark your application submitted step as complete. Please try again or contact support.",
+    SELLER_ONBOARDING_MARK_APPLICATION_APPROVED_FAILED:
+      "We couldn't mark your application approved step as complete. Please try again or contact support.",
+    SELLER_ONBOARDING_STATUS_FETCH_FAILED:
+      "We couldn't load your onboarding status. Please refresh the page and try again.",
+    SELLER_ONBOARDING_STEP_UPDATE_FAILED:
+      "We couldn't update your onboarding step. Please try again or contact support.",
+
     // Discount Codes
     DISCOUNT_CODES_FETCH_FAILED:
       "We couldn't load your discount codes. Please refresh the page and try again.",
