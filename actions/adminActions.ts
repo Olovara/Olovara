@@ -2329,3 +2329,179 @@ export async function updateUserRole(
     };
   }
 }
+
+// Error Logs Functions
+interface GetErrorLogsParams {
+  page?: number;
+  limit?: number;
+  level?: string;
+  code?: string;
+  userId?: string;
+  route?: string;
+}
+
+export async function getErrorLogs({
+  page = 1,
+  limit = 50,
+  level,
+  code,
+  userId,
+  route,
+}: GetErrorLogsParams = {}) {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+  let where: any = {};
+
+  try {
+    // Validate input parameters
+    const validatedPage = Math.max(1, Math.floor(page || 1));
+    const validatedLimit = Math.min(100, Math.max(1, Math.floor(limit || 50))); // Max 100 per page
+
+    currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has ACCESS_ADMIN_DASHBOARD permission
+    const hasAccessAdminDashboard = currentUserData.permissions?.includes(
+      "ACCESS_ADMIN_DASHBOARD"
+    );
+
+    if (!hasAccessAdminDashboard) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    // Build where clause dynamically with error handling
+    try {
+      if (level) {
+        // Validate level is one of the allowed values
+        const validLevels = ["info", "warn", "error", "fatal"];
+        if (validLevels.includes(level.toLowerCase())) {
+          where.level = level.toLowerCase();
+        } else {
+          console.warn(`Invalid error level provided: ${level}`);
+        }
+      }
+
+      if (code) {
+        // Sanitize code input to prevent injection
+        const sanitizedCode = code.trim().substring(0, 100); // Limit length
+        where.code = { contains: sanitizedCode, mode: "insensitive" };
+      }
+
+      if (userId) {
+        // Validate userId format (should be ObjectId for MongoDB)
+        const sanitizedUserId = userId.trim();
+        where.userId = sanitizedUserId;
+      }
+
+      if (route) {
+        // Sanitize route input
+        const sanitizedRoute = route.trim().substring(0, 500); // Limit length
+        where.route = { contains: sanitizedRoute, mode: "insensitive" };
+      }
+    } catch (filterError) {
+      // Log filter building error but continue with empty where clause
+      console.error("Error building where clause for error logs:", filterError);
+      logError({
+        code: "ADMIN_ERROR_LOGS_FILTER_BUILD_FAILED",
+        userId: currentUserData?.id,
+        route: "actions/adminActions",
+        method: "getErrorLogs",
+        error: filterError,
+        metadata: {
+          page: validatedPage,
+          limit: validatedLimit,
+          level,
+          code,
+          userId,
+          route,
+          note: "Failed to build filter clause, using empty filter",
+        },
+      });
+      // Continue with empty where clause
+      where = {};
+    }
+
+    // Get total count and error logs with individual error handling
+    let total = 0;
+    let errorLogs: any[] = [];
+
+    try {
+      [total, errorLogs] = await Promise.all([
+        db.errorLog.count({ where }),
+        db.errorLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: (validatedPage - 1) * validatedLimit,
+          take: validatedLimit,
+        }),
+      ]);
+    } catch (dbError) {
+      // Log database query error specifically
+      console.error("Database query error when fetching error logs:", dbError);
+      logError({
+        code: "ADMIN_ERROR_LOGS_DB_QUERY_FAILED",
+        userId: currentUserData?.id,
+        route: "actions/adminActions",
+        method: "getErrorLogs",
+        error: dbError,
+        metadata: {
+          page: validatedPage,
+          limit: validatedLimit,
+          whereClause: JSON.stringify(where),
+          note: "Database query failed when fetching error logs",
+        },
+      });
+      throw dbError; // Re-throw to be caught by outer catch
+    }
+
+    return {
+      errorLogs,
+      pagination: {
+        page: validatedPage,
+        limit: validatedLimit,
+        total,
+        pages: Math.ceil(total / validatedLimit),
+      },
+    };
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error fetching error logs:", error);
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      throw error; // Re-throw expected errors
+    }
+
+    // Log to database - admin could email about "can't load error logs"
+    logError({
+      code: "ADMIN_GET_ERROR_LOGS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getErrorLogs",
+      error,
+      metadata: {
+        page: page || 1,
+        limit: limit || 50,
+        level,
+        code,
+        userId,
+        route,
+        whereClause: JSON.stringify(where),
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        note: "Failed to fetch error logs",
+      },
+    });
+
+    throw error;
+  }
+}
