@@ -17,16 +17,51 @@ export const metadata = {
 };
 
 async function getBillingData(userId: string) {
-  return await db.user.findUnique({
+  const user = await db.user.findUnique({
     where: { id: userId },
     select: {
       seller: {
         select: {
           stripeConnected: true,
+          connectedAccountId: true,
         },
       },
     },
   });
+
+  // If seller has a connected account but stripeConnected is false, verify with Stripe
+  if (
+    user?.seller?.connectedAccountId &&
+    !user.seller.stripeConnected &&
+    !user.seller.connectedAccountId.startsWith("temp_")
+  ) {
+    try {
+      const { stripeSecret } = await import("@/lib/stripe");
+      const account = await stripeSecret.instance.accounts.retrieve(
+        user.seller.connectedAccountId
+      );
+
+      // If account is fully onboarded, update the database
+      if (account.charges_enabled && account.payouts_enabled) {
+        await db.seller.update({
+          where: { userId },
+          data: { stripeConnected: true },
+        });
+        // Return updated data
+        return {
+          seller: {
+            stripeConnected: true,
+            connectedAccountId: user.seller.connectedAccountId,
+          },
+        };
+      }
+    } catch (error) {
+      // If we can't verify, just use the database value
+      console.warn("Failed to verify Stripe account status:", error);
+    }
+  }
+
+  return user;
 }
 
 export default async function BillingPage() {
@@ -57,22 +92,48 @@ export default async function BillingPage() {
             <div className="space-y-4">
               {data?.seller?.stripeConnected === false && (
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Connect your Stripe account to start receiving payments for your products.
-                  </p>
-                  <form action={CreateStripeAccountLink}>
-                    <Submitbutton title="Link your Account to Stripe" isPending={false} />
-                  </form>
+                  {data?.seller?.connectedAccountId &&
+                  !data.seller.connectedAccountId.startsWith("temp_") ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Your Stripe account setup is in progress. Complete the
+                        onboarding process to start receiving payments.
+                      </p>
+                      <form action={CreateStripeAccountLink}>
+                        <Submitbutton
+                          title="Complete Stripe Setup"
+                          isPending={false}
+                        />
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Connect your Stripe account to start receiving payments
+                        for your products.
+                      </p>
+                      <form action={CreateStripeAccountLink}>
+                        <Submitbutton
+                          title="Link your Account to Stripe"
+                          isPending={false}
+                        />
+                      </form>
+                    </>
+                  )}
                 </div>
               )}
 
               {data?.seller?.stripeConnected === true && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Your Stripe account is connected. You can view your dashboard to manage payments and transfers.
+                    Your Stripe account is connected. You can view your
+                    dashboard to manage payments and transfers.
                   </p>
                   <form action={GetStripeDashboardLink}>
-                    <Submitbutton title="View Stripe Dashboard" isPending={false} />
+                    <Submitbutton
+                      title="View Stripe Dashboard"
+                      isPending={false}
+                    />
                   </form>
                 </div>
               )}
@@ -82,4 +143,4 @@ export default async function BillingPage() {
       </div>
     </main>
   );
-} 
+}

@@ -28,7 +28,6 @@ import {
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorLogs } from "@/actions/adminActions";
 
 interface ErrorLog {
   id: string;
@@ -89,27 +88,35 @@ export default function ErrorLogsPage() {
   const fetchErrorLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
 
       if (filters.level !== "all") {
-        params.level = filters.level;
+        params.append("level", filters.level);
       }
       if (filters.code) {
-        params.code = filters.code;
+        params.append("code", filters.code);
       }
       if (filters.route) {
-        params.route = filters.route;
+        params.append("route", filters.route);
       }
 
-      const data: ErrorLogsResponse = await getErrorLogs(params);
+      const response = await fetch(`/api/error-logs?${params}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch error logs");
+      }
+
+      const data: ErrorLogsResponse = await response.json();
       setErrorLogs(data.errorLogs);
       setPagination(data.pagination);
     } catch (error) {
       console.error("Error fetching error logs:", error);
-      toast.error("Failed to load error logs");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load error logs"
+      );
     } finally {
       setLoading(false);
     }

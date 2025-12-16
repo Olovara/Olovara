@@ -75,7 +75,18 @@ export function logError(options: LogErrorOptions): string {
   let errorMessage = message;
   let errorDetails: any = null;
 
+  // Check if this is a Next.js redirect error - these are expected and shouldn't be logged
   if (error instanceof Error) {
+    // NEXT_REDIRECT is expected behavior in Next.js - don't log it
+    if (
+      error.message === "NEXT_REDIRECT" ||
+      (error as any).digest?.startsWith("NEXT_REDIRECT") ||
+      (error as any).digest === "515638683" // Common redirect digest
+    ) {
+      // Return early without logging - this is not an error
+      return "Redirecting...";
+    }
+
     errorMessage = errorMessage || error.message;
     errorDetails = {
       name: error.name,

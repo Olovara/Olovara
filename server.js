@@ -371,6 +371,16 @@ app
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
         } catch (handlerError) {
+          // NEXT_REDIRECT is expected behavior in Next.js - don't treat as error
+          if (
+            handlerError?.digest?.startsWith("NEXT_REDIRECT") ||
+            handlerError?.message === "NEXT_REDIRECT" ||
+            handlerError?.digest?.startsWith("515638683") // Common NEXT_REDIRECT digest
+          ) {
+            // This is a redirect - let it propagate normally
+            return;
+          }
+
           // Only handle errors if response hasn't been sent
           if (!res.headersSent && !res.writableEnded && !res.destroyed) {
             console.error(
@@ -389,8 +399,22 @@ app
           throw handlerError;
         }
       } catch (error) {
-        // Only log actual errors (not normal disconnects)
-        if (error?.code !== "ECONNRESET" && error?.code !== "EPIPE") {
+        // NEXT_REDIRECT is expected behavior - don't log as error
+        if (
+          error?.digest?.startsWith("NEXT_REDIRECT") ||
+          error?.message === "NEXT_REDIRECT" ||
+          error?.digest?.startsWith("515638683")
+        ) {
+          return; // Let redirect complete normally
+        }
+
+        // Only log actual errors (not normal disconnects or timeouts)
+        if (
+          error?.code !== "ECONNRESET" &&
+          error?.code !== "EPIPE" &&
+          error?.code !== "ETIMEDOUT" &&
+          error?.code !== "ERR_HTTP_REQUEST_TIMEOUT"
+        ) {
           // Filter out noise from static assets and images
           const isStaticAsset =
             url.includes("/_next/static") ||

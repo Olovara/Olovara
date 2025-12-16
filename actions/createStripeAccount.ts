@@ -91,6 +91,38 @@ export async function CreateStripeAccountLink() {
 
   let connectedAccountId = seller?.seller?.connectedAccountId;
 
+  // If the seller has a connected account, check if it's fully onboarded
+  if (connectedAccountId && !connectedAccountId.startsWith("temp_")) {
+    try {
+      // Check if the account is already fully onboarded
+      const account =
+        await stripeSecret.instance.accounts.retrieve(connectedAccountId);
+
+      if (account.charges_enabled && account.payouts_enabled) {
+        // Account is fully onboarded - update database and redirect to dashboard
+        await db.seller.update({
+          where: { userId },
+          data: { stripeConnected: true },
+        });
+
+        // Redirect to Stripe dashboard instead of onboarding
+        const loginLink =
+          await stripeSecret.instance.accounts.createLoginLink(
+            connectedAccountId
+          );
+        return redirect(loginLink.url);
+      }
+      // Account exists but not fully onboarded - continue to create account link
+    } catch (stripeError: any) {
+      // If account doesn't exist or there's an error, create a new one
+      console.warn(
+        "Error checking existing Stripe account:",
+        stripeError.message
+      );
+      connectedAccountId = null; // Reset to create new account
+    }
+  }
+
   // If the seller has no connected Stripe account or has a temporary one, create a real one
   if (!connectedAccountId || connectedAccountId.startsWith("temp_")) {
     if (!session.user.email) {
@@ -144,8 +176,25 @@ export async function CreateStripeAccountLink() {
       type: "account_onboarding",
     });
 
-    return redirect(accountLink.url);
-  } catch (error) {
+    // redirect() throws NEXT_REDIRECT error internally - this is expected behavior
+    // Next.js handles this automatically, but we need to let it propagate
+    redirect(accountLink.url);
+    // This line should never be reached, but TypeScript needs it
+    return;
+  } catch (error: any) {
+    // Check if this is a Next.js redirect error - these are expected and should not be logged
+    if (
+      error?.digest?.startsWith("NEXT_REDIRECT") ||
+      error?.message === "NEXT_REDIRECT" ||
+      error?.digest === "515638683" ||
+      (typeof error?.digest === "string" && error.digest.includes("515638683"))
+    ) {
+      // Re-throw redirect errors - they're expected and handled by Next.js
+      // Do NOT log these - they're not errors
+      throw error;
+    }
+
+    // Only log actual errors (not redirects)
     const userMessage = logError({
       code: "STRIPE_ACCOUNT_LINK_FAILED",
       userId,
