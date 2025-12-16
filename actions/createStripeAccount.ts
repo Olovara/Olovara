@@ -94,32 +94,76 @@ export async function CreateStripeAccountLink() {
   // If the seller has a connected account, check if it's fully onboarded
   if (connectedAccountId && !connectedAccountId.startsWith("temp_")) {
     try {
-      // Check if the account is already fully onboarded
-      const account =
-        await stripeSecret.instance.accounts.retrieve(connectedAccountId);
+      // Check if the account is already fully onboarded with timeout
+      const account = (await Promise.race([
+        stripeSecret.instance.accounts.retrieve(connectedAccountId),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Stripe API timeout")), 10000)
+        ),
+      ])) as any;
 
       if (account.charges_enabled && account.payouts_enabled) {
         // Account is fully onboarded - update database and redirect to dashboard
-        await db.seller.update({
-          where: { userId },
-          data: { stripeConnected: true },
-        });
+        // Don't await the DB update - fire and forget to speed up redirect
+        db.seller
+          .update({
+            where: { userId },
+            data: { stripeConnected: true },
+          })
+          .catch((error) => {
+            console.warn("Failed to update stripeConnected:", error);
+          });
 
         // Redirect to Stripe dashboard instead of onboarding
-        const loginLink =
-          await stripeSecret.instance.accounts.createLoginLink(
-            connectedAccountId
-          );
-        return redirect(loginLink.url);
+        const loginLink = (await Promise.race([
+          stripeSecret.instance.accounts.createLoginLink(connectedAccountId),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Stripe API timeout")), 10000)
+          ),
+        ])) as any;
+
+        // redirect() throws NEXT_REDIRECT internally - this is expected
+        redirect(loginLink.url);
       }
       // Account exists but not fully onboarded - continue to create account link
     } catch (stripeError: any) {
-      // If account doesn't exist or there's an error, create a new one
-      console.warn(
-        "Error checking existing Stripe account:",
-        stripeError.message
-      );
-      connectedAccountId = null; // Reset to create new account
+      // Only reset connectedAccountId if Stripe explicitly says the account doesn't exist
+      // This prevents losing a valid account connection due to network errors, timeouts, etc.
+      const isAccountNotFound =
+        stripeError.statusCode === 404 ||
+        stripeError.code === "resource_missing" ||
+        (stripeError.type === "invalid_request_error" &&
+          stripeError.message?.toLowerCase().includes("no such account"));
+
+      if (stripeError.message === "Stripe API timeout") {
+        // Timeout - keep existing account ID and try to create link anyway
+        // The account might still exist, we just couldn't verify it in time
+        console.warn(
+          "Stripe API timeout - will try to create account link with existing account ID"
+        );
+        // Continue with existing connectedAccountId - don't reset
+      } else if (isAccountNotFound) {
+        // Account definitely doesn't exist - safe to reset
+        console.warn(
+          "Stripe account not found - will create new account:",
+          stripeError.message
+        );
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 8);
+        connectedAccountId = `temp_${timestamp}_${randomString}`;
+      } else {
+        // Other errors (network, rate limit, etc.) - keep existing account ID
+        // Don't risk losing a valid connection due to transient errors
+        console.warn(
+          "Error checking Stripe account (keeping existing ID):",
+          stripeError.message,
+          "Status:",
+          stripeError.statusCode,
+          "Code:",
+          stripeError.code
+        );
+        // Continue with existing connectedAccountId - don't reset
+      }
     }
   }
 
@@ -179,8 +223,6 @@ export async function CreateStripeAccountLink() {
     // redirect() throws NEXT_REDIRECT error internally - this is expected behavior
     // Next.js handles this automatically, but we need to let it propagate
     redirect(accountLink.url);
-    // This line should never be reached, but TypeScript needs it
-    return;
   } catch (error: any) {
     // Check if this is a Next.js redirect error - these are expected and should not be logged
     if (

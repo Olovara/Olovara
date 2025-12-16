@@ -286,11 +286,14 @@ app
 
       // Don't log requests - only log errors to reduce noise
 
-      // Set request timeout (60 seconds - server actions may take time)
-      // CRITICAL: Don't destroy request immediately - let Next.js handle it
-      req.setTimeout(60000, () => {
+      // Set request timeout - longer for server actions that make external API calls
+      // Server actions may need to call Stripe, database, etc. - give them more time
+      const isServerAction = url.includes("/_next/server-actions");
+      const timeoutDuration = isServerAction ? 120000 : 60000; // 2 min for server actions, 1 min for others
+      
+      req.setTimeout(timeoutDuration, () => {
         if (!res.headersSent && !res.writableEnded) {
-          console.warn(`[TIMEOUT] Request to ${url} timed out after 60s`);
+          console.warn(`[TIMEOUT] Request to ${url} timed out after ${timeoutDuration / 1000}s`);
           try {
             res.statusCode = 408;
             res.end("Request Timeout");
@@ -302,9 +305,9 @@ app
 
       // Set response timeout to prevent hanging connections
       // CRITICAL: Don't interfere with Next.js response handling
-      res.setTimeout(60000, () => {
+      res.setTimeout(timeoutDuration, () => {
         if (!res.headersSent && !res.writableEnded) {
-          console.warn(`[TIMEOUT] Response for ${url} timed out after 60s`);
+          console.warn(`[TIMEOUT] Response for ${url} timed out after ${timeoutDuration / 1000}s`);
           try {
             res.statusCode = 504;
             res.end("Gateway Timeout");
@@ -319,9 +322,13 @@ app
       req.on("error", (error) => {
         // Log connection errors that indicate problems (not just normal disconnects)
         if (error.code === "ERR_HTTP_REQUEST_TIMEOUT") {
-          console.warn(
-            `[TIMEOUT] Request to ${req.url} timed out - server too slow`
-          );
+          // Only log if it's not a server action (server actions get longer timeout)
+          if (!url.includes("/_next/server-actions")) {
+            console.warn(
+              `[TIMEOUT] Request to ${req.url} timed out - server too slow`
+            );
+          }
+          // Server action timeouts are expected for slow external API calls
         } else if (error.code === "HPE_INVALID_EOF_STATE") {
           // This often happens when server actions fail and client disconnects
           console.warn(

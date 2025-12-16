@@ -30,6 +30,7 @@ async function getBillingData(userId: string) {
   });
 
   // If seller has a connected account but stripeConnected is false, verify with Stripe
+  // Use a timeout to prevent slow Stripe API calls from blocking the page
   if (
     user?.seller?.connectedAccountId &&
     !user.seller.stripeConnected &&
@@ -37,17 +38,28 @@ async function getBillingData(userId: string) {
   ) {
     try {
       const { stripeSecret } = await import("@/lib/stripe");
-      const account = await stripeSecret.instance.accounts.retrieve(
-        user.seller.connectedAccountId
-      );
+
+      // Add timeout to prevent slow Stripe API calls from blocking the page
+      const account = (await Promise.race([
+        stripeSecret.instance.accounts.retrieve(user.seller.connectedAccountId),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Stripe API timeout")), 5000)
+        ),
+      ])) as any;
 
       // If account is fully onboarded, update the database
       if (account.charges_enabled && account.payouts_enabled) {
-        await db.seller.update({
-          where: { userId },
-          data: { stripeConnected: true },
-        });
-        // Return updated data
+        // Fire-and-forget database update - don't block page render
+        db.seller
+          .update({
+            where: { userId },
+            data: { stripeConnected: true },
+          })
+          .catch((error) => {
+            console.warn("Failed to update stripeConnected status:", error);
+          });
+
+        // Return updated data immediately
         return {
           seller: {
             stripeConnected: true,
@@ -56,8 +68,13 @@ async function getBillingData(userId: string) {
         };
       }
     } catch (error) {
-      // If we can't verify, just use the database value
-      console.warn("Failed to verify Stripe account status:", error);
+      // If we can't verify (timeout or error), just use the database value
+      // Don't block page render for Stripe API issues
+      if (error instanceof Error && error.message === "Stripe API timeout") {
+        console.warn("Stripe API verification timed out - using cached status");
+      } else {
+        console.warn("Failed to verify Stripe account status:", error);
+      }
     }
   }
 
