@@ -125,6 +125,9 @@
     "zod": "^3.23.8",
     "zustand": "^4.5.5"
   },
+  "resolutions": {
+    "next": "14.2.35"
+  },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
