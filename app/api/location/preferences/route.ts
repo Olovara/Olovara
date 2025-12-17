@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserLocationPreferences, getUserAnalytics } from "@/lib/ipinfo";
+import {
+  getUserLocationPreferences,
+  getUserAnalytics,
+  LOCATION_COOKIE_MAX_AGE,
+} from "@/lib/ipinfo";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+// Cookie name for cached location preferences
+const LOCATION_COOKIE_NAME = "user_location_prefs";
 
 /**
  * GET /api/location/preferences
@@ -17,6 +24,27 @@ export async function GET(request: NextRequest) {
 
   try {
     session = await auth();
+
+    // Check for cached location in cookie first (avoid IPinfo call)
+    const cachedLocation = request.cookies.get(LOCATION_COOKIE_NAME)?.value;
+    if (cachedLocation) {
+      try {
+        const parsed = JSON.parse(cachedLocation);
+        // Return cached data - skip IPinfo entirely
+        return NextResponse.json({
+          success: true,
+          data: {
+            locationPreferences: parsed.locationPreferences,
+            analytics: parsed.analytics || null,
+            clientIP: parsed.clientIP || "cached",
+            isLoggedIn: !!session?.user?.id,
+            fromCache: true,
+          },
+        });
+      } catch {
+        // Invalid cookie, continue to fetch fresh data
+      }
+    }
 
     // Get client IP address
     const forwarded = request.headers.get("x-forwarded-for");
@@ -63,15 +91,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    // Build response with cookie to cache location in browser
+    const responseData = {
       success: true,
       data: {
         locationPreferences,
         analytics,
         clientIP,
         isLoggedIn: !!session?.user?.id,
+        fromCache: false,
       },
-    });
+    };
+
+    const response = NextResponse.json(responseData);
+
+    // Cache in browser cookie for 7 days
+    response.cookies.set(
+      LOCATION_COOKIE_NAME,
+      JSON.stringify({
+        locationPreferences,
+        analytics,
+        clientIP,
+      }),
+      {
+        maxAge: LOCATION_COOKIE_MAX_AGE,
+        httpOnly: false, // Allow JS access if needed
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+      }
+    );
+
+    return response;
   } catch (error) {
     // Log to console (always happens)
     console.error("Error getting location preferences:", error);
