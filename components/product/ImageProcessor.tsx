@@ -15,10 +15,20 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { X, Upload, Crop, Image as ImageIcon, Download, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import {
+  X,
+  Upload,
+  Crop,
+  Image as ImageIcon,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+} from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { getSellerAbout } from "@/actions/sellerAboutActions";
+import { logClientError } from "@/lib/client-error-logger";
 
 // Type for processed image data
 export type ProcessedImage = {
@@ -46,7 +56,9 @@ export function ImageProcessor({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   // Initialize with previously processed images from parent
   // Use function initializer to capture initial value and prevent re-initialization
-  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>(() => initialProcessedImages);
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>(
+    () => initialProcessedImages
+  );
   const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
   // Track all files in the processing queue (for navigation)
@@ -54,17 +66,24 @@ export function ImageProcessor({
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
   // Track unique upload session ID to prevent replacing images from different upload sessions
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
-  
+
   // Store crop state and watermark settings for each image
   type ImageCropState = {
     coordinates?: any; // Crop coordinates from cropper
     watermarkEnabled: boolean;
     watermarkText: string;
     watermarkOpacity: number[];
-    watermarkPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "center";
+    watermarkPosition:
+      | "bottom-right"
+      | "bottom-left"
+      | "top-right"
+      | "top-left"
+      | "center";
   };
-  const [imageStates, setImageStates] = useState<Map<number, ImageCropState>>(new Map());
-  
+  const [imageStates, setImageStates] = useState<Map<number, ImageCropState>>(
+    new Map()
+  );
+
   // Current watermark settings (synced with current image's state)
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
   const [shopName, setShopName] = useState<string>(""); // Seller's shop name
@@ -73,8 +92,7 @@ export function ImageProcessor({
   const [watermarkPosition, setWatermarkPosition] = useState<
     "bottom-right" | "bottom-left" | "top-right" | "top-left" | "center"
   >("bottom-right");
-  
-  
+
   // Fetch seller's shop name on mount
   React.useEffect(() => {
     const fetchShopName = async () => {
@@ -86,18 +104,26 @@ export function ImageProcessor({
         }
       } catch (error) {
         console.error("Error fetching shop name:", error);
+        logClientError({
+          code: "IMAGE_PROCESSOR_SHOP_NAME_FETCH_FAILED",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch shop name",
+          metadata: { component: "ImageProcessor" },
+        });
       }
     };
     fetchShopName();
   }, []); // Only run on mount
-  
+
   // Always keep watermark text synced with shop name (watermark text is read-only now)
   React.useEffect(() => {
     if (shopName) {
       setWatermarkText(shopName);
     }
   }, [shopName]);
-  
+
   const cropperRef = useRef<CropperRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Track if we're programmatically setting coordinates (to avoid saving during restoration)
@@ -105,9 +131,9 @@ export function ImageProcessor({
 
   // Inject CSS to prevent cropper overflow
   React.useEffect(() => {
-    const styleId = 'cropper-modal-fix';
+    const styleId = "cropper-modal-fix";
     if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
+      const style = document.createElement("style");
       style.id = styleId;
       style.textContent = `
         .cropper-container,
@@ -135,59 +161,68 @@ export function ImageProcessor({
   const hasMountedRef = React.useRef(false);
   // Track current processed images in a ref to prevent accidental clearing
   const processedImagesRef = React.useRef<ProcessedImage[]>([]);
-  
+
   // Sync ref with state and log changes
   React.useEffect(() => {
     const prevCount = processedImagesRef.current.length;
     const newCount = processedImages.length;
-    const prevIds = processedImagesRef.current.map(img => img.id);
-    const newIds = processedImages.map(img => img.id);
-    
-    if (prevCount !== newCount || JSON.stringify(prevIds) !== JSON.stringify(newIds)) {
-      console.log('[ImageProcessor] processedImages STATE CHANGED:', {
+    const prevIds = processedImagesRef.current.map((img) => img.id);
+    const newIds = processedImages.map((img) => img.id);
+
+    if (
+      prevCount !== newCount ||
+      JSON.stringify(prevIds) !== JSON.stringify(newIds)
+    ) {
+      console.log("[ImageProcessor] processedImages STATE CHANGED:", {
         prevCount,
         newCount,
         prevIds,
         newIds,
-        added: newIds.filter(id => !prevIds.includes(id)),
-        removed: prevIds.filter(id => !newIds.includes(id)),
-        stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+        added: newIds.filter((id) => !prevIds.includes(id)),
+        removed: prevIds.filter((id) => !newIds.includes(id)),
+        stack: new Error().stack?.split("\n").slice(1, 4).join("\n"),
       });
     }
     processedImagesRef.current = processedImages;
   }, [processedImages]);
-  
+
   // Log when initialProcessedImages prop changes
   React.useEffect(() => {
-    console.log('[ImageProcessor] initialProcessedImages PROP CHANGED:', {
+    console.log("[ImageProcessor] initialProcessedImages PROP CHANGED:", {
       count: initialProcessedImages.length,
-      ids: initialProcessedImages.map(img => img.id),
+      ids: initialProcessedImages.map((img) => img.id),
       hasMounted: hasMountedRef.current,
       currentStateCount: processedImagesRef.current.length,
-      currentStateIds: processedImagesRef.current.map(img => img.id)
+      currentStateIds: processedImagesRef.current.map((img) => img.id),
     });
   }, [initialProcessedImages]);
-  
+
   // Only initialize from initialProcessedImages on first mount
   // After that, processedImages state is completely independent
   React.useEffect(() => {
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
-      console.log('[ImageProcessor] COMPONENT MOUNTED:', {
+      console.log("[ImageProcessor] COMPONENT MOUNTED:", {
         initialProcessedImagesCount: initialProcessedImages.length,
-        initialProcessedImagesIds: initialProcessedImages.map(img => img.id)
+        initialProcessedImagesIds: initialProcessedImages.map((img) => img.id),
       });
       // On mount, initialize with initialProcessedImages if provided
       // After this, we never touch initialProcessedImages again
       if (initialProcessedImages.length > 0) {
-        console.log('[ImageProcessor] Initializing state from initialProcessedImages');
+        console.log(
+          "[ImageProcessor] Initializing state from initialProcessedImages"
+        );
         setProcessedImages(initialProcessedImages);
         processedImagesRef.current = initialProcessedImages;
       } else {
-        console.log('[ImageProcessor] No initialProcessedImages, starting with empty state');
+        console.log(
+          "[ImageProcessor] No initialProcessedImages, starting with empty state"
+        );
       }
     } else {
-      console.log('[ImageProcessor] initialProcessedImages changed but component already mounted - IGNORING');
+      console.log(
+        "[ImageProcessor] initialProcessedImages changed but component already mounted - IGNORING"
+      );
     }
     // After mount, we completely ignore initialProcessedImages prop changes
     // This prevents parent updates from overwriting our newly processed images
@@ -219,7 +254,8 @@ export function ImageProcessor({
       }
 
       // Calculate how many images we can still add
-      const currentTotal = processedImages.length + existingProcessedImages.length;
+      const currentTotal =
+        processedImages.length + existingProcessedImages.length;
       const remainingSlots = maxImages - currentTotal;
 
       if (remainingSlots <= 0) {
@@ -229,10 +265,10 @@ export function ImageProcessor({
 
       // Trim imageFiles to fit within the max limit
       const filesToProcess = imageFiles.slice(0, remainingSlots);
-      
+
       if (imageFiles.length > remainingSlots) {
         toast.warning(
-          `Only ${remainingSlots} image${remainingSlots > 1 ? 's' : ''} can be added. ${imageFiles.length - remainingSlots} image${imageFiles.length - remainingSlots > 1 ? 's were' : ' was'} ignored.`
+          `Only ${remainingSlots} image${remainingSlots > 1 ? "s" : ""} can be added. ${imageFiles.length - remainingSlots} image${imageFiles.length - remainingSlots > 1 ? "s were" : " was"} ignored.`
         );
       }
 
@@ -242,8 +278,11 @@ export function ImageProcessor({
         // This prevents replacing images from previous upload sessions
         const newSessionId = `session-${Date.now()}-${Math.random()}`;
         setUploadSessionId(newSessionId);
-        console.log('[ImageProcessor] Starting new upload session:', newSessionId);
-        
+        console.log(
+          "[ImageProcessor] Starting new upload session:",
+          newSessionId
+        );
+
         // Store all files in queue for navigation
         setFileQueue(filesToProcess);
         setCurrentCropFile(filesToProcess[0]);
@@ -262,7 +301,12 @@ export function ImageProcessor({
         fileInputRef.current.value = "";
       }
     },
-    [processedImages.length, existingProcessedImages.length, maxImages, shopName]
+    [
+      processedImages.length,
+      existingProcessedImages.length,
+      maxImages,
+      shopName,
+    ]
   );
 
   // Apply watermark to image using canvas
@@ -278,12 +322,12 @@ export function ImageProcessor({
         watermarkOpacity: watermarkOpacity[0],
         watermarkPosition,
       });
-      
+
       if (!watermarkEnabled) {
         console.log("[WATERMARK] Watermark disabled, skipping");
         return imageFile; // Return original if watermark disabled
       }
-      
+
       if (!textToUse?.trim()) {
         console.warn("[WATERMARK] No text available, skipping watermark");
         return imageFile; // Return original if no text
@@ -322,10 +366,12 @@ export function ImageProcessor({
             // Calculate spacing for repeating pattern
             // Use larger spacing to avoid overcrowding
             const spacing = Math.max(textWidth, textHeight) * 1.25;
-            
+
             // Calculate the diagonal distance needed to cover the entire image
-            const diagonal = Math.sqrt(img.width * img.width + img.height * img.height);
-            
+            const diagonal = Math.sqrt(
+              img.width * img.width + img.height * img.height
+            );
+
             // Rotate context 45 degrees (counter-clockwise)
             ctx.save();
             ctx.translate(img.width / 2, img.height / 2);
@@ -335,10 +381,10 @@ export function ImageProcessor({
             // Calculate how many repetitions we need in each direction
             const repetitionsX = Math.ceil(diagonal / spacing) + 2;
             const repetitionsY = Math.ceil(diagonal / spacing) + 2;
-            
+
             // Start from center and work outward
             const startOffset = -(repetitionsX / 2) * spacing;
-            
+
             for (let i = 0; i < repetitionsY; i++) {
               for (let j = 0; j < repetitionsX; j++) {
                 const x = startOffset + j * spacing;
@@ -373,7 +419,13 @@ export function ImageProcessor({
         reader.readAsDataURL(imageFile);
       });
     },
-    [watermarkEnabled, shopName, watermarkText, watermarkOpacity, watermarkPosition]
+    [
+      watermarkEnabled,
+      shopName,
+      watermarkText,
+      watermarkOpacity,
+      watermarkPosition,
+    ]
   );
 
   // Compress image
@@ -391,6 +443,17 @@ export function ImageProcessor({
     } catch (error) {
       console.error("Compression error:", error);
       toast.error("Failed to compress image");
+      logClientError({
+        code: "IMAGE_PROCESSOR_COMPRESSION_FAILED",
+        message:
+          error instanceof Error ? error.message : "Failed to compress image",
+        metadata: {
+          component: "ImageProcessor",
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        },
+      });
       return file; // Return original on error
     }
   }, []);
@@ -429,7 +492,7 @@ export function ImageProcessor({
   // Save current image's crop state and watermark settings
   const saveCurrentImageState = useCallback(() => {
     if (currentFileIndex === null || currentFileIndex < 0) return;
-    
+
     // Get coordinates if cropper is available
     let coordinates = null;
     if (cropperRef.current) {
@@ -448,7 +511,7 @@ export function ImageProcessor({
       console.warn("Cropper ref not available");
       return;
     }
-    
+
     const state: ImageCropState = {
       coordinates,
       watermarkEnabled,
@@ -456,44 +519,59 @@ export function ImageProcessor({
       watermarkOpacity,
       watermarkPosition,
     };
-    
+
     setImageStates((prev) => {
       const newMap = new Map(prev);
       newMap.set(currentFileIndex, state);
       return newMap;
     });
-  }, [currentFileIndex, watermarkEnabled, shopName, watermarkText, watermarkOpacity, watermarkPosition]);
-  
+  }, [
+    currentFileIndex,
+    watermarkEnabled,
+    shopName,
+    watermarkText,
+    watermarkOpacity,
+    watermarkPosition,
+  ]);
+
   // Note: We don't auto-save on crop change to avoid conflicts with restoration
   // State is saved when navigating between images or when processing
 
   // Navigate to a specific image and restore its state
-  const navigateToImage = useCallback((index: number, skipSave = false) => {
-    // Save current state before navigating away (unless we're told to skip)
-    if (!skipSave && currentFileIndex !== null && currentFileIndex >= 0 && currentFileIndex !== index) {
-      saveCurrentImageState();
-    }
-    
-    // Update to new image
-    setCurrentFileIndex(index);
-    setCurrentCropFile(fileQueue[index]);
-    
-    // Restore saved state for this image
-    const savedState = imageStates.get(index);
-    if (savedState) {
-      setWatermarkEnabled(savedState.watermarkEnabled);
-      // Always use shopName for watermark text (it's read-only now)
-      setWatermarkText(shopName || savedState.watermarkText);
-      setWatermarkOpacity(savedState.watermarkOpacity);
-      setWatermarkPosition(savedState.watermarkPosition);
-    } else {
-      // Initialize with defaults if no saved state
-      setWatermarkEnabled(false);
-      setWatermarkText(shopName || ""); // Always use shopName
-      setWatermarkOpacity([50]);
-      setWatermarkPosition("bottom-right");
-    }
-  }, [fileQueue, imageStates, currentFileIndex, saveCurrentImageState, shopName]);
+  const navigateToImage = useCallback(
+    (index: number, skipSave = false) => {
+      // Save current state before navigating away (unless we're told to skip)
+      if (
+        !skipSave &&
+        currentFileIndex !== null &&
+        currentFileIndex >= 0 &&
+        currentFileIndex !== index
+      ) {
+        saveCurrentImageState();
+      }
+
+      // Update to new image
+      setCurrentFileIndex(index);
+      setCurrentCropFile(fileQueue[index]);
+
+      // Restore saved state for this image
+      const savedState = imageStates.get(index);
+      if (savedState) {
+        setWatermarkEnabled(savedState.watermarkEnabled);
+        // Always use shopName for watermark text (it's read-only now)
+        setWatermarkText(shopName || savedState.watermarkText);
+        setWatermarkOpacity(savedState.watermarkOpacity);
+        setWatermarkPosition(savedState.watermarkPosition);
+      } else {
+        // Initialize with defaults if no saved state
+        setWatermarkEnabled(false);
+        setWatermarkText(shopName || ""); // Always use shopName
+        setWatermarkOpacity([50]);
+        setWatermarkPosition("bottom-right");
+      }
+    },
+    [fileQueue, imageStates, currentFileIndex, saveCurrentImageState, shopName]
+  );
 
   // Restore crop coordinates when cropper is ready
   React.useEffect(() => {
@@ -510,7 +588,7 @@ export function ImageProcessor({
             }
           }
         }, 150);
-        
+
         return () => clearTimeout(timeoutId);
       }
     }
@@ -521,7 +599,14 @@ export function ImageProcessor({
     if (currentFileIndex !== null && currentFileIndex >= 0) {
       saveCurrentImageState();
     }
-  }, [watermarkEnabled, watermarkText, watermarkOpacity, watermarkPosition, currentFileIndex, saveCurrentImageState]);
+  }, [
+    watermarkEnabled,
+    watermarkText,
+    watermarkOpacity,
+    watermarkPosition,
+    currentFileIndex,
+    saveCurrentImageState,
+  ]);
 
   // Process current image: crop -> watermark -> compress
   const processCurrentImage = useCallback(async () => {
@@ -529,7 +614,8 @@ export function ImageProcessor({
 
     try {
       // Step 0: Check if we've reached max images limit (safety check)
-      const currentTotal = processedImages.length + existingProcessedImages.length;
+      const currentTotal =
+        processedImages.length + existingProcessedImages.length;
       if (currentTotal >= maxImages) {
         toast.error(`Maximum ${maxImages} images reached`);
         setCurrentCropFile(null);
@@ -541,9 +627,9 @@ export function ImageProcessor({
 
       // Step 0: Save current state before processing (captures final crop position)
       // Use a small delay to ensure cropper is ready
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       saveCurrentImageState();
-      
+
       // Step 1: Get cropped image
       let processedFile = await getCroppedImage();
       if (!processedFile) {
@@ -574,17 +660,20 @@ export function ImageProcessor({
       setProcessedImages((prev) => {
         // CRITICAL: Always preserve existing images - never reset the array
         // This ensures previously processed images are never lost
-        
-        console.log('[ImageProcessor] setProcessedImages CALLED in processCurrentImage:', {
-          prevCount: prev.length,
-          prevIds: prev.map(img => img.id),
-          newImageId: newProcessedImage.id,
-          newImageName: newProcessedImage.originalName,
-          currentFileIndex,
-          uploadSessionId,
-          existingProcessedImagesCount: existingProcessedImages.length
-        });
-        
+
+        console.log(
+          "[ImageProcessor] setProcessedImages CALLED in processCurrentImage:",
+          {
+            prevCount: prev.length,
+            prevIds: prev.map((img) => img.id),
+            newImageId: newProcessedImage.id,
+            newImageName: newProcessedImage.originalName,
+            currentFileIndex,
+            uploadSessionId,
+            existingProcessedImagesCount: existingProcessedImages.length,
+          }
+        );
+
         // Only replace if we have a processed image from the SAME file in the SAME upload session
         // This prevents replacing images from previous upload sessions
         // CRITICAL: Never replace existing images (those with "existing-" prefix)
@@ -594,28 +683,34 @@ export function ImageProcessor({
             return false;
           }
           // Only replace if same file index AND same upload session
-          return img.originalFileIndex === currentFileIndex && 
-                 img.uploadSessionId === uploadSessionId &&
-                 uploadSessionId !== null; // Only replace if we're in the same session
+          return (
+            img.originalFileIndex === currentFileIndex &&
+            img.uploadSessionId === uploadSessionId &&
+            uploadSessionId !== null
+          ); // Only replace if we're in the same session
         });
-        
+
         if (existingIndex >= 0) {
           // Replace the existing processed image (same file, same session, reprocessed)
-          console.log('[ImageProcessor] Replacing existing image at index:', existingIndex, '(same session)');
+          console.log(
+            "[ImageProcessor] Replacing existing image at index:",
+            existingIndex,
+            "(same session)"
+          );
           const updated = [...prev];
           // Clean up the old preview URL to prevent memory leaks
           URL.revokeObjectURL(updated[existingIndex].preview);
           updated[existingIndex] = newProcessedImage;
-          console.log('[ImageProcessor] After replacement:', {
+          console.log("[ImageProcessor] After replacement:", {
             count: updated.length,
-            ids: updated.map(img => img.id)
+            ids: updated.map((img) => img.id),
           });
           return updated;
         } else {
           // Safety check: Don't add if we've reached max images
           const newTotal = prev.length + existingProcessedImages.length + 1;
           if (newTotal > maxImages) {
-            console.log('[ImageProcessor] Max images reached, not adding');
+            console.log("[ImageProcessor] Max images reached, not adding");
             toast.error(`Maximum ${maxImages} images reached`);
             URL.revokeObjectURL(preview); // Clean up the preview URL
             return prev; // Return existing state unchanged
@@ -626,13 +721,13 @@ export function ImageProcessor({
           const newState = [...prev, newProcessedImage];
           // Update ref immediately to track current state
           processedImagesRef.current = newState;
-          console.log('[ImageProcessor] ADDING NEW IMAGE:', {
+          console.log("[ImageProcessor] ADDING NEW IMAGE:", {
             prevCount: prev.length,
             newCount: newState.length,
-            prevIds: prev.map(img => img.id),
+            prevIds: prev.map((img) => img.id),
             newId: newProcessedImage.id,
-            allNewIds: newState.map(img => img.id),
-            stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+            allNewIds: newState.map((img) => img.id),
+            stack: new Error().stack?.split("\n").slice(1, 4).join("\n"),
           });
           return newState;
         }
@@ -659,6 +754,19 @@ export function ImageProcessor({
     } catch (error) {
       console.error("Error processing image:", error);
       toast.error("Failed to process image");
+      logClientError({
+        code: "IMAGE_PROCESSOR_PROCESSING_FAILED",
+        message:
+          error instanceof Error ? error.message : "Failed to process image",
+        metadata: {
+          component: "ImageProcessor",
+          fileName: currentCropFile?.name,
+          fileSize: currentCropFile?.size,
+          fileType: currentCropFile?.type,
+          currentFileIndex,
+          totalFiles: fileQueue.length,
+        },
+      });
     }
   }, [
     currentCropFile,
@@ -677,10 +785,10 @@ export function ImageProcessor({
 
   // Remove processed image
   const removeImage = useCallback((id: string) => {
-    console.log('[ImageProcessor] removeImage CALLED:', {
+    console.log("[ImageProcessor] removeImage CALLED:", {
       idToRemove: id,
       currentCount: processedImagesRef.current.length,
-      currentIds: processedImagesRef.current.map(img => img.id)
+      currentIds: processedImagesRef.current.map((img) => img.id),
     });
     setProcessedImages((prev) => {
       const image = prev.find((img) => img.id === id);
@@ -692,18 +800,17 @@ export function ImageProcessor({
         }
       }
       const filtered = prev.filter((img) => img.id !== id);
-      console.log('[ImageProcessor] After removal:', {
+      console.log("[ImageProcessor] After removal:", {
         prevCount: prev.length,
         newCount: filtered.length,
         removedId: id,
-        remainingIds: filtered.map(img => img.id)
+        remainingIds: filtered.map((img) => img.id),
       });
       return filtered;
     });
     // The existing useEffect at line 709 will automatically notify parent
     // when processedImages changes, so we don't need to do it here
   }, []);
-  
 
   // Store callback in ref to avoid dependency issues
   const onImagesProcessedRef = React.useRef(onImagesProcessed);
@@ -797,21 +904,21 @@ export function ImageProcessor({
 
     // Only call onImagesProcessed if something actually changed
     if (currentKey !== prevKey) {
-      console.log('[ImageProcessor] NOTIFYING PARENT (onImagesProcessed):', {
+      console.log("[ImageProcessor] NOTIFYING PARENT (onImagesProcessed):", {
         prevKey,
         currentKey,
         processedCount: processedImages.length,
-        processedIds: processedImages.map(img => img.id),
+        processedIds: processedImages.map((img) => img.id),
         existingCount: existingProcessedImages.length,
-        existingIds: existingProcessedImages.map(img => img.id),
+        existingIds: existingProcessedImages.map((img) => img.id),
         allImagesCount: allImages.length,
-        allImagesIds: allImages.map(img => img.id)
+        allImagesIds: allImages.map((img) => img.id),
       });
       prevProcessedImagesRef.current = currentKey;
       // Use ref to call callback to avoid dependency issues
       onImagesProcessedRef.current(allImages);
     } else {
-      console.log('[ImageProcessor] No change detected, not notifying parent');
+      console.log("[ImageProcessor] No change detected, not notifying parent");
     }
   }, [processedImages, existingProcessedImages, allImages]);
 
@@ -823,14 +930,15 @@ export function ImageProcessor({
       {allImages.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            Product Photos (drag to reorder - first image will be the main photo):
+            Product Photos (drag to reorder - first image will be the main
+            photo):
           </p>
           <div className="flex flex-wrap gap-2">
             {allImages.map((img, index) => {
               const isExisting = img.id.startsWith("existing-");
               const isDragging = draggedIndex === index;
               const isDragOver = dragOverIndex === index;
-              
+
               return (
                 <div
                   key={img.id}
@@ -909,54 +1017,57 @@ export function ImageProcessor({
       </div>
 
       {/* Cropping Dialog */}
-        <Dialog
-          open={croppingIndex !== null}
-          onOpenChange={(open) => {
-            if (!open) {
-              // Cancel cropping - close dialog and reset
-              setCurrentCropFile(null);
-              setCroppingIndex(null);
-              setFileQueue([]);
-              setCurrentFileIndex(0);
-              setSelectedFiles([]);
-            }
-          }}
-        >
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full overflow-x-hidden">
-            <DialogHeader>
-              <DialogTitle>
-                Image {currentFileIndex + 1} of {fileQueue.length}
-              </DialogTitle>
-            </DialogHeader>
+      <Dialog
+        open={croppingIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            // Cancel cropping - close dialog and reset
+            setCurrentCropFile(null);
+            setCroppingIndex(null);
+            setFileQueue([]);
+            setCurrentFileIndex(0);
+            setSelectedFiles([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>
+              Image {currentFileIndex + 1} of {fileQueue.length}
+            </DialogTitle>
+          </DialogHeader>
 
-            {currentCropFile && (
-              <div className="space-y-4 w-full max-w-full" style={{ minWidth: 0 }}>
-                <div 
-                  className="relative w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden" 
-                  style={{ 
-                    minWidth: 0, 
-                    maxWidth: '100%', 
-                    boxSizing: 'border-box',
-                    position: 'relative'
+          {currentCropFile && (
+            <div
+              className="space-y-4 w-full max-w-full"
+              style={{ minWidth: 0 }}
+            >
+              <div
+                className="relative w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden"
+                style={{
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  position: "relative",
+                }}
+              >
+                <Cropper
+                  key={`cropper-${currentFileIndex}-${currentCropFile.name}`}
+                  ref={cropperRef}
+                  src={URL.createObjectURL(currentCropFile)}
+                  className="cropper"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
                   }}
-                >
-                  <Cropper
-                    key={`cropper-${currentFileIndex}-${currentCropFile.name}`}
-                    ref={cropperRef}
-                    src={URL.createObjectURL(currentCropFile)}
-                    className="cropper"
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      maxWidth: '100%', 
-                      boxSizing: 'border-box'
-                    }}
-                    stencilProps={{
-                      aspectRatio: 1, // Square crop (you can make this configurable)
-                    }}
-                    imageRestriction={ImageRestriction.stencil}
-                  />
-                </div>
+                  stencilProps={{
+                    aspectRatio: 1, // Square crop (you can make this configurable)
+                  }}
+                  imageRestriction={ImageRestriction.stencil}
+                />
+              </div>
 
               {/* Watermark Settings */}
               <div className="border-t pt-4 space-y-4 w-full max-w-full">
@@ -970,7 +1081,6 @@ export function ImageProcessor({
                   />
                   <Label htmlFor="watermark-enabled">Apply Watermark</Label>
                 </div>
-
               </div>
             </div>
           )}
@@ -1006,7 +1116,9 @@ export function ImageProcessor({
             </div>
             <div className="flex gap-2">
               <Button type="button" onClick={processCurrentImage}>
-                {currentFileIndex === fileQueue.length - 1 ? "Process & Finish" : "Process & Next"}
+                {currentFileIndex === fileQueue.length - 1
+                  ? "Process & Finish"
+                  : "Process & Next"}
               </Button>
             </div>
           </DialogFooter>
