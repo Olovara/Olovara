@@ -1,14 +1,29 @@
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
+import { Plus } from "lucide-react";
 import PermissionGate from "@/components/auth/permission-gate";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { PERMISSIONS, ROLE_PERMISSIONS } from "@/data/roles-and-permissions";
 import { db } from "@/lib/db";
 import { ProductInteractionService } from "@/lib/analytics";
 
@@ -44,27 +59,29 @@ export default async function AdminProducts({
       },
     },
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   });
 
   // Get view counts for all products
-  const productViewCounts = await ProductInteractionService.getAllProductViewCounts();
+  const productViewCounts =
+    await ProductInteractionService.getAllProductViewCounts();
   const viewCountMap = new Map(
-    productViewCounts.map(v => [v.productId, v.views])
+    productViewCounts.map((v) => [v.productId, v.views])
   );
 
   // Filter products based on active tab
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = products.filter((product) => {
     if (activeTab === "all") return true;
     return product.status.toLowerCase() === activeTab.toLowerCase();
   });
 
   // Filter products based on search
   const searchedProducts = search
-    ? filteredProducts.filter(product => 
-        product.name.toLowerCase().includes(search.toLowerCase()) ||
-        product.seller?.shopName?.toLowerCase().includes(search.toLowerCase())
+    ? filteredProducts.filter(
+        (product) =>
+          product.name.toLowerCase().includes(search.toLowerCase()) ||
+          product.seller?.shopName?.toLowerCase().includes(search.toLowerCase())
       )
     : filteredProducts;
 
@@ -90,10 +107,26 @@ export default async function AdminProducts({
   // Get status counts for tabs
   const statusCounts = {
     all: products.length,
-    active: products.filter(p => p.status === 'ACTIVE').length,
-    hidden: products.filter(p => p.status === 'HIDDEN').length,
-    disabled: products.filter(p => p.status === 'DISABLED').length,
+    active: products.filter((p) => p.status === "ACTIVE").length,
+    hidden: products.filter((p) => p.status === "HIDDEN").length,
+    disabled: products.filter((p) => p.status === "DISABLED").length,
   };
+
+  // Check if user has permission to create products for sellers
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, permissions: true },
+  });
+
+  const userRole = user?.role || "MEMBER";
+  const rolePermissions =
+    ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS] || [];
+  const userPermissions =
+    (user?.permissions as any[])?.map((p: any) => p.permission) || [];
+  const allPermissions = [...rolePermissions, ...userPermissions];
+  const canCreateForSellers = allPermissions.includes(
+    PERMISSIONS.CREATE_PRODUCTS_FOR_SELLERS.value
+  );
 
   return (
     <PermissionGate requiredPermission="MANAGE_PRODUCTS">
@@ -119,16 +152,22 @@ export default async function AdminProducts({
 
         {/* Main Content */}
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <h1 className="font-semibold text-lg md:text-2xl">All Products</h1>
+            {canCreateForSellers && (
+              <Button asChild>
+                <Link href="/admin/dashboard/products/create-for-seller">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Product for Seller
+                </Link>
+              </Button>
+            )}
           </div>
 
           <Tabs defaultValue={activeTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="all" asChild>
-                <Link href={getTabUrl("all")}>
-                  All ({statusCounts.all})
-                </Link>
+                <Link href={getTabUrl("all")}>All ({statusCounts.all})</Link>
               </TabsTrigger>
               <TabsTrigger value="active" asChild>
                 <Link href={getTabUrl("active")}>
@@ -157,9 +196,15 @@ export default async function AdminProducts({
                         <TableHead>Seller</TableHead>
                         <TableHead>Price</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="hidden md:table-cell">Views</TableHead>
-                        <TableHead className="hidden md:table-cell">Stock</TableHead>
-                        <TableHead className="hidden md:table-cell">Created</TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Views
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Stock
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Created
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -167,26 +212,32 @@ export default async function AdminProducts({
                         <TableRow key={product.id}>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium">{product.name}</span>
-                              <span className="text-sm text-muted-foreground">ID: {product.id}</span>
+                              <span className="font-medium">
+                                {product.name}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                ID: {product.id}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Link 
+                            <Link
                               href={`/shops/${product.seller?.shopNameSlug}`}
                               className="text-primary hover:underline"
                             >
-                              {product.seller?.shopName || 'Unknown Seller'}
+                              {product.seller?.shopName || "Unknown Seller"}
                             </Link>
                           </TableCell>
                           <TableCell>
-                            ${(product.price / 100).toFixed(2)} {product.currency}
+                            ${(product.price / 100).toFixed(2)}{" "}
+                            {product.currency}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{product.status}</Badge>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {viewCountMap.get(product.id)?.toLocaleString() || '0'}
+                            {viewCountMap.get(product.id)?.toLocaleString() ||
+                              "0"}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             {product.stock}
@@ -204,7 +255,9 @@ export default async function AdminProducts({
               {/* Pagination */}
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {Math.min((page - 1) * pageSize + 1, totalItems)} to {Math.min(page * pageSize, totalItems)} of {totalItems} products
+                  Showing {Math.min((page - 1) * pageSize + 1, totalItems)} to{" "}
+                  {Math.min(page * pageSize, totalItems)} of {totalItems}{" "}
+                  products
                 </div>
                 <div className="flex items-center gap-2">
                   {page > 1 && (
@@ -237,4 +290,4 @@ export default async function AdminProducts({
       </div>
     </PermissionGate>
   );
-} 
+}

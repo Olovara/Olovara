@@ -536,6 +536,10 @@ model Product {
   // Batch tracking for compliance and traceability
   batchNumber       String? // Format: [ProductID]-[YYYYMMDD]-B[Increment]
 
+  // Admin-created product tracking
+  createdBy         String? // User ID of admin who created this product on behalf of seller
+  createdVia        String? // 'ADMIN' | 'SELLER' - tracks how product was created
+
   @@unique([userId, sku], name: "unique_sku_per_seller")
 }
 

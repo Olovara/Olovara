@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { AccountStatus } from "@prisma/client";
 import { ProductSchema, ProductDraftSchema } from "@/schemas/ProductSchema";
 import { generateUniqueSKU } from "@/lib/sku-generator";
 import { getSellerOnboardingSteps } from "@/lib/onboarding";
@@ -9,6 +10,9 @@ import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { logError } from "@/lib/error-logger";
 import { logQaEvent } from "@/lib/qa-logger";
 import { QA_EVENTS, PRODUCT_STEPS } from "@/lib/qa-steps";
+import { hasPermission } from "@/lib/permissions";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
+import { isSellerGPSRComplianceRequired } from "@/lib/gpsr-compliance";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -28,6 +32,11 @@ export async function POST(req: NextRequest) {
     userId: string;
     isFullyActivated: boolean;
     applicationAccepted: boolean;
+    shopCountry?: string;
+    excludedCountries?: string[];
+    user?: {
+      status: AccountStatus | null;
+    };
   } | null = null;
   let data: any = null;
 
@@ -138,28 +147,110 @@ export async function POST(req: NextRequest) {
       taxCategory = "PHYSICAL_GOODS",
       taxCode,
       taxExempt = false,
+      // Shipping option
+      shippingOptionId,
     } = data;
 
-    // Check if seller exists and get onboarding status
-    seller = await db.seller.findUnique({
-      where: { userId: session.user.id },
-      select: {
-        id: true,
-        userId: true,
-        isFullyActivated: true,
-        applicationAccepted: true,
-      },
-    });
+    // Check if admin is creating product for a seller
+    const canCreateForSellers = await hasPermission(
+      session.user.id,
+      PERMISSIONS.CREATE_PRODUCTS_FOR_SELLERS.value as any
+    );
+    const isAdminCreation =
+      canCreateForSellers &&
+      data.createdVia === "ADMIN" &&
+      data.userId &&
+      data.userId !== session.user.id;
+    const targetSellerId = isAdminCreation ? data.userId : session.user.id;
 
-    if (!seller) {
-      // Expected - user may not have seller profile yet - no DB logging needed
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Seller profile not found",
-        }),
-        { status: 404 }
-      );
+    // Validate admin creation
+    if (isAdminCreation) {
+      // Validate admin provided seller ID
+      if (!data.userId || !data.createdBy) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Admin product creation requires seller ID and creator ID",
+          }),
+          { status: 400 }
+        );
+      }
+
+      // Ensure admin is assigning to a seller, not a user
+      const targetSeller = await db.seller.findUnique({
+        where: { userId: data.userId },
+        select: {
+          id: true,
+          userId: true,
+          isFullyActivated: true,
+          applicationAccepted: true,
+          shopCountry: true,
+          excludedCountries: true,
+          user: {
+            select: {
+              status: true,
+            },
+          },
+        },
+      });
+
+      if (!targetSeller) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Target seller not found",
+          }),
+          { status: 404 }
+        );
+      }
+
+      // Ensure seller is active, not banned, not pending approval
+      if (targetSeller.user.status !== "ACTIVE") {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Cannot create product for inactive or suspended seller",
+          }),
+          { status: 403 }
+        );
+      }
+
+      if (!targetSeller.applicationAccepted) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Cannot create product for seller with pending application",
+          }),
+          { status: 403 }
+        );
+      }
+
+      // Use target seller for product creation
+      seller = targetSeller;
+    } else {
+      // Regular seller creating their own product
+      seller = await db.seller.findUnique({
+        where: { userId: session.user.id },
+        select: {
+          id: true,
+          userId: true,
+          isFullyActivated: true,
+          applicationAccepted: true,
+          shopCountry: true,
+          excludedCountries: true,
+        },
+      });
+
+      if (!seller) {
+        // Expected - user may not have seller profile yet - no DB logging needed
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Seller profile not found",
+          }),
+          { status: 404 }
+        );
+      }
     }
 
     // Get onboarding steps for detailed status
@@ -204,7 +295,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Basic validation for required fields
-    // For drafts, only name is required. For non-drafts, name, price, and primaryCategory are required
+    // For drafts, only name is required. For non-draft products, name, price, and primaryCategory are required
     if (isDraft) {
       // Only name is required for drafts
       if (!name || name.trim() === "") {
@@ -234,6 +325,43 @@ export async function POST(req: NextRequest) {
           }),
           { status: 400 }
         );
+      }
+    }
+
+    // HARD GPSR enforcement for admin-created products
+    if (isAdminCreation && !isDraft && !isDigital) {
+      // Check if GPSR is required for this seller
+      const sellerShopCountry = (seller as any).shopCountry || "";
+      const sellerExcludedCountries = (seller as any).excludedCountries || [];
+      const gpsrRequired = isSellerGPSRComplianceRequired(
+        sellerShopCountry,
+        sellerExcludedCountries
+      );
+
+      if (gpsrRequired) {
+        // Admin-created products MUST have GPSR data - no bypass allowed
+        const requiredGPSRFields = [
+          { field: "safetyWarnings", value: safetyWarnings },
+          { field: "materialsComposition", value: materialsComposition },
+          { field: "safeUseInstructions", value: safeUseInstructions },
+        ];
+
+        const missingFields = requiredGPSRFields.filter(
+          (f) =>
+            !f.value || (typeof f.value === "string" && f.value.trim() === "")
+        );
+
+        if (missingFields.length > 0) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: `GPSR compliance required: Admin-created products must include ${missingFields.map((f) => f.field).join(", ")}`,
+              gpsrRequired: true,
+              missingFields: missingFields.map((f) => f.field),
+            }),
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -373,6 +501,8 @@ export async function POST(req: NextRequest) {
       taxCategory: taxCategory || "PHYSICAL_GOODS",
       taxCode: taxCode && taxCode.trim() !== "" ? taxCode : null,
       taxExempt: taxExempt || false,
+      // Shipping option - link to seller's shipping profile
+      shippingOptionId: shippingOptionId || null,
     };
 
     // --- Step 3: Validate data structure (but don't transform, since form already transformed) ---
@@ -388,12 +518,18 @@ export async function POST(req: NextRequest) {
       cleanedProductData[key] = value === undefined ? null : value;
     }
 
+    // Determine userId - use selected seller's userId for admin creation, otherwise session user
+    const productUserId = isAdminCreation ? targetSellerId : session.user.id;
+
     const product = await db.product.create({
       data: {
         ...cleanedProductData,
         // userId is the foreign key that references Seller.userId
-        // Note: If you get "Unknown argument userId" error, run: npx prisma generate
-        userId: session.user.id,
+        // For admin creation, use selected seller's userId; otherwise use session user's id
+        userId: productUserId,
+        // Admin product creation tracking
+        createdBy: isAdminCreation ? data.createdBy : null,
+        createdVia: isAdminCreation ? "ADMIN" : data.createdVia || "SELLER",
         description: productData.description || { html: "", text: "" }, // Ensure description is never undefined
         // CRITICAL: Prisma requires shortDescription to be non-null String
         // Use empty string if not provided (already set in productData, but ensure it's not null)
@@ -401,6 +537,37 @@ export async function POST(req: NextRequest) {
         stock: productData.stock ?? undefined, // Convert null to undefined for Prisma
       },
     });
+
+    // Activity logging for admin-created products
+    if (isAdminCreation) {
+      try {
+        await db.userActivityLog.create({
+          data: {
+            userId: session.user.id,
+            action: "PRODUCT_CREATED_BY_ADMIN",
+            ip:
+              req.headers.get("x-forwarded-for") ||
+              req.headers.get("x-real-ip") ||
+              "unknown",
+            userAgent: req.headers.get("user-agent") || null,
+            success: true,
+            details: {
+              productId: product.id,
+              sellerId: seller.id,
+              sellerUserId: targetSellerId,
+              productName: name,
+              status: status,
+            },
+          },
+        });
+      } catch (logError) {
+        // Don't fail product creation if logging fails
+        console.error(
+          "Failed to log admin product creation activity:",
+          logError
+        );
+      }
+    }
 
     console.log("[PRODUCT CREATED] Product ID:", product.id);
 

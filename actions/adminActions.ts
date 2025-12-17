@@ -223,6 +223,123 @@ export async function getAllSellers() {
   }
 }
 
+/**
+ * Get all active sellers for admin product creation
+ * Returns sellers who are approved, fully activated, and not suspended
+ */
+export async function getActiveSellersForProductCreation() {
+  let currentUserData: any = null;
+
+  try {
+    currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has CREATE_PRODUCTS_FOR_SELLERS permission
+    const hasPermission = currentUserData.permissions?.includes(
+      "CREATE_PRODUCTS_FOR_SELLERS"
+    );
+
+    if (!hasPermission) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    // Get all active sellers (approved, fully activated, not suspended)
+    // Note: Filter user status in JS since Prisma/MongoDB has issues with enum null checks
+    const sellers = await db.seller.findMany({
+      where: {
+        applicationAccepted: true,
+        isFullyActivated: true,
+      },
+      select: {
+        id: true,
+        userId: true,
+        shopName: true,
+        shopNameSlug: true,
+        shopTagLine: true,
+        preferredCurrency: true,
+        preferredWeightUnit: true,
+        preferredDimensionUnit: true,
+        preferredDistanceUnit: true,
+        shopCountry: true,
+        excludedCountries: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            image: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        shopName: "asc",
+      },
+    });
+
+    // Filter out suspended/vacation users in JS
+    const filteredSellers = sellers.filter((s) => {
+      const status = s.user?.status;
+      return !status || status === "ACTIVE";
+    });
+
+    return filteredSellers.map((seller) => ({
+      id: seller.id,
+      userId: seller.userId,
+      shopName: seller.shopName,
+      shopNameSlug: seller.shopNameSlug,
+      shopTagLine: seller.shopTagLine,
+      preferredCurrency: seller.preferredCurrency,
+      preferredWeightUnit: seller.preferredWeightUnit,
+      preferredDimensionUnit: seller.preferredDimensionUnit,
+      preferredDistanceUnit: seller.preferredDistanceUnit,
+      shopCountry: seller.shopCountry,
+      excludedCountries: seller.excludedCountries || [],
+      user: seller.user,
+    }));
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error in getActiveSellersForProductCreation:", {
+      error:
+        error instanceof Error
+          ? {
+              message: error.message,
+              stack: error.stack,
+              name: error.name,
+            }
+          : error,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Don't log authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      return [];
+    }
+
+    // Log to database
+    logError({
+      code: "ADMIN_GET_ACTIVE_SELLERS_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getActiveSellersForProductCreation",
+      error,
+      metadata: {
+        note: "Failed to fetch active sellers for product creation",
+      },
+    });
+
+    return [];
+  }
+}
+
 export async function getApprovedSellers() {
   // Declare variables outside try block so they're accessible in catch
   let currentUserData: any = null;

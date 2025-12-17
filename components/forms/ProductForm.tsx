@@ -44,10 +44,24 @@ import { logQaStep } from "@/lib/qa-logger";
 import { getQaSessionId } from "@/lib/qa-session";
 import { PRODUCT_STEPS, QA_EVENTS } from "@/lib/qa-steps";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
+import { usePermissions } from "@/components/providers/PermissionProvider";
+import { PERMISSIONS } from "@/data/roles-and-permissions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Lock } from "lucide-react";
+import { isSellerGPSRComplianceRequired } from "@/lib/gpsr-compliance";
 
 type ProductFormValues = z.infer<typeof ProductSchema> & {
   id?: string;
   isDraft?: boolean;
+  selectedSellerId?: string; // For admin product creation
 };
 
 type ProductFormProps = {
@@ -73,6 +87,41 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const { data: session } = useSession();
   const sessionId = getQaSessionId();
   const userId = session?.user?.id;
+  const { hasPermission } = usePermissions();
+
+  // Check if user has permission to create products for sellers
+  const canCreateForSellers = hasPermission(
+    PERMISSIONS.CREATE_PRODUCTS_FOR_SELLERS.value
+  );
+
+  // Admin seller selection state
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+  const [sellerLocked, setSellerLocked] = useState(false);
+  const [activeSellers, setActiveSellers] = useState<
+    Array<{
+      id: string;
+      userId: string;
+      shopName: string;
+      shopNameSlug: string;
+      shopTagLine: string | null;
+      preferredCurrency: string;
+      preferredWeightUnit: string;
+      preferredDimensionUnit: string;
+      preferredDistanceUnit: string;
+      shopCountry: string;
+      excludedCountries: string[];
+      user: {
+        id: string;
+        username: string | null;
+        email: string | null;
+        image: string | null;
+      };
+    }>
+  >([]);
+  const [selectedSeller, setSelectedSeller] = useState<
+    (typeof activeSellers)[0] | null
+  >(null);
+  const [loadingSellers, setLoadingSellers] = useState(false);
 
   const [description, setDescription] = useState<string>(
     initialData?.description?.html || ""
@@ -226,92 +275,163 @@ export function ProductForm({ initialData }: ProductFormProps) {
     throw lastError || new Error("Failed to fetch after all retries");
   };
 
-  // Fetch seller preferences on mount
+  // Fetch active sellers for admin product creation
   useEffect(() => {
-    const fetchSellerPreferences = async () => {
-      try {
-        const response = await fetchWithRetry("/api/seller/preferences");
-        const preferences = await response.json();
-
-        if (preferences && preferences.preferredCurrency) {
-          setSellerPreferences({
-            preferredCurrency: (preferences.preferredCurrency ||
-              "USD") as CurrencyCode,
-            preferredWeightUnit: (preferences.preferredWeightUnit ||
-              "lbs") as WeightUnit,
-            preferredDimensionUnit: (preferences.preferredDimensionUnit ||
-              "in") as DimensionUnit,
-          });
-
-          // For new products (no initialData), always use seller's preferred currency
-          // For existing products, only update if no currency was set
-          if (!initialData) {
-            // New product - always set to preferred currency
-            form.setValue("currency", preferences.preferredCurrency);
-          } else if (!initialData.currency) {
-            // Existing product but no currency set - use preferred currency
-            form.setValue("currency", preferences.preferredCurrency);
+    if (canCreateForSellers && !initialData) {
+      // Only fetch if admin and creating new product
+      const fetchActiveSellers = async () => {
+        setLoadingSellers(true);
+        try {
+          const response = await fetch("/api/admin/sellers/active");
+          const result = await response.json();
+          if (result.success && result.data) {
+            setActiveSellers(result.data);
           }
+        } catch (error) {
+          console.error("Error fetching active sellers:", error);
+          toast.error("Failed to load sellers. Please refresh the page.");
+        } finally {
+          setLoadingSellers(false);
         }
-      } catch (error) {
-        console.error(
-          "Error fetching seller preferences after retries:",
-          error
-        );
-        // Fallback to defaults if all retries fail
-        console.warn("Using default currency (USD) due to fetch failure");
-      }
-    };
+      };
+      fetchActiveSellers();
+    }
+  }, [canCreateForSellers, initialData]);
 
-    fetchSellerPreferences();
+  // Handle seller selection - lock seller and load preferences
+  const handleSellerSelect = async (sellerUserId: string) => {
+    if (sellerLocked) {
+      toast.error("Seller cannot be changed after selection");
+      return;
+    }
+
+    const seller = activeSellers.find((s) => s.userId === sellerUserId);
+    if (!seller) {
+      toast.error("Selected seller not found");
+      return;
+    }
+
+    setSelectedSellerId(sellerUserId);
+    setSelectedSeller(seller);
+    setSellerLocked(true);
+
+    // Load seller preferences
+    setSellerPreferences({
+      preferredCurrency: (seller.preferredCurrency || "USD") as CurrencyCode,
+      preferredWeightUnit: (seller.preferredWeightUnit || "lbs") as WeightUnit,
+      preferredDimensionUnit: (seller.preferredDimensionUnit ||
+        "in") as DimensionUnit,
+    });
+
+    // Update form with seller preferences
+    form.setValue("currency", seller.preferredCurrency || "USD");
+    form.setValue("itemWeightUnit", seller.preferredWeightUnit || "lbs");
+    form.setValue("itemDimensionUnit", seller.preferredDimensionUnit || "in");
+
+    // Load excluded countries and determine GPSR requirement
+    const excluded = seller.excludedCountries || [];
+    setExcludedCountries(excluded);
+    const gpsrRequired = isSellerGPSRComplianceRequired(
+      seller.shopCountry,
+      excluded
+    );
+    setIsGPSRRequired(gpsrRequired);
+
+    toast.success(`Creating product for ${seller.shopName}`);
+  };
+
+  // Fetch seller preferences on mount (for regular sellers)
+  useEffect(() => {
+    if (!canCreateForSellers || initialData) {
+      // Only fetch for regular sellers or when editing
+      const fetchSellerPreferences = async () => {
+        try {
+          const response = await fetchWithRetry("/api/seller/preferences");
+          const preferences = await response.json();
+
+          if (preferences && preferences.preferredCurrency) {
+            setSellerPreferences({
+              preferredCurrency: (preferences.preferredCurrency ||
+                "USD") as CurrencyCode,
+              preferredWeightUnit: (preferences.preferredWeightUnit ||
+                "lbs") as WeightUnit,
+              preferredDimensionUnit: (preferences.preferredDimensionUnit ||
+                "in") as DimensionUnit,
+            });
+
+            // For new products (no initialData), always use seller's preferred currency
+            // For existing products, only update if no currency was set
+            if (!initialData) {
+              // New product - always set to preferred currency
+              form.setValue("currency", preferences.preferredCurrency);
+            } else if (!initialData.currency) {
+              // Existing product but no currency set - use preferred currency
+              form.setValue("currency", preferences.preferredCurrency);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Error fetching seller preferences after retries:",
+            error
+          );
+          // Fallback to defaults if all retries fail
+          console.warn("Using default currency (USD) due to fetch failure");
+        }
+      };
+
+      fetchSellerPreferences();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canCreateForSellers, initialData]);
 
-  // Fetch excluded countries and determine GPSR requirements
+  // Fetch excluded countries and determine GPSR requirements (for regular sellers)
   useEffect(() => {
-    const fetchExcludedCountries = async () => {
-      try {
-        const result = await getCountryExclusions();
-        if (result.data) {
-          const excluded = result.data.excludedCountries || [];
-          setExcludedCountries(excluded);
+    if (!canCreateForSellers || !selectedSellerId) {
+      // Only fetch for regular sellers or when not creating for a seller
+      const fetchExcludedCountries = async () => {
+        try {
+          const result = await getCountryExclusions();
+          if (result.data) {
+            const excluded = result.data.excludedCountries || [];
+            setExcludedCountries(excluded);
 
-          // Determine if GPSR compliance is required
-          const gpsrRequired = isGPSRComplianceRequired(excluded);
-          setIsGPSRRequired(gpsrRequired);
-        }
-      } catch (error) {
-        // Enhanced error logging for international sellers
-        console.error(
-          "[PRODUCT FORM ERROR] Error fetching excluded countries:",
-          {
-            error:
-              error instanceof Error
-                ? {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack,
-                  }
-                : error,
-            productId: initialData?.id || "new",
-            timestamp: new Date().toISOString(),
+            // Determine if GPSR compliance is required
+            const gpsrRequired = isGPSRComplianceRequired(excluded);
+            setIsGPSRRequired(gpsrRequired);
           }
-        );
+        } catch (error) {
+          // Enhanced error logging for international sellers
+          console.error(
+            "[PRODUCT FORM ERROR] Error fetching excluded countries:",
+            {
+              error:
+                error instanceof Error
+                  ? {
+                      name: error.name,
+                      message: error.message,
+                      stack: error.stack,
+                    }
+                  : error,
+              productId: initialData?.id || "new",
+              timestamp: new Date().toISOString(),
+            }
+          );
 
-        // CRITICAL: Default to requiring GPSR compliance if we can't determine
-        // This is safer for international sellers - better to require compliance than miss it
-        // However, log this clearly so sellers know why GPSR fields are showing
-        setIsGPSRRequired(true);
-        console.warn(
-          "[PRODUCT FORM WARNING] Could not determine GPSR requirement. " +
-            "Defaulting to requiring GPSR compliance for safety. " +
-            "If you don't ship to EU/EEA, you can exclude those countries in your seller settings."
-        );
-      }
-    };
+          // CRITICAL: Default to requiring GPSR compliance if we can't determine
+          // This is safer for international sellers - better to require compliance than miss it
+          // However, log this clearly so sellers know why GPSR fields are showing
+          setIsGPSRRequired(true);
+          console.warn(
+            "[PRODUCT FORM WARNING] Could not determine GPSR requirement. " +
+              "Defaulting to requiring GPSR compliance for safety. " +
+              "If you don't ship to EU/EEA, you can exclude those countries in your seller settings."
+          );
+        }
+      };
 
-    fetchExcludedCountries();
-  }, [initialData?.id]);
+      fetchExcludedCountries();
+    }
+  }, [initialData?.id, canCreateForSellers, selectedSellerId]);
 
   // QA logging: Log when user enters product form
   useEffect(() => {
@@ -323,7 +443,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
       step: PRODUCT_STEPS.DETAILS,
       status: "started",
-      route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "/sell/new",
       metadata: {
         isEdit: !!initialData,
         productId: initialData?.id,
@@ -771,6 +892,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const onSubmit = async (data: ProductFormValues) => {
     console.log("[DEBUG] onSubmit function called!");
 
+    // CRITICAL: Prevent submission if admin hasn't selected a seller
+    if (canCreateForSellers && !initialData && !selectedSellerId) {
+      toast.error("Please select a seller before submitting the form");
+      return;
+    }
+
     // CRITICAL: Prevent submission if uploads are in progress
     // This prevents race conditions where form submits before images/files are uploaded
     if (isUploading) {
@@ -931,12 +1058,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // 3. Server-side validation (validate data WITHOUT images) - happens NOW
       // 4. Image/file uploads - happens ONLY after server validation passes
       // 5. Product creation - happens after uploads succeed
-      // 
+      //
       // This prevents orphaned images by validating on the server before uploading.
 
       // Step 3: Validate data on server BEFORE uploading images
       // Send form data without images to validate first
-      console.log("[PRODUCT FORM] Validating data on server before image uploads...");
+      console.log(
+        "[PRODUCT FORM] Validating data on server before image uploads..."
+      );
       const validationData = {
         ...data,
         images: [], // Don't send images for validation - we'll add them after upload
@@ -964,24 +1093,35 @@ export function ProductForm({ initialData }: ProductFormProps) {
         if (validationError.details && Array.isArray(validationError.details)) {
           const errorMessages = validationError.details
             .map((err: any) => err?.message)
-            .filter((msg: any): msg is string => typeof msg === "string" && msg.length > 0);
-          
+            .filter(
+              (msg: any): msg is string =>
+                typeof msg === "string" && msg.length > 0
+            );
+
           if (errorMessages.length > 0) {
             const uniqueErrors = Array.from(new Set(errorMessages));
             toast.error(
               `Validation failed: ${uniqueErrors.slice(0, 3).join(", ")}${uniqueErrors.length > 3 ? "..." : ""}`
             );
           } else {
-            toast.error(validationError.error || "Validation failed. Please check your form data.");
+            toast.error(
+              validationError.error ||
+                "Validation failed. Please check your form data."
+            );
           }
         } else {
-          toast.error(validationError.error || "Validation failed. Please check your form data.");
+          toast.error(
+            validationError.error ||
+              "Validation failed. Please check your form data."
+          );
         }
         setIsLoading(false);
         return;
       }
 
-      console.log("[PRODUCT FORM] Server validation passed. Proceeding with image uploads...");
+      console.log(
+        "[PRODUCT FORM] Server validation passed. Proceeding with image uploads..."
+      );
 
       // Step 4: Upload processed images (only after server validation passes)
       // Upload processed images first (if any)
@@ -995,18 +1135,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // CRITICAL: Simplify the filter - blob URLs with valid files are ALWAYS new images
       // Don't overthink this - if it has a blob URL and a file, it needs uploading
       let newProcessedImages: typeof processedImages = [];
-      
+
       for (const img of processedImages) {
         // Skip if missing required properties
         if (!img || !img.preview || !img.file) {
           continue;
         }
-        
+
         // Skip existing images (already uploaded)
         if (img.id && img.id.startsWith("existing-")) {
           continue;
         }
-        
+
         // CRITICAL: Blob URLs = new images that need uploading
         if (img.preview.startsWith("blob:")) {
           // Validate file is actually a File instance with size
@@ -1015,25 +1155,29 @@ export function ProductForm({ initialData }: ProductFormProps) {
             continue;
           }
         }
-        
+
         // Fallback: If not a blob URL but also not in existing URLs, might be new
-        if (!existingImageUrls.includes(img.preview) && img.file instanceof File && img.file.size > 0) {
+        if (
+          !existingImageUrls.includes(img.preview) &&
+          img.file instanceof File &&
+          img.file.size > 0
+        ) {
           newProcessedImages.push(img);
         }
       }
-      
+
       // CRITICAL FALLBACK: If we still have no images but processedImages has blob URLs, force include them
       // This is a safety net in case the loop above missed something
       // Use a more lenient check - if it has a blob URL and any file-like object, include it
       if (newProcessedImages.length === 0 && processedImages.length > 0) {
         const blobImages: typeof processedImages = [];
-        
+
         for (const img of processedImages) {
           if (!img || !img.preview) continue;
-          
+
           const isBlob = img.preview.startsWith("blob:");
           const isNotExisting = !img.id || !img.id.startsWith("existing-");
-          
+
           if (isBlob && isNotExisting) {
             // More lenient file check - just check if file exists and has size
             if (img.file) {
@@ -1045,44 +1189,59 @@ export function ProductForm({ initialData }: ProductFormProps) {
             }
           }
         }
-        
+
         if (blobImages.length > 0) {
-          console.warn("[PRODUCT FORM WARNING] Fallback caught blob images that were missed:", {
-            blobImagesCount: blobImages.length,
-            originalFilterResult: newProcessedImages.length,
-            processedImagesCount: processedImages.length,
-            blobImagesDetails: blobImages.map(img => ({
-              id: img.id,
-              preview: img.preview?.substring(0, 50),
-              fileSize: (img.file as any)?.size,
-              isBlob: img.preview?.startsWith("blob:"),
-              isFile: img.file instanceof File,
-              fileType: typeof img.file,
-              fileConstructor: img.file?.constructor?.name
-            })),
-            productId: initialData?.id || "new",
-          });
+          console.warn(
+            "[PRODUCT FORM WARNING] Fallback caught blob images that were missed:",
+            {
+              blobImagesCount: blobImages.length,
+              originalFilterResult: newProcessedImages.length,
+              processedImagesCount: processedImages.length,
+              blobImagesDetails: blobImages.map((img) => ({
+                id: img.id,
+                preview: img.preview?.substring(0, 50),
+                fileSize: (img.file as any)?.size,
+                isBlob: img.preview?.startsWith("blob:"),
+                isFile: img.file instanceof File,
+                fileType: typeof img.file,
+                fileConstructor: img.file?.constructor?.name,
+              })),
+              productId: initialData?.id || "new",
+            }
+          );
           newProcessedImages = blobImages;
         } else {
           // Log detailed analysis if even fallback failed
-          console.warn("[PRODUCT FORM WARNING] Processed images found but none detected for upload:", {
-            processedImagesCount: processedImages.length,
-            processedImagesAnalysis: processedImages.map(img => ({
-              id: img.id,
-              hasPreview: !!img.preview,
-              previewType: img.preview ? (img.preview.startsWith("blob:") ? "blob" : img.preview.startsWith("http") ? "http" : "other") : "none",
-              previewStart: img.preview?.substring(0, 50),
-              hasFile: !!img.file,
-              isFileInstance: img.file instanceof File,
-              fileSize: (img.file as any)?.size,
-              fileType: typeof img.file,
-              fileConstructor: img.file?.constructor?.name,
-              isExisting: img.id?.startsWith("existing-"),
-              wouldBeIncluded: img.preview?.startsWith("blob:") && !!img.file && !img.id?.startsWith("existing-")
-            })),
-            existingImageUrlsCount: existingImageUrls.length,
-            productId: initialData?.id || "new",
-          });
+          console.warn(
+            "[PRODUCT FORM WARNING] Processed images found but none detected for upload:",
+            {
+              processedImagesCount: processedImages.length,
+              processedImagesAnalysis: processedImages.map((img) => ({
+                id: img.id,
+                hasPreview: !!img.preview,
+                previewType: img.preview
+                  ? img.preview.startsWith("blob:")
+                    ? "blob"
+                    : img.preview.startsWith("http")
+                      ? "http"
+                      : "other"
+                  : "none",
+                previewStart: img.preview?.substring(0, 50),
+                hasFile: !!img.file,
+                isFileInstance: img.file instanceof File,
+                fileSize: (img.file as any)?.size,
+                fileType: typeof img.file,
+                fileConstructor: img.file?.constructor?.name,
+                isExisting: img.id?.startsWith("existing-"),
+                wouldBeIncluded:
+                  img.preview?.startsWith("blob:") &&
+                  !!img.file &&
+                  !img.id?.startsWith("existing-"),
+              })),
+              existingImageUrlsCount: existingImageUrls.length,
+              productId: initialData?.id || "new",
+            }
+          );
         }
       }
 
@@ -1097,49 +1256,59 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // Debug logging to help diagnose image upload issues
       console.log("[PRODUCT FORM DEBUG] Image state before upload:", {
         imagesStateCount: images.length,
-        imagesState: images.map(url => url?.substring(0, 50)),
+        imagesState: images.map((url) => url?.substring(0, 50)),
         processedImagesCount: processedImages.length,
-        processedImagesPreviews: processedImages.map(img => ({
+        processedImagesPreviews: processedImages.map((img) => ({
           id: img.id,
           preview: img.preview?.substring(0, 50),
           isBlob: img.preview?.startsWith("blob:"),
           hasFile: !!img.file,
           isFileInstance: img.file instanceof File,
           fileSize: img.file?.size,
-          isExisting: img.id?.startsWith("existing-")
+          isExisting: img.id?.startsWith("existing-"),
         })),
         existingImageUrlsCount: existingImageUrls.length,
-        existingImageUrls: existingImageUrls.map(url => url?.substring(0, 50)),
+        existingImageUrls: existingImageUrls.map((url) =>
+          url?.substring(0, 50)
+        ),
         newProcessedImagesCount: newProcessedImages.length,
-        newProcessedImagesDetails: newProcessedImages.map(img => ({
+        newProcessedImagesDetails: newProcessedImages.map((img) => ({
           id: img.id,
           preview: img.preview?.substring(0, 50),
-          fileSize: img.file?.size
+          fileSize: img.file?.size,
         })),
         productId: initialData?.id || "new",
         isDraft,
         timestamp: new Date().toISOString(),
       });
-      
+
       // CRITICAL: If we have processed images with blob URLs but newProcessedImages is empty,
       // something is wrong with the filter - force include them
       if (processedImages.length > 0 && newProcessedImages.length === 0) {
         const blobImages = processedImages.filter(
-          img => img && img.preview && img.preview.startsWith("blob:") && 
-          img.file && img.file instanceof File && img.file.size > 0 &&
-          (!img.id || !img.id.startsWith("existing-"))
+          (img) =>
+            img &&
+            img.preview &&
+            img.preview.startsWith("blob:") &&
+            img.file &&
+            img.file instanceof File &&
+            img.file.size > 0 &&
+            (!img.id || !img.id.startsWith("existing-"))
         );
-        
+
         if (blobImages.length > 0) {
-          console.warn("[PRODUCT FORM WARNING] Filter missed blob images, forcing inclusion:", {
-            blobImagesCount: blobImages.length,
-            originalFilterResult: newProcessedImages.length,
-            blobImagesDetails: blobImages.map(img => ({
-              id: img.id,
-              preview: img.preview?.substring(0, 50),
-              fileSize: img.file?.size
-            }))
-          });
+          console.warn(
+            "[PRODUCT FORM WARNING] Filter missed blob images, forcing inclusion:",
+            {
+              blobImagesCount: blobImages.length,
+              originalFilterResult: newProcessedImages.length,
+              blobImagesDetails: blobImages.map((img) => ({
+                id: img.id,
+                preview: img.preview?.substring(0, 50),
+                fileSize: img.file?.size,
+              })),
+            }
+          );
           // Force include blob images that were missed
           newProcessedImages.push(...blobImages);
         }
@@ -1159,96 +1328,128 @@ export function ProductForm({ initialData }: ProductFormProps) {
           // CRITICAL: Convert file-like objects to File instances for upload
           // The upload function requires File instances, but processedImages might have Blob or other types
           const filesToUpload: File[] = [];
-          
+
           for (const img of newProcessedImages) {
             if (!img.file) {
-              console.warn("[PRODUCT FORM WARNING] Processed image missing file:", {
-                id: img.id,
-                preview: img.preview?.substring(0, 50)
-              });
+              console.warn(
+                "[PRODUCT FORM WARNING] Processed image missing file:",
+                {
+                  id: img.id,
+                  preview: img.preview?.substring(0, 50),
+                }
+              );
               continue;
             }
-            
+
             // CRITICAL: Cast to any first to handle type mismatches
             // The ProcessedImage type says file: File, but in practice it might be Blob or other types
             const fileObj: any = img.file;
             let file: File;
-            
+
             // If it's already a File instance, use it directly
-            if (fileObj && typeof fileObj === 'object' && fileObj instanceof File) {
+            if (
+              fileObj &&
+              typeof fileObj === "object" &&
+              fileObj instanceof File
+            ) {
               file = fileObj as File;
             }
             // If it's a Blob, convert to File
-            else if (fileObj && typeof fileObj === 'object' && fileObj instanceof Blob) {
+            else if (
+              fileObj &&
+              typeof fileObj === "object" &&
+              fileObj instanceof Blob
+            ) {
               // Get original name from processed image if available
               const fileName = img.originalName || `image-${Date.now()}.jpg`;
-              const blobType = (fileObj as Blob).type || 'image/jpeg';
-              file = new File([fileObj as Blob], fileName, { 
+              const blobType = (fileObj as Blob).type || "image/jpeg";
+              file = new File([fileObj as Blob], fileName, {
                 type: blobType,
-                lastModified: Date.now()
+                lastModified: Date.now(),
               });
             }
             // If it's a file-like object (has size, name, type properties)
             else {
               // Log detailed info about the file-like object
-              console.warn("[PRODUCT FORM WARNING] Converting file-like object to File:", {
-                fileType: typeof fileObj,
-                fileConstructor: fileObj?.constructor?.name,
-                hasSize: 'size' in fileObj,
-                hasName: 'name' in fileObj,
-                hasType: 'type' in fileObj,
-                size: fileObj.size,
-                name: fileObj.name,
-                type: fileObj.type
-              });
-              
+              console.warn(
+                "[PRODUCT FORM WARNING] Converting file-like object to File:",
+                {
+                  fileType: typeof fileObj,
+                  fileConstructor: fileObj?.constructor?.name,
+                  hasSize: "size" in fileObj,
+                  hasName: "name" in fileObj,
+                  hasType: "type" in fileObj,
+                  size: fileObj.size,
+                  name: fileObj.name,
+                  type: fileObj.type,
+                }
+              );
+
               // Try to convert to File using arrayBuffer or stream
               if (fileObj.size > 0) {
                 // If it has an arrayBuffer method, use it
-                if (typeof fileObj.arrayBuffer === 'function') {
+                if (typeof fileObj.arrayBuffer === "function") {
                   const arrayBuffer = await fileObj.arrayBuffer();
-                  file = new File([arrayBuffer], fileObj.name || img.originalName || `image-${Date.now()}.jpg`, {
-                    type: fileObj.type || 'image/jpeg',
-                    lastModified: fileObj.lastModified || Date.now()
-                  });
+                  file = new File(
+                    [arrayBuffer],
+                    fileObj.name ||
+                      img.originalName ||
+                      `image-${Date.now()}.jpg`,
+                    {
+                      type: fileObj.type || "image/jpeg",
+                      lastModified: fileObj.lastModified || Date.now(),
+                    }
+                  );
                 }
                 // Otherwise, try to create a File wrapper from the object
                 else {
                   // This is a fallback - try to create a File wrapper
                   // Note: This might not work for all file-like objects
-                  file = new File([fileObj], fileObj.name || img.originalName || `image-${Date.now()}.jpg`, {
-                    type: fileObj.type || 'image/jpeg',
-                    lastModified: fileObj.lastModified || Date.now()
-                  });
+                  file = new File(
+                    [fileObj],
+                    fileObj.name ||
+                      img.originalName ||
+                      `image-${Date.now()}.jpg`,
+                    {
+                      type: fileObj.type || "image/jpeg",
+                      lastModified: fileObj.lastModified || Date.now(),
+                    }
+                  );
                 }
               } else {
-                console.error("[PRODUCT FORM ERROR] File-like object has no size:", {
-                  fileObj,
-                  imgId: img.id
-                });
+                console.error(
+                  "[PRODUCT FORM ERROR] File-like object has no size:",
+                  {
+                    fileObj,
+                    imgId: img.id,
+                  }
+                );
                 continue;
               }
             }
-            
+
             filesToUpload.push(file);
           }
 
           // Validate we have files to upload
           if (filesToUpload.length === 0) {
-            console.error("[PRODUCT FORM ERROR] No valid files extracted from processed images:", {
-              newProcessedImagesCount: newProcessedImages.length,
-              newProcessedImagesDetails: newProcessedImages.map(img => ({
-                id: img.id,
-                hasFile: !!img.file,
-                fileType: typeof img.file,
-                fileConstructor: img.file?.constructor?.name,
-                isFile: img.file instanceof File,
-                isBlob: img.file instanceof Blob,
-                hasSize: img.file && 'size' in img.file,
-                size: (img.file as any)?.size
-              })),
-              productId: initialData?.id || "new",
-            });
+            console.error(
+              "[PRODUCT FORM ERROR] No valid files extracted from processed images:",
+              {
+                newProcessedImagesCount: newProcessedImages.length,
+                newProcessedImagesDetails: newProcessedImages.map((img) => ({
+                  id: img.id,
+                  hasFile: !!img.file,
+                  fileType: typeof img.file,
+                  fileConstructor: img.file?.constructor?.name,
+                  isFile: img.file instanceof File,
+                  isBlob: img.file instanceof Blob,
+                  hasSize: img.file && "size" in img.file,
+                  size: (img.file as any)?.size,
+                })),
+                productId: initialData?.id || "new",
+              }
+            );
             throw new Error("No valid files to upload");
           }
 
@@ -1343,10 +1544,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
             logQaStep({
               userId,
               sessionId,
-              event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+              event: initialData
+                ? QA_EVENTS.PRODUCT_EDIT
+                : QA_EVENTS.PRODUCT_CREATE,
               step: PRODUCT_STEPS.IMAGES,
               status: "completed",
-              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+              route:
+                typeof window !== "undefined"
+                  ? window.location.pathname
+                  : "/sell/new",
               metadata: {
                 imageCount: validUploadedUrls.length,
                 totalImages: finalImageUrls.length,
@@ -1392,12 +1598,20 @@ export function ProductForm({ initialData }: ProductFormProps) {
             logQaStep({
               userId,
               sessionId,
-              event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+              event: initialData
+                ? QA_EVENTS.PRODUCT_EDIT
+                : QA_EVENTS.PRODUCT_CREATE,
               step: PRODUCT_STEPS.IMAGES,
               status: "failed",
-              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+              route:
+                typeof window !== "undefined"
+                  ? window.location.pathname
+                  : "/sell/new",
               metadata: {
-                error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+                error:
+                  uploadError instanceof Error
+                    ? uploadError.message
+                    : String(uploadError),
                 imageCount: newProcessedImages.length,
               },
             });
@@ -1428,12 +1642,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
             "[PRODUCT FORM ERROR] Images in processedImages but not uploaded:",
             {
               processedImagesCount: processedImages.length,
-              processedImagesDetails: processedImages.map(img => ({
+              processedImagesDetails: processedImages.map((img) => ({
                 id: img.id,
                 preview: img.preview?.substring(0, 50),
                 isBlob: img.preview?.startsWith("blob:"),
                 hasFile: !!img.file,
-                fileSize: img.file?.size
+                fileSize: img.file?.size,
               })),
               existingImageUrlsCount: existingImageUrls.length,
               validExistingImageUrlsCount: validExistingImageUrls.length,
@@ -1565,8 +1779,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
         productId: initialData?.id || "new",
       });
 
+      // Add admin product creation fields if applicable
+      const adminFields: {
+        createdBy?: string;
+        createdVia?: string;
+        userId?: string;
+      } = {};
+      if (canCreateForSellers && selectedSellerId) {
+        adminFields.createdBy = userId || "";
+        adminFields.createdVia = "ADMIN";
+        adminFields.userId = selectedSellerId; // Set to selected seller's userId
+      } else if (!canCreateForSellers) {
+        // Regular seller creating their own product
+        adminFields.createdVia = "SELLER";
+      }
+
       const formData = {
         ...data,
+        ...adminFields, // Include admin fields
         images: finalImageUrls, // Use uploaded URLs
         productFile: finalFileUrl, // Use uploaded file URL or null
         status: isDraft ? "DRAFT" : data.status,
@@ -1601,10 +1831,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
         logQaStep({
           userId,
           sessionId,
-          event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+          event: initialData
+            ? QA_EVENTS.PRODUCT_EDIT
+            : QA_EVENTS.PRODUCT_CREATE,
           step: PRODUCT_STEPS.SUBMIT,
           status: "started",
-          route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+          route:
+            typeof window !== "undefined"
+              ? window.location.pathname
+              : "/sell/new",
           metadata: {
             isDraft: isDraft,
             isDigital: data.isDigital,
@@ -1635,12 +1870,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
         // CRITICAL: Product creation failed after images were uploaded
         // Log warning about orphaned images (we can't easily delete them from UploadThing)
         if (finalImageUrls.length > validExistingImageUrls.length) {
-          const orphanedImageCount = finalImageUrls.length - validExistingImageUrls.length;
+          const orphanedImageCount =
+            finalImageUrls.length - validExistingImageUrls.length;
           console.warn(
             "[PRODUCT FORM WARNING] Product creation failed after image upload. Orphaned images may exist:",
             {
               orphanedImageCount,
-              uploadedImageUrls: finalImageUrls.slice(validExistingImageUrls.length),
+              uploadedImageUrls: finalImageUrls.slice(
+                validExistingImageUrls.length
+              ),
               error: responseData.error || responseData.message,
               productId: initialData?.id || "new",
               timestamp: new Date().toISOString(),
@@ -1754,10 +1992,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
           logQaStep({
             userId,
             sessionId,
-            event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+            event: initialData
+              ? QA_EVENTS.PRODUCT_EDIT
+              : QA_EVENTS.PRODUCT_CREATE,
             step: PRODUCT_STEPS.SUBMIT,
             status: "completed",
-            route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+            route:
+              typeof window !== "undefined"
+                ? window.location.pathname
+                : "/sell/new",
             metadata: {
               productId: responseData.product.id,
               isDraft: isDraft,
@@ -1810,10 +2053,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
         logQaStep({
           userId,
           sessionId,
-          event: initialData ? QA_EVENTS.PRODUCT_EDIT : QA_EVENTS.PRODUCT_CREATE,
+          event: initialData
+            ? QA_EVENTS.PRODUCT_EDIT
+            : QA_EVENTS.PRODUCT_CREATE,
           step: PRODUCT_STEPS.SUBMIT,
           status: "failed",
-          route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+          route:
+            typeof window !== "undefined"
+              ? window.location.pathname
+              : "/sell/new",
           metadata: {
             error: error instanceof Error ? error.message : String(error),
             isDraft: isDraft,
@@ -2019,6 +2267,145 @@ export function ProductForm({ initialData }: ProductFormProps) {
           </p>
         </div>
 
+        {/* Admin Seller Selector - Only shown for admins creating new products */}
+        {canCreateForSellers && !initialData && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-blue-200 bg-blue-50">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-blue-900">
+                  Creating Product on Behalf of Seller
+                </h2>
+              </div>
+              <p className="text-sm text-blue-700 mt-1">
+                Select a seller to create this product for. Once selected, the
+                seller cannot be changed.
+              </p>
+            </div>
+            <div className="p-6">
+              {selectedSeller && sellerLocked ? (
+                <div className="space-y-4">
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <Lock className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">
+                            Seller Locked: {selectedSeller.shopName}
+                          </p>
+                          <p className="text-sm mt-1">
+                            {selectedSeller.shopTagLine || "No tagline"}
+                          </p>
+                        </div>
+                        <div className="text-right text-sm text-blue-600">
+                          <p>Currency: {selectedSeller.preferredCurrency}</p>
+                          <p>
+                            Units: {selectedSeller.preferredWeightUnit} /{" "}
+                            {selectedSeller.preferredDimensionUnit}
+                          </p>
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                  <div className="bg-white border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-700">
+                      <strong className="text-blue-900">Warning:</strong> This
+                      product will appear in{" "}
+                      <strong>{selectedSeller.shopName}</strong>&apos;s shop and
+                      will be associated with their Stripe account. All sales
+                      will go to the seller, not to Yarnnu.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label
+                      htmlFor="seller-select"
+                      className="text-sm font-medium text-gray-700 mb-2 block"
+                    >
+                      Select Seller *
+                    </Label>
+                    <Select
+                      value={selectedSellerId || ""}
+                      onValueChange={handleSellerSelect}
+                      disabled={sellerLocked || loadingSellers}
+                    >
+                      <SelectTrigger id="seller-select" className="w-full">
+                        <SelectValue
+                          placeholder={
+                            loadingSellers
+                              ? "Loading sellers..."
+                              : "Choose a seller"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeSellers.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            {loadingSellers
+                              ? "Loading..."
+                              : "No active sellers found"}
+                          </div>
+                        ) : (
+                          activeSellers.map((seller) => (
+                            <SelectItem
+                              key={seller.userId}
+                              value={seller.userId}
+                            >
+                              <div className="flex items-center gap-2">
+                                {seller.user.image && (
+                                  <Image
+                                    src={seller.user.image}
+                                    alt={seller.shopName}
+                                    width={24}
+                                    height={24}
+                                    className="w-6 h-6 rounded-full"
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-medium">
+                                    {seller.shopName}
+                                  </p>
+                                  {seller.user.username && (
+                                    <p className="text-xs text-gray-500">
+                                      @{seller.user.username}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {!selectedSellerId && (
+                    <Alert className="bg-amber-50 border-amber-200">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-800">
+                        You must select a seller before proceeding. The form
+                        will load the seller&apos;s preferences (currency,
+                        units, GPSR requirements) once selected.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Prevent form submission if admin hasn't selected seller */}
+        {canCreateForSellers && !initialData && !selectedSellerId && (
+          <Alert className="mb-6 bg-red-50 border-red-200">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              Please select a seller above before filling out the product form.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
@@ -2204,6 +2591,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <ProductShippingSection
                       form={form}
                       freeShipping={freeShipping}
+                      sellerId={selectedSellerId}
                     />
                   </div>
                 </div>

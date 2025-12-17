@@ -5,7 +5,7 @@ import { getCountryByCode } from "@/data/countries";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   // Declare variables outside try block so they're accessible in catch
@@ -142,9 +142,29 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    // Check for sellerId query param (admin creating product for seller)
+    const url = new URL(req.url);
+    const sellerIdParam = url.searchParams.get("sellerId");
+
+    // Determine which seller's shipping options to fetch
+    let targetSellerId = session.user.id;
+
+    if (sellerIdParam) {
+      // Verify admin has permission to view other seller's shipping options
+      const { hasPermission } = await import("@/lib/permissions");
+      const canCreateForSellers = await hasPermission(
+        session.user.id,
+        "CREATE_PRODUCTS_FOR_SELLERS" as any
+      );
+
+      if (canCreateForSellers) {
+        targetSellerId = sellerIdParam;
+      }
+    }
+
     const shippingOptions = await db.shippingOption.findMany({
       where: {
-        sellerId: session.user.id,
+        sellerId: targetSellerId,
       },
       include: {
         rates: true,

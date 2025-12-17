@@ -101,6 +101,7 @@ export const PERMISSIONS = {
   // Product Management
   MANAGE_PRODUCTS: { value: 'MANAGE_PRODUCTS', group: 'Product Management', label: 'Manage Products' },
   CREATE_PRODUCTS: { value: 'CREATE_PRODUCTS', group: 'Product Management', label: 'Create Products' },
+  CREATE_PRODUCTS_FOR_SELLERS: { value: 'CREATE_PRODUCTS_FOR_SELLERS', group: 'Product Management', label: 'Create Products for Sellers' },
   EDIT_PRODUCTS: { value: 'EDIT_PRODUCTS', group: 'Product Management', label: 'Edit Products' },
   DELETE_PRODUCTS: { value: 'DELETE_PRODUCTS', group: 'Product Management', label: 'Delete Products' },
   MANAGE_PRODUCT_CATEGORIES: { value: 'MANAGE_PRODUCT_CATEGORIES', group: 'Product Management', label: 'Manage Product Categories' },
