@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 
-import authConfig from "@/auth.config";
+import authConfigEdge from "@/auth.config.edge";
 import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
@@ -9,7 +9,7 @@ import {
   publicRoutes,
 } from "@/routes";
 
-const { auth } = NextAuth(authConfig);
+const { auth } = NextAuth(authConfigEdge);
 
 // Simple in-memory rate limiter (use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -31,7 +31,7 @@ function getRateLimit(
 
   // Get or create rate limit entry
   let entry = rateLimitStore.get(identifier);
-  
+
   // If entry exists but window has expired, reset it
   if (entry && entry.resetTime < now) {
     // Window expired, reset the counter
@@ -77,11 +77,11 @@ export default auth(async (req) => {
 
   // Skip rate limiting for auth routes, API auth routes, and critical APIs
   // These routes are hit frequently during login/authentication flow
-  const shouldSkipRateLimit = 
-    isApiAuthRoute || 
-    isAuthRoute || 
-    isStripeWebhook || 
-    isPermissionsApi || 
+  const shouldSkipRateLimit =
+    isApiAuthRoute ||
+    isAuthRoute ||
+    isStripeWebhook ||
+    isPermissionsApi ||
     isClearCacheApi;
 
   // Rate limiting for all other requests
@@ -90,15 +90,18 @@ export default auth(async (req) => {
       req.headers.get("x-forwarded-for") ||
       req.headers.get("x-real-ip") ||
       "unknown";
-    
+
     // Higher limit for authenticated users (they're less likely to be bots)
     const rateLimit = isAuthorized ? 300 : 200;
     const rateLimitResult = getRateLimit(clientIP, rateLimit, 60 * 1000);
 
     if (!rateLimitResult.success) {
       // Calculate retryAfter, ensuring it's never negative
-      const retryAfter = Math.max(0, Math.ceil((rateLimitResult.reset - Date.now()) / 1000));
-      
+      const retryAfter = Math.max(
+        0,
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+      );
+
       return new NextResponse(
         JSON.stringify({
           error: "Too many requests",
@@ -162,33 +165,9 @@ export default auth(async (req) => {
 
   // Handle auth routes
   if (isAuthRoute) {
-    if (isAuthorized && req.auth?.user?.id) {
-      // If user is already authenticated, redirect to their role-based dashboard
-      // Fetch role from database to determine correct redirect
-      try {
-        const { db } = await import("@/lib/db");
-        const dbUser = await db.user.findUnique({
-          where: { id: req.auth.user.id },
-          select: { 
-            role: true,
-            seller: {
-              select: { id: true, applicationAccepted: true }
-            }
-          }
-        });
-
-        // Redirect based on role
-        if (dbUser?.role === "SELLER" || dbUser?.seller) {
-          return Response.redirect(new URL("/seller/dashboard", nextUrl));
-        } else if (dbUser?.role === "ADMIN" || dbUser?.role === "SUPER_ADMIN") {
-          return Response.redirect(new URL("/admin/dashboard", nextUrl));
-        } else if (dbUser?.role === "MEMBER") {
-          return Response.redirect(new URL("/member/dashboard", nextUrl));
-        }
-      } catch (error) {
-        console.error("Error fetching user role in middleware:", error);
-        // Fall back to default redirect if there's an error
-      }
+    if (isAuthorized) {
+      // User is authenticated, redirect to default dashboard
+      // Role-based redirects are handled client-side or in server components
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
     return response;

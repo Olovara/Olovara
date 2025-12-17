@@ -1,10 +1,27 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface Survey {
   id: string;
@@ -38,24 +55,30 @@ interface OnboardingSurveyResultsProps {
   analytics: Analytics;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
-export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurveyResultsProps) {
+export function OnboardingSurveyResults({
+  surveys,
+  analytics,
+}: OnboardingSurveyResultsProps) {
   const formatLabel = (label: string) => {
-    return label.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+    return label
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const createChartData = (stats: Record<string, number>) => {
     return Object.entries(stats).map(([key, value]) => ({
       name: formatLabel(key),
       value,
-      percentage: Math.round((value / analytics.totalSurveys) * 100)
+      percentage: Math.round((value / analytics.totalSurveys) * 100),
     }));
   };
 
-  const overallExperienceData = createChartData(analytics.overallExperienceStats);
+  const overallExperienceData = createChartData(
+    analytics.overallExperienceStats
+  );
   const clarityData = createChartData(analytics.clarityStats);
   const difficultyData = createChartData(analytics.difficultyStats);
   const timeData = createChartData(analytics.timeStats);
@@ -68,7 +91,9 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Responses</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Responses
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics.totalSurveys}</div>
@@ -77,39 +102,66 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Experience</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Average Experience
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {analytics.overallExperienceStats['excellent'] || 0 + analytics.overallExperienceStats['good'] || 0 > 
-               analytics.overallExperienceStats['fair'] || 0 + analytics.overallExperienceStats['poor'] || 0 
-                ? 'Positive' : 'Needs Improvement'}
+              {analytics.overallExperienceStats["excellent"] ||
+              0 + analytics.overallExperienceStats["good"] ||
+              0 > analytics.overallExperienceStats["fair"] ||
+              0 + analytics.overallExperienceStats["poor"] ||
+              0
+                ? "Positive"
+                : "Needs Improvement"}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Most Challenging</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Most Challenging
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium">
-              {Object.entries(analytics.challengingStepStats).reduce((a, b) => 
-                analytics.challengingStepStats[a[0]] > analytics.challengingStepStats[b[0]] ? a : b
-              )[0] ? formatLabel(Object.entries(analytics.challengingStepStats).reduce((a, b) => 
-                analytics.challengingStepStats[a[0]] > analytics.challengingStepStats[b[0]] ? a : b
-              )[0]) : 'N/A'}
+              {Object.entries(analytics.challengingStepStats).reduce((a, b) =>
+                analytics.challengingStepStats[a[0]] >
+                analytics.challengingStepStats[b[0]]
+                  ? a
+                  : b
+              )[0]
+                ? formatLabel(
+                    Object.entries(analytics.challengingStepStats).reduce(
+                      (a, b) =>
+                        analytics.challengingStepStats[a[0]] >
+                        analytics.challengingStepStats[b[0]]
+                          ? a
+                          : b
+                    )[0]
+                  )
+                : "N/A"}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Would Recommend</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Would Recommend
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(((analytics.recommendationStats['definitely'] || 0) + (analytics.recommendationStats['probably'] || 0)) / analytics.totalSurveys * 100)}%
+              {Math.round(
+                (((analytics.recommendationStats["definitely"] || 0) +
+                  (analytics.recommendationStats["probably"] || 0)) /
+                  analytics.totalSurveys) *
+                  100
+              )}
+              %
             </div>
             <p className="text-xs text-muted-foreground">Definitely/Probably</p>
           </CardContent>
@@ -122,7 +174,9 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
         <Card>
           <CardHeader>
             <CardTitle>Overall Experience</CardTitle>
-            <CardDescription>How sellers rated their onboarding experience</CardDescription>
+            <CardDescription>
+              How sellers rated their onboarding experience
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -132,13 +186,18 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) => `${name} ${percentage}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {overallExperienceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -151,7 +210,9 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
         <Card>
           <CardHeader>
             <CardTitle>Clarity of Instructions</CardTitle>
-            <CardDescription>How clear sellers found the instructions</CardDescription>
+            <CardDescription>
+              How clear sellers found the instructions
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -170,7 +231,9 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
         <Card>
           <CardHeader>
             <CardTitle>Difficulty Level</CardTitle>
-            <CardDescription>How difficult sellers found the process</CardDescription>
+            <CardDescription>
+              How difficult sellers found the process
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -189,7 +252,9 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
         <Card>
           <CardHeader>
             <CardTitle>Time to Complete</CardTitle>
-            <CardDescription>How long it took sellers to complete onboarding</CardDescription>
+            <CardDescription>
+              How long it took sellers to complete onboarding
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -218,7 +283,7 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="font-medium">
-                      {survey.user.username || survey.user.email || 'Anonymous'}
+                      {survey.user.username || survey.user.email || "Anonymous"}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(survey.createdAt).toLocaleDateString()}
@@ -233,26 +298,31 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Clarity:</span> {formatLabel(survey.clarityOfInstructions)}
+                    <span className="font-medium">Clarity:</span>{" "}
+                    {formatLabel(survey.clarityOfInstructions)}
                   </div>
                   <div>
-                    <span className="font-medium">Time:</span> {formatLabel(survey.timeToComplete)}
+                    <span className="font-medium">Time:</span>{" "}
+                    {formatLabel(survey.timeToComplete)}
                   </div>
                   <div>
-                    <span className="font-medium">Challenging:</span> {formatLabel(survey.mostChallengingStep)}
+                    <span className="font-medium">Challenging:</span>{" "}
+                    {formatLabel(survey.mostChallengingStep)}
                   </div>
                   <div>
-                    <span className="font-medium">Recommend:</span> {formatLabel(survey.wouldRecommend)}
+                    <span className="font-medium">Recommend:</span>{" "}
+                    {formatLabel(survey.wouldRecommend)}
                   </div>
                 </div>
 
                 {survey.suggestions && (
                   <div className="mt-3 p-3 bg-gray-50 rounded">
                     <p className="text-sm">
-                      <span className="font-medium">Suggestions:</span> {survey.suggestions}
+                      <span className="font-medium">Suggestions:</span>{" "}
+                      {survey.suggestions}
                     </p>
                   </div>
                 )}
@@ -263,4 +333,4 @@ export function OnboardingSurveyResults({ surveys, analytics }: OnboardingSurvey
       </Card>
     </div>
   );
-} 
+}
