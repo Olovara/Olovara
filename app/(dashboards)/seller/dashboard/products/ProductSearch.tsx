@@ -56,7 +56,7 @@ export function ProductSearch({ initialQuery = "" }: ProductSearchProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative w-full max-w-sm">
+    <form onSubmit={handleSubmit} className="relative w-full max-w-sm mt-4">
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         type="search"
@@ -67,4 +67,4 @@ export function ProductSearch({ initialQuery = "" }: ProductSearchProps) {
       />
     </form>
   );
-} 
+}

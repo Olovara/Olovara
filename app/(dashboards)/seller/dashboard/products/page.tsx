@@ -41,20 +41,21 @@ export default async function ProductsPage({
   );
 
   // Transform the products data to match the expected types
-  const transformedProducts = products.map(product => {
+  const transformedProducts = products.map((product) => {
     // Handle description transformation
-    let transformedDescription: string | { html: string; text: string } | null = null;
-    
+    let transformedDescription: string | { html: string; text: string } | null =
+      null;
+
     if (product.description) {
-      if (typeof product.description === 'string') {
+      if (typeof product.description === "string") {
         transformedDescription = product.description;
-      } else if (typeof product.description === 'object') {
+      } else if (typeof product.description === "object") {
         // Ensure the object has the required properties
         const desc = product.description as any;
         if (desc.html || desc.text) {
           transformedDescription = {
-            html: desc.html || '',
-            text: desc.text || ''
+            html: desc.html || "",
+            text: desc.text || "",
           };
         }
       }
@@ -91,70 +92,110 @@ export default async function ProductsPage({
 
   return (
     <PermissionGate requiredPermission="MANAGE_PRODUCTS">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 w-full max-w-full overflow-x-hidden">
+        {/* Header - Stack on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-                <BreadcrumbLink href="/seller/dashboard">Dashboard</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-                <BreadcrumbLink href="/seller/dashboard/products">Products</BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/seller/dashboard">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/seller/dashboard/products">
+                  Products
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <Link href="/seller/dashboard/products/create-product">
-            <Button>Create Product</Button>
+            <Button className="w-full sm:w-auto">Create Product</Button>
           </Link>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <Tabs defaultValue={activeTab} className="w-full">
-            <TabsList>
-              <TabsTrigger value="all" asChild>
-                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "all" } }}>
-                    All
-                  </Link>
-              </TabsTrigger>
-                <TabsTrigger value="ACTIVE" asChild>
-                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "ACTIVE" } }}>
-                    Active
-                  </Link>
-              </TabsTrigger>
-                <TabsTrigger value="DRAFT" asChild>
-                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "DRAFT" } }}>
-                    Drafts
-                  </Link>
-              </TabsTrigger>
-                <TabsTrigger value="HIDDEN" asChild>
-                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "HIDDEN" } }}>
-                    Hidden
-                  </Link>
-              </TabsTrigger>
-                <TabsTrigger value="DISABLED" asChild>
-                  <Link href={{ pathname: "/seller/dashboard/products", query: { ...searchParams, tab: "DISABLED" } }}>
-                    Disabled
-                  </Link>
-              </TabsTrigger>
-            </TabsList>
-              <ProductSearch />
-              <TabsContent value={activeTab}>
-            <ProductTable products={transformedProducts} />
-            <SuspendedPaginationControls
-              totalPages={totalPages}
-              currentPage={page}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              activeTab={activeTab}
-              searchQuery={search}
-            />
-          </TabsContent>
-        </Tabs>
-          </div>
+        <div className="flex flex-col gap-4 w-full max-w-full">
+          <Tabs defaultValue={activeTab} className="w-full max-w-full">
+            {/* Tabs and Search Row - Desktop: side by side, Mobile: stacked */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              {/* Tabs List - Scrollable on mobile */}
+              <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide md:flex-1">
+                <TabsList className="w-full md:w-auto min-w-max">
+                  <TabsTrigger value="all" asChild>
+                    <Link
+                      href={{
+                        pathname: "/seller/dashboard/products",
+                        query: { ...searchParams, tab: "all" },
+                      }}
+                    >
+                      All
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="ACTIVE" asChild>
+                    <Link
+                      href={{
+                        pathname: "/seller/dashboard/products",
+                        query: { ...searchParams, tab: "ACTIVE" },
+                      }}
+                    >
+                      Active
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="DRAFT" asChild>
+                    <Link
+                      href={{
+                        pathname: "/seller/dashboard/products",
+                        query: { ...searchParams, tab: "DRAFT" },
+                      }}
+                    >
+                      Drafts
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="HIDDEN" asChild>
+                    <Link
+                      href={{
+                        pathname: "/seller/dashboard/products",
+                        query: { ...searchParams, tab: "HIDDEN" },
+                      }}
+                    >
+                      Hidden
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="DISABLED" asChild>
+                    <Link
+                      href={{
+                        pathname: "/seller/dashboard/products",
+                        query: { ...searchParams, tab: "DISABLED" },
+                      }}
+                    >
+                      Disabled
+                    </Link>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              {/* Search Bar - Under Create Product button on desktop */}
+              <div className="md:flex-shrink-0">
+                <ProductSearch />
+              </div>
+            </div>
+            <TabsContent
+              value={activeTab}
+              className="w-full max-w-full overflow-x-hidden"
+            >
+              <ProductTable products={transformedProducts} />
+              <SuspendedPaginationControls
+                totalPages={totalPages}
+                currentPage={page}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                activeTab={activeTab}
+                searchQuery={search}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
-    </div>
+      </div>
     </PermissionGate>
   );
 }

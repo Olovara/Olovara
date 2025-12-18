@@ -59,7 +59,7 @@ const FirstProductSchema = z.object({
         values: z.array(
           z.object({
             name: z.string().min(1, "Option value name is required"),
-            price: z.number().min(0, "Price must be non-negative"),
+            price: z.number().min(0, "Price must be non-negative").default(0), // Optional additional price - defaults to 0 (base price only) if not provided
             stock: z.number().int().min(0, "Stock must be non-negative").default(0),
           })
         ).min(1, "At least one option value is required"),

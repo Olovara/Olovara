@@ -188,9 +188,18 @@ export function ProductOptionsSection({
                       value={value.price || ""}
                       onChange={(e) => {
                         const newValues = [...option.values];
-                        newValues[valueIndex].price = e.target.value
-                          ? parseFloat(e.target.value)
-                          : undefined;
+                        // Validate price input - prevent NaN and negative values
+                        const inputValue = e.target.value.trim();
+                        if (inputValue === "") {
+                          newValues[valueIndex].price = undefined;
+                        } else {
+                          const parsed = parseFloat(inputValue);
+                          // Only set price if valid number and non-negative
+                          newValues[valueIndex].price =
+                            !isNaN(parsed) && parsed >= 0
+                              ? parsed
+                              : value.price;
+                        }
                         updateDropdownOption(index, "values", newValues);
                       }}
                       className="pl-8 mt-1"
@@ -212,8 +221,16 @@ export function ProductOptionsSection({
                     value={value.stock}
                     onChange={(e) => {
                       const newValues = [...option.values];
-                      newValues[valueIndex].stock =
-                        parseInt(e.target.value) || 0;
+                      // Validate stock input - prevent NaN and negative values
+                      const inputValue = e.target.value.trim();
+                      if (inputValue === "") {
+                        newValues[valueIndex].stock = 0;
+                      } else {
+                        const parsed = parseInt(inputValue, 10);
+                        // Only set stock if valid integer and non-negative
+                        newValues[valueIndex].stock =
+                          !isNaN(parsed) && parsed >= 0 ? parsed : value.stock;
+                      }
                       updateDropdownOption(index, "values", newValues);
                     }}
                     className="mt-1"

@@ -789,3 +789,212 @@ export async function PATCH(
     );
   }
 }
+
+/**
+ * DELETE /api/products/[productId]
+ * Deletes a product with no sales and all associated images/files
+ * Only allows deletion if numberSold === 0
+ */
+export async function DELETE(
+  req: Request,
+  { params }: { params: { productId: string } }
+) {
+  let session: any = null;
+
+  try {
+    // Authenticate user
+    session = await auth();
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401 }
+      );
+    }
+
+    const { productId } = params;
+
+    // Validate product ID format
+    if (!ObjectId.isValid(productId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid product ID format" }),
+        { status: 400 }
+      );
+    }
+
+    // Fetch product and verify ownership
+    const product = await db.product.findUnique({
+      where: { id: productId, userId: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        numberSold: true,
+        images: true,
+        productFile: true,
+        userId: true,
+      },
+    });
+
+    if (!product) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Product not found or not owned by user",
+        }),
+        { status: 404 }
+      );
+    }
+
+    // Check if product has sales - only allow deletion if numberSold === 0
+    if (product.numberSold > 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "Cannot delete product with sales. Products with sales cannot be deleted.",
+        }),
+        { status: 403 }
+      );
+    }
+
+    // Collect all file keys to delete from UploadThing
+    const fileKeysToDelete: string[] = [];
+
+    // Extract file keys from images array
+    if (
+      product.images &&
+      Array.isArray(product.images) &&
+      product.images.length > 0
+    ) {
+      const imageKeys = product.images.map((url: string) => {
+        // Extract file key from URL (everything after last "/")
+        return url.substring(url.lastIndexOf("/") + 1);
+      });
+      fileKeysToDelete.push(...imageKeys);
+    }
+
+    // Extract file key from productFile if it exists
+    if (product.productFile) {
+      const productFileKey = product.productFile.substring(
+        product.productFile.lastIndexOf("/") + 1
+      );
+      fileKeysToDelete.push(productFileKey);
+    }
+
+    // Delete files from UploadThing storage
+    if (fileKeysToDelete.length > 0) {
+      try {
+        console.log(
+          `[DELETE PRODUCT] Deleting ${fileKeysToDelete.length} file(s) from UploadThing:`,
+          fileKeysToDelete
+        );
+        await utapi.deleteFiles(fileKeysToDelete);
+        console.log(
+          "[DELETE PRODUCT] Successfully deleted files from UploadThing"
+        );
+      } catch (deleteError) {
+        // Log file deletion failure but continue with product deletion
+        // This ensures we don't leave orphaned product records
+        logError({
+          code: "PRODUCT_DELETE_FILE_DELETE_FAILED",
+          userId: session.user.id,
+          route: `/api/products/${productId}`,
+          method: "DELETE",
+          error: deleteError,
+          metadata: {
+            productId,
+            fileKeys: fileKeysToDelete,
+            note: "Failed to delete files from UploadThing, but product deletion will continue",
+          },
+        });
+        console.error(
+          "[ERROR] Failed to delete files from UploadThing:",
+          deleteError
+        );
+      }
+    }
+
+    // Delete TemporaryUpload records associated with this product
+    try {
+      const allFileUrls = [
+        ...(product.images || []),
+        ...(product.productFile ? [product.productFile] : []),
+      ];
+
+      if (allFileUrls.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            fileUrl: { in: allFileUrls },
+            userId: session.user.id,
+          },
+        });
+        console.log(
+          "[DELETE PRODUCT] Successfully deleted TemporaryUpload records"
+        );
+      }
+    } catch (tempUploadError) {
+      // Log but don't fail - TemporaryUpload cleanup is not critical
+      console.error(
+        "[WARNING] Failed to delete TemporaryUpload records:",
+        tempUploadError
+      );
+    }
+
+    // Delete the product from database
+    await db.product.delete({
+      where: { id: productId },
+    });
+
+    console.log(`[DELETE PRODUCT] Successfully deleted product: ${productId}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Product deleted successfully",
+        productId: product.id,
+        productName: product.name,
+      }),
+      { status: 200 }
+    );
+  } catch (error) {
+    // Log error to database
+    const userMessage = logError({
+      code: "PRODUCT_DELETE_FAILED",
+      userId: session?.user?.id,
+      route: `/api/products/${params?.productId}`,
+      method: "DELETE",
+      error,
+      metadata: {
+        productId: params?.productId,
+        note: "Unexpected error during product deletion",
+      },
+    });
+
+    console.error("[API ERROR] Product DELETE failed:", {
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+      productId: params?.productId,
+      userId: session?.user?.id || "unknown",
+      timestamp: new Date().toISOString(),
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: userMessage,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.stack
+              : String(error)
+            : undefined,
+      }),
+      { status: 500 }
+    );
+  }
+}

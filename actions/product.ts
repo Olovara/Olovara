@@ -16,11 +16,14 @@ export async function getSellerProducts(
     throw new Error("User is not authenticated.");
   }
 
-  const canManageProducts = await hasPermission(session.user.id, "MANAGE_PRODUCTS" as Permission);
+  const canManageProducts = await hasPermission(
+    session.user.id,
+    "MANAGE_PRODUCTS" as Permission
+  );
   if (!canManageProducts) {
     throw new Error("You don't have permission to perform this action.");
   }
-  
+
   try {
     // Build the where clause
     const where: any = {
@@ -36,7 +39,7 @@ export async function getSellerProducts(
     if (search) {
       where.name = {
         contains: search,
-        mode: 'insensitive' as const,
+        mode: "insensitive" as const,
       };
     }
 
@@ -64,7 +67,7 @@ export async function getSellerProducts(
         userId: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       skip,
       take: pageSize,
@@ -81,7 +84,52 @@ export async function getSellerProducts(
       totalPages,
     };
   } catch (error) {
-    console.error('Error fetching seller products:', error);
+    console.error("Error fetching seller products:", error);
     throw error;
+  }
+}
+
+/**
+ * Delete a product with no sales
+ * Only allows deletion if numberSold === 0
+ * Also deletes all associated images and files from UploadThing
+ */
+export async function deleteProduct(productId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "User is not authenticated." };
+  }
+
+  try {
+    const response = await fetch(`/api/products/${productId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || "Failed to delete product",
+      };
+    }
+
+    return {
+      success: true,
+      message: data.message || "Product deleted successfully",
+      productId: data.productId,
+    };
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while deleting the product",
+    };
   }
 }
