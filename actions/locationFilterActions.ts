@@ -25,7 +25,12 @@ export async function getUserCountryCode(ip?: string): Promise<string | null> {
     const locationPreferences = await getUserLocationPreferences(ip);
     return locationPreferences.countryCode;
   } catch (error) {
-    console.error('Error getting user country code:', error);
+    // Don't log circuit breaker errors - they're expected when IPinfo is down
+    // getUserLocationPreferences already returns default (US) on failure
+    if (error instanceof Error && !error.message.includes("circuit breaker")) {
+      console.error('Error getting user country code:', error);
+    }
+    // Return null to use default filtering behavior
     return null;
   }
 }
@@ -48,7 +53,11 @@ export async function getUserLocationForFiltering() {
       data: locationPreferences
     };
   } catch (error) {
-    console.error('Error getting user location for filtering:', error);
+    // Don't log circuit breaker errors - they're expected when IPinfo is down
+    if (error instanceof Error && !error.message.includes("circuit breaker")) {
+      console.error('Error getting user location for filtering:', error);
+    }
+    // Return default location preferences on failure
     return {
       success: false,
       error: 'Failed to get location'

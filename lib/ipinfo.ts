@@ -173,7 +173,12 @@ export async function getUserLocationPreferences(
       };
     }
   } catch (error) {
-    console.error("Error getting user location preferences:", error);
+    // Don't log circuit breaker errors - they're expected when service is down
+    // Only log unexpected errors (not circuit breaker related)
+    if (error instanceof Error && !error.message.includes("circuit breaker")) {
+      console.error("Error getting user location preferences:", error);
+    }
+    // Always return default location preferences as fallback
     return getDefaultLocationPreferences();
   }
 }

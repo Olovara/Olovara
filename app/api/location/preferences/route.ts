@@ -124,20 +124,28 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    // Log to console (always happens)
-    console.error("Error getting location preferences:", error);
+    // Don't spam logs for circuit breaker errors (expected when IPinfo is down)
+    const isCircuitBreaker = error instanceof Error && error.message.includes("circuit breaker");
+    
+    if (!isCircuitBreaker) {
+      // Log to console (only for unexpected errors)
+      console.error("Error getting location preferences:", error);
+    }
 
     // Log to database - user could email about "location detection not working"
-    const userMessage = logError({
-      code: "LOCATION_PREFERENCES_FETCH_FAILED",
-      userId: session?.user?.id,
-      route: "/api/location/preferences",
-      method: "GET",
-      error,
-      metadata: {
-        note: "Failed to get location preferences",
-      },
-    });
+    // But skip database logging for circuit breaker errors to reduce noise
+    const userMessage = isCircuitBreaker 
+      ? "Location service temporarily unavailable"
+      : logError({
+          code: "LOCATION_PREFERENCES_FETCH_FAILED",
+          userId: session?.user?.id,
+          route: "/api/location/preferences",
+          method: "GET",
+          error,
+          metadata: {
+            note: "Failed to get location preferences",
+          },
+        });
 
     return NextResponse.json(
       {
