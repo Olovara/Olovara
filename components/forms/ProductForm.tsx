@@ -155,6 +155,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   // Store processed images (before upload)
   const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
 
+  // Track removed existing images (URLs that should be deleted from Uploadthing)
+  const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
+
   // Store processed file (before upload) - similar to processedImages
   const [processedFile, setProcessedFile] = useState<ProcessedFile | null>(
     null
@@ -1127,9 +1130,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
       // Upload processed images first (if any)
       // Extract existing images (already uploaded HTTP URLs) from the images state
       // This preserves all existing images even when new ones are added
-      const existingImageUrls = images.filter(
-        (url) => url.startsWith("http://") || url.startsWith("https://")
-      );
+      // Filter out any images that have been removed
+      const existingImageUrls = images
+        .filter(
+          (url) => url.startsWith("http://") || url.startsWith("https://")
+        )
+        .filter((url) => !removedExistingImages.includes(url)); // Exclude removed images
 
       // Get new processed images that need to be uploaded
       // CRITICAL: Simplify the filter - blob URLs with valid files are ALWAYS new images
@@ -2503,6 +2509,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     setTempUploadsCreated={setTempUploadsCreated}
                     setProcessedImages={setProcessedImages}
                     processedImages={processedImages}
+                    onExistingImagesRemoved={setRemovedExistingImages}
                   />
 
                   <ProductFileSection

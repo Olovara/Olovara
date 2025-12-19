@@ -45,6 +45,7 @@ type ImageProcessorProps = {
   existingImages?: string[]; // URLs of already uploaded images (for editing)
   maxImages?: number; // Maximum number of images allowed
   initialProcessedImages?: ProcessedImage[]; // Previously processed images to restore
+  onExistingImagesRemoved?: (removedUrls: string[]) => void; // Callback when existing images are removed
 };
 
 export function ImageProcessor({
@@ -52,6 +53,7 @@ export function ImageProcessor({
   existingImages = [],
   maxImages = 10,
   initialProcessedImages = [],
+  onExistingImagesRemoved,
 }: ImageProcessorProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   // Initialize with previously processed images from parent
@@ -197,6 +199,9 @@ export function ImageProcessor({
     });
   }, [initialProcessedImages]);
 
+  // Track removed existing images (URLs that should be deleted from Uploadthing)
+  const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
+
   // Only initialize from initialProcessedImages on first mount
   // After that, processedImages state is completely independent
   React.useEffect(() => {
@@ -231,14 +236,17 @@ export function ImageProcessor({
 
   // Convert existing image URLs to ProcessedImage format (for editing mode)
   // These are already uploaded, so we'll keep them as-is
+  // Filter out any that have been removed
   const existingProcessedImages = React.useMemo<ProcessedImage[]>(() => {
-    return existingImages.map((url, index) => ({
-      id: `existing-${index}-${url}`,
-      file: new File([], `existing-${index}.jpg`), // Dummy file, won't be uploaded
-      preview: url, // Use the actual URL for existing images
-      originalName: `existing-image-${index + 1}`,
-    }));
-  }, [existingImages]);
+    return existingImages
+      .filter((url) => !removedExistingImages.includes(url)) // Filter out removed images
+      .map((url, index) => ({
+        id: `existing-${index}-${url}`,
+        file: new File([], `existing-${index}.jpg`), // Dummy file, won't be uploaded
+        preview: url, // Use the actual URL for existing images
+        originalName: `existing-image-${index + 1}`,
+      }));
+  }, [existingImages, removedExistingImages]);
 
   // Handle file selection
   const handleFileSelect = useCallback(
@@ -783,34 +791,84 @@ export function ImageProcessor({
     uploadSessionId, // Added missing dependency
   ]);
 
-  // Remove processed image
+  // Remove processed image (works for both new and existing images)
   const removeImage = useCallback((id: string) => {
     console.log("[ImageProcessor] removeImage CALLED:", {
       idToRemove: id,
       currentCount: processedImagesRef.current.length,
       currentIds: processedImagesRef.current.map((img) => img.id),
+      isExisting: id.startsWith("existing-"),
     });
-    setProcessedImages((prev) => {
-      const image = prev.find((img) => img.id === id);
-      if (image && image.preview.startsWith("blob:")) {
-        try {
-          URL.revokeObjectURL(image.preview); // Clean up object URL
-        } catch (e) {
-          // Ignore errors if URL was already revoked
-        }
+
+    // Check if this is an existing image (already uploaded)
+    if (id.startsWith("existing-")) {
+      // Find the image in allImages to get its URL
+      const allImagesCurrent = [...existingProcessedImages, ...processedImagesRef.current];
+      const imageToRemove = allImagesCurrent.find((img) => img.id === id);
+      
+      if (imageToRemove && imageToRemove.preview) {
+        // Track this URL for deletion from Uploadthing
+        const urlToRemove = imageToRemove.preview;
+        
+        // Update removed images state
+        setRemovedExistingImages((prev) => {
+          // Only add if not already in the list
+          if (!prev.includes(urlToRemove)) {
+            const updated = [...prev, urlToRemove];
+            console.log("[ImageProcessor] Tracking removed existing image:", {
+              url: urlToRemove,
+              allRemoved: updated,
+            });
+            // Notify parent about removed existing images
+            if (onExistingImagesRemoved) {
+              onExistingImagesRemoved(updated);
+            }
+            return updated;
+          }
+          return prev;
+        });
+
+        // Immediately update parent with filtered images (excluding the removed one)
+        // Compute filtered existing images with the new removed list
+        const newRemovedList = removedExistingImages.includes(urlToRemove)
+          ? removedExistingImages
+          : [...removedExistingImages, urlToRemove];
+        const filteredExistingImages = existingImages
+          .filter((url) => !newRemovedList.includes(url))
+          .map((url, index) => ({
+            id: `existing-${index}-${url}`,
+            file: new File([], `existing-${index}.jpg`),
+            preview: url,
+            originalName: `existing-image-${index + 1}`,
+          }));
+        const updatedAllImages = [...filteredExistingImages, ...processedImagesRef.current];
+        onImagesProcessedRef.current(updatedAllImages);
       }
-      const filtered = prev.filter((img) => img.id !== id);
-      console.log("[ImageProcessor] After removal:", {
-        prevCount: prev.length,
-        newCount: filtered.length,
-        removedId: id,
-        remainingIds: filtered.map((img) => img.id),
+    } else {
+      // This is a new processed image - remove from processedImages
+      setProcessedImages((prev) => {
+        const image = prev.find((img) => img.id === id);
+        if (image && image.preview.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(image.preview); // Clean up object URL
+          } catch (e) {
+            // Ignore errors if URL was already revoked
+          }
+        }
+        const filtered = prev.filter((img) => img.id !== id);
+        console.log("[ImageProcessor] After removal:", {
+          prevCount: prev.length,
+          newCount: filtered.length,
+          removedId: id,
+          remainingIds: filtered.map((img) => img.id),
+        });
+        // Notify parent about the change
+        const updatedAllImages = [...existingProcessedImages, ...filtered];
+        onImagesProcessedRef.current(updatedAllImages);
+        return filtered;
       });
-      return filtered;
-    });
-    // The existing useEffect at line 709 will automatically notify parent
-    // when processedImages changes, so we don't need to do it here
-  }, []);
+    }
+  }, [existingImages, existingProcessedImages, removedExistingImages, onExistingImagesRemoved]);
 
   // Store callback in ref to avoid dependency issues
   const onImagesProcessedRef = React.useRef(onImagesProcessed);
@@ -969,21 +1027,21 @@ export function ImageProcessor({
                   <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded font-medium">
                     {index + 1}
                   </div>
-                  {/* Status badge */}
-                  {isExisting ? (
-                    <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
+                  {/* Remove button - now works for both existing and new images */}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => removeImage(img.id)}
+                    className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                  {/* Status badge for existing images */}
+                  {isExisting && (
+                    <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
                       Saved
                     </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => removeImage(img.id)}
-                      className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
                   )}
                 </div>
               );

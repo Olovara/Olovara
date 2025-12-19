@@ -16,6 +16,8 @@ type ProductPhotosProps = {
   setProcessedImages?: Dispatch<SetStateAction<ProcessedImage[]>>;
   // Previously processed images to restore in ImageProcessor
   processedImages?: ProcessedImage[];
+  // Callback when existing images are removed (for deletion from Uploadthing)
+  onExistingImagesRemoved?: (removedUrls: string[]) => void;
 };
 
 export function ProductPhotosSection({
@@ -27,6 +29,7 @@ export function ProductPhotosSection({
   setTempUploadsCreated,
   setProcessedImages,
   processedImages = [],
+  onExistingImagesRemoved,
 }: ProductPhotosProps) {
   // Track initial existing images (already uploaded HTTP URLs) - stable reference
   // This prevents infinite loops by keeping existingImages stable
@@ -154,6 +157,7 @@ export function ProductPhotosSection({
       existingImages={existingImages}
       maxImages={10}
       initialProcessedImages={processedImages}
+      onExistingImagesRemoved={onExistingImagesRemoved}
     />
   );
 }
