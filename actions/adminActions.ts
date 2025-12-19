@@ -11,6 +11,7 @@ import {
 import {
   sendSellerApplicationApprovedEmail,
   sendSellerApplicationRejectedEmail,
+  sendSellerApplicationInformationRequestEmail,
 } from "@/lib/mail";
 import { decryptBirthdate } from "@/lib/encryption";
 import { ObjectId } from "mongodb";
@@ -1055,6 +1056,119 @@ export async function rejectApplication(
         applicationId,
         rejectionReason,
         note: "Failed to reject seller application",
+      },
+    });
+
+    return { success: false, error: userMessage };
+  }
+}
+
+// Request additional information from seller about their application
+// NOTE: This function ONLY sends an email - it does NOT modify the application status
+// The application remains in its current state (pending/approved/rejected)
+export async function requestApplicationInformation(
+  applicationId: string,
+  requestMessage: string
+) {
+  // Declare variables outside try block so they're accessible in catch
+  let currentUserData: any = null;
+
+  try {
+    // Validate that the applicationId is a valid ObjectID
+    if (!ObjectId.isValid(applicationId)) {
+      throw new Error("Invalid application ID format");
+    }
+
+    // Validate request message
+    if (!requestMessage || requestMessage.trim().length === 0) {
+      throw new Error("Request message cannot be empty");
+    }
+
+    if (requestMessage.length > 50000) {
+      throw new Error(
+        "Request message is too long. Please keep it under 50,000 characters."
+      );
+    }
+
+    currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has APPROVE_SELLERS permission (same permission for requesting info)
+    const hasApproveSellersPermission =
+      currentUserData.permissions?.includes("APPROVE_SELLERS");
+
+    if (!hasApproveSellersPermission) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    // Get the seller application to find the userId and user info
+    const sellerApplication = await db.sellerApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        user: {
+          select: {
+            email: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    if (!sellerApplication) {
+      throw new Error("Seller application not found.");
+    }
+
+    // Validate that the user has an email
+    if (!sellerApplication.user.email) {
+      throw new Error(
+        "Seller email not found. Cannot send information request."
+      );
+    }
+
+    // Send information request email to seller
+    await sendSellerApplicationInformationRequestEmail(
+      sellerApplication.user.email,
+      sellerApplication.user.username || "Seller",
+      requestMessage.trim()
+    );
+
+    console.log(
+      `Information request email sent to seller: ${sellerApplication.user.email}`
+    );
+
+    return { success: true };
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error requesting application information:", error);
+
+    // Don't log validation/authentication/permission errors - they're expected
+    if (
+      error instanceof Error &&
+      (error.message.includes("Invalid") ||
+        error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions") ||
+        error.message.includes("not found") ||
+        error.message.includes("cannot be empty") ||
+        error.message.includes("too long"))
+    ) {
+      return { success: false, error: error.message };
+    }
+
+    // Log to database - admin could email about "couldn't send information request"
+    const userMessage = logError({
+      code: "ADMIN_REQUEST_APPLICATION_INFO_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "requestApplicationInformation",
+      error,
+      metadata: {
+        applicationId,
+        requestMessageLength: requestMessage?.length,
+        note: "Failed to send information request email",
       },
     });
 

@@ -5,6 +5,7 @@ import { TwoFactorEmail } from "@/components/emails/TwoFactorEmail";
 import { SellerApplicationNotificationEmail } from "@/components/emails/SellerApplicationNotificationEmail";
 import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplicationApprovedEmail";
 import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
+import { SellerApplicationInformationRequestEmail } from "@/components/emails/SellerApplicationInformationRequestEmail";
 import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
 import { logError } from "@/lib/error-logger";
 
@@ -339,6 +340,83 @@ export const sendSellerApplicationRejectedEmail = async (
         sellerName,
         hasRejectionReason: !!rejectionReason,
         note: "Failed to send seller application rejected email",
+      },
+    });
+    throw new Error(userMessage);
+  }
+};
+
+// Send email to seller requesting additional information about their application
+// Always sends from support@yarnnu.com
+export const sendSellerApplicationInformationRequestEmail = async (
+  sellerEmail: string,
+  sellerName: string,
+  requestMessage: string
+) => {
+  const applicationUrl = `${domain}/seller-application`;
+
+  try {
+    console.log(
+      "[SELLER_APP_INFO_REQUEST] Attempting to send information request email:",
+      {
+        sellerEmail,
+        sellerName,
+        requestMessageLength: requestMessage.length,
+        timestamp: new Date().toISOString(),
+      }
+    );
+
+    // Validate email address before sending
+    if (!sellerEmail || !sellerEmail.includes("@")) {
+      throw new Error(`Invalid seller email address: ${sellerEmail}`);
+    }
+
+    // Validate request message isn't too long
+    if (requestMessage.length > 50000) {
+      throw new Error(
+        "Request message is too long. Please keep it under 50,000 characters."
+      );
+    }
+
+    const response = await resend.emails.send({
+      from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
+      to: sellerEmail,
+      subject: "Additional Information Needed for Your Seller Application",
+      react: SellerApplicationInformationRequestEmail({
+        sellerName,
+        sellerEmail,
+        applicationUrl,
+        requestMessage,
+      }),
+      replyTo: "support@yarnnu.com", // Allow replies to go to support email
+    });
+
+    if (!response) {
+      throw new Error("Resend API returned no response");
+    }
+
+    if (response.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+    }
+
+    console.log("[SELLER_APP_INFO_REQUEST] Email sent successfully:", {
+      sellerEmail,
+      response: response,
+      timestamp: new Date().toISOString(),
+    });
+    return response;
+  } catch (error) {
+    const userMessage = logError({
+      code: "SELLER_APP_INFO_REQUEST_EMAIL_SEND_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendSellerApplicationInformationRequestEmail",
+      error,
+      metadata: {
+        sellerEmail,
+        sellerName,
+        requestMessageLength: requestMessage?.length,
+        note: "Failed to send seller application information request email",
       },
     });
     throw new Error(userMessage);
