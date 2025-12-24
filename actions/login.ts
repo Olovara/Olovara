@@ -96,16 +96,25 @@ export const login = async (
       redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT,
     });
   } catch (error) {
+    // Handle AuthError with proper type checking
     if (error instanceof AuthError) {
-      const authError = error as AuthError & { type?: string };
-      switch (authError.type) {
+      // Check if error has a type property before accessing it
+      const errorType = (error as any)?.type || (error as any)?.cause?.type;
+      
+      switch (errorType) {
         case "CredentialsSignin":
           return { error: "Invalid credentials!" };
+        case "MissingCSRF":
+          return { error: "Security token missing. Please refresh the page and try again." };
         default:
-          return { error: "Something went wrong!" };
+          // Log the full error for debugging
+          console.error("Auth error:", error);
+          return { error: "Something went wrong during sign in!" };
       }
     }
 
-    throw error;
+    // For non-AuthError exceptions, log and return generic error
+    console.error("Unexpected login error:", error);
+    return { error: "An unexpected error occurred. Please try again." };
   }
 };
