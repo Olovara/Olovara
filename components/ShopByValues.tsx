@@ -1,45 +1,6 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { HandHeart, Heart, Leaf, Rainbow, Star, Trophy, Users } from "lucide-react";
-
-const values = [
-  {
-    name: "Woman-Owned",
-    icon: Heart,
-    description: "Support women entrepreneurs",
-    value: "isWomanOwned",
-  },
-  {
-    name: "Minority-Owned",
-    icon: Users,
-    description: "Support minority entrepreneurs",
-    value: "isMinorityOwned",
-  },
-  {
-    name: "LGBTQ+ Owned",
-    icon: Rainbow,
-    description: "Support LGBTQ+ businesses",
-    value: "isLGBTQOwned",
-  },
-  {
-    name: "Veteran-Owned",
-    icon: Trophy,
-    description: "Support veteran entrepreneurs",
-    value: "isVeteranOwned",
-  },
-  {
-    name: "Sustainable",
-    icon: Leaf,
-    description: "Eco-friendly practices",
-    value: "isSustainable",
-  },
-  {
-    name: "Charitable",
-    icon: HandHeart,
-    description: "Businesses that give back",
-    value: "isCharitable",
-  },
-];
+import { shopValuesExtended } from "@/data/shop-values";
 
 export function ShopByValues() {
   return (
@@ -52,12 +13,12 @@ export function ShopByValues() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        {values.map((value) => {
+        {shopValuesExtended.map((value) => {
           const Icon = value.icon;
           return (
             <Link
-              key={value.value}
-              href={`/shops?values=${value.value}`}
+              key={value.id}
+              href={`/shops?values=${value.id}`}
               className="group"
             >
               <div className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow h-full flex flex-col items-center text-center">
