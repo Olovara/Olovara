@@ -310,12 +310,7 @@ export default async function ProductsPage({
         select: {
           shopName: true,
           shopNameSlug: true,
-          isWomanOwned: true,
-          isMinorityOwned: true,
-          isLGBTQOwned: true,
-          isVeteranOwned: true,
-          isSustainable: true,
-          isCharitable: true,
+          shopValues: true,
           excludedCountries: true,
         },
       },

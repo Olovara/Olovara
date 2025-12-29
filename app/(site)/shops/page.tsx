@@ -122,9 +122,11 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
         },
       },
       ...(validValues.length > 0
-        ? validValues.map((value) => ({
-          [value]: true,
-        }))
+        ? [{
+          shopValues: {
+            hasEvery: validValues, // Seller must have all selected values
+          },
+        }]
         : []),
     ],
   };

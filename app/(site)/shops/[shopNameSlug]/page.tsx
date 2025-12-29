@@ -23,6 +23,7 @@ import {
 } from "@/lib/product-filtering";
 import { Metadata } from "next";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
+import { shopValues } from "@/data/shop-values";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -66,12 +67,7 @@ async function getShopData(
       refundPolicy: true,
       careInstructions: true,
       excludedCountries: true,
-      isWomanOwned: true,
-      isMinorityOwned: true,
-      isLGBTQOwned: true,
-      isVeteranOwned: true,
-      isSustainable: true,
-      isCharitable: true,
+      shopValues: true,
       // Location fields (direct on seller model)
       shopCountry: true,
       shopState: true,
@@ -120,12 +116,7 @@ async function getShopData(
             select: {
               shopName: true,
               shopNameSlug: true,
-              isWomanOwned: true,
-              isMinorityOwned: true,
-              isLGBTQOwned: true,
-              isVeteranOwned: true,
-              isSustainable: true,
-              isCharitable: true,
+              shopValues: true,
               excludedCountries: true,
             },
           },
@@ -177,18 +168,19 @@ export async function generateMetadata({
   }
 
   // Generate keywords from shop tags and values
+  // Map shop value IDs to keyword strings
+  const valueKeywords = (seller.shopValues || []).map((valueId) => {
+    const value = shopValues.find(v => v.id === valueId);
+    return value ? value.name.toLowerCase().replace(/\s+/g, "-") : null;
+  }).filter(Boolean);
+
   const generatedKeywords = [
     seller.shopName,
     "handmade",
     "artisan",
     "handcrafted",
     ...(seller.tags || []),
-    seller.isWomanOwned ? "woman-owned" : null,
-    seller.isMinorityOwned ? "minority-owned" : null,
-    seller.isLGBTQOwned ? "lgbtq-owned" : null,
-    seller.isVeteranOwned ? "veteran-owned" : null,
-    seller.isSustainable ? "sustainable" : null,
-    seller.isCharitable ? "charitable" : null,
+    ...valueKeywords,
   ]
     .filter(Boolean)
     .join(", ");
@@ -225,13 +217,13 @@ export async function generateMetadata({
       description: ogDescription,
       images: ogImage
         ? [
-            {
-              url: ogImage,
-              width: 1200,
-              height: 630,
-              alt: `${seller.shopName} shop`,
-            },
-          ]
+          {
+            url: ogImage,
+            width: 1200,
+            height: 630,
+            alt: `${seller.shopName} shop`,
+          },
+        ]
         : [],
       type: "website",
     },
@@ -288,11 +280,11 @@ export default async function ShopPage({ params }: ShopPageProps) {
   // Get location from seller's direct fields (shopCountry, shopState, shopCity)
   // Note: We no longer use addresses since we're not collecting that information
   let location = null;
-  
+
   if (seller.shopCountry) {
-    const locationData: { 
-      country: string; 
-      state: string | null; 
+    const locationData: {
+      country: string;
+      state: string | null;
       city: string | null;
     } = {
       country: seller.shopCountry,
@@ -630,11 +622,10 @@ export default async function ShopPage({ params }: ShopPageProps) {
                             {[...Array(5)].map((_, i) => (
                               <span
                                 key={i}
-                                className={`text-sm ${
-                                  i < review.rating
+                                className={`text-sm ${i < review.rating
                                     ? "text-yellow-400"
                                     : "text-gray-300"
-                                }`}
+                                  }`}
                               >
                                 ★
                               </span>

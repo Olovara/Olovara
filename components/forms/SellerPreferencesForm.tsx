@@ -26,12 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  SUPPORTED_CURRENCIES, 
-  SUPPORTED_WEIGHT_UNITS, 
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_WEIGHT_UNITS,
   SUPPORTED_DIMENSION_UNITS,
-  SUPPORTED_DISTANCE_UNITS 
+  SUPPORTED_DISTANCE_UNITS
 } from "@/data/units";
+import { shopValues, ShopValueId, validShopValueIds } from "@/data/shop-values";
 
 const SellerPreferencesForm = () => {
   const isClient = useIsClient();
@@ -47,12 +48,7 @@ const SellerPreferencesForm = () => {
       preferredWeightUnit: "lbs",
       preferredDimensionUnit: "in",
       preferredDistanceUnit: "miles",
-      isWomanOwned: false,
-      isMinorityOwned: false,
-      isLGBTQOwned: false,
-      isVeteranOwned: false,
-      isSustainable: false,
-      isCharitable: false,
+      shopValues: [],
       valuesPreferNotToSay: false,
     },
   });
@@ -63,15 +59,24 @@ const SellerPreferencesForm = () => {
   // Handle prefer not to say checkbox change
   const handlePreferNotToSayChange = (checked: boolean) => {
     if (checked) {
-      // Uncheck all other boxes when prefer not to say is checked
-      form.setValue("isWomanOwned", false);
-      form.setValue("isMinorityOwned", false);
-      form.setValue("isLGBTQOwned", false);
-      form.setValue("isVeteranOwned", false);
-      form.setValue("isSustainable", false);
-      form.setValue("isCharitable", false);
+      // Clear all shop values when prefer not to say is checked
+      form.setValue("shopValues", []);
     }
     form.setValue("valuesPreferNotToSay", checked);
+  };
+
+  // Handle shop value checkbox change
+  const handleShopValueChange = (valueId: ShopValueId, checked: boolean) => {
+    const currentValues = form.watch("shopValues") || [];
+    if (checked) {
+      // Add value if not already present
+      if (!currentValues.includes(valueId)) {
+        form.setValue("shopValues", [...currentValues, valueId]);
+      }
+    } else {
+      // Remove value
+      form.setValue("shopValues", currentValues.filter(v => v !== valueId));
+    }
   };
 
   useEffect(() => {
@@ -81,15 +86,14 @@ const SellerPreferencesForm = () => {
         if (result.error) {
           setError(result.error);
         } else if (result.data) {
-          // Ensure boolean values are properly set
+          // Ensure shopValues is an array and filter to only valid ShopValueId values
           const formattedData = {
             ...result.data,
-            isWomanOwned: Boolean(result.data.isWomanOwned),
-            isMinorityOwned: Boolean(result.data.isMinorityOwned),
-            isLGBTQOwned: Boolean(result.data.isLGBTQOwned),
-            isVeteranOwned: Boolean(result.data.isVeteranOwned),
-            isSustainable: Boolean(result.data.isSustainable),
-            isCharitable: Boolean(result.data.isCharitable),
+            shopValues: Array.isArray(result.data.shopValues)
+              ? result.data.shopValues.filter((v): v is ShopValueId =>
+                validShopValueIds.includes(v as ShopValueId)
+              )
+              : [], // Fallback to empty array if not present
             valuesPreferNotToSay: Boolean(result.data.valuesPreferNotToSay),
           };
           form.reset(formattedData);
@@ -138,7 +142,7 @@ const SellerPreferencesForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-y-6">
-        
+
         {/* Unit Preferences Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Unit Preferences</h3>
@@ -245,95 +249,26 @@ const SellerPreferencesForm = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isWomanOwned"
-                checked={form.watch("isWomanOwned")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isWomanOwned", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isWomanOwned" className={preferNotToSay ? "opacity-50" : ""}>
-                Woman-Owned Business
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isMinorityOwned"
-                checked={form.watch("isMinorityOwned")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isMinorityOwned", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isMinorityOwned" className={preferNotToSay ? "opacity-50" : ""}>
-                Minority-Owned Business
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isLGBTQOwned"
-                checked={form.watch("isLGBTQOwned")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isLGBTQOwned", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isLGBTQOwned" className={preferNotToSay ? "opacity-50" : ""}>
-                LGBTQ+-Owned Business
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isVeteranOwned"
-                checked={form.watch("isVeteranOwned")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isVeteranOwned", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isVeteranOwned" className={preferNotToSay ? "opacity-50" : ""}>
-                Veteran-Owned Business
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isSustainable"
-                checked={form.watch("isSustainable")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isSustainable", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isSustainable" className={preferNotToSay ? "opacity-50" : ""}>
-                Sustainable Practices
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isCharitable"
-                checked={form.watch("isCharitable")}
-                onCheckedChange={(checked) => {
-                  form.setValue("isCharitable", Boolean(checked));
-                }}
-                disabled={isPending || preferNotToSay}
-                className={preferNotToSay ? "opacity-50" : ""}
-              />
-              <Label htmlFor="isCharitable" className={preferNotToSay ? "opacity-50" : ""}>
-                Charitable Business
-              </Label>
-            </div>
+            {shopValues.map((value) => {
+              const currentValues = form.watch("shopValues") || [];
+              const isChecked = currentValues.includes(value.id);
+              return (
+                <div key={value.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={value.id}
+                    checked={isChecked}
+                    onCheckedChange={(checked) => {
+                      handleShopValueChange(value.id, Boolean(checked));
+                    }}
+                    disabled={isPending || preferNotToSay}
+                    className={preferNotToSay ? "opacity-50" : ""}
+                  />
+                  <Label htmlFor={value.id} className={preferNotToSay ? "opacity-50" : ""}>
+                    {value.name}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
 
           <div className="flex items-center space-x-2">

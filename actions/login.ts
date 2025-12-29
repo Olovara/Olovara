@@ -90,17 +90,26 @@ export const login = async (
   }
 
   try {
+    // signIn() with redirect: false returns void on success, throws on error
+    // We handle redirect client-side since server actions can't redirect
     await signIn("credentials", {
       email,
       password,
-      redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      redirect: false, // Don't redirect from server action - handle client-side
     });
-  } catch (error) {
+
+    // If we get here, login was successful
+    // Return success with redirect URL for client to handle
+    return {
+      success: "Login successful!",
+      redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT
+    };
+  } catch (error: any) {
     // Handle AuthError with proper type checking
     if (error instanceof AuthError) {
       // Check if error has a type property before accessing it
       const errorType = (error as any)?.type || (error as any)?.cause?.type;
-      
+
       switch (errorType) {
         case "CredentialsSignin":
           return { error: "Invalid credentials!" };

@@ -31,7 +31,7 @@ export async function createProductFilterWhereClause(
   let canAccessTest = config.canAccessTest;
   if (canAccessTest === undefined) {
     const session = await auth();
-    canAccessTest = session?.user?.id 
+    canAccessTest = session?.user?.id
       ? await canUserAccessTestEnvironment(session.user.id)
       : false;
   }
@@ -41,10 +41,10 @@ export async function createProductFilterWhereClause(
     AND: [
       // Always filter by active status
       { status: "ACTIVE" },
-      
+
       // Test product filtering (unless explicitly overridden)
       ...(config.includeTestProducts || canAccessTest ? [] : [{ isTestProduct: false }]),
-      
+
       // Filter out products from suspended sellers
       // Use seller existence check instead of nested relationship query
       // This avoids the Prisma issue with seller.user.status nested queries
@@ -53,10 +53,10 @@ export async function createProductFilterWhereClause(
           isNot: null // Only show products that have a seller profile
         }
       },
-      
+
       // Location-based filtering (handled at DB level when possible)
       ...(config.userCountryCode ? [createLocationFilterWhereClause(config.userCountryCode)] : []),
-      
+
       // Additional filters passed in
       ...Object.keys(additionalFilters).length > 0 ? [additionalFilters] : [],
     ],
@@ -85,12 +85,7 @@ export async function debugProductQuery(where: Prisma.ProductWhereInput) {
             userId: true,
             shopName: true,
             shopNameSlug: true,
-            isWomanOwned: true,
-            isMinorityOwned: true,
-            isLGBTQOwned: true,
-            isVeteranOwned: true,
-            isSustainable: true,
-            isCharitable: true,
+            shopValues: true,
             excludedCountries: true,
             user: {
               select: {
@@ -104,7 +99,7 @@ export async function debugProductQuery(where: Prisma.ProductWhereInput) {
 
     // Only log debug info if explicitly enabled via environment variable
     const shouldDebug = process.env.DEBUG_PRODUCT_QUERY === 'true';
-    
+
     if (shouldDebug) {
       console.log('[DEBUG] Products returned by query:', products.length);
       products.forEach(product => {
@@ -118,19 +113,19 @@ export async function debugProductQuery(where: Prisma.ProductWhereInput) {
       const testProducts = products.filter(p => p.isTestProduct);
       console.log(`[DEBUG] Test products in results: ${testProducts.length}`);
     }
-    
+
     // Filter out products from inactive sellers (since we can't do this in the DB query)
     const productsWithActiveSellers = products.filter(product => {
       if (!product.seller) return false;
       return product.seller.user?.status === 'ACTIVE';
     });
-    
+
     if (shouldDebug) {
       console.log(`[DEBUG] Products with active sellers: ${productsWithActiveSellers.length}`);
       const testProductsWithActiveSellers = productsWithActiveSellers.filter(p => p.isTestProduct);
       console.log(`[DEBUG] Test products with active sellers: ${testProductsWithActiveSellers.length}`);
     }
-    
+
     return productsWithActiveSellers; // Return the filtered results
   } catch (error) {
     // Only log errors in debug mode
@@ -229,7 +224,7 @@ export async function getProductFilterConfig(
   includeTestProducts: boolean = false
 ): Promise<ProductFilterConfig> {
   const session = await auth();
-  const canAccessTest = session?.user?.id 
+  const canAccessTest = session?.user?.id
     ? await canUserAccessTestEnvironment(session.user.id)
     : false;
 

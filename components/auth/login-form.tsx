@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ interface LoginFormProps {
 
 const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl");
   const urlError =
     searchParams.get("error") === "OAuthAccountNotLinked"
@@ -78,14 +79,19 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
               setSuccess(data.success);
             }
             onSuccess?.();
+
+            // Handle redirect client-side after successful login
+            if (data.redirectTo) {
+              // Small delay to show success message, then redirect
+              setTimeout(() => {
+                router.push(data.redirectTo);
+              }, 500);
+            }
           }
 
           if (data?.twoFactor) {
             setShowTwoFactor(true);
           }
-
-          // Note: signIn() in the login action handles the redirect
-          // No need to manually redirect here as it's handled server-side
         });
       } catch (err) {
         setError(`Something went wrong! Error:${err}`);

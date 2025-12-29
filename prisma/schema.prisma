@@ -264,12 +264,7 @@ model Seller {
   totalSales             Int               @default(0)
   totalProducts          Int               @default(0)
   acceptsCustom          Boolean           @default(false)
-  isWomanOwned           Boolean           @default(false)
-  isMinorityOwned        Boolean           @default(false)
-  isLGBTQOwned           Boolean           @default(false)
-  isVeteranOwned         Boolean           @default(false)
-  isSustainable          Boolean           @default(false)
-  isCharitable           Boolean           @default(false)
+  shopValues             String[]          @default([]) // Array of shop value IDs from shop-values.ts
   valuesPreferNotToSay   Boolean           @default(false)
   // Social media links
   facebookUrl            String?

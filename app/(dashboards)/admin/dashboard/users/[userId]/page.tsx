@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import { PermissionManager } from "@/components/admin/PermissionManager";
 import { RoleManager } from "@/components/admin/RoleManager";
 import { currentUserWithPermissions } from "@/lib/auth";
+import { shopValues } from "@/data/shop-values";
 
 interface UserDetailsPageProps {
   params: {
@@ -37,7 +38,7 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
       try {
         // Handle different date formats that might come from the database
         let dateObj: Date;
-        
+
         if (date instanceof Date) {
           dateObj = date;
         } else if (typeof date === 'string') {
@@ -49,13 +50,13 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
           console.warn('Invalid date format:', date);
           return 'Invalid date';
         }
-        
+
         // Check if the date is valid
         if (isNaN(dateObj.getTime())) {
           console.warn('Invalid date value:', date);
           return 'Invalid date';
         }
-        
+
         return format(dateObj, 'MMM dd, yyyy');
       } catch (error) {
         console.error('Error formatting date:', error, 'Date value:', date);
@@ -139,9 +140,9 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
                   <p className="text-muted-foreground">{user.email || "No email"}</p>
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Role:</span>
@@ -174,13 +175,13 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
         {/* Role Management Card - Only show if user has permission */}
         {canManageRoles && (
           <div className="grid gap-6 md:grid-cols-2">
-            <RoleManager 
-              userId={user.id} 
-              currentRole={user.role} 
+            <RoleManager
+              userId={user.id}
+              currentRole={user.role}
               username={user.username || undefined}
-              currentUser={currentUserData ? { 
-                email: currentUserData.email as string | undefined, 
-                id: currentUserData.id 
+              currentUser={currentUserData ? {
+                email: currentUserData.email as string | undefined,
+                id: currentUserData.id
               } : undefined}
             />
           </div>
@@ -308,19 +309,18 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
               </div>
 
               {/* Business Values */}
-              {(user.seller.isWomanOwned || user.seller.isMinorityOwned || user.seller.isLGBTQOwned || 
-                user.seller.isVeteranOwned || user.seller.isSustainable || user.seller.isCharitable) && (
+              {user.seller.shopValues && user.seller.shopValues.length > 0 && (
                 <>
                   <Separator />
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium">Business Values</h4>
                     <div className="flex flex-wrap gap-2">
-                      {user.seller.isWomanOwned && <Badge variant="secondary">Woman-Owned</Badge>}
-                      {user.seller.isMinorityOwned && <Badge variant="secondary">Minority-Owned</Badge>}
-                      {user.seller.isLGBTQOwned && <Badge variant="secondary">LGBTQ-Owned</Badge>}
-                      {user.seller.isVeteranOwned && <Badge variant="secondary">Veteran-Owned</Badge>}
-                      {user.seller.isSustainable && <Badge variant="secondary">Sustainable</Badge>}
-                      {user.seller.isCharitable && <Badge variant="secondary">Charitable</Badge>}
+                      {user.seller.shopValues.map((valueId) => {
+                        const value = shopValues.find(v => v.id === valueId);
+                        return value ? (
+                          <Badge key={valueId} variant="secondary">{value.name}</Badge>
+                        ) : null;
+                      })}
                     </div>
                   </div>
                 </>

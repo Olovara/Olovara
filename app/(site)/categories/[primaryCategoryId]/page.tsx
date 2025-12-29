@@ -211,12 +211,7 @@ export default async function PrimaryCategoryPage({
         select: {
           shopName: true,
           shopNameSlug: true,
-          isWomanOwned: true,
-          isMinorityOwned: true,
-          isLGBTQOwned: true,
-          isVeteranOwned: true,
-          isSustainable: true,
-          isCharitable: true,
+          shopValues: true,
           excludedCountries: true,
         },
       },
