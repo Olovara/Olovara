@@ -169,17 +169,22 @@ async function retryOperation<T>(
 }
 
 // Get exchange rates from cache, database, or fetch new ones
-async function getExchangeRates(baseCurrency: string) {
+async function getExchangeRates(baseCurrency: string, forceRefresh: boolean = false) {
   try {
     const normalizedBase = baseCurrency.toLowerCase();
 
-    // First, check in-memory cache (fastest)
-    const cachedRates = exchangeRateCache.get(normalizedBase);
-    if (cachedRates) {
-      return cachedRates;
+    // First, check in-memory cache (fastest) - skip if forcing refresh
+    if (!forceRefresh) {
+      const cachedRates = exchangeRateCache.get(normalizedBase);
+      if (cachedRates) {
+        return cachedRates;
+      }
+    } else {
+      // Clear cache if forcing refresh
+      exchangeRateCache.clear(normalizedBase);
     }
 
-    // Second, check database (within last hour)
+    // Second, check database for recent rates (within last hour)
     const recentRates = await db.exchangeRate.findMany({
       where: {
         baseCurrency: baseCurrency.toUpperCase(),
@@ -193,32 +198,50 @@ async function getExchangeRates(baseCurrency: string) {
       },
     });
 
-    // Create a map of existing rates
+    // Create a map of existing recent rates
     const existingRates: Record<string, number> = {};
     recentRates.forEach((rate) => {
       existingRates[rate.targetCurrency.toLowerCase()] = rate.rate;
     });
 
-    // Check if we have all the rates we need
+    // Check if we have all the rates we need and they're fresh
     const missingCurrencies = SUPPORTED_CURRENCIES.filter(
       (currency) => !existingRates[currency.code.toLowerCase()]
     );
 
-    // If we have all rates from database, cache them and return
-    if (missingCurrencies.length === 0) {
+    // If we have all fresh rates from database and not forcing refresh, cache them and return
+    if (missingCurrencies.length === 0 && !forceRefresh) {
       exchangeRateCache.set(normalizedBase, existingRates);
       return existingRates;
     }
 
-    // If we have some rates but not all, fetch new ones from API
+    // If rates are missing OR stale (older than 1 hour) OR forcing refresh, fetch new ones
+    // First, get all existing rates (even old ones) as fallback
+    const allRates = await db.exchangeRate.findMany({
+      where: {
+        baseCurrency: baseCurrency.toUpperCase(),
+        targetCurrency: {
+          in: SUPPORTED_CURRENCIES.map((c) => c.code),
+        },
+        isActive: true,
+      },
+    });
+
+    const fallbackRates: Record<string, number> = {};
+    allRates.forEach((rate) => {
+      fallbackRates[rate.targetCurrency.toLowerCase()] = rate.rate;
+    });
+
+    // Fetch new rates from API
     let newRates: Record<string, number>;
     try {
       newRates = await getExchangeRatesFromAPI(baseCurrency);
     } catch (error) {
       console.error("Failed to get rates from FreeCurrencyAPI:", error);
-      // If API fails but we have some rates, return what we have
-      if (Object.keys(existingRates).length > 0) {
-        return existingRates;
+      // If API fails but we have fallback rates (even if old), return what we have
+      if (Object.keys(fallbackRates).length > 0) {
+        console.warn(`Using fallback rates for ${baseCurrency} (may be stale)`);
+        return fallbackRates;
       }
       throw error;
     }
@@ -270,16 +293,11 @@ async function getExchangeRates(baseCurrency: string) {
       1000
     ); // Increase retries to 5 and delay to 1 second
 
-    // Combine existing and new rates
-    const combinedRates = {
-      ...existingRates,
-      ...newRates,
-    };
+    // Use new rates (they're fresh from API)
+    // Cache the new rates in memory
+    exchangeRateCache.set(normalizedBase, newRates);
 
-    // Cache the combined rates in memory
-    exchangeRateCache.set(normalizedBase, combinedRates);
-
-    return combinedRates;
+    return newRates;
   } catch (error) {
     console.error("Error in getExchangeRates:", error);
     throw error;

@@ -5,7 +5,7 @@ import { SUPPORTED_CURRENCIES, CurrencyCode, getCurrencyDecimals } from '@/data/
 type CurrencyStore = {
   currency: CurrencyCode;
   setCurrency: (currency: CurrencyCode) => void;
-  formatPrice: (amount: number, isCents?: boolean) => Promise<string>;
+  formatPrice: (amount: number, isCents?: boolean, fromCurrency?: string) => Promise<string>;
   batchFormatPrices: (amounts: number[], fromCurrency: string, isCents?: boolean) => Promise<string[]>;
   SUPPORTED_CURRENCIES: typeof SUPPORTED_CURRENCIES;
 };
@@ -226,16 +226,16 @@ export const useCurrency = create<CurrencyStore>()(
         conversionCache.clear();
         set({ currency });
       },
-      formatPrice: async (amount: number, isCents: boolean = false) => {
+      formatPrice: async (amount: number, isCents: boolean = false, fromCurrency: string = 'USD') => {
         const { currency } = get();
         const format = CURRENCY_FORMATS[currency] || CURRENCY_FORMATS.USD;
         const decimals = getCurrencyDecimals(currency);
 
         try {
-          // Convert the price to the selected currency
+          // Convert the price from the product's currency to the selected currency
           const convertedAmount = await convertPrice(
             amount,
-            'USD', // Assuming prices are stored in USD
+            fromCurrency.toUpperCase(), // Use the product's currency, default to USD
             currency,
             isCents
           );
@@ -249,8 +249,8 @@ export const useCurrency = create<CurrencyStore>()(
           }).format(isCents ? convertedAmount / 100 : convertedAmount);
         } catch (error) {
           console.error('Error formatting price:', error);
-          // Fallback to USD formatting if conversion fails
-          return formatPriceInCurrency(amount, 'USD', isCents);
+          // Fallback to formatting in the original currency if conversion fails
+          return formatPriceInCurrency(amount, fromCurrency.toUpperCase(), isCents);
         }
       },
       batchFormatPrices: async (amounts: number[], fromCurrency: string = 'USD', isCents: boolean = false) => {

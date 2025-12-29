@@ -108,15 +108,18 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     // Convert price when product or currency changes
   useEffect(() => {
     if (product) {
-      // Format original price
-      formatPrice(product.price, true)
+      // Get the product's currency (default to USD if not specified)
+      const productCurrency = (product.currency || 'USD').toUpperCase();
+      
+      // Format original price - pass the product's currency so it converts correctly
+      formatPrice(product.price, true, productCurrency)
         .then(setConvertedPrice)
         .catch(console.error);
       
       // Format discounted price if sale is active
       if (isOnSale && product.discount) {
         const discountedAmount = product.price * (1 - product.discount / 100);
-        formatPrice(discountedAmount, true)
+        formatPrice(discountedAmount, true, productCurrency)
           .then(setConvertedDiscountedPrice)
           .catch(console.error);
       } else {
