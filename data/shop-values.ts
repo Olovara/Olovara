@@ -1,4 +1,4 @@
-import { HandHeart, Heart, Leaf, Rainbow, Trophy, Users } from "lucide-react";
+import { Accessibility, HandHeart, Heart, Leaf, Rainbow, Trophy, Users } from "lucide-react";
 
 /**
  * Valid shop value filter IDs - single source of truth
@@ -11,6 +11,7 @@ export const validShopValueIds = [
     "isVeteranOwned",
     "isSustainable",
     "isCharitable",
+    "isDisabledOwned",
 ] as const;
 
 /**
@@ -65,6 +66,10 @@ export const shopValues: ShopValue[] = [
         id: "isCharitable",
         name: "Charitable",
     },
+    {
+        id: "isDisabledOwned",
+        name: "Disabled-Owned",
+    },
 ];
 
 /**
@@ -107,6 +112,12 @@ export const shopValuesExtended: ShopValueExtended[] = [
         name: "Charitable",
         icon: HandHeart,
         description: "Businesses that give back",
+    },
+    {
+        id: "isDisabledOwned",
+        name: "Disabled-Owned",
+        icon: Accessibility,
+        description: "Support disabled entrepreneurs",
     },
 ];
 
