@@ -1,10 +1,11 @@
 import * as z from "zod";
-import { 
-  SUPPORTED_CURRENCIES, 
-  SUPPORTED_WEIGHT_UNITS, 
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_WEIGHT_UNITS,
   SUPPORTED_DIMENSION_UNITS,
-  SUPPORTED_DISTANCE_UNITS 
+  SUPPORTED_DISTANCE_UNITS
 } from "@/data/units";
+import { validShopValueIds, ShopValueId } from "@/data/shop-values";
 
 export const SellerPreferencesSchema = z.object({
   // Unit preferences
@@ -20,13 +21,12 @@ export const SellerPreferencesSchema = z.object({
   preferredDistanceUnit: z.enum(SUPPORTED_DISTANCE_UNITS.map(u => u.code) as [string, ...string[]], {
     required_error: "Please select a distance unit",
   }).default("miles"),
-  // Shop values
-  isWomanOwned: z.boolean().default(false),
-  isMinorityOwned: z.boolean().default(false),
-  isLGBTQOwned: z.boolean().default(false),
-  isVeteranOwned: z.boolean().default(false),
-  isSustainable: z.boolean().default(false),
-  isCharitable: z.boolean().default(false),
+  // Shop values - array of valid shop value IDs
+  shopValues: z.array(
+    z.string().refine((val): val is ShopValueId =>
+      validShopValueIds.includes(val as ShopValueId)
+    )
+  ).default([]),
   valuesPreferNotToSay: z.boolean().default(false),
 });
 

@@ -17,12 +17,7 @@ interface SellerData extends Partial<Seller> {
   preferredWeightUnit?: string;
   preferredDimensionUnit?: string;
   preferredDistanceUnit?: string;
-  isWomanOwned?: boolean;
-  isMinorityOwned?: boolean;
-  isLGBTQOwned?: boolean;
-  isVeteranOwned?: boolean;
-  isSustainable?: boolean;
-  isCharitable?: boolean;
+  shopValues?: string[];
   valuesPreferNotToSay?: boolean;
   addresses?: {
     encryptedStreet: string;
@@ -66,12 +61,7 @@ export const getSellerData = async () => {
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
         preferredDistanceUnit: true,
-        isWomanOwned: true,
-        isMinorityOwned: true,
-        isLGBTQOwned: true,
-        isVeteranOwned: true,
-        isSustainable: true,
-        isCharitable: true,
+        shopValues: true,
         valuesPreferNotToSay: true,
         addresses: {
           where: {
@@ -113,9 +103,9 @@ export const getSellerData = async () => {
     };
 
     // Remove encrypted fields from the response
-    const { 
+    const {
       addresses,
-      ...cleanData 
+      ...cleanData
     } = decryptedData;
 
     return { data: cleanData };

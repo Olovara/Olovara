@@ -18,31 +18,31 @@ export async function generateMetadata({ searchParams }: ShopsPageProps): Promis
   const values = searchParams.values?.split(",") || [];
   const sortBy = searchParams.sortBy || "newest";
   const page = searchParams.page || "1";
-  
+
   // Build canonical URL
   const canonicalParams = new URLSearchParams();
   if (values.length > 0) canonicalParams.set("values", values.join(","));
   if (sortBy !== "newest") canonicalParams.set("sortBy", sortBy);
   if (page !== "1") canonicalParams.set("page", page);
-  
-  const canonicalUrl = canonicalParams.toString() 
+
+  const canonicalUrl = canonicalParams.toString()
     ? `/shops?${canonicalParams.toString()}`
     : "/shops";
 
   // Generate dynamic title and description based on filters
   let title = "Handmade Shops | Yarnnu - Discover Artisan Marketplaces";
   let description = "Browse our curated collection of handcrafted shops from talented artisans worldwide. Find woman-owned, minority-owned, LGBTQ+ owned, veteran-owned, sustainable, and charitable businesses. Support independent creators and discover unique handmade products.";
-  
+
   if (values.length > 0) {
     const valueLabels = {
       isWomanOwned: "Woman-Owned",
-      isMinorityOwned: "Minority-Owned", 
+      isMinorityOwned: "Minority-Owned",
       isLGBTQOwned: "LGBTQ+ Owned",
       isVeteranOwned: "Veteran-Owned",
       isSustainable: "Sustainable",
       isCharitable: "Charitable"
     };
-    
+
     const filterLabels = values.map(v => valueLabels[v as keyof typeof valueLabels]).join(", ");
     title = `${filterLabels} Handmade Shops | Yarnnu - Support Diverse Artisans`;
     description = `Discover ${filterLabels.toLowerCase()} handmade shops and support diverse artisans on Yarnnu. Find unique handcrafted products from talented creators who align with your values.`;
@@ -53,7 +53,7 @@ export async function generateMetadata({ searchParams }: ShopsPageProps): Promis
     description,
     keywords: [
       "handmade shops",
-      "artisan marketplaces", 
+      "artisan marketplaces",
       "woman-owned businesses",
       "minority-owned businesses",
       "LGBTQ+ owned businesses",
@@ -81,15 +81,7 @@ export async function generateMetadata({ searchParams }: ShopsPageProps): Promis
   };
 }
 
-// Define valid filter values
-const validFilterValues = [
-  "isWomanOwned",
-  "isMinorityOwned",
-  "isLGBTQOwned",
-  "isVeteranOwned",
-  "isSustainable",
-  "isCharitable",
-] as const;
+import { validShopValueIds } from "@/data/shop-values";
 
 interface ShopsPageProps {
   searchParams: {
@@ -113,7 +105,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
   const pageSize = Number(searchParams.size) || 24;
 
   // Filter out invalid values
-  const validValues = values.filter(value => validFilterValues.includes(value as typeof validFilterValues[number]));
+  const validValues = values.filter(value => validShopValueIds.includes(value as typeof validShopValueIds[number]));
 
   // Build where clause
   const where = {
@@ -130,9 +122,11 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
         },
       },
       ...(validValues.length > 0
-        ? validValues.map((value) => ({
-            [value]: true,
-          }))
+        ? [{
+          shopValues: {
+            hasEvery: validValues, // Seller must have all selected values
+          },
+        }]
         : []),
     ],
   };
@@ -198,7 +192,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
     shopsWithCount.sort((a, b) => {
       const nameA = a.shopName.toLowerCase();
       const nameB = b.shopName.toLowerCase();
-      return sortBy === "name-asc" 
+      return sortBy === "name-asc"
         ? nameA.localeCompare(nameB)
         : nameB.localeCompare(nameA);
     });
@@ -271,7 +265,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
           )}
         </div>
       </div>
-      
+
       {/* Add structured data for SEO */}
       <WebsiteStructuredData pageType="shops" />
     </div>

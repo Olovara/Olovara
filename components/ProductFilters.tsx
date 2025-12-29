@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Categories, PrimaryCategoryID, SecondaryCategoryID, TertiaryCategoryID, getSecondaryCategories, getTertiaryCategories } from "@/data/categories";
+import { Categories, PrimaryCategoryID, SecondaryCategoryID, TertiaryCategoryID, getSecondaryCategories, getTertiaryCategories, TertiaryCategoryNode } from "@/data/categories";
+import { shopValues } from "@/data/shop-values";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -12,33 +13,6 @@ import { getPriceRange } from "@/actions/getPriceRange";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
-
-const values = [
-  {
-    id: "isWomanOwned",
-    name: "Woman-Owned",
-  },
-  {
-    id: "isMinorityOwned",
-    name: "Minority-Owned",
-  },
-  {
-    id: "isLGBTQOwned",
-    name: "LGBTQ+ Owned",
-  },
-  {
-    id: "isVeteranOwned",
-    name: "Veteran-Owned",
-  },
-  {
-    id: "isSustainable",
-    name: "Sustainable",
-  },
-  {
-    id: "isCharitable",
-    name: "Charitable",
-  },
-];
 
 // Types are now imported from categories.ts
 
@@ -52,6 +26,81 @@ export function ProductFilters() {
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
   const [openSecondaryCategories, setOpenSecondaryCategories] = useState<Set<SecondaryCategoryID>>(new Set());
   const selectedCategory = searchParams.get("category")?.split(",")[0];
+
+  // Auto-check categories based on URL path when on category pages
+  useEffect(() => {
+    // Check if we're on a category page
+    const categoryPageMatch = pathname.match(/^\/categories\/([^\/]+)(?:\/([^\/]+))?(?:\/([^\/]+))?$/);
+
+    if (categoryPageMatch) {
+      const [, primaryCategorySlug, secondaryCategorySlug, tertiaryCategorySlug] = categoryPageMatch;
+
+      // Find the actual category objects by matching slugs (case-insensitive)
+      const primaryCategory = Categories.find(
+        (cat) => cat.id.toLowerCase() === primaryCategorySlug.toLowerCase()
+      );
+
+      let secondaryCategory: any = null;
+      let tertiaryCategory: any = null;
+
+      if (primaryCategory && secondaryCategorySlug) {
+        secondaryCategory = primaryCategory.children.find(
+          (cat) => cat.id.toLowerCase() === secondaryCategorySlug.toLowerCase()
+        );
+
+        if (secondaryCategory && tertiaryCategorySlug && "children" in secondaryCategory && secondaryCategory.children) {
+          tertiaryCategory = secondaryCategory.children.find(
+            (cat: TertiaryCategoryNode) => cat.id.toLowerCase() === tertiaryCategorySlug.toLowerCase()
+          );
+        }
+      }
+
+      // Auto-expand relevant categories
+      if (primaryCategory) {
+        setOpenCategories((prev) => new Set([...Array.from(prev), primaryCategory.id]));
+
+        if (secondaryCategory) {
+          setOpenSecondaryCategories((prev) => new Set([...Array.from(prev), secondaryCategory.id as SecondaryCategoryID]));
+        }
+      }
+
+      // Always set categories based on URL path when on category pages
+      const params = new URLSearchParams(searchParams.toString());
+      let categoriesToSet: string[] = [];
+
+      if (tertiaryCategory) {
+        // On tertiary category page - only check that specific tertiary category (use actual ID)
+        categoriesToSet = [tertiaryCategory.id];
+      } else if (secondaryCategory) {
+        // On secondary category page - only check that specific secondary category (use actual ID)
+        categoriesToSet = [secondaryCategory.id];
+      } else if (primaryCategory) {
+        // On primary category page - check primary category and all its subcategories
+        categoriesToSet = [primaryCategory.id];
+        // Add all secondary categories
+        primaryCategory.children.forEach((secondary) => {
+          categoriesToSet.push(secondary.id);
+          // Add all tertiary categories if they exist
+          if ("children" in secondary && secondary.children) {
+            secondary.children.forEach((tertiary) => {
+              categoriesToSet.push(tertiary.id);
+            });
+          }
+        });
+      }
+
+      // Only update if categories need to change
+      const currentCategories = searchParams.get("category")?.split(",") || [];
+      const categoriesMatch = categoriesToSet.length === currentCategories.length &&
+        categoriesToSet.every(cat => currentCategories.includes(cat));
+
+      if (categoriesToSet.length > 0 && !categoriesMatch) {
+        params.set("category", categoriesToSet.join(","));
+        // Don't reset page when auto-setting categories
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      }
+    }
+  }, [pathname, searchParams, router]);
 
   // Initialize price range from URL params
   useEffect(() => {
@@ -76,7 +125,7 @@ export function ProductFilters() {
 
   const handleFilterChange = (key: string, value: string | string[]) => {
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (Array.isArray(value)) {
       if (value.length > 0) {
         params.set(key, value.join(","));
@@ -90,7 +139,7 @@ export function ProductFilters() {
         params.delete(key);
       }
     }
-    
+
     params.set("page", "1"); // Reset to first page when changing filters
     router.push(`${pathname}?${params.toString()}`);
   };
@@ -159,12 +208,12 @@ export function ProductFilters() {
 
   const handleCategoryChange = (categoryId: string, level: 'primary' | 'secondary' | 'tertiary') => {
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (level === 'primary') {
       // For primary categories, we need to handle both the primary and its subcategories
       const subcategories = getSecondaryCategories(categoryId as PrimaryCategoryID);
       const newCategories = new Set(selectedCategories);
-      
+
       if (newCategories.has(categoryId)) {
         // Remove primary category and its subcategories
         newCategories.delete(categoryId);
@@ -174,7 +223,7 @@ export function ProductFilters() {
         newCategories.add(categoryId);
         subcategories.forEach(sub => newCategories.add(sub));
       }
-      
+
       if (newCategories.size === 0) {
         params.delete("category");
       } else {
@@ -188,7 +237,7 @@ export function ProductFilters() {
       } else {
         newCategories.add(categoryId);
       }
-      
+
       if (newCategories.size === 0) {
         params.delete("category");
       } else {
@@ -202,7 +251,7 @@ export function ProductFilters() {
       } else {
         newCategories.add(categoryId);
       }
-      
+
       if (newCategories.size === 0) {
         params.delete("category");
       } else {
@@ -311,7 +360,7 @@ export function ProductFilters() {
                               <div className="space-y-2 mt-2 pt-2 border-t border-border ml-4">
                                 {tertiaryCategories.map((tertiaryId) => {
                                   // Find tertiary category in tree
-                                  const tertiaryCategory = ("children" in subcategory && subcategory.children) 
+                                  const tertiaryCategory = ("children" in subcategory && subcategory.children)
                                     ? subcategory.children.find(t => t.id === tertiaryId)
                                     : undefined;
                                   return tertiaryCategory ? (
@@ -389,7 +438,7 @@ export function ProductFilters() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Shop Values</h2>
         <div className="space-y-2">
-          {values.map((value) => (
+          {shopValues.map((value) => (
             <div key={value.id} className="flex items-center space-x-2">
               <Checkbox
                 id={value.id}

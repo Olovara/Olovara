@@ -10,17 +10,12 @@ export async function updateSellerInformation(data: {
   preferredWeightUnit: string;
   preferredDimensionUnit: string;
   preferredDistanceUnit: string;
-  isWomanOwned: boolean;
-  isMinorityOwned: boolean;
-  isLGBTQOwned: boolean;
-  isVeteranOwned: boolean;
-  isSustainable: boolean;
-  isCharitable: boolean;
+  shopValues: string[];
   valuesPreferNotToSay: boolean;
 }) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       throw new Error("Not authenticated");
     }
@@ -64,12 +59,7 @@ export async function updateSellerInformation(data: {
         shopName: data.shopName,
         shopNameSlug: shopNameSlug,
         shopDescription: data.shopDescription,
-        isWomanOwned: data.isWomanOwned,
-        isMinorityOwned: data.isMinorityOwned,
-        isLGBTQOwned: data.isLGBTQOwned,
-        isVeteranOwned: data.isVeteranOwned,
-        isSustainable: data.isSustainable,
-        isCharitable: data.isCharitable,
+        shopValues: data.shopValues,
         valuesPreferNotToSay: data.valuesPreferNotToSay,
         preferredCurrency: data.preferredCurrency,
         preferredWeightUnit: data.preferredWeightUnit,

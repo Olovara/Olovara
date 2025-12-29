@@ -16,7 +16,6 @@ import {
   getProductFilterConfig,
   debugProductQuery,
 } from "@/lib/product-filtering";
-import { LocationFilterInfo } from "@/components/LocationFilterNotice";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { auth } from "@/auth";
 import { getFollowedSellersFeed } from "@/actions/followActions";
@@ -161,51 +160,51 @@ export default async function ProductsPage({
       },
       ...(searchParams.q
         ? [
-            {
-              name: {
-                contains: searchParams.q,
-                mode: Prisma.QueryMode.insensitive,
-              },
+          {
+            name: {
+              contains: searchParams.q,
+              mode: Prisma.QueryMode.insensitive,
             },
-          ]
+          },
+        ]
         : []),
       ...(categories.length > 0
         ? [
-            {
-              primaryCategory: {
-                in: categories,
-              },
+          {
+            primaryCategory: {
+              in: categories,
             },
-          ]
+          },
+        ]
         : []),
       ...(secondaryCategories.length > 0
         ? [
-            {
-              secondaryCategory: {
-                in: secondaryCategories,
-              },
+          {
+            secondaryCategory: {
+              in: secondaryCategories,
             },
-          ]
+          },
+        ]
         : []),
       ...(tertiaryCategories.length > 0
         ? [
-            {
-              tertiaryCategory: {
-                in: tertiaryCategories,
-              },
+          {
+            tertiaryCategory: {
+              in: tertiaryCategories,
             },
-          ]
+          },
+        ]
         : []),
       ...(values.length > 0
         ? [
-            {
-              seller: {
-                OR: values.map((value) => ({
-                  [value]: true,
-                })),
-              },
+          {
+            seller: {
+              OR: values.map((value) => ({
+                [value]: true,
+              })),
             },
-          ]
+          },
+        ]
         : []),
     ],
   };
@@ -311,12 +310,7 @@ export default async function ProductsPage({
         select: {
           shopName: true,
           shopNameSlug: true,
-          isWomanOwned: true,
-          isMinorityOwned: true,
-          isLGBTQOwned: true,
-          isVeteranOwned: true,
-          isSustainable: true,
-          isCharitable: true,
+          shopValues: true,
           excludedCountries: true,
         },
       },
@@ -337,10 +331,10 @@ export default async function ProductsPage({
   // Apply location filtering in memory
   let filteredProducts = userCountryCode
     ? productsWithSellerInfo.filter((product) => {
-        if (!product.seller) return true;
-        const excludedCountries = product.seller.excludedCountries || [];
-        return !excludedCountries.includes(userCountryCode);
-      })
+      if (!product.seller) return true;
+      const excludedCountries = product.seller.excludedCountries || [];
+      return !excludedCountries.includes(userCountryCode);
+    })
     : productsWithSellerInfo;
 
   // Apply random sorting for "relevant" when no filters are applied
@@ -358,17 +352,17 @@ export default async function ProductsPage({
   const products = filteredProducts.slice(0, pageSize);
 
   // Determine search context
-  const searchContext = searchParams.q 
-    ? "global search bar" 
-    : categories.length > 0 
-    ? "category-page" 
-    : "homepage";
+  const searchContext = searchParams.q
+    ? "global search bar"
+    : categories.length > 0
+      ? "category-page"
+      : "homepage";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[2000px]">
       {/* Search Analytics Tracker - tracks searches when query parameter is present */}
       {searchParams.q && (
-        <SearchAnalyticsTracker 
+        <SearchAnalyticsTracker
           resultCount={totalProducts}
           searchContext={searchContext}
         />
@@ -398,9 +392,6 @@ export default async function ProductsPage({
 
         {/* Products Grid */}
         <div className="w-full lg:w-4/5">
-          {/* Location Filter Info */}
-          <LocationFilterInfo />
-
           {/* Pagination Info */}
           {totalPages > 1 && (
             <div className="mb-6">

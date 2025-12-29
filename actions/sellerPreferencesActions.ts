@@ -25,10 +25,10 @@ async function checkAndMarkShopPreferencesComplete(userId: string) {
 
     // Check if About form is completed (shop name and description are required)
     const aboutComplete = seller.shopName && seller.shopDescription && seller.shopName.trim() !== "" && seller.shopDescription.trim() !== "";
-    
+
     // Check if Info form is completed (shop country is required)
     const infoComplete = seller.shopCountry && seller.shopCountry.trim() !== "";
-    
+
     // Check if Preferences form is completed (all unit preferences are set)
     const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;
 
@@ -52,17 +52,12 @@ export async function updateSellerPreferences(data: {
   preferredWeightUnit: string;
   preferredDimensionUnit: string;
   preferredDistanceUnit: string;
-  isWomanOwned: boolean;
-  isMinorityOwned: boolean;
-  isLGBTQOwned: boolean;
-  isVeteranOwned: boolean;
-  isSustainable: boolean;
-  isCharitable: boolean;
+  shopValues: string[];
   valuesPreferNotToSay: boolean;
 }) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       throw new Error("Not authenticated");
     }
@@ -75,12 +70,7 @@ export async function updateSellerPreferences(data: {
         preferredWeightUnit: data.preferredWeightUnit,
         preferredDimensionUnit: data.preferredDimensionUnit,
         preferredDistanceUnit: data.preferredDistanceUnit,
-        isWomanOwned: data.isWomanOwned,
-        isMinorityOwned: data.isMinorityOwned,
-        isLGBTQOwned: data.isLGBTQOwned,
-        isVeteranOwned: data.isVeteranOwned,
-        isSustainable: data.isSustainable,
-        isCharitable: data.isCharitable,
+        shopValues: data.shopValues,
         valuesPreferNotToSay: data.valuesPreferNotToSay,
       }
     });
@@ -92,8 +82,8 @@ export async function updateSellerPreferences(data: {
     // The user's preferences have been updated in the database
     console.log("Seller preferences updated for user:", session.user.id);
 
-    const message = profileCompleted 
-      ? "Preferences updated successfully! Your shop profile is now complete." 
+    const message = profileCompleted
+      ? "Preferences updated successfully! Your shop profile is now complete."
       : "Preferences updated successfully!";
 
     return { success: true, message, profileCompleted };
@@ -117,12 +107,7 @@ export const getSellerPreferences = async () => {
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
         preferredDistanceUnit: true,
-        isWomanOwned: true,
-        isMinorityOwned: true,
-        isLGBTQOwned: true,
-        isVeteranOwned: true,
-        isSustainable: true,
-        isCharitable: true,
+        shopValues: true,
         valuesPreferNotToSay: true,
       },
     });

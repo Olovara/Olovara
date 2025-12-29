@@ -4,60 +4,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-
-// Define valid filter values as a const array
-const validFilterValues = [
-  "isWomanOwned",
-  "isMinorityOwned",
-  "isLGBTQOwned",
-  "isVeteranOwned",
-  "isSustainable",
-  "isCharitable",
-] as const;
-
-// Type for valid filter values
-type ValidFilterValue = typeof validFilterValues[number];
-
-const values = [
-  {
-    id: "isWomanOwned" as ValidFilterValue,
-    name: "Woman-Owned",
-  },
-  {
-    id: "isMinorityOwned" as ValidFilterValue,
-    name: "Minority-Owned",
-  },
-  {
-    id: "isLGBTQOwned" as ValidFilterValue,
-    name: "LGBTQ+ Owned",
-  },
-  {
-    id: "isVeteranOwned" as ValidFilterValue,
-    name: "Veteran-Owned",
-  },
-  {
-    id: "isSustainable" as ValidFilterValue,
-    name: "Sustainable",
-  },
-  {
-    id: "isCharitable" as ValidFilterValue,
-    name: "Charitable",
-  },
-];
+import { shopValues, validShopValueIds, ShopValueId } from "@/data/shop-values";
 
 export function ShopFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Get and sanitize selected values
   const rawSelectedValues = searchParams.get("values")?.split(",") || [];
-  const selectedValues = rawSelectedValues.filter((value): value is ValidFilterValue => 
-    validFilterValues.includes(value as ValidFilterValue)
+  const selectedValues = rawSelectedValues.filter((value): value is ShopValueId =>
+    validShopValueIds.includes(value as ShopValueId)
   );
-  
+
   const sortBy = searchParams.get("sortBy") || "newest";
 
-  const handleValueChange = (valueId: ValidFilterValue) => {
+  const handleValueChange = (valueId: ShopValueId) => {
     const params = new URLSearchParams(searchParams.toString());
     const newValues = selectedValues.includes(valueId)
       ? selectedValues.filter((v) => v !== valueId)
@@ -102,7 +63,7 @@ export function ShopFilters() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Shop Values</h2>
         <div className="space-y-2">
-          {values.map((value) => (
+          {shopValues.map((value) => (
             <div key={value.id} className="flex items-center space-x-2">
               <Checkbox
                 id={value.id}

@@ -38,12 +38,7 @@ interface SimplifiedProduct {
   seller?: {
     shopName: string;
     shopNameSlug: string;
-    isWomanOwned: boolean;
-    isMinorityOwned: boolean;
-    isLGBTQOwned: boolean;
-    isVeteranOwned: boolean;
-    isSustainable: boolean;
-    isCharitable: boolean;
+    shopValues: string[];
   } | null;
 }
 
@@ -105,7 +100,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     return () => clearTimeout(timer);
   }, [index]);
 
-    // Convert price when product or currency changes
+  // Convert price when product or currency changes
   useEffect(() => {
     if (product) {
       // Get the product's currency (default to USD if not specified)
@@ -115,7 +110,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       formatPrice(product.price, true, productCurrency)
         .then(setConvertedPrice)
         .catch(console.error);
-      
+
       // Format discounted price if sale is active
       if (isOnSale && product.discount) {
         const discountedAmount = product.price * (1 - product.discount / 100);
@@ -149,14 +144,14 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   useEffect(() => {
     const checkWishlistStatus = async () => {
       if (!product) return;
-      
+
       try {
         const result = await getUserWishlists();
         if (result.success && result.wishlists) {
           const isInAnyWishlist = result.wishlists.some((wishlist: any) =>
             wishlist.items.some((item: any) => item.productId === product.id)
           );
-          
+
           // Only update if the state is different from current
           if (isInAnyWishlist !== isInWishlist) {
             if (isInAnyWishlist) {
@@ -178,29 +173,29 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const handleAddToWishlist = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation
     e.stopPropagation(); // Prevent event bubbling
-    
+
     if (!product) {
       toast.error("Product not available");
       return;
     }
-    
+
     // Prevent multiple clicks
     if (isWishlistLoading) return;
-    
+
     // Optimistic update
     if (isInWishlist) {
       removeFromWishlist(product.id);
     } else {
       addToWishlist(product.id);
     }
-    
+
     setLoadingState(product.id, true);
-    
+
     try {
       const result = await toggleWishlistItem({
         productId: product.id,
       });
-      
+
       if (result.success) {
         toast.success(result.action === "added" ? "Added to wishlist!" : "Removed from wishlist!");
       } else {
@@ -234,26 +229,26 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
   const secondaryLabel = product.secondaryCategory
     ? (() => {
-        for (const primary of Categories) {
-          const secondary = primary.children.find(({ id }) => id === product.secondaryCategory);
-          if (secondary) return secondary.name;
-        }
-        return null;
-      })()
+      for (const primary of Categories) {
+        const secondary = primary.children.find(({ id }) => id === product.secondaryCategory);
+        if (secondary) return secondary.name;
+      }
+      return null;
+    })()
     : null;
 
   const tertiaryLabel = product.tertiaryCategory
     ? (() => {
-        for (const primary of Categories) {
-          for (const secondary of primary.children) {
-            if ("children" in secondary && secondary.children) {
-              const tertiary = secondary.children.find(({ id }) => id === product.tertiaryCategory);
-              if (tertiary) return tertiary.name;
-            }
+      for (const primary of Categories) {
+        for (const secondary of primary.children) {
+          if ("children" in secondary && secondary.children) {
+            const tertiary = secondary.children.find(({ id }) => id === product.tertiaryCategory);
+            if (tertiary) return tertiary.name;
           }
         }
-        return null;
-      })()
+      }
+      return null;
+    })()
     : null;
 
   // Build category display string
@@ -316,7 +311,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
           {isLoading && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
-          
+
           {/* Wishlist Button */}
           <Button
             variant="ghost"
@@ -325,12 +320,11 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             disabled={isWishlistLoading}
             className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover/main:opacity-100 transition-opacity duration-200 z-10"
           >
-            <Heart 
-              className={`h-4 w-4 transition-colors ${
-                isInWishlist 
-                  ? "fill-purple-600 text-purple-600" 
+            <Heart
+              className={`h-4 w-4 transition-colors ${isInWishlist
+                  ? "fill-purple-600 text-purple-600"
                   : "text-gray-600 hover:text-purple-600"
-              }`} 
+                }`}
             />
           </Button>
         </div>

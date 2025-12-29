@@ -151,11 +151,11 @@ export async function getAllSellers() {
       count: applications.length,
       firstApplication: applications[0]
         ? {
-            id: applications[0].id,
-            userId: applications[0].userId,
-            username: applications[0].user?.username,
-            email: applications[0].user?.email,
-          }
+          id: applications[0].id,
+          userId: applications[0].userId,
+          username: applications[0].user?.username,
+          email: applications[0].user?.email,
+        }
         : null,
     });
 
@@ -190,10 +190,10 @@ export async function getAllSellers() {
       error:
         error instanceof Error
           ? {
-              message: error.message,
-              stack: error.stack,
-              name: error.name,
-            }
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          }
           : error,
       timestamp: new Date().toISOString(),
     });
@@ -307,10 +307,10 @@ export async function getActiveSellersForProductCreation() {
       error:
         error instanceof Error
           ? {
-              message: error.message,
-              stack: error.stack,
-              name: error.name,
-            }
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          }
           : error,
       timestamp: new Date().toISOString(),
     });
@@ -506,11 +506,11 @@ export async function getUnapprovedSellers() {
       count: applications.length,
       firstApplication: applications[0]
         ? {
-            id: applications[0].id,
-            userId: applications[0].userId,
-            username: applications[0].user?.username,
-            email: applications[0].user?.email,
-          }
+          id: applications[0].id,
+          userId: applications[0].userId,
+          username: applications[0].user?.username,
+          email: applications[0].user?.email,
+        }
         : null,
     });
 
@@ -547,10 +547,10 @@ export async function getUnapprovedSellers() {
       error:
         error instanceof Error
           ? {
-              message: error.message,
-              stack: error.stack,
-              name: error.name,
-            }
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          }
           : error,
       timestamp: new Date().toISOString(),
     });
@@ -1290,12 +1290,7 @@ export async function getUserPermissions(userId: string) {
             totalProducts: true,
             acceptsCustom: true,
             shopCountry: true,
-            isWomanOwned: true,
-            isMinorityOwned: true,
-            isLGBTQOwned: true,
-            isVeteranOwned: true,
-            isSustainable: true,
-            isCharitable: true,
+            shopValues: true,
             valuesPreferNotToSay: true,
             createdAt: true,
             updatedAt: true,
@@ -2092,12 +2087,12 @@ export async function getAdminsForSellerApplicationNotification() {
       `Your user record:`,
       yourUserRecord
         ? {
-            id: yourUserRecord.id,
-            username: yourUserRecord.username,
-            email: yourUserRecord.email,
-            role: yourUserRecord.role,
-            status: yourUserRecord.status,
-          }
+          id: yourUserRecord.id,
+          username: yourUserRecord.username,
+          email: yourUserRecord.email,
+          role: yourUserRecord.role,
+          status: yourUserRecord.status,
+        }
         : null
     );
 

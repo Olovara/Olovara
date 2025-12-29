@@ -60,12 +60,7 @@ type ProductWithSeller = {
   seller: {
     shopName: string;
     shopNameSlug: string;
-    isWomanOwned: boolean;
-    isMinorityOwned: boolean;
-    isLGBTQOwned: boolean;
-    isVeteranOwned: boolean;
-    isSustainable: boolean;
-    isCharitable: boolean;
+    shopValues: string[];
     excludedCountries: string[] | null;
   } | null;
 };
@@ -117,12 +112,7 @@ const PRODUCT_SELECT_FIELDS = {
     select: {
       shopName: true,
       shopNameSlug: true,
-      isWomanOwned: true,
-      isMinorityOwned: true,
-      isLGBTQOwned: true,
-      isVeteranOwned: true,
-      isSustainable: true,
-      isCharitable: true,
+      shopValues: true,
       excludedCountries: true,
     },
   },
@@ -292,15 +282,10 @@ export async function LoadRows({ category }: iAppProps) {
               saleEndTime: product.saleEndTime || null,
               seller: product.seller
                 ? {
-                    shopName: product.seller.shopName,
-                    shopNameSlug: product.seller.shopNameSlug,
-                    isWomanOwned: product.seller.isWomanOwned || false,
-                    isMinorityOwned: product.seller.isMinorityOwned || false,
-                    isLGBTQOwned: product.seller.isLGBTQOwned || false,
-                    isVeteranOwned: product.seller.isVeteranOwned || false,
-                    isSustainable: product.seller.isSustainable || false,
-                    isCharitable: product.seller.isCharitable || false,
-                  }
+                  shopName: product.seller.shopName,
+                  shopNameSlug: product.seller.shopNameSlug,
+                  shopValues: product.seller.shopValues || [],
+                }
                 : null,
             }}
             index={index}
