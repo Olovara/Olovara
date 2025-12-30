@@ -283,6 +283,32 @@ app
 
       const requestStart = Date.now();
       const url = req.url || "unknown";
+      const method = req.method || "UNKNOWN";
+
+      // Extract route information for better error logging
+      // For server actions, try to extract the action ID from the URL
+      let routeInfo = {
+        method,
+        url,
+        path: url.split("?")[0], // Remove query params for cleaner path
+        isServerAction: false,
+        actionId: null,
+      };
+
+      // Check if this is a server action and extract action ID
+      if (url.includes("/_next/server-actions")) {
+        routeInfo.isServerAction = true;
+        // Server action URLs look like: /_next/server-actions/[actionId]
+        const actionMatch = url.match(/\/_next\/server-actions\/([^?]+)/);
+        if (actionMatch) {
+          routeInfo.actionId = actionMatch[1];
+        }
+      }
+
+      // Extract API route path if it's an API call
+      if (url.startsWith("/api/")) {
+        routeInfo.apiRoute = url.split("?")[0];
+      }
 
       // Don't log requests - only log errors to reduce noise
 
@@ -290,10 +316,21 @@ app
       // Server actions may need to call Stripe, database, etc. - give them more time
       const isServerAction = url.includes("/_next/server-actions");
       const timeoutDuration = isServerAction ? 120000 : 60000; // 2 min for server actions, 1 min for others
-      
+
       req.setTimeout(timeoutDuration, () => {
         if (!res.headersSent && !res.writableEnded) {
-          console.warn(`[TIMEOUT] Request to ${url} timed out after ${timeoutDuration / 1000}s`);
+          console.warn(
+            `[TIMEOUT] ${method} ${routeInfo.path} timed out after ${timeoutDuration / 1000}s`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              duration: `${timeoutDuration / 1000}s`,
+            }
+          );
           try {
             res.statusCode = 408;
             res.end("Request Timeout");
@@ -307,7 +344,18 @@ app
       // CRITICAL: Don't interfere with Next.js response handling
       res.setTimeout(timeoutDuration, () => {
         if (!res.headersSent && !res.writableEnded) {
-          console.warn(`[TIMEOUT] Response for ${url} timed out after ${timeoutDuration / 1000}s`);
+          console.warn(
+            `[TIMEOUT] Response for ${method} ${routeInfo.path} timed out after ${timeoutDuration / 1000}s`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              duration: `${timeoutDuration / 1000}s`,
+            }
+          );
           try {
             res.statusCode = 504;
             res.end("Gateway Timeout");
@@ -322,21 +370,49 @@ app
       req.on("error", (error) => {
         // Log connection errors that indicate problems (not just normal disconnects)
         if (error.code === "ERR_HTTP_REQUEST_TIMEOUT") {
-          // Only log if it's not a server action (server actions get longer timeout)
-          if (!url.includes("/_next/server-actions")) {
-            console.warn(
-              `[TIMEOUT] Request to ${req.url} timed out - server too slow`
-            );
-          }
-          // Server action timeouts are expected for slow external API calls
+          // Log all timeouts with full context - even server actions need visibility
+          console.warn(
+            `[TIMEOUT] ${method} ${routeInfo.path} request timed out`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              errorCode: error.code,
+              message: "Request timeout - server too slow",
+            }
+          );
         } else if (error.code === "HPE_INVALID_EOF_STATE") {
           // This often happens when server actions fail and client disconnects
           console.warn(
-            `[PARSE_ERROR] Parse error on ${req.url} - possible server action failure`
+            `[PARSE_ERROR] Parse error on ${method} ${routeInfo.path} - possible server action failure`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              errorCode: error.code,
+            }
           );
         } else if (error.code !== "ECONNRESET" && error.code !== "EPIPE") {
           // ECONNRESET/EPIPE are normal client disconnects, but log others
-          console.error("Request error:", error);
+          console.error(
+            `[REQUEST_ERROR] Error on ${method} ${routeInfo.path}`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              errorCode: error.code,
+              errorMessage: error.message,
+            }
+          );
         }
       });
 
@@ -344,10 +420,32 @@ app
         // Log response errors that indicate problems
         if (error.code === "ERR_HTTP_REQUEST_TIMEOUT") {
           console.warn(
-            `[TIMEOUT] Response for ${req.url} timed out - server too slow`
+            `[TIMEOUT] Response for ${method} ${routeInfo.path} timed out`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              errorCode: error.code,
+              message: "Response timeout - server too slow",
+            }
           );
         } else if (error.code !== "ECONNRESET" && error.code !== "EPIPE") {
-          console.error("Response error:", error);
+          console.error(
+            `[RESPONSE_ERROR] Error on ${method} ${routeInfo.path}`,
+            {
+              method,
+              url,
+              path: routeInfo.path,
+              isServerAction: routeInfo.isServerAction,
+              actionId: routeInfo.actionId,
+              apiRoute: routeInfo.apiRoute,
+              errorCode: error.code,
+              errorMessage: error.message,
+            }
+          );
         }
       });
 
@@ -391,8 +489,18 @@ app
           // Only handle errors if response hasn't been sent
           if (!res.headersSent && !res.writableEnded && !res.destroyed) {
             console.error(
-              `[HANDLER_ERROR] Error in Next.js handler for ${url}:`,
-              handlerError
+              `[HANDLER_ERROR] Error in Next.js handler for ${method} ${routeInfo.path}`,
+              {
+                method,
+                url,
+                path: routeInfo.path,
+                isServerAction: routeInfo.isServerAction,
+                actionId: routeInfo.actionId,
+                apiRoute: routeInfo.apiRoute,
+                errorMessage: handlerError?.message,
+                errorCode: handlerError?.code,
+                errorStack: handlerError?.stack,
+              }
             );
             // Try to send error response if possible
             try {
@@ -429,10 +537,20 @@ app
             url.includes("/favicon.ico");
 
           if (!isStaticAsset) {
-            console.error(`[ERROR] Error handling request to ${url}:`, {
-              message: error?.message,
-              code: error?.code,
-            });
+            console.error(
+              `[ERROR] Error handling ${method} ${routeInfo.path}`,
+              {
+                method,
+                url,
+                path: routeInfo.path,
+                isServerAction: routeInfo.isServerAction,
+                actionId: routeInfo.actionId,
+                apiRoute: routeInfo.apiRoute,
+                errorMessage: error?.message,
+                errorCode: error?.code,
+                errorStack: error?.stack,
+              }
+            );
           }
         }
 
@@ -460,13 +578,34 @@ app
 
     // Handle server-level connection errors
     httpServer.on("clientError", (err, socket) => {
+      // Try to extract request info from socket if available
+      const socketUrl = socket?._httpMessage?.url || "unknown";
+      const socketMethod = socket?._httpMessage?.method || "UNKNOWN";
+
       // Log errors that indicate problems (not just normal disconnects)
       if (err.code === "HPE_INVALID_EOF_STATE") {
         console.error(
-          "[CRITICAL] Client parse error - possible server action/build mismatch"
+          `[CRITICAL] Client parse error - possible server action/build mismatch`,
+          {
+            method: socketMethod,
+            url: socketUrl,
+            path: socketUrl.split("?")[0],
+            errorCode: err.code,
+            errorMessage: err.message,
+          }
         );
       } else if (err.code !== "ECONNRESET" && err.code !== "EPIPE") {
-        console.error("Client error:", err);
+        console.error(
+          `[CLIENT_ERROR] Client error on ${socketMethod} ${socketUrl.split("?")[0]}`,
+          {
+            method: socketMethod,
+            url: socketUrl,
+            path: socketUrl.split("?")[0],
+            errorCode: err.code,
+            errorMessage: err.message,
+            errorStack: err.stack,
+          }
+        );
       }
 
       // Only send error response if socket is still writable
