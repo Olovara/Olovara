@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // Simple in-memory rate limiter
 class RateLimiter {
@@ -220,9 +220,7 @@ export async function GET(req: Request) {
     const oneHourAgo = now - 60 * 60 * 1000;
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
-    const fresh = rates.filter(
-      (r) => r.lastUpdated.getTime() >= oneHourAgo
-    );
+    const fresh = rates.filter((r) => r.lastUpdated.getTime() >= oneHourAgo);
     const stale = rates.filter(
       (r) =>
         r.lastUpdated.getTime() < oneHourAgo &&
@@ -236,7 +234,8 @@ export async function GET(req: Request) {
       fresh: fresh.length,
       stale: stale.length,
       veryStale: veryStale.length,
-      oldestUpdate: rates.length > 0 ? rates[rates.length - 1].lastUpdated : null,
+      oldestUpdate:
+        rates.length > 0 ? rates[rates.length - 1].lastUpdated : null,
       newestUpdate: rates.length > 0 ? rates[0].lastUpdated : null,
     });
   } catch (error) {
@@ -247,5 +246,3 @@ export async function GET(req: Request) {
     );
   }
 }
-
-

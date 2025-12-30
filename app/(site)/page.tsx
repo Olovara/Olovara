@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 
 // Force dynamic rendering - this page uses getUserCountryCode() which uses headers()
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
@@ -48,9 +48,9 @@ export default function Home() {
   return (
     <section className="max-w-7xl mx-auto px-4 md:px-8 mb-24">
       <div className="py-20 mx-auto text-center flex flex-col items-center max-w-3xl">
-      <h1 
+        <h1
           className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
-          style={{ fontFamily: 'Noto Serif Display, ui-serif, serif' }}
+          style={{ fontFamily: "Noto Serif Display, ui-serif, serif" }}
         >
           Your marketplace for high-quality{" "}
           <span className="text-purple-600">handcrafted goods</span>.

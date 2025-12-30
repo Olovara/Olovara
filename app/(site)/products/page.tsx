@@ -22,7 +22,7 @@ import { getFollowedSellersFeed } from "@/actions/followActions";
 import { SearchAnalyticsTracker } from "@/components/SearchAnalyticsTracker";
 
 // Force dynamic rendering - this page uses getUserCountryCode() which uses headers()
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   searchParams,
@@ -160,51 +160,51 @@ export default async function ProductsPage({
       },
       ...(searchParams.q
         ? [
-          {
-            name: {
-              contains: searchParams.q,
-              mode: Prisma.QueryMode.insensitive,
+            {
+              name: {
+                contains: searchParams.q,
+                mode: Prisma.QueryMode.insensitive,
+              },
             },
-          },
-        ]
+          ]
         : []),
       ...(categories.length > 0
         ? [
-          {
-            primaryCategory: {
-              in: categories,
+            {
+              primaryCategory: {
+                in: categories,
+              },
             },
-          },
-        ]
+          ]
         : []),
       ...(secondaryCategories.length > 0
         ? [
-          {
-            secondaryCategory: {
-              in: secondaryCategories,
+            {
+              secondaryCategory: {
+                in: secondaryCategories,
+              },
             },
-          },
-        ]
+          ]
         : []),
       ...(tertiaryCategories.length > 0
         ? [
-          {
-            tertiaryCategory: {
-              in: tertiaryCategories,
+            {
+              tertiaryCategory: {
+                in: tertiaryCategories,
+              },
             },
-          },
-        ]
+          ]
         : []),
       ...(values.length > 0
         ? [
-          {
-            seller: {
-              OR: values.map((value) => ({
-                [value]: true,
-              })),
+            {
+              seller: {
+                OR: values.map((value) => ({
+                  [value]: true,
+                })),
+              },
             },
-          },
-        ]
+          ]
         : []),
     ],
   };
@@ -331,10 +331,10 @@ export default async function ProductsPage({
   // Apply location filtering in memory
   let filteredProducts = userCountryCode
     ? productsWithSellerInfo.filter((product) => {
-      if (!product.seller) return true;
-      const excludedCountries = product.seller.excludedCountries || [];
-      return !excludedCountries.includes(userCountryCode);
-    })
+        if (!product.seller) return true;
+        const excludedCountries = product.seller.excludedCountries || [];
+        return !excludedCountries.includes(userCountryCode);
+      })
     : productsWithSellerInfo;
 
   // Apply random sorting for "relevant" when no filters are applied

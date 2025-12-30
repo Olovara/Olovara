@@ -82,10 +82,18 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
             // Handle redirect client-side after successful login
             if (data.redirectTo) {
-              // Small delay to show success message, then redirect
+              // CRITICAL: Use window.location.href instead of router.push()
+              // This forces a full page reload, ensuring:
+              // 1. Session cookie is properly sent with the request
+              // 2. Middleware can properly validate the session
+              // 3. No race condition where session isn't ready yet
+              //
+              // Small delay to show success message and ensure session cookie is set
               setTimeout(() => {
-                router.push(data.redirectTo);
-              }, 500);
+                // Force full page reload to ensure session cookie is sent
+                // This prevents race conditions where middleware doesn't see the session
+                window.location.href = data.redirectTo;
+              }, 800);
             }
           }
 

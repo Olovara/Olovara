@@ -185,15 +185,20 @@ export default auth(async (req) => {
       req.cookies.get("next-auth.session-token")?.value ||
       req.cookies.get("__Secure-next-auth.session-token")?.value;
 
-    // If there's a valid session cookie (even if not yet validated by auth()),
+    // CRITICAL: If there's a valid session cookie (even if not yet validated by auth()),
     // allow through - server-side page will validate and redirect if needed
     // This prevents the redirect loop when session is being established after login
+    // 
+    // RACE CONDITION FIX: After login, the session cookie is set but auth() might not
+    // have validated it yet. By checking for the cookie existence, we allow the request
+    // through and let the server-side page component validate the actual session.
     // IMPORTANT: Server-side pages MUST validate auth - this is just a timing fix
     if (hasValidSessionCookie) {
       return response;
     }
 
     // If no valid session cookie at all, redirect to login
+    // This means the user hasn't logged in or their session expired
     let callbackUrl = nextUrl.pathname;
     if (nextUrl.search) {
       callbackUrl += nextUrl.search;
