@@ -11,9 +11,16 @@ import { CountdownTimer } from "./CountdownTimer";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Heart } from "lucide-react";
 import { Button } from "./ui/button";
-import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
+import {
+  toggleWishlistItem,
+  getUserWishlists,
+} from "@/actions/wishlistActions";
 import { toast } from "sonner";
-import { useIsInWishlist, useWishlistLoading, useWishlistSync } from "@/hooks/useWishlistSync";
+import {
+  useIsInWishlist,
+  useWishlistLoading,
+  useWishlistSync,
+} from "@/hooks/useWishlistSync";
 
 interface SimplifiedProduct {
   name: string;
@@ -61,7 +68,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   // Use the sync system for wishlist state
   const isInWishlist = useIsInWishlist(product?.id || "");
   const isWishlistLoading = useWishlistLoading(product?.id || "");
-  const { addToWishlist, removeFromWishlist, setLoadingState } = useWishlistSync();
+  const { addToWishlist, removeFromWishlist, setLoadingState } =
+    useWishlistSync();
 
   // Check if sale is currently active
   const isOnSale = (() => {
@@ -104,8 +112,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   useEffect(() => {
     if (product) {
       // Get the product's currency (default to USD if not specified)
-      const productCurrency = (product.currency || 'USD').toUpperCase();
-      
+      const productCurrency = (product.currency || "USD").toUpperCase();
+
       // Format original price - pass the product's currency so it converts correctly
       formatPrice(product.price, true, productCurrency)
         .then(setConvertedPrice)
@@ -123,20 +131,29 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     }
   }, [product, formatPrice, isOnSale]);
 
-  // Check if drop is active
+  // Check if drop is active (has already happened)
   useEffect(() => {
     if (product?.dropDate && product?.dropTime) {
-      const [hours, minutes] = product.dropTime.split(":").map(Number);
-      const dropDateTime = new Date(product.dropDate);
-      dropDateTime.setHours(hours, minutes, 0, 0);
-      setIsDropActive(dropDateTime.getTime() <= new Date().getTime());
+      const dropDate = product.dropDate;
+      const dropTime = product.dropTime;
 
-      // Set up interval to check drop status
-      const interval = setInterval(() => {
-        setIsDropActive(dropDateTime.getTime() <= new Date().getTime());
-      }, 1000);
+      const checkDropStatus = () => {
+        if (!dropTime) return;
+        const [hours, minutes] = dropTime.split(":").map(Number);
+        const dropDateTime = new Date(dropDate);
+        dropDateTime.setHours(hours, minutes, 0, 0);
+        const now = new Date();
+        setIsDropActive(dropDateTime.getTime() <= now.getTime());
+      };
+
+      checkDropStatus();
+
+      // Set up interval to check drop status every second
+      const interval = setInterval(checkDropStatus, 1000);
 
       return () => clearInterval(interval);
+    } else {
+      setIsDropActive(false);
     }
   }, [product?.dropDate, product?.dropTime]);
 
@@ -197,7 +214,11 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       });
 
       if (result.success) {
-        toast.success(result.action === "added" ? "Added to wishlist!" : "Removed from wishlist!");
+        toast.success(
+          result.action === "added"
+            ? "Added to wishlist!"
+            : "Removed from wishlist!"
+        );
       } else {
         // Revert optimistic update on error
         if (result.action === "added") {
@@ -229,26 +250,30 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
 
   const secondaryLabel = product.secondaryCategory
     ? (() => {
-      for (const primary of Categories) {
-        const secondary = primary.children.find(({ id }) => id === product.secondaryCategory);
-        if (secondary) return secondary.name;
-      }
-      return null;
-    })()
+        for (const primary of Categories) {
+          const secondary = primary.children.find(
+            ({ id }) => id === product.secondaryCategory
+          );
+          if (secondary) return secondary.name;
+        }
+        return null;
+      })()
     : null;
 
   const tertiaryLabel = product.tertiaryCategory
     ? (() => {
-      for (const primary of Categories) {
-        for (const secondary of primary.children) {
-          if ("children" in secondary && secondary.children) {
-            const tertiary = secondary.children.find(({ id }) => id === product.tertiaryCategory);
-            if (tertiary) return tertiary.name;
+        for (const primary of Categories) {
+          for (const secondary of primary.children) {
+            if ("children" in secondary && secondary.children) {
+              const tertiary = secondary.children.find(
+                ({ id }) => id === product.tertiaryCategory
+              );
+              if (tertiary) return tertiary.name;
+            }
           }
         }
-      }
-      return null;
-    })()
+        return null;
+      })()
     : null;
 
   // Build category display string
@@ -261,7 +286,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const imageUrlsToUse =
     validUrls.length > 0 ? validUrls : ["/placeholder.jpg"];
 
-  const isDropProduct = product.dropDate && product.dropTime;
+  // Only show drop countdown if drop is scheduled (in the future)
+  const isDropProduct = product.dropDate && product.dropTime && !isDropActive;
 
   // Track product click if this is from a search results page
   const handleProductClick = async () => {
@@ -269,20 +295,22 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       try {
         // Get device ID
         const getDeviceId = (): string => {
-          const cookies = document.cookie.split(';');
-          const deviceCookie = cookies.find(c => c.trim().startsWith('deviceId='));
-          if (deviceCookie) return deviceCookie.split('=')[1];
-          const stored = localStorage.getItem('deviceId');
+          const cookies = document.cookie.split(";");
+          const deviceCookie = cookies.find((c) =>
+            c.trim().startsWith("deviceId=")
+          );
+          if (deviceCookie) return deviceCookie.split("=")[1];
+          const stored = localStorage.getItem("deviceId");
           if (stored) return stored;
-          return '';
+          return "";
         };
 
         const deviceId = getDeviceId();
         if (deviceId) {
           // Update search analytics with click data
-          await fetch('/api/analytics/search', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/analytics/search", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               clickProductId: product.id,
               deviceId,
@@ -292,7 +320,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
         }
       } catch (error) {
         // Silently fail - don't interrupt user experience
-        console.warn('Failed to track product click:', error);
+        console.warn("Failed to track product click:", error);
       }
     }
   };
@@ -321,10 +349,11 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
             className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover/main:opacity-100 transition-opacity duration-200 z-10"
           >
             <Heart
-              className={`h-4 w-4 transition-colors ${isInWishlist
+              className={`h-4 w-4 transition-colors ${
+                isInWishlist
                   ? "fill-purple-600 text-purple-600"
                   : "text-gray-600 hover:text-purple-600"
-                }`}
+              }`}
             />
           </Button>
         </div>

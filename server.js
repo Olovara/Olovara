@@ -577,34 +577,99 @@ app
     });
 
     // Handle server-level connection errors
+    // NOTE: This fires BEFORE the request is fully parsed, so URL/method may not be available
+    // We'll try multiple methods to extract request info from the socket buffer
     httpServer.on("clientError", (err, socket) => {
-      // Try to extract request info from socket if available
-      const socketUrl = socket?._httpMessage?.url || "unknown";
-      const socketMethod = socket?._httpMessage?.method || "UNKNOWN";
+      // Try multiple methods to extract request info
+      let requestInfo = {
+        method: "UNKNOWN",
+        url: "unknown",
+        path: "unknown",
+        rawFirstLine: null,
+        remoteAddress: socket?.remoteAddress || "unknown",
+        remotePort: socket?.remotePort || "unknown",
+      };
+
+      // Method 1: Try to get from _httpMessage (might not exist yet if error during parsing)
+      if (socket?._httpMessage) {
+        requestInfo.method = socket._httpMessage.method || "UNKNOWN";
+        requestInfo.url = socket._httpMessage.url || "unknown";
+        requestInfo.path = requestInfo.url.split("?")[0];
+      }
+
+      // Method 2: Try to read from socket's readable buffer
+      // The socket might have the raw HTTP request line in its buffer before parsing fails
+      if (socket && socket.readable) {
+        try {
+          // Check if there's buffered data we can peek at
+          const readableState = socket._readableState;
+          if (
+            readableState &&
+            readableState.buffer &&
+            readableState.buffer.length > 0
+          ) {
+            // Try to get the first chunk
+            let firstChunk = null;
+            if (readableState.buffer.head) {
+              firstChunk = readableState.buffer.head.data;
+            } else if (readableState.buffer.length > 0) {
+              // Try alternative buffer access
+              const chunks = Array.from(readableState.buffer);
+              if (chunks.length > 0) {
+                firstChunk = chunks[0];
+              }
+            }
+
+            if (firstChunk && Buffer.isBuffer(firstChunk)) {
+              // Extract first line: "METHOD /path HTTP/1.1"
+              const text = firstChunk.toString(
+                "utf8",
+                0,
+                Math.min(300, firstChunk.length)
+              );
+              const lineMatch = text.match(/^([A-Z]+)\s+([^\s]+)\s+HTTP/);
+              if (lineMatch) {
+                requestInfo.method = lineMatch[1];
+                requestInfo.url = lineMatch[2];
+                requestInfo.path = requestInfo.url.split("?")[0];
+                requestInfo.rawFirstLine = text.split("\n")[0].trim();
+              }
+            }
+          }
+        } catch (e) {
+          // Failed to read from buffer - that's okay, we'll use defaults
+        }
+      }
+
+      // Build context object for logging
+      const errorContext = {
+        method: requestInfo.method,
+        url: requestInfo.url,
+        path: requestInfo.path,
+        remoteAddress: requestInfo.remoteAddress,
+        remotePort: requestInfo.remotePort,
+        errorCode: err.code,
+        errorMessage: err.message,
+        hasHttpMessage: !!socket?._httpMessage,
+        note:
+          requestInfo.method === "UNKNOWN"
+            ? "Request not fully parsed yet - error occurred during HTTP parsing. This usually means the client sent malformed data or disconnected mid-request."
+            : "Request info extracted from socket buffer",
+        ...(requestInfo.rawFirstLine && {
+          rawFirstLine: requestInfo.rawFirstLine,
+        }),
+      };
 
       // Log errors that indicate problems (not just normal disconnects)
       if (err.code === "HPE_INVALID_EOF_STATE") {
         console.error(
           `[CRITICAL] Client parse error - possible server action/build mismatch`,
-          {
-            method: socketMethod,
-            url: socketUrl,
-            path: socketUrl.split("?")[0],
-            errorCode: err.code,
-            errorMessage: err.message,
-          }
+          errorContext
         );
       } else if (err.code !== "ECONNRESET" && err.code !== "EPIPE") {
         console.error(
-          `[CLIENT_ERROR] Client error on ${socketMethod} ${socketUrl.split("?")[0]}`,
-          {
-            method: socketMethod,
-            url: socketUrl,
-            path: socketUrl.split("?")[0],
-            errorCode: err.code,
-            errorMessage: err.message,
-            errorStack: err.stack,
-          }
+          `[CLIENT_ERROR] Client error on ${requestInfo.method} ${requestInfo.path}`,
+          errorContext
         );
       }
 

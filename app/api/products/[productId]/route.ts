@@ -503,6 +503,11 @@ export async function PATCH(
       materialTags: updateData.materialTags,
       options: updateData.options, // Add options field
       onSale: updateData.onSale,
+      discount: updateData.discount,
+      saleStartDate: updateData.saleStartDate,
+      saleEndDate: updateData.saleEndDate,
+      saleStartTime: updateData.saleStartTime,
+      saleEndTime: updateData.saleEndTime,
       freeShipping: updateData.freeShipping,
       NSFW: updateData.NSFW,
       isTestProduct: updateData.isTestProduct,

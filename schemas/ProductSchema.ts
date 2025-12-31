@@ -708,17 +708,42 @@ export const ProductSchema = baseProductSchema
           });
         }
 
-        // If start date is provided, validate it's before end date
+        // If start date is provided, validate it's before end date (including time)
         if (
           isValidStartDate &&
           isValidEndDate &&
           startDateValue &&
           endDateValue
         ) {
-          if (startDateValue >= endDateValue) {
+          // Create date objects with times if provided
+          const startDateTime = new Date(startDateValue);
+          const endDateTime = new Date(endDateValue);
+
+          // Apply start time if provided
+          if (
+            startTime &&
+            typeof startTime === "string" &&
+            startTime.trim() !== ""
+          ) {
+            const [hours, minutes] = startTime.split(":").map(Number);
+            if (!isNaN(hours) && !isNaN(minutes)) {
+              startDateTime.setHours(hours, minutes, 0, 0);
+            }
+          }
+
+          // Apply end time if provided
+          if (endTime && typeof endTime === "string" && endTime.trim() !== "") {
+            const [hours, minutes] = endTime.split(":").map(Number);
+            if (!isNaN(hours) && !isNaN(minutes)) {
+              endDateTime.setHours(hours, minutes, 0, 0);
+            }
+          }
+
+          if (startDateTime >= endDateTime) {
             ctx.addIssue({
               code: "custom",
-              message: "Sale start date must be before the sale end date.",
+              message:
+                "Sale start date/time must be before the sale end date/time.",
               path: ["saleStartDate"],
             });
           }
@@ -764,13 +789,27 @@ export const ProductSchema = baseProductSchema
         });
       }
 
-      // Validate drop date is in the future
+      // Validate drop date is in the future (including time)
       if (isValidDropDate && dropDateValue) {
+        const dropDateTime = new Date(dropDateValue);
+
+        // Apply drop time if provided
+        if (
+          data.dropTime &&
+          typeof data.dropTime === "string" &&
+          data.dropTime.trim() !== ""
+        ) {
+          const [hours, minutes] = data.dropTime.split(":").map(Number);
+          if (!isNaN(hours) && !isNaN(minutes)) {
+            dropDateTime.setHours(hours, minutes, 0, 0);
+          }
+        }
+
         const now = new Date();
-        if (dropDateValue <= now) {
+        if (dropDateTime <= now) {
           ctx.addIssue({
             code: "custom",
-            message: "Drop date must be in the future.",
+            message: "Drop date/time must be in the future.",
             path: ["dropDate"],
           });
         }

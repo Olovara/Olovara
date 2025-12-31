@@ -3,16 +3,46 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarIcon, Edit, Eye, TrendingUp, Clock, DollarSign } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  CalendarIcon,
+  Edit,
+  Eye,
+  TrendingUp,
+  Clock,
+  DollarSign,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -38,7 +68,9 @@ interface ProductSalesManagerProps {
   sellerId: string;
 }
 
-export default function ProductSalesManager({ sellerId }: ProductSalesManagerProps) {
+export default function ProductSalesManager({
+  sellerId,
+}: ProductSalesManagerProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -85,10 +117,30 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
 
   const updateProductSale = async (productId: string, saleData: any) => {
     try {
+      // Ensure all sale-related fields are included and properly formatted
+      const updatePayload = {
+        onSale: saleData.onSale,
+        discount: saleData.onSale ? saleData.discount : null,
+        saleStartDate:
+          saleData.onSale && saleData.saleStartDate
+            ? saleData.saleStartDate.toISOString()
+            : null,
+        saleEndDate:
+          saleData.onSale && saleData.saleEndDate
+            ? saleData.saleEndDate.toISOString()
+            : null,
+        saleStartTime:
+          saleData.onSale && saleData.saleStartTime
+            ? saleData.saleStartTime
+            : null,
+        saleEndTime:
+          saleData.onSale && saleData.saleEndTime ? saleData.saleEndTime : null,
+      };
+
       const response = await fetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(saleData),
+        body: JSON.stringify(updatePayload),
       });
 
       if (response.ok) {
@@ -96,7 +148,8 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
         fetchProducts();
         setEditingProduct(null);
       } else {
-        toast.error("Failed to update sale");
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to update sale");
       }
     } catch (error) {
       console.error("Error updating sale:", error);
@@ -106,22 +159,42 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
 
   const getSaleStatus = (product: Product) => {
     if (!product.onSale) return "NOT_ON_SALE";
-    
-    const now = new Date();
-    const startDate = product.saleStartDate ? new Date(product.saleStartDate) : null;
-    const endDate = product.saleEndDate ? new Date(product.saleEndDate) : null;
 
-    if (startDate && now < startDate) return "SCHEDULED";
-    if (endDate && now > endDate) return "EXPIRED";
+    const now = new Date();
+
+    // Check sale start date/time
+    if (product.saleStartDate) {
+      const saleStart = new Date(product.saleStartDate);
+      if (product.saleStartTime) {
+        const [hours, minutes] = product.saleStartTime.split(":").map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      if (now < saleStart) return "SCHEDULED";
+    }
+
+    // Check sale end date/time
+    if (product.saleEndDate) {
+      const saleEnd = new Date(product.saleEndDate);
+      if (product.saleEndTime) {
+        const [hours, minutes] = product.saleEndTime.split(":").map(Number);
+        saleEnd.setHours(hours, minutes, 0, 0);
+      }
+      if (now > saleEnd) return "EXPIRED";
+    }
+
     return "ACTIVE";
   };
 
   const getSaleStatusBadge = (product: Product) => {
     const status = getSaleStatus(product);
-    
+
     switch (status) {
       case "ACTIVE":
-        return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            Active
+          </Badge>
+        );
       case "SCHEDULED":
         return <Badge variant="secondary">Scheduled</Badge>;
       case "EXPIRED":
@@ -131,7 +204,7 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
     }
   };
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = products.filter((product) => {
     const status = getSaleStatus(product);
     switch (filter) {
       case "onSale":
@@ -147,13 +220,17 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
 
   // Calculate real statistics
   const calculateStats = () => {
-    const activeSales = products.filter(p => getSaleStatus(p) === "ACTIVE").length;
-    const scheduledSales = products.filter(p => getSaleStatus(p) === "SCHEDULED").length;
-    const productsOnSale = products.filter(p => p.onSale).length;
-    
+    const activeSales = products.filter(
+      (p) => getSaleStatus(p) === "ACTIVE"
+    ).length;
+    const scheduledSales = products.filter(
+      (p) => getSaleStatus(p) === "SCHEDULED"
+    ).length;
+    const productsOnSale = products.filter((p) => p.onSale).length;
+
     const totalDiscount = products.reduce((sum, p) => {
       if (p.onSale && p.discount && getSaleStatus(p) === "ACTIVE") {
-        const discountAmount = (p.price * p.discount / 100);
+        const discountAmount = (p.price * p.discount) / 100;
         return sum + discountAmount;
       }
       return sum;
@@ -183,7 +260,7 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
             Manage sales and discounts for your products
           </p>
         </div>
-        
+
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48">
             <SelectValue />
@@ -229,7 +306,9 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
               <DollarSign className="h-4 w-4 text-orange-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Discount</p>
-                <p className="text-xl font-bold">${stats.totalDiscount.toFixed(2)}</p>
+                <p className="text-xl font-bold">
+                  ${stats.totalDiscount.toFixed(2)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -240,7 +319,9 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
             <div className="flex items-center space-x-2">
               <Eye className="h-4 w-4 text-purple-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Products on Sale</p>
+                <p className="text-sm text-muted-foreground">
+                  Products on Sale
+                </p>
                 <p className="text-xl font-bold">{stats.productsOnSale}</p>
               </div>
             </div>
@@ -290,7 +371,7 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
                       </div>
                     </div>
                   </TableCell>
-                  
+
                   <TableCell>
                     <div>
                       <p className="font-medium">
@@ -303,11 +384,9 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
                       )}
                     </div>
                   </TableCell>
-                  
-                  <TableCell>
-                    {getSaleStatusBadge(product)}
-                  </TableCell>
-                  
+
+                  <TableCell>{getSaleStatusBadge(product)}</TableCell>
+
                   <TableCell>
                     {product.discount ? (
                       <Badge variant="secondary">{product.discount}% off</Badge>
@@ -315,24 +394,32 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  
+
                   <TableCell>
                     {product.saleStartDate && product.saleEndDate ? (
                       <div className="text-sm">
-                        <p>{format(new Date(product.saleStartDate), "MMM d")}</p>
+                        <p>
+                          {format(new Date(product.saleStartDate), "MMM d")}
+                        </p>
                         <p className="text-muted-foreground">to</p>
-                        <p>{format(new Date(product.saleEndDate), "MMM d, yyyy")}</p>
+                        <p>
+                          {format(new Date(product.saleEndDate), "MMM d, yyyy")}
+                        </p>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">No dates set</span>
+                      <span className="text-muted-foreground">
+                        No dates set
+                      </span>
                     )}
                   </TableCell>
-                  
+
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={product.onSale}
-                        onCheckedChange={(checked) => handleSaleToggle(product.id, checked)}
+                        onCheckedChange={(checked) =>
+                          handleSaleToggle(product.id, checked)
+                        }
                       />
                       <Button
                         size="sm"
@@ -347,7 +434,7 @@ export default function ProductSalesManager({ sellerId }: ProductSalesManagerPro
               ))}
             </TableBody>
           </Table>
-          
+
           {filteredProducts.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No products found</p>
@@ -389,14 +476,55 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
   const [formData, setFormData] = useState({
     onSale: product.onSale,
     discount: product.discount || 0,
-    saleStartDate: product.saleStartDate ? new Date(product.saleStartDate) : undefined,
-    saleEndDate: product.saleEndDate ? new Date(product.saleEndDate) : undefined,
-    saleStartTime: product.saleStartTime || "00:00",
-    saleEndTime: product.saleEndTime || "23:59",
+    saleStartDate: product.saleStartDate
+      ? new Date(product.saleStartDate)
+      : undefined,
+    saleEndDate: product.saleEndDate
+      ? new Date(product.saleEndDate)
+      : undefined,
+    saleStartTime: product.saleStartTime || "",
+    saleEndTime: product.saleEndTime || "",
   });
+
+  // Validate that end date/time is after start date/time
+  const validateDates = () => {
+    if (!formData.onSale) return true;
+
+    if (formData.saleStartDate && formData.saleEndDate) {
+      const start = new Date(formData.saleStartDate);
+      const end = new Date(formData.saleEndDate);
+
+      if (formData.saleStartTime) {
+        const [hours, minutes] = formData.saleStartTime.split(":").map(Number);
+        start.setHours(hours, minutes, 0, 0);
+      }
+
+      if (formData.saleEndTime) {
+        const [hours, minutes] = formData.saleEndTime.split(":").map(Number);
+        end.setHours(hours, minutes, 0, 0);
+      }
+
+      if (end <= start) {
+        toast.error("Sale end date/time must be after start date/time");
+        return false;
+      }
+    }
+
+    if (formData.discount < 0 || formData.discount > 100) {
+      toast.error("Discount must be between 0 and 100");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateDates()) {
+      return;
+    }
+
     onSave(formData);
   };
 
@@ -414,27 +542,33 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
           <Label>Enable Sale</Label>
           <Switch
             checked={formData.onSale}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, onSale: checked }))}
+            onCheckedChange={(checked) =>
+              setFormData((prev) => ({ ...prev, onSale: checked }))
+            }
           />
         </div>
 
         {/* Discount Percentage */}
         <div className="space-y-2">
-          <Label htmlFor="discount">Discount Percentage</Label>
+          <Label htmlFor="discount">Discount Percentage (0-100)</Label>
           <Input
             id="discount"
             type="number"
             min="0"
             max="100"
             value={formData.discount}
-            onChange={(e) => setFormData(prev => ({ ...prev, discount: parseInt(e.target.value) || 0 }))}
+            onChange={(e) => {
+              const value = parseInt(e.target.value) || 0;
+              const clampedValue = Math.max(0, Math.min(100, value));
+              setFormData((prev) => ({ ...prev, discount: clampedValue }));
+            }}
             disabled={!formData.onSale}
           />
         </div>
 
         {/* Sale Start Date */}
         <div className="space-y-2">
-          <Label>Sale Start Date</Label>
+          <Label>Sale Start Date (Optional)</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -446,18 +580,38 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
                 disabled={!formData.onSale}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.saleStartDate ? format(formData.saleStartDate, "PPP") : "Select start date"}
+                {formData.saleStartDate
+                  ? format(formData.saleStartDate, "PPP")
+                  : "Select start date (optional)"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
                 selected={formData.saleStartDate}
-                onSelect={(date) => setFormData(prev => ({ ...prev, saleStartDate: date }))}
+                onSelect={(date) =>
+                  setFormData((prev) => ({ ...prev, saleStartDate: date }))
+                }
                 initialFocus
               />
             </PopoverContent>
           </Popover>
+        </div>
+
+        {/* Sale Start Time */}
+        <div className="space-y-2">
+          <Label>Sale Start Time (Optional)</Label>
+          <Input
+            type="time"
+            value={formData.saleStartTime}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                saleStartTime: e.target.value,
+              }))
+            }
+            disabled={!formData.onSale}
+          />
         </div>
 
         {/* Sale End Date */}
@@ -474,14 +628,18 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
                 disabled={!formData.onSale}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.saleEndDate ? format(formData.saleEndDate, "PPP") : "Select end date"}
+                {formData.saleEndDate
+                  ? format(formData.saleEndDate, "PPP")
+                  : "Select end date"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
                 selected={formData.saleEndDate}
-                onSelect={(date) => setFormData(prev => ({ ...prev, saleEndDate: date }))}
+                onSelect={(date) =>
+                  setFormData((prev) => ({ ...prev, saleEndDate: date }))
+                }
                 initialFocus
               />
             </PopoverContent>
@@ -497,7 +655,9 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
             <div className="flex items-center space-x-4">
               <div>
                 <p className="text-sm text-muted-foreground">Original Price</p>
-                <p className="text-lg font-medium">${(product.price / 100).toFixed(2)}</p>
+                <p className="text-lg font-medium">
+                  ${(product.price / 100).toFixed(2)}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Sale Price</p>
@@ -521,10 +681,8 @@ function SaleEditForm({ product, onSave, onCancel }: SaleEditFormProps) {
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">
-          Save Changes
-        </Button>
+        <Button type="submit">Save Changes</Button>
       </div>
     </form>
   );
-} 
+}

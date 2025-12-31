@@ -26,34 +26,54 @@ type DiscountSectionProps = {
 
 export function ProductDiscountSection({ form }: DiscountSectionProps) {
   const { control, watch, register, setValue } = form;
+  const saleStartDate = watch("saleStartDate");
   const saleEndDate = watch("saleEndDate");
-  const [date, setDate] = React.useState<Date | undefined>(
+  const [startDate, setStartDate] = React.useState<Date | undefined>(
+    saleStartDate instanceof Date ? saleStartDate : undefined
+  );
+  const [endDate, setEndDate] = React.useState<Date | undefined>(
     saleEndDate instanceof Date ? saleEndDate : undefined
   );
 
   // Watch the onSale state
   const onSale = watch("onSale");
 
-  // Sync local date state with form value
+  // Sync local date state with form values
+  React.useEffect(() => {
+    if (saleStartDate instanceof Date) {
+      setStartDate(saleStartDate);
+    } else if (typeof saleStartDate === "string" && saleStartDate) {
+      const parsedDate = new Date(saleStartDate);
+      if (!isNaN(parsedDate.getTime())) {
+        setStartDate(parsedDate);
+      }
+    } else {
+      setStartDate(undefined);
+    }
+  }, [saleStartDate]);
+
   React.useEffect(() => {
     if (saleEndDate instanceof Date) {
-      setDate(saleEndDate);
+      setEndDate(saleEndDate);
     } else if (typeof saleEndDate === "string" && saleEndDate) {
       const parsedDate = new Date(saleEndDate);
       if (!isNaN(parsedDate.getTime())) {
-        setDate(parsedDate);
+        setEndDate(parsedDate);
       }
     } else {
-      setDate(undefined);
+      setEndDate(undefined);
     }
   }, [saleEndDate]);
 
   React.useEffect(() => {
-    // Reset sale end date and time when the sale status changes
+    // Reset sale dates and times when the sale status changes
     if (!onSale) {
+      setValue("saleStartDate", undefined);
       setValue("saleEndDate", undefined);
+      setValue("saleStartTime", "");
       setValue("saleEndTime", "");
-      setDate(undefined);
+      setStartDate(undefined);
+      setEndDate(undefined);
     }
   }, [onSale, setValue]);
 
@@ -83,11 +103,67 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
         <div className="space-y-4">
           {/* Discount Percent */}
           <div className="flex flex-col gap-y-2">
-            <Label>Discount Percent</Label>
+            <Label>Discount Percent (0-100)</Label>
             <Input
               type="number"
+              min="0"
+              max="100"
               placeholder="Discount percent"
-              {...register("discount", { valueAsNumber: true })}
+              {...register("discount", {
+                valueAsNumber: true,
+                min: { value: 0, message: "Discount must be at least 0%" },
+                max: { value: 100, message: "Discount cannot exceed 100%" },
+              })}
+            />
+          </div>
+
+          {/* Sale Start Date */}
+          <div className="flex flex-col gap-y-2">
+            <Label>Sale Start Date (Optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[280px] justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? (
+                    format(startDate, "PPP")
+                  ) : (
+                    <span>Pick start date (optional)</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(selectedDate) => {
+                    setStartDate(selectedDate);
+                    if (selectedDate) {
+                      setValue("saleStartDate", selectedDate);
+                    } else {
+                      setValue("saleStartDate", undefined);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Sale Start Time */}
+          <div className="flex flex-col gap-y-2">
+            <Label>Sale Start Time (Optional)</Label>
+            <FormField
+              control={control}
+              name="saleStartTime"
+              render={({ field }) => (
+                <Input type="time" className="w-[280px]" {...field} />
+              )}
             />
           </div>
 
@@ -100,23 +176,26 @@ export function ProductDiscountSection({ form }: DiscountSectionProps) {
                   variant={"outline"}
                   className={cn(
                     "w-[280px] justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
+                    !endDate && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  {endDate ? (
+                    format(endDate, "PPP")
+                  ) : (
+                    <span>Pick end date</span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={date}
+                  selected={endDate}
                   onSelect={(selectedDate) => {
-                    setDate(selectedDate);
+                    setEndDate(selectedDate);
                     if (selectedDate) {
                       setValue("saleEndDate", selectedDate);
                     } else {
-                      // Clear the date if deselected
                       setValue("saleEndDate", undefined);
                     }
                   }}

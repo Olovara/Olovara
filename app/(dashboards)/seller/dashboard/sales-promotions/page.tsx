@@ -2,7 +2,13 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Tag, Calendar, DollarSign } from "lucide-react";
@@ -38,39 +44,68 @@ async function getSaleStatistics(sellerId: string) {
   });
 
   const now = new Date();
-  
-  // Calculate active sales
-  const activeSales = products.filter(product => {
+
+  // Helper function to check if sale is currently active (checks both date AND time)
+  const isSaleActive = (product: any) => {
     if (!product.onSale) return false;
-    
-    const startDate = product.saleStartDate ? new Date(product.saleStartDate) : null;
-    const endDate = product.saleEndDate ? new Date(product.saleEndDate) : null;
-    
-    if (startDate && now < startDate) return false;
-    if (endDate && now > endDate) return false;
-    
+
+    // Check sale start date/time
+    if (product.saleStartDate) {
+      const saleStart = new Date(product.saleStartDate);
+      if (product.saleStartTime) {
+        const [hours, minutes] = product.saleStartTime.split(":").map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      if (now < saleStart) return false;
+    }
+
+    // Check sale end date/time
+    if (product.saleEndDate) {
+      const saleEnd = new Date(product.saleEndDate);
+      if (product.saleEndTime) {
+        const [hours, minutes] = product.saleEndTime.split(":").map(Number);
+        saleEnd.setHours(hours, minutes, 0, 0);
+      }
+      if (now > saleEnd) return false;
+    }
+
     return true;
-  });
+  };
+
+  // Helper function to check if sale is scheduled (hasn't started yet)
+  const isSaleScheduled = (product: any) => {
+    if (!product.onSale) return false;
+
+    if (product.saleStartDate) {
+      const saleStart = new Date(product.saleStartDate);
+      if (product.saleStartTime) {
+        const [hours, minutes] = product.saleStartTime.split(":").map(Number);
+        saleStart.setHours(hours, minutes, 0, 0);
+      }
+      return now < saleStart;
+    }
+
+    return false;
+  };
+
+  // Calculate active sales
+  const activeSales = products.filter((product) => isSaleActive(product));
 
   // Calculate scheduled sales
-  const scheduledSales = products.filter(product => {
-    if (!product.onSale) return false;
-    
-    const startDate = product.saleStartDate ? new Date(product.saleStartDate) : null;
-    return startDate && now < startDate;
-  });
+  const scheduledSales = products.filter((product) => isSaleScheduled(product));
 
   // Calculate active discount codes
-  const activeDiscountCodes = discountCodes.filter(code => 
-    code.isActive && (!code.expiresAt || new Date(code.expiresAt) > now)
+  const activeDiscountCodes = discountCodes.filter(
+    (code) =>
+      code.isActive && (!code.expiresAt || new Date(code.expiresAt) > now)
   );
 
   // Calculate revenue from sales (simplified - you might want to get this from orders)
   const revenueFromSales = activeSales.reduce((total, product) => {
     if (product.discount && product.numberSold > 0) {
-      const discountAmount = (product.price * product.discount / 100);
+      const discountAmount = (product.price * product.discount) / 100;
       const salePrice = product.price - discountAmount;
-      return total + (salePrice * product.numberSold);
+      return total + salePrice * product.numberSold;
     }
     return total;
   }, 0);
@@ -85,7 +120,7 @@ async function getSaleStatistics(sellerId: string) {
 
 export default async function SalesPromotionsPage() {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     redirect("/login");
   }
@@ -112,7 +147,9 @@ export default async function SalesPromotionsPage() {
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Sales</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Active Sales
+                </p>
                 <p className="text-2xl font-bold">{stats.activeSales}</p>
               </div>
             </div>
@@ -124,7 +161,9 @@ export default async function SalesPromotionsPage() {
             <div className="flex items-center space-x-2">
               <Tag className="h-4 w-4 text-blue-600" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Discount Codes</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Active Discount Codes
+                </p>
                 <p className="text-2xl font-bold">{stats.discountCodes}</p>
               </div>
             </div>
@@ -136,7 +175,9 @@ export default async function SalesPromotionsPage() {
             <div className="flex items-center space-x-2">
               <Calendar className="h-4 w-4 text-orange-600" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Scheduled Sales</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Scheduled Sales
+                </p>
                 <p className="text-2xl font-bold">{stats.scheduledSales}</p>
               </div>
             </div>
@@ -148,8 +189,12 @@ export default async function SalesPromotionsPage() {
             <div className="flex items-center space-x-2">
               <DollarSign className="h-4 w-4 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Revenue from Sales</p>
-                <p className="text-2xl font-bold">${stats.revenueFromSales.toFixed(2)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Revenue from Sales
+                </p>
+                <p className="text-2xl font-bold">
+                  ${stats.revenueFromSales.toFixed(2)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -238,7 +283,7 @@ export default async function SalesPromotionsPage() {
                 <li>• Plan sales around holidays and seasons</li>
               </ul>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">Discount Codes</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
@@ -253,4 +298,4 @@ export default async function SalesPromotionsPage() {
       </Card>
     </div>
   );
-} 
+}
