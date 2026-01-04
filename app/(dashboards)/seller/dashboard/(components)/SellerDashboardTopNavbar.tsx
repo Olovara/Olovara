@@ -25,6 +25,7 @@ import {
   Crown,
   Globe,
   Truck,
+  Upload,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
@@ -112,6 +113,14 @@ export default async function SellerDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <Package className="mr-2 h-4 w-4" />
                     Products
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/seller/dashboard/bulk-import">
+                  <Button variant="outline" className="w-full">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Bulk Import
                   </Button>
                 </Link>
               </DialogClose>

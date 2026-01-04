@@ -6,6 +6,68 @@ const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
 const path = require("path");
 
+/**
+ * Start the bulk import worker in-process
+ * This starts the worker in the same Node.js process, so it's always available
+ */
+async function startBulkImportWorker() {
+  try {
+    // In development, TypeScript files aren't compiled to .js
+    // So we need to use tsx to run the worker in a separate process
+    // In production, Next.js compiles everything, so we can import directly
+    if (process.env.NODE_ENV === "production") {
+      // Production: import compiled .js file (Next.js build compiles TS to JS)
+      const workerModule = await import("./lib/workers/bulk-import-worker.js");
+      const worker = workerModule.getBulkImportWorker();
+      console.log("[BULK IMPORT WORKER] Worker started in-process and ready to process jobs");
+      
+      // Handle graceful shutdown
+      if (!process.listeners("SIGTERM").some(l => l.toString().includes("BULK IMPORT WORKER"))) {
+        process.on("SIGTERM", async () => {
+          console.log("[BULK IMPORT WORKER] Received SIGTERM, shutting down worker...");
+          await workerModule.closeBulkImportWorker();
+        });
+        
+        process.on("SIGINT", async () => {
+          console.log("[BULK IMPORT WORKER] Received SIGINT, shutting down worker...");
+          await workerModule.closeBulkImportWorker();
+        });
+      }
+      
+      return worker;
+    } else {
+      // Development: spawn worker in separate process using tsx
+      const { spawn } = require("child_process");
+      const workerProcess = spawn("npx", ["tsx", "scripts/bulk-import-worker.ts"], {
+        stdio: "inherit",
+        shell: true,
+        env: { ...process.env },
+      });
+      
+      workerProcess.on("error", (error) => {
+        console.error("[BULK IMPORT WORKER] Worker process error:", error.message);
+        console.warn("[BULK IMPORT WORKER] Make sure tsx is installed: yarn add -D tsx");
+      });
+      
+      workerProcess.on("exit", (code) => {
+        if (code !== 0 && code !== null) {
+          console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}`);
+          // Don't restart automatically in development - let user restart manually
+        }
+      });
+      
+      console.log("[BULK IMPORT WORKER] Worker started in separate process (development mode)");
+      return workerProcess;
+    }
+  } catch (error) {
+    console.error("[BULK IMPORT WORKER] Failed to start worker:", error.message);
+    console.warn("[BULK IMPORT WORKER] Worker will not be available. Jobs will queue but not process.");
+    if (error.stack) {
+      console.warn("[BULK IMPORT WORKER] Error details:", error.stack);
+    }
+  }
+}
+
 // CRITICAL: Handle uncaught exceptions and unhandled rejections
 // These prevent the server from crashing on connection resets and other errors
 process.on("uncaughtException", (error) => {
@@ -688,11 +750,20 @@ app
         console.error("Server error:", err);
         process.exit(1);
       })
-      .listen(port, () => {
+      .listen(port, async () => {
         console.log(
           `> Ready on ${process.env.NODE_ENV === "production" ? "https" : "http"}://${hostname}:${port}`
         );
         console.log(`> Socket.IO server is running on the same port`);
+        
+        // Start bulk import worker in-process
+        // This makes the worker always available without needing a separate process
+        if (process.env.NODE_ENV === "production" || process.env.START_WORKER !== "false") {
+          await startBulkImportWorker();
+        } else {
+          console.log("[BULK IMPORT WORKER] Worker disabled (START_WORKER=false)");
+          console.log("[BULK IMPORT WORKER] To enable, set START_WORKER=true or remove the env var");
+        }
       });
   })
   .catch((error) => {

@@ -93,6 +93,7 @@ const ImageSlider = ({ urls }: ImageSliderProps) => {
                 className='-z-10 h-full w-full object-cover object-center'
                 src={url}
                 alt='Product image'
+                unoptimized={url.includes('.ufs.sh')} // Unoptimized for UploadThing UFS URLs with dynamic subdomains
               />
             </SwiperSlide>
           ))}

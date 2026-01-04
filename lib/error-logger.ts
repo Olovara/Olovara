@@ -705,6 +705,20 @@ export function logError(options: LogErrorOptions): string {
       "We couldn't load the contact submission. Please refresh the page and try again.",
     ADMIN_UPDATE_USER_ROLE_FAILED:
       "We couldn't update the user role. Please try again or contact support.",
+
+    // Bulk Import
+    BULK_IMPORT_CSV_UPLOAD_FAILED:
+      "We couldn't process your CSV file. Please check the file format and try again.",
+    BULK_IMPORT_MAPPING_GENERATE_FAILED:
+      "We couldn't generate the column mapping. Please try again or contact support.",
+    BULK_IMPORT_MAPPING_SAVE_FAILED:
+      "We couldn't save your mapping. Please try again or contact support.",
+    BULK_IMPORT_START_FAILED:
+      "We couldn't start the bulk import. Please try again or contact support.",
+    BULK_IMPORT_STATUS_FAILED:
+      "We couldn't load the import status. Please refresh the page and try again.",
+    BULK_IMPORT_FAILED_ROWS_EXPORT_FAILED:
+      "We couldn't export the failed rows. Please try again or contact support.",
   };
 
   // Return user-friendly message or generic one

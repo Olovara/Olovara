@@ -237,6 +237,7 @@ export function ProductTable({ products }: ProductTableProps) {
                             fill
                             className="object-cover"
                             onError={() => handleImageError(product.id)}
+                            unoptimized={product.images[0]?.includes('.ufs.sh')} // Unoptimized for UploadThing UFS URLs
                           />
                         ) : (
                           <ImageIcon className="h-6 w-6 text-muted-foreground" />

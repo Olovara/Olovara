@@ -335,6 +335,10 @@ model Seller {
   website         Website?
   subscription    SellerSubscription?
 
+  // Bulk Import
+  bulkImportJobs  BulkImportJob[]
+  csvMappings     CSVMapping[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1888,4 +1892,51 @@ model QaEvent {
   @@index([event, status]) // For finding failure patterns
 }
 
+// Bulk Import System
+enum BulkImportJobStatus {
+  QUEUED
+  RUNNING
+  FAILED
+  DONE
+}
+
+model BulkImportJob {
+  id           String              @id @default(auto()) @map("_id") @db.ObjectId
+  jobId        String              @unique // Unique job identifier for tracking
+  sellerId     String
+  seller       Seller              @relation(fields: [sellerId], references: [userId], onDelete: Cascade)
+  status       BulkImportJobStatus @default(QUEUED)
+  totalRows    Int                 @default(0)
+  processed    Int                 @default(0)
+  successCount Int                 @default(0)
+  failedRows   Json[]              @default([]) // Array of { rowNumber: number, error: string, rowData: any }
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  mappingId    String? // Reference to saved CSV mapping
+  mapping      CSVMapping?         @relation(fields: [mappingId], references: [id])
+  sourcePlatform String? // Etsy, Shopify, Squarespace, WooCommerce, etc.
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([sellerId])
+  @@index([status])
+  // jobId already has @unique which creates an index, no need for @@index
+}
+
+model CSVMapping {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId      String
+  seller        Seller   @relation(fields: [sellerId], references: [userId], onDelete: Cascade)
+  sourcePlatform String  // Etsy, Shopify, Squarespace, WooCommerce, etc.
+  mapping       Json     // Map of CSV header -> product field: { "TITLE": "name", "PRICE": "price", ... }
+  name          String?  // Optional name for the mapping (e.g., "My Etsy Export")
+  isDefault     Boolean  @default(false) // Whether this is the default mapping for this platform
+  jobs          BulkImportJob[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([sellerId, sourcePlatform, isDefault]) // Only one default per platform per seller
+  @@index([sellerId])
+  @@index([sourcePlatform])
+}
 

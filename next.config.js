@@ -86,6 +86,15 @@ const nextConfig = {
         hostname: "utfs.io", // UploadThing domain
         pathname: "/**", // Allow any path under this domain
       },
+      // UploadThing UFS subdomains - Next.js doesn't support wildcards in hostname
+      // UploadThing uses dynamic subdomains like xqhto0ljhm.ufs.sh
+      // Note: New bulk imports are normalized to utfs.io format (see uploadthing-adapter.ts)
+      // This specific subdomain is for existing products that may have .ufs.sh URLs
+      {
+        protocol: "https",
+        hostname: "xqhto0ljhm.ufs.sh", // UploadThing UFS subdomain (for existing products)
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "via.placeholder.com", // Placeholder images
@@ -107,6 +116,9 @@ const nextConfig = {
     dangerouslyAllowSVG: false,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // Note: Custom loader won't work because Next.js validates hostname before calling loader
+    // For UploadThing UFS URLs with dynamic subdomains, we need to use unoptimized prop
+    // or create a custom Image component wrapper
   },
   // SEO optimizations
   compress: true,
