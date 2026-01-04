@@ -29,6 +29,11 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
 
   const { username, password, email, recaptchaToken } = validatedFields.data;
 
+  // Check if username contains "yarnnu" (case-insensitive)
+  if (username.toLowerCase().includes("yarnnu")) {
+    return { error: "Username cannot contain 'Yarnnu'." };
+  }
+
   // Get client IP address for location detection and fraud prevention
   const headersList = await headers();
   const forwarded = headersList.get('x-forwarded-for');

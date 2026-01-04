@@ -141,4 +141,8 @@ export const RegisterSchema = z
   .refine((data) => data.password === data.passwordConfirmation, {
     message: "Passwords do not match.",
     path: ["passwordConfirmation"],
+  })
+  .refine((data) => !data.username.toLowerCase().includes("yarnnu"), {
+    message: "Username cannot contain 'Yarnnu'.",
+    path: ["username"],
   });
