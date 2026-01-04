@@ -21,6 +21,13 @@ export const PRODUCT_FIELDS = [
   { field: "primaryCategory", label: "Primary Category", required: false },
   { field: "secondaryCategory", label: "Secondary Category", required: false },
   { field: "tertiaryCategory", label: "Tertiary Category", required: false },
+  // Variation fields (auto-detected by column name pattern, but can be mapped manually)
+  { field: "variation1Type", label: "Variation 1 Type", required: false },
+  { field: "variation1Name", label: "Variation 1 Name", required: false },
+  { field: "variation1Values", label: "Variation 1 Values", required: false },
+  { field: "variation2Type", label: "Variation 2 Type", required: false },
+  { field: "variation2Name", label: "Variation 2 Name", required: false },
+  { field: "variation2Values", label: "Variation 2 Values", required: false },
 ];
 
 // Common CSV header patterns for different platforms
@@ -35,6 +42,12 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     "tags[]": ["tags", "tag", "categories"],
     "materialTags[]": ["materials", "material", "fabric"],
     "images[]": ["image", "image_url", "photo", "image1", "image2", "image3", "image4", "image5", "image6", "image7", "image8", "image9", "image10"],
+    variation1Type: ["variation 1 type", "variation1type", "var1type"],
+    variation1Name: ["variation 1 name", "variation1name", "var1name"],
+    variation1Values: ["variation 1 values", "variation1values", "var1values"],
+    variation2Type: ["variation 2 type", "variation2type", "var2type"],
+    variation2Name: ["variation 2 name", "variation2name", "var2name"],
+    variation2Values: ["variation 2 values", "variation2values", "var2values"],
   },
   Shopify: {
     name: ["title", "name", "product_title"],

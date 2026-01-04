@@ -311,6 +311,7 @@ const baseProductSchema = z.object({
   taxExempt: z.boolean().default(false),
   shippingOptionId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
+  needsInventoryReview: z.boolean().default(false), // Flag for products with variations that need stock review
   // SEO fields
   metaTitle: z
     .string()
@@ -885,7 +886,8 @@ export const ProductSchema = baseProductSchema
         }
       }
 
-      if (!data.isDigital && !data.stock) {
+      // Allow DRAFT products with variations to have 0 stock (for inventory review)
+      if (!data.isDigital && !data.stock && data.status !== "DRAFT") {
         ctx.addIssue({
           code: "custom",
           message: "Stock is required for physical products.",
@@ -1021,9 +1023,11 @@ export const ProductSchema = baseProductSchema
         });
 
         // For active physical products with variations, at least one variation must have stock
+        // Allow DRAFT and HIDDEN status to have 0 stock (for inventory review)
         if (
           !data.isDigital &&
           data.status !== "DRAFT" &&
+          data.status !== "HIDDEN" &&
           !hasStockForPhysicalProduct
         ) {
           ctx.addIssue({
@@ -1101,7 +1105,8 @@ export const ProductSchema = baseProductSchema
       });
     }
 
-    if (!data.isDigital && (!data.stock || data.stock < 1)) {
+    // Allow HIDDEN/DRAFT products with variations to have 0 stock (for inventory review)
+    if (!data.isDigital && (!data.stock || data.stock < 1) && data.status !== "HIDDEN" && data.status !== "DRAFT") {
       ctx.addIssue({
         code: "custom",
         message:

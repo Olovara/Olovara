@@ -537,6 +537,9 @@ model Product {
 
   // Admin-created product tracking
   createdBy         String? // User ID of admin who created this product on behalf of seller
+
+  // Inventory review flag for products with variations that need stock review
+  needsInventoryReview Boolean @default(false) // Set to true when variations are imported with 0 stock
   createdVia        String? // 'ADMIN' | 'SELLER' - tracks how product was created
 
   @@unique([userId, sku], name: "unique_sku_per_seller")
@@ -1909,6 +1912,7 @@ model BulkImportJob {
   totalRows    Int                 @default(0)
   processed    Int                 @default(0)
   successCount Int                 @default(0)
+  needsInventoryReviewCount Int    @default(0) // Count of products that need inventory review (have variations with 0 stock)
   failedRows   Json[]              @default([]) // Array of { rowNumber: number, error: string, rowData: any }
   startedAt    DateTime?
   finishedAt   DateTime?

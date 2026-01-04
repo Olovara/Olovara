@@ -56,6 +56,7 @@ export async function GET(
         totalRows: job.totalRows,
         processed: job.processed,
         successCount: job.successCount,
+        needsInventoryReviewCount: job.needsInventoryReviewCount || 0,
         failedRows: job.failedRows,
         startedAt: job.startedAt,
         finishedAt: job.finishedAt,

@@ -9,6 +9,9 @@ import { ProductSchema } from "@/schemas/ProductSchema";
 import { getStorage } from "@/lib/storage";
 import { BulkImportJobStatus } from "@prisma/client";
 import { getCurrencyDecimals } from "@/data/units";
+import { Categories, findCategoryById, getTertiaryCategories } from "@/data/categories";
+import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { generateUniqueSKU } from "@/lib/sku-generator";
 
 const BATCH_SIZE = 50; // Process 50 rows at a time
 const MAX_ROWS = 500; // Maximum rows per job
@@ -33,6 +36,7 @@ interface ProcessedRow {
   rowNumber: number;
   success: boolean;
   productId?: string;
+  needsInventoryReview?: boolean; // Track if this product needs inventory review
   error?: string;
   rowData?: any;
 }
@@ -53,7 +57,8 @@ function normalizeRow(
     freeShipping?: boolean;
     shippingOptionId?: string;
     handlingFee?: number;
-  }
+  },
+  sellerPreferredCurrency?: string
 ): any {
   const normalized: any = {};
 
@@ -126,17 +131,33 @@ function normalizeRow(
   }
   
   // If we found image fields, add them to images array
+  // Limit to 10 images - take only first 10
   if (imageFields.length > 0) {
-    normalized.images = imageFields;
+    normalized.images = imageFields.slice(0, 10);
+    if (imageFields.length > 10) {
+      console.warn(`[BULK IMPORT] Row ${rowNumber} has ${imageFields.length} images, only using first 10`);
+    }
   }
 
   // Set default values for required fields if not provided
   if (!normalized.status) {
-    normalized.status = "HIDDEN"; // Import as hidden so sellers can review before activating
+    normalized.status = "DRAFT"; // Import as draft so sellers can review before activating
   }
   
-  if (!normalized.currency) {
-    normalized.currency = "USD"; // Default currency
+  // Normalize currency code to uppercase (usd -> USD)
+  if (normalized.currency) {
+    normalized.currency = String(normalized.currency).toUpperCase().trim();
+  } else {
+    // Use seller's preferred currency if available, otherwise default to USD
+    normalized.currency = (sellerPreferredCurrency || "USD").toUpperCase();
+  }
+  
+  // Validate currency code exists in supported currencies
+  const validCurrency = SUPPORTED_CURRENCIES.find(c => c.code === normalized.currency);
+  if (!validCurrency) {
+    // Fallback to USD if invalid currency
+    console.warn(`[BULK IMPORT] Invalid currency code "${normalized.currency}", defaulting to USD`);
+    normalized.currency = "USD";
   }
 
   if (normalized.isDigital === undefined) {
@@ -149,20 +170,78 @@ function normalizeRow(
   }
 
   // Apply categories from job settings (seller-selected categories apply to all products)
-  if (categories?.primaryCategory) {
-    normalized.primaryCategory = categories.primaryCategory;
-  } else if (!normalized.primaryCategory) {
-    normalized.primaryCategory = "Other"; // Fallback default
+  // Seller-selected categories are already validated at API level, so prioritize those
+  // Normalize category IDs to uppercase for consistency
+  let primaryCategory = categories?.primaryCategory || normalized.primaryCategory;
+  let secondaryCategory = categories?.secondaryCategory || normalized.secondaryCategory;
+  let tertiaryCategory = categories?.tertiaryCategory || normalized.tertiaryCategory;
+  
+  // Normalize category IDs to uppercase
+  if (primaryCategory) primaryCategory = String(primaryCategory).toUpperCase().trim();
+  if (secondaryCategory) secondaryCategory = String(secondaryCategory).toUpperCase().trim();
+  if (tertiaryCategory) tertiaryCategory = String(tertiaryCategory).toUpperCase().trim();
+  
+  // Validate primary category exists
+  const primaryCategoryObj = Categories.find(c => c.id === primaryCategory);
+  if (!primaryCategoryObj) {
+    // If seller provided category is invalid (shouldn't happen), use first available
+    const firstPrimary = Categories[0];
+    if (firstPrimary) {
+      console.warn(`[BULK IMPORT] Row ${rowNumber}: Invalid primary category "${primaryCategory}", using "${firstPrimary.id}"`);
+      primaryCategory = firstPrimary.id;
+    } else {
+      throw new Error(`Invalid primary category "${primaryCategory}". No valid categories available.`);
+    }
   }
   
-  if (categories?.secondaryCategory) {
-    normalized.secondaryCategory = categories.secondaryCategory;
-  } else if (!normalized.secondaryCategory) {
-    normalized.secondaryCategory = "Other"; // Fallback default
+  // Validate secondary category exists and belongs to primary
+  if (primaryCategory && secondaryCategory) {
+    const primary = Categories.find(c => c.id === primaryCategory);
+    const secondary = primary?.children.find(c => c.id === secondaryCategory);
+    if (!secondary) {
+      // Secondary doesn't belong to primary, use first available secondary
+      if (primary && primary.children.length > 0) {
+        console.warn(`[BULK IMPORT] Row ${rowNumber}: Secondary category "${secondaryCategory}" doesn't belong to primary "${primaryCategory}", using "${primary.children[0].id}"`);
+        secondaryCategory = primary.children[0].id;
+      } else {
+        throw new Error(`Primary category "${primaryCategory}" has no secondary categories available.`);
+      }
+    }
+  } else if (primaryCategory && !secondaryCategory) {
+    // No secondary provided, use first available
+    const primary = Categories.find(c => c.id === primaryCategory);
+    if (primary && primary.children.length > 0) {
+      secondaryCategory = primary.children[0].id;
+    } else {
+      throw new Error(`Primary category "${primaryCategory}" has no secondary categories available.`);
+    }
   }
-
-  if (categories?.tertiaryCategory) {
-    normalized.tertiaryCategory = categories.tertiaryCategory;
+  
+  // Validate tertiary category exists and belongs to secondary
+  if (tertiaryCategory && secondaryCategory) {
+    const validTertiaryCategories = getTertiaryCategories(secondaryCategory);
+    if (validTertiaryCategories.length > 0 && !validTertiaryCategories.includes(tertiaryCategory)) {
+      // Tertiary doesn't belong to secondary, clear it
+      console.warn(`[BULK IMPORT] Row ${rowNumber}: Tertiary category "${tertiaryCategory}" doesn't belong to secondary "${secondaryCategory}", clearing tertiary`);
+      tertiaryCategory = undefined;
+    } else if (validTertiaryCategories.length === 0) {
+      // Secondary doesn't have tertiary children, clear tertiary
+      console.warn(`[BULK IMPORT] Row ${rowNumber}: Secondary category "${secondaryCategory}" doesn't have tertiary children, clearing tertiary`);
+      tertiaryCategory = undefined;
+    }
+  } else if (tertiaryCategory && !secondaryCategory) {
+    // Tertiary provided but no secondary, clear it
+    console.warn(`[BULK IMPORT] Row ${rowNumber}: Tertiary category provided but no secondary category, clearing tertiary`);
+    tertiaryCategory = undefined;
+  }
+  
+  // Set validated categories
+  normalized.primaryCategory = primaryCategory;
+  normalized.secondaryCategory = secondaryCategory;
+  if (tertiaryCategory) {
+    normalized.tertiaryCategory = tertiaryCategory;
+  } else {
+    normalized.tertiaryCategory = null;
   }
 
   // Apply shipping settings from job settings (seller-selected shipping applies to all products)
@@ -186,10 +265,16 @@ function normalizeRow(
     normalized.handlingFee = 0;
   }
 
-  // Ensure stock is a number if provided
-  if (normalized.stock !== undefined && typeof normalized.stock === "string") {
-    const stockNum = parseFloat(normalized.stock);
-    normalized.stock = isNaN(stockNum) ? undefined : Math.floor(stockNum);
+  // Handle stock - for digital products, always set to 0 and ignore CSV value
+  if (normalized.isDigital) {
+    // Digital products should never have stock
+    normalized.stock = 0;
+  } else {
+    // For physical products, parse stock value
+    if (normalized.stock !== undefined && typeof normalized.stock === "string") {
+      const stockNum = parseFloat(normalized.stock);
+      normalized.stock = isNaN(stockNum) ? undefined : Math.floor(stockNum);
+    }
   }
 
   // Ensure price is a number if provided
@@ -200,6 +285,91 @@ function normalizeRow(
 
   // Ensure seller ID is set
   normalized.userId = normalized.userId || csvRow.sellerId;
+
+  // Parse Etsy variation columns (VARIATION 1 TYPE, VARIATION 1 NAME, VARIATION 1 VALUES, etc.)
+  // Etsy CSV format: VARIATION 1 TYPE, VARIATION 1 NAME, VARIATION 1 VALUES, VARIATION 2 TYPE, VARIATION 2 NAME, VARIATION 2 VALUES
+  const options: Array<{ label: string; values: Array<{ name: string; price: number; stock: number }> }> = [];
+  
+  // Helper function to find column by case-insensitive match or mapping
+  const findColumn = (pattern: string, mappedField?: string): string | undefined => {
+    // First check if it's mapped to a variation field
+    if (mappedField) {
+      for (const [csvHeader, productField] of Object.entries(mapping)) {
+        if (productField === mappedField) {
+          return csvHeader;
+        }
+      }
+    }
+    
+    // Then check by exact column name (case-insensitive)
+    const lowerPattern = pattern.toLowerCase();
+    for (const key of Object.keys(csvRow)) {
+      if (key.toLowerCase() === lowerPattern) {
+        return key;
+      }
+    }
+    return undefined;
+  };
+  
+  // Check for up to 2 variation groups (Etsy supports up to 2)
+  for (let i = 1; i <= 2; i++) {
+    // Try to find columns via mapping first, then by column name pattern
+    const typeKey = findColumn(`VARIATION ${i} TYPE`, `variation${i}Type`);
+    const nameKey = findColumn(`VARIATION ${i} NAME`, `variation${i}Name`);
+    const valuesKey = findColumn(`VARIATION ${i} VALUES`, `variation${i}Values`);
+    
+    const variationType = typeKey ? csvRow[typeKey]?.toString().trim() : undefined;
+    const variationName = nameKey ? csvRow[nameKey]?.toString().trim() : undefined;
+    const variationValues = valuesKey ? csvRow[valuesKey]?.toString().trim() : undefined;
+    
+    // If we have all three fields, we have a valid variation
+    if (variationType && variationName && variationValues) {
+      // Parse values (typically comma-separated)
+      const values = variationValues.split(",").map((v: string) => v.trim()).filter((v: string) => v);
+      
+      if (values.length > 0) {
+        // Get currency for price conversion (normalized.currency should be set by now)
+        const currency = normalized.currency || "USD";
+        const currencyDecimals = getCurrencyDecimals(currency);
+        const multiplier = Math.pow(10, currencyDecimals);
+        
+        // Build option structure with stock = 0 for all variations
+        // Price defaults to 0 (no additional price on top of base price)
+        // Variation prices need to be in lowest denomination (like base price)
+        options.push({
+          label: variationName, // Use the NAME field as the label (e.g., "Size", "Color")
+          values: values.map((valueName: string) => {
+            // Variation prices are in currency units (e.g., dollars), convert to lowest denomination
+            // For now, default to 0, but if CSV provides variation prices, they would need conversion
+            const variationPriceInCurrencyUnits = 0; // Default to 0 (no additional price)
+            const variationPriceInLowestDenomination = Math.round(variationPriceInCurrencyUnits * multiplier);
+            
+            return {
+              name: valueName,
+              price: variationPriceInLowestDenomination, // In lowest denomination (cents for USD, whole units for JPY)
+              stock: 0, // Set to 0 as per requirement - seller needs to review inventory
+            };
+          }),
+        });
+      }
+    }
+  }
+
+  // If variations exist, set up product for inventory review
+  if (options.length > 0) {
+    normalized.options = options;
+    normalized.status = "DRAFT"; // Set to DRAFT so product can't be purchased with 0 stock
+    normalized.needsInventoryReview = true; // Flag for seller to review inventory
+    // Don't set stock field - variations handle stock individually
+    // But we still need a stock value for validation, so set to 0
+    normalized.stock = 0;
+  } else {
+    // No variations - use normal stock from CSV
+    // Stock is already set from mapping above, or use default
+    if (normalized.stock === undefined || normalized.stock === null) {
+      normalized.stock = 0; // Default to 0 if not provided
+    }
+  }
 
   return normalized;
 }
@@ -250,11 +420,12 @@ async function processRow(
     freeShipping?: boolean;
     shippingOptionId?: string;
     handlingFee?: number;
-  }
+  },
+  sellerPreferredCurrency?: string
 ): Promise<ProcessedRow> {
   try {
     // Normalize row data (without processing images yet)
-    const normalized = normalizeRow(csvRow, mapping, rowNumber, categories, shipping);
+    const normalized = normalizeRow(csvRow, mapping, rowNumber, categories, shipping, sellerPreferredCurrency);
     
     // Set seller ID
     normalized.userId = sellerId;
@@ -372,21 +543,80 @@ async function processRow(
     validated.images = processedImages;
 
     // Ensure shortDescription is a string (Prisma requires it, but Zod can return undefined)
-    const productData = {
+    // Build product data, explicitly including shippingOptionId from normalized (not validated)
+    // because Zod might transform/remove it during validation
+    const productData: any = {
       ...validated,
       shortDescription: validated.shortDescription || "",
       userId: sellerId,
     };
+    
+    // Explicitly set shippingOptionId from normalized data (Zod validation might have removed it)
+    if (normalized.shippingOptionId) {
+      productData.shippingOptionId = normalized.shippingOptionId;
+    }
+
+    // CRITICAL: Remove undefined values and convert to null (Prisma doesn't accept undefined, only null)
+    // This matches the pattern used in create-product route
+    const cleanedProductData: any = {};
+    for (const [key, value] of Object.entries(productData)) {
+      cleanedProductData[key] = value === undefined ? null : value;
+    }
+
+    // Handle SKU - generate unique SKU if not provided or if duplicate exists
+    // This matches the behavior of the product creation form
+    let finalSku = cleanedProductData.sku;
+    
+    if (!finalSku || finalSku.trim() === "") {
+      // No SKU provided, generate one
+      try {
+        finalSku = await generateUniqueSKU(validated.name, sellerId);
+        console.log(`[BULK IMPORT] Row ${rowNumber}: Generated SKU "${finalSku}" for product "${validated.name}"`);
+      } catch (error) {
+        console.error(`[BULK IMPORT] Row ${rowNumber}: Failed to generate SKU:`, error);
+        // If SKU generation fails, still try to create product (SKU is optional in schema)
+        finalSku = undefined;
+      }
+    } else {
+      // SKU provided, check if it already exists
+      const existingProduct = await db.product.findFirst({
+        where: {
+          sku: finalSku,
+          userId: sellerId,
+        },
+        select: { id: true, name: true },
+      });
+      
+      if (existingProduct) {
+        // SKU already exists, generate a new one instead of failing
+        console.warn(`[BULK IMPORT] Row ${rowNumber}: SKU "${finalSku}" already exists for product "${existingProduct.name}", generating new SKU`);
+        try {
+          finalSku = await generateUniqueSKU(validated.name, sellerId);
+          console.log(`[BULK IMPORT] Row ${rowNumber}: Generated new SKU "${finalSku}" for product "${validated.name}"`);
+        } catch (error) {
+          console.error(`[BULK IMPORT] Row ${rowNumber}: Failed to generate replacement SKU:`, error);
+          // If SKU generation fails, still try to create product (SKU is optional in schema)
+          finalSku = undefined;
+        }
+      }
+    }
+    
+    // Set the final SKU (or undefined if generation failed)
+    cleanedProductData.sku = finalSku;
 
     // Create product in database
     const product = await db.product.create({
-      data: productData as any, // Type assertion needed due to Zod transform making shortDescription optional
+      data: cleanedProductData,
     });
+
+    // Check if product needs inventory review (has variations with 0 stock)
+    const needsReview = normalized.needsInventoryReview === true;
 
     return {
       rowNumber,
       success: true,
       productId: product.id,
+      needsInventoryReview: needsReview,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -440,6 +670,13 @@ export async function processBulkImportBatch(
     handlingFee,
   };
 
+  // Fetch seller's preferred currency
+  const seller = await db.seller.findUnique({
+    where: { userId: sellerId },
+    select: { preferredCurrency: true },
+  });
+  const sellerPreferredCurrency = seller?.preferredCurrency || "USD";
+
   // Limit to MAX_ROWS
   const rowsToProcess = csvData.slice(0, MAX_ROWS);
   const totalRows = rowsToProcess.length;
@@ -456,6 +693,7 @@ export async function processBulkImportBatch(
 
   let processed = 0;
   let successCount = 0;
+  let needsInventoryReviewCount = 0; // Track products that need inventory review
   const failedRows: Array<{ rowNumber: number; error: string; rowData?: any }> = [];
   let lastProgressUpdate = 0; // Track when we last updated progress
 
@@ -466,7 +704,7 @@ export async function processBulkImportBatch(
     // Process batch (can be parallelized if needed)
     const batchResults = await Promise.allSettled(
       batch.map((row, index) => 
-        processRow(row, mapping, i + index + 1, sellerId, categories, shipping) // Row numbers start at 1
+        processRow(row, mapping, i + index + 1, sellerId, categories, shipping, sellerPreferredCurrency) // Row numbers start at 1
       )
     );
 
@@ -478,6 +716,10 @@ export async function processBulkImportBatch(
         
         if (rowResult.success) {
           successCount++;
+          // Track products that need inventory review
+          if (rowResult.needsInventoryReview) {
+            needsInventoryReviewCount++;
+          }
         } else {
           failedRows.push({
             rowNumber: rowResult.rowNumber,
@@ -521,6 +763,7 @@ export async function processBulkImportBatch(
       finishedAt: new Date(),
       processed,
       successCount,
+      needsInventoryReviewCount, // Store count of products needing inventory review
       failedRows: failedRows.map(fr => ({
         rowNumber: fr.rowNumber,
         error: fr.error,

@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Ellipsis, Trash2, Copy, Pencil, ImageIcon } from "lucide-react";
+import { Ellipsis, Trash2, Copy, Pencil, ImageIcon, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ interface Product {
   updatedAt: Date | string;
   numberSold: number;
   userId: string;
+  needsInventoryReview?: boolean;
 }
 
 interface ProductTableProps {
@@ -244,13 +245,25 @@ export function ProductTable({ products }: ProductTableProps) {
                         )}
                       </div>
                       <div className="flex flex-col">
-                        <Link
-                          href={`/seller/dashboard/products/edit/${product.id}`}
-                          className="font-medium hover:underline"
-                          title={product.name}
-                        >
-                          {truncateText(product.name)}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/seller/dashboard/products/edit/${product.id}`}
+                            className="font-medium hover:underline"
+                            title={product.name}
+                          >
+                            {truncateText(product.name)}
+                          </Link>
+                          {product.needsInventoryReview && (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-300 text-amber-700 bg-amber-50 text-xs flex items-center gap-1"
+                              title="This product requires inventory review"
+                            >
+                              <AlertCircle className="h-3 w-3" />
+                              Review
+                            </Badge>
+                          )}
+                        </div>
                         <p
                           className="text-sm text-muted-foreground line-clamp-1"
                           title={getDescriptionText(product.description)}
@@ -386,12 +399,24 @@ export function ProductTable({ products }: ProductTableProps) {
 
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/seller/dashboard/products/edit/${product.id}`}
-                    className="font-medium hover:underline block mb-1"
-                  >
-                    {product.name}
-                  </Link>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Link
+                      href={`/seller/dashboard/products/edit/${product.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {product.name}
+                    </Link>
+                    {product.needsInventoryReview && (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 text-amber-700 bg-amber-50 text-xs flex items-center gap-1"
+                        title="This product requires inventory review"
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                        Review
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                     {getDescriptionText(product.description)}
                   </p>

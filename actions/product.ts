@@ -65,6 +65,7 @@ export async function getSellerProducts(
         updatedAt: true,
         numberSold: true,
         userId: true,
+        needsInventoryReview: true, // Include inventory review flag
       },
       orderBy: {
         createdAt: "desc",

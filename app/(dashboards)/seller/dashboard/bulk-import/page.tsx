@@ -331,15 +331,20 @@ export default function BulkImportPage() {
           clearInterval(interval);
           if (job.status === "DONE") {
             const failedCount = job.failedRows && Array.isArray(job.failedRows) ? job.failedRows.length : 0;
+            const needsReviewCount = job.needsInventoryReviewCount || 0;
+            
+            // Build completion message
+            let message = `Import completed! ${job.successCount} products imported successfully.`;
+            
             if (failedCount > 0) {
-              toast.success(
-                `Import completed! ${job.successCount} products imported successfully. ${failedCount} rows failed.`
-              );
-            } else {
-              toast.success(
-                `Import completed! ${job.successCount} products imported successfully.`
-              );
+              message += ` ${failedCount} rows failed.`;
             }
+            
+            if (needsReviewCount > 0) {
+              message += ` ${needsReviewCount} product${needsReviewCount === 1 ? '' : 's'} need${needsReviewCount === 1 ? 's' : ''} inventory review.`;
+            }
+            
+            toast.success(message);
           } else {
             toast.error("Import failed");
           }
