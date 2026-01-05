@@ -25,6 +25,11 @@ import {
 import { createFirstProduct } from "@/actions/onboardingActions";
 import { toast } from "sonner";
 import { EEA_COUNTRIES } from "@/lib/gpsr-compliance";
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_WEIGHT_UNITS,
+  SUPPORTED_DIMENSION_UNITS,
+} from "@/data/units";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { uploadProcessedImages } from "@/lib/upload-images";
@@ -39,11 +44,24 @@ import { ProductHowItsMadeSection } from "@/components/product/productHowMade";
 import { ProductFileSection, ProcessedFile } from "@/components/product/productFile";
 import type { ProcessedImage } from "@/components/product/ImageProcessor";
 
-// Create a simplified schema that matches the product components but excludes advanced features
+// Create a schema that matches ProductSchema validation rules for shared fields
+// NOTE: This schema is used for form validation only. The actual API payload sent to
+// createFirstProduct() uses a simpler schema defined in actions/onboardingActions.ts
+// This ensures products created here will pass validation when edited in ProductForm
 const FirstProductSchema = z.object({
-  name: z.string().min(1, "Product name is required").max(100),
-  sku: z.string().optional(),
-  shortDescription: z.string().optional().default(""),
+  name: z.string().min(1, "Product name is required"), // Match ProductSchema - no max length
+  sku: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - transform empty strings to undefined
+  shortDescription: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - transform empty strings to undefined
   description: z.object({
     html: z.string().optional().default(""),
     text: z.string().optional().default(""),
@@ -69,30 +87,81 @@ const FirstProductSchema = z.object({
     )
     .nullable()
     .optional(),
-  price: z.number().min(0.01, "Price must be greater than 0"),
-  currency: z.string().default("USD"),
+  price: z.number().min(0.01, "Price must be greater than 0"), // Note: ProductSchema uses createMonetarySchema with min(0), but has currency-specific validation in superRefine
+  currency: z
+    .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
+      required_error: "Please select a currency",
+    })
+    .default("USD"), // Match ProductSchema - use enum instead of string
   status: z.string().default("draft"),
   images: z.array(z.string().url()).min(1, "Please add at least one image."),
   isDigital: z.boolean().default(false),
   shippingCost: z.number().min(0).default(0),
   handlingFee: z.number().min(0).default(0),
-  stock: z.number().int().min(1).optional(),
+  stock: z
+    .number()
+    .int()
+    .min(0, "Stock must be non-negative")
+    .optional()
+    .nullable()
+    .transform((stock) => (stock === null ? undefined : stock)), // Match ProductSchema - allow 0, nullable
   productFile: z.string().nullable().optional(),
   numberSold: z.number().int().optional().default(0),
   primaryCategory: z.string().min(1, "Primary category is required"),
   secondaryCategory: z.string().min(1, "Secondary category is required"),
-  tertiaryCategory: z.string().optional(),
+  tertiaryCategory: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : null
+    ), // Match ProductSchema - transform empty strings to null
   tags: z.array(z.string()).default([]),
   materialTags: z.array(z.string()).default([]),
-  itemWeight: z.number().optional(),
-  itemLength: z.number().optional(),
-  itemWidth: z.number().optional(),
-  itemHeight: z.number().optional(),
+  itemWeight: z
+    .number()
+    .optional()
+    .transform((val) => (val === 0 ? undefined : val))
+    .refine((val) => val === undefined || val > 0, {
+      message: "Item weight must be greater than 0 if provided.",
+    }), // Match ProductSchema - reject 0 values
+  itemLength: z
+    .number()
+    .optional()
+    .transform((val) => (val === 0 ? undefined : val))
+    .refine((val) => val === undefined || val > 0, {
+      message: "Item length must be greater than 0 if provided.",
+    }), // Match ProductSchema - reject 0 values
+  itemWidth: z
+    .number()
+    .optional()
+    .transform((val) => (val === 0 ? undefined : val))
+    .refine((val) => val === undefined || val > 0, {
+      message: "Item width must be greater than 0 if provided.",
+    }), // Match ProductSchema - reject 0 values
+  itemHeight: z
+    .number()
+    .optional()
+    .transform((val) => (val === 0 ? undefined : val))
+    .refine((val) => val === undefined || val > 0, {
+      message: "Item height must be greater than 0 if provided.",
+    }), // Match ProductSchema - reject 0 values
   weightUnit: z.string().default("lbs"),
   dimensionUnit: z.string().default("in"),
   processingTime: z.string().default("3-5"),
-  careInstructions: z.string().optional(),
-  howItsMade: z.string().optional(),
+  careInstructions: z
+    .string()
+    .max(1000, "Care instructions must be 1000 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  howItsMade: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - transform empty strings to undefined
   story: z.string().optional(),
   materials: z.string().optional(),
   techniques: z.string().optional(),
@@ -100,11 +169,20 @@ const FirstProductSchema = z.object({
   timeToMake: z.string().optional(),
   skillLevel: z.string().optional(),
   freeShipping: z.boolean().default(false),
-  shippingOptionId: z.string().optional(),
+  shippingOptionId: z.string().nullable().optional(), // Match ProductSchema - nullable
   // Add missing fields that ProductSchema expects
-  itemWeightUnit: z.string().default("lbs"),
-  itemDimensionUnit: z.string().default("in"),
-  shippingNotes: z.string().optional(),
+  itemWeightUnit: z
+    .enum(SUPPORTED_WEIGHT_UNITS.map((u) => u.code) as [string, ...string[]])
+    .default("lbs"), // Match ProductSchema - use enum instead of string
+  itemDimensionUnit: z
+    .enum(SUPPORTED_DIMENSION_UNITS.map((u) => u.code) as [string, ...string[]])
+    .default("in"), // Match ProductSchema - use enum instead of string
+  shippingNotes: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - transform empty strings to undefined
   inStockProcessingTime: z.number().optional(),
   outStockLeadTime: z.number().optional(),
   productDrop: z.boolean().default(false),
@@ -130,23 +208,140 @@ const FirstProductSchema = z.object({
       "HANDLING",
     ])
     .default("PHYSICAL_GOODS"),
-  taxCode: z.string().optional(),
+  taxCode: z
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        ) // Match ProductSchema - transform empty strings to undefined
+    ),
   taxExempt: z.boolean().default(false),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: z
+    .string()
+    .max(60, "Meta title must be 60 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  metaDescription: z
+    .string()
+    .max(160, "Meta description must be 160 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
   keywords: z.array(z.string()).default([]),
-  ogTitle: z.string().optional(),
-  ogDescription: z.string().optional(),
-  ogImage: z.string().optional(),
-  safetyWarnings: z.string().optional(),
-  materialsComposition: z.string().optional(),
-  safeUseInstructions: z.string().optional(),
-  ageRestriction: z.string().optional(),
+  ogTitle: z
+    .string()
+    .max(60, "Social media title must be 60 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  ogDescription: z
+    .string()
+    .max(160, "Social media description must be 160 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  ogImage: z
+    .string()
+    .url("Please enter a valid URL")
+    .optional()
+    .or(z.literal(""))
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - URL validation and transform
+  safetyWarnings: z
+    .string()
+    .max(1000, "Safety warnings must be 1000 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  materialsComposition: z
+    .string()
+    .max(1000, "Materials composition must be 1000 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  safeUseInstructions: z
+    .string()
+    .max(1000, "Safe use instructions must be 1000 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
+  ageRestriction: z
+    .string()
+    .max(200, "Age restriction must be 200 characters or less")
+    .optional()
+    .transform((val) =>
+      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    ), // Match ProductSchema - max length and transform
   chokingHazard: z.boolean().default(false),
   smallPartsWarning: z.boolean().default(false),
   chemicalWarnings: z.string().optional(),
   onSale: z.boolean().default(false),
   discount: z.number().int().optional(),
+  // Sale date fields - optional but validated in superRefine when onSale is true
+  saleStartDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      if (typeof value === "string") {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return undefined;
+        }
+        return date;
+      }
+      return value;
+    }),
+  saleEndDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      if (typeof value === "string") {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return undefined;
+        }
+        return date;
+      }
+      return value;
+    }),
+  saleStartTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
+  saleEndTime: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return undefined;
+      }
+      return value;
+    }),
   NSFW: z.boolean().default(false),
 }).superRefine((data, ctx) => {
   // Validate product drop fields when productDrop is true
@@ -252,6 +447,27 @@ export default function CreateFirstProductForm() {
       itemHeight: undefined,
       weightUnit: "lbs",
       dimensionUnit: "in",
+      // Add itemWeightUnit and itemDimensionUnit to match schema (they have defaults in schema, but set here for clarity)
+      itemWeightUnit: "lbs",
+      itemDimensionUnit: "in",
+      // Add optional fields that might be used but aren't shown in form
+      taxCode: undefined,
+      shippingNotes: undefined,
+      metaTitle: undefined,
+      metaDescription: undefined,
+      ogTitle: undefined,
+      ogDescription: undefined,
+      ogImage: undefined,
+      safetyWarnings: undefined,
+      materialsComposition: undefined,
+      safeUseInstructions: undefined,
+      ageRestriction: undefined,
+      chemicalWarnings: undefined,
+      // Sale fields - optional, only validated when onSale is true
+      saleStartDate: undefined,
+      saleEndDate: undefined,
+      saleStartTime: undefined,
+      saleEndTime: undefined,
       processingTime: "3-5",
       careInstructions: "",
       howItsMade: "",

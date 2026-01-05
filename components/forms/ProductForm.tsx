@@ -505,8 +505,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       isTestProduct: initialData?.isTestProduct || false,
       shippingOptionId: initialData?.shippingOptionId || null,
       taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
-      // taxCode is optional - default to empty string, will be converted to null on submit if empty
-      taxCode: initialData?.taxCode || "",
+      // taxCode is optional - convert null/undefined to empty string for form, will be converted to null on submit if empty
+      taxCode: initialData?.taxCode ?? "",
       taxExempt: initialData?.taxExempt || false,
       // SEO fields
       metaTitle: initialData?.metaTitle || "",

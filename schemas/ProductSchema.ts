@@ -303,10 +303,14 @@ const baseProductSchema = z.object({
     ])
     .default("PHYSICAL_GOODS"),
   taxCode: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   taxExempt: z.boolean().default(false),
   shippingOptionId: z.string().nullable().optional(),
