@@ -202,6 +202,7 @@ const FirstProductSchema = z.object({
   freeShipping: z.boolean().default(false),
   shippingCost: z.number().min(0).default(0),
   shippingOptionId: z.string().optional(),
+  images: z.array(z.string().url()).optional().default([]), // Image URLs array
 });
 
 // Schema for first name
@@ -210,6 +211,12 @@ const FirstNameSchema = z.object({
     .string()
     .min(1, "First name is required")
     .max(50, "First name must be 50 characters or less"),
+});
+
+// Schema for handmade verification
+const HandmadeVerificationSchema = z.object({
+  productPhoto: z.string().url("Product photo URL is required"),
+  workstationPhoto: z.string().url("Workstation photo URL is required"),
 });
 
 export const saveHelpPreferences = async (
@@ -677,7 +684,7 @@ export const createFirstProduct = async (
           secondaryCategory: validatedData.category, // Use same category for secondary
           isDigital: validatedData.isDigital || false,
           stock: 1, // Default stock
-          images: [], // Empty array for now, can be updated later
+          images: validatedData.images || [], // Use provided images or empty array
           tags: [], // Empty array for now
           materialTags: validatedData.materials
             ? [validatedData.materials]
@@ -947,5 +954,72 @@ export const getUserFirstName = async () => {
     });
 
     return { firstName: null };
+  }
+};
+
+export const saveHandmadeVerification = async (
+  data: z.infer<typeof HandmadeVerificationSchema>
+) => {
+  // Declare variables outside try block so they're accessible in catch
+  let session: any = null;
+
+  try {
+    session = await auth();
+    if (!session?.user?.id) {
+      return { error: "User not authenticated." };
+    }
+
+    // Validate the data
+    const validatedData = HandmadeVerificationSchema.parse(data);
+
+    // Get the seller record
+    const seller = await db.seller.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+
+    if (!seller) {
+      return {
+        error: "Seller account not found. Please complete application first.",
+      };
+    }
+
+    // Update seller with verification photos
+    await db.seller.update({
+      where: { id: seller.id },
+      data: {
+        productPhoto: validatedData.productPhoto,
+        workstationPhoto: validatedData.workstationPhoto,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Mark handmade_verification step as completed
+    await updateOnboardingStep(seller.id, "handmade_verification", true);
+
+    console.log("Handmade verification photos saved successfully");
+    return { success: "Verification photos saved successfully!" };
+  } catch (error) {
+    // Log to console (always happens)
+    console.error("Error saving handmade verification:", error);
+
+    // Don't log Zod validation errors - they're expected client-side issues
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid verification data." };
+    }
+
+    // Log to database - user could email about "couldn't save verification photos"
+    const userMessage = logError({
+      code: "ONBOARDING_HANDMADE_VERIFICATION_SAVE_FAILED",
+      userId: session?.user?.id,
+      route: "actions/onboardingActions",
+      method: "saveHandmadeVerification",
+      error,
+      metadata: {
+        note: "Failed to save handmade verification photos",
+      },
+    });
+
+    return { error: userMessage };
   }
 };

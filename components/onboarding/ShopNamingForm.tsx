@@ -172,7 +172,7 @@ export default function ShopNamingForm() {
       }
 
       toast.success("Shop name saved!");
-      router.push("/onboarding/create-first-product");
+      router.push("/onboarding/handmade-verification");
     } catch (error) {
       console.error("Error saving shop name:", error);
       toast.error("Failed to save shop name");

@@ -7,6 +7,7 @@ export const BASE_ONBOARDING_STEPS = [
   "application_approved",
   "shop_preferences",
   "shop_naming",
+  "handmade_verification", // New step: verify seller makes handmade products (after shop naming, before product creation)
   "payment_setup",
 ] as const;
 
@@ -26,6 +27,7 @@ export function isOptionalStep(stepKey: OnboardingStepKey): boolean {
 export type OnboardingStepKey =
   | "application_submitted"
   | "application_approved"
+  | "handmade_verification"
   | "shop_preferences"
   | "shop_naming"
   | "payment_setup"
@@ -251,11 +253,24 @@ export async function initializeOnboardingSteps(
   // Always include all base steps plus GPSR compliance (even if not required)
   const allSteps = [...BASE_ONBOARDING_STEPS, GPSR_COMPLIANCE_STEP];
 
-  // Create records for all steps (initially incomplete)
+  // Check if this is an existing seller (already completed shop_naming before this step was added)
+  // If so, auto-complete handmade_verification for them
+  const existingShopNaming = await prisma.onboardingStep.findUnique({
+    where: {
+      sellerId_stepKey: {
+        sellerId,
+        stepKey: "shop_naming",
+      },
+    },
+  });
+
+  const isExistingSeller = existingShopNaming?.completed === true;
+
+  // Create records for all steps
   const stepData = allSteps.map((stepKey) => ({
     sellerId,
     stepKey,
-    completed: false,
+    completed: isExistingSeller && stepKey === "handmade_verification" ? true : false,
   }));
 
   // Use upsert for each step to handle duplicates gracefully
@@ -267,7 +282,11 @@ export async function initializeOnboardingSteps(
           stepKey: step.stepKey,
         },
       },
-      update: {}, // Don't update if exists
+      update: {
+        // If this is an existing seller and we're initializing handmade_verification,
+        // mark it as completed
+        completed: isExistingSeller && step.stepKey === "handmade_verification" ? true : undefined,
+      },
       create: step,
     });
   }
@@ -417,6 +436,24 @@ export async function recalculateOnboardingSteps(
     const existingSteps = await prisma.onboardingStep.findMany({
       where: { sellerId },
     });
+
+    // Check if this is an existing seller (already completed shop_naming before handmade_verification was added)
+    // If so, auto-complete handmade_verification for them
+    const shopNamingStep = existingSteps.find(
+      (step) => step.stepKey === "shop_naming"
+    );
+    const handmadeVerificationStep = existingSteps.find(
+      (step) => step.stepKey === "handmade_verification"
+    );
+
+    // If seller already completed shop_naming but handmade_verification doesn't exist or isn't completed,
+    // auto-complete it for them (they're an existing seller)
+    if (
+      shopNamingStep?.completed &&
+      (!handmadeVerificationStep || !handmadeVerificationStep.completed)
+    ) {
+      await updateOnboardingStep(sellerId, "handmade_verification", true);
+    }
 
     // Always ensure GPSR step exists (even if not required)
     const gpsrStep = existingSteps.find(

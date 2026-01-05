@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
     const validStepKeys = [
       "application_submitted",
       "application_approved",
+      "handmade_verification",
       "shop_preferences",
       "shop_naming",
       "payment_setup",

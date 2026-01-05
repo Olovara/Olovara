@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { EEA_COUNTRIES } from "@/lib/gpsr-compliance";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
+import { uploadProcessedImages } from "@/lib/upload-images";
 
 // Import the same components as the main product form
 import { ProductInfoSection } from "@/components/product/productInformation";
@@ -36,6 +37,7 @@ import { ProductShippingSection } from "@/components/product/productShipping";
 import { ProductInventorySection } from "@/components/product/productInventory";
 import { ProductHowItsMadeSection } from "@/components/product/productHowMade";
 import { ProductFileSection, ProcessedFile } from "@/components/product/productFile";
+import type { ProcessedImage } from "@/components/product/ImageProcessor";
 
 // Create a simplified schema that matches the product components but excludes advanced features
 const FirstProductSchema = z.object({
@@ -215,6 +217,7 @@ export default function CreateFirstProductForm() {
   const [shortDescriptionBullets, setShortDescriptionBullets] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [tempImages, setTempImages] = useState<string[]>([]);
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [tempUploadsCreated, setTempUploadsCreated] = useState(false);
   const [processedFile, setProcessedFile] = useState<ProcessedFile | null>(null);
@@ -375,6 +378,73 @@ export default function CreateFirstProductForm() {
     setIsSubmitting(true);
 
     try {
+      // Separate existing images (already uploaded HTTP URLs) from new processed images (need upload)
+      const existingImageUrls = images.filter(
+        (img) => img.startsWith("http://") || img.startsWith("https://")
+      );
+      const newProcessedImages = processedImages.filter(
+        (img) => !img.id.startsWith("existing-") && img.file
+      );
+
+      let finalImageUrls = [...existingImageUrls];
+
+      // Upload new processed images if any
+      if (newProcessedImages.length > 0) {
+        setIsUploading(true);
+        const uploadToastId = toast.loading(
+          `Uploading ${newProcessedImages.length} image${newProcessedImages.length === 1 ? "" : "s"}...`
+        );
+
+        try {
+          // Convert processed images to File instances for upload
+          const filesToUpload: File[] = [];
+
+          for (const img of newProcessedImages) {
+            if (!img.file) continue;
+
+            const fileObj: any = img.file;
+            let file: File;
+
+            if (fileObj instanceof File) {
+              file = fileObj;
+            } else if (fileObj instanceof Blob) {
+              const fileName = img.originalName || `image-${Date.now()}.jpg`;
+              const blobType = fileObj.type || "image/jpeg";
+              file = new File([fileObj], fileName, {
+                type: blobType,
+                lastModified: Date.now(),
+              });
+            } else {
+              // Fallback for file-like objects
+              const fileName = img.originalName || `image-${Date.now()}.jpg`;
+              const blobType = fileObj.type || "image/jpeg";
+              file = new File([fileObj], fileName, {
+                type: blobType,
+                lastModified: Date.now(),
+              });
+            }
+
+            filesToUpload.push(file);
+          }
+
+          // Upload images
+          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+          finalImageUrls = [...existingImageUrls, ...uploadedUrls];
+
+          toast.dismiss(uploadToastId);
+        } catch (uploadError) {
+          console.error("Error uploading images:", uploadError);
+          toast.dismiss();
+          toast.error("Failed to upload images. Please try again.");
+          setIsSubmitting(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      // Create product with uploaded image URLs
       const result = await createFirstProduct({
         name: data.name.trim(),
         category: data.primaryCategory, // Keep using category for backward compatibility
@@ -390,6 +460,7 @@ export default function CreateFirstProductForm() {
         freeShipping: data.freeShipping,
         shippingCost: data.shippingCost,
         shippingOptionId: data.shippingOptionId,
+        images: finalImageUrls, // Pass uploaded image URLs
       });
 
       console.log("[CreateFirstProduct] Result:", result);
@@ -469,7 +540,7 @@ export default function CreateFirstProductForm() {
   };
 
   const handleBack = () => {
-    router.push("/onboarding/shop-naming");
+    router.push("/onboarding/handmade-verification");
   };
 
   const handleSkip = () => {
@@ -557,6 +628,8 @@ export default function CreateFirstProductForm() {
                     tempImages={tempImages}
                     form={form as any}
                     setTempUploadsCreated={setTempUploadsCreated}
+                    setProcessedImages={setProcessedImages}
+                    processedImages={processedImages}
                   />
 
                   <ProductFileSection

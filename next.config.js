@@ -86,14 +86,15 @@ const nextConfig = {
         hostname: "utfs.io", // UploadThing domain
         pathname: "/**", // Allow any path under this domain
       },
-      // UploadThing UFS subdomains - Next.js doesn't support wildcards in hostname
-      // UploadThing uses dynamic subdomains like xqhto0ljhm.ufs.sh
-      // Note: New bulk imports are normalized to utfs.io format (see uploadthing-adapter.ts)
-      // This specific subdomain is for existing products that may have .ufs.sh URLs
       {
         protocol: "https",
         hostname: "xqhto0ljhm.ufs.sh", // UploadThing UFS subdomain (for existing products)
         pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ufs.sh", // UploadThing UFS dynamic subdomains (wildcard support)
+        pathname: "/**", // Allow any path under this domain
       },
       {
         protocol: "https",

@@ -5,8 +5,9 @@ import { CheckCircle, Circle } from "lucide-react";
 const ONBOARDING_STEPS = [
   { key: "shop-preferences", title: "Shop Setup", number: 1 },
   { key: "shop-naming", title: "Shop Name", number: 2 },
-  { key: "create-first-product", title: "First Product", number: 3 },
-  { key: "payment-setup", title: "Get Paid", number: 4 },
+  { key: "handmade-verification", title: "Verification", number: 3 },
+  { key: "create-first-product", title: "First Product", number: 4 },
+  { key: "payment-setup", title: "Get Paid", number: 5 },
 ];
 
 interface StepIndicatorProps {

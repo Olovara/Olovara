@@ -253,6 +253,8 @@ model Seller {
   sellerImage            String? // URL to seller profile image
   shopBannerImage        String? // URL to shop banner image
   shopLogoImage          String? // URL to shop logo image
+  productPhoto           String? // URL to photo of seller's handmade product(s) for verification
+  workstationPhoto       String? // URL to photo of seller's work station for verification
   preferredCurrency      String            @default("USD") // Store seller's preferred currency
   preferredWeightUnit    String            @default("lbs") // Store seller's preferred weight unit (kg/lbs)
   preferredDimensionUnit String            @default("in") // Store seller's preferred dimension unit (cm/inches)

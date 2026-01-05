@@ -35,9 +35,10 @@ async function startBulkImportWorker() {
       if (useTsx) {
         // Fallback: Use tsx to run TypeScript directly
         const { spawn } = require("child_process");
+        // Use shell: false and pass executable and args separately to avoid security warning
         const workerProcess = spawn("npx", ["tsx", "scripts/bulk-import-worker.ts"], {
           stdio: "inherit",
-          shell: true,
+          shell: false, // More secure - don't use shell
           env: { ...process.env },
         });
         
@@ -88,9 +89,10 @@ async function startBulkImportWorker() {
     } else {
       // Development: spawn worker in separate process using tsx
       const { spawn } = require("child_process");
+      // Use shell: false and pass executable and args separately to avoid security warning
       const workerProcess = spawn("npx", ["tsx", "scripts/bulk-import-worker.ts"], {
         stdio: "inherit",
-        shell: true,
+        shell: false, // More secure - don't use shell
         env: { ...process.env },
       });
       

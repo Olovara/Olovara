@@ -112,6 +112,11 @@ const SellerOnboardingDashboard = () => {
       description: "Choose a unique name for your handmade shop.",
     },
     {
+      id: "handmade_verification",
+      title: "Handmade Verification",
+      description: "Upload photos of your products and workspace to verify you create handmade items.",
+    },
+    {
       id: "payment_setup",
       title: "Get Paid",
       description: "Connect your payment account to start receiving money.",
@@ -193,14 +198,33 @@ const SellerOnboardingDashboard = () => {
             </Link>
           </Button>
         );
-      case "payment_setup":
+      case "handmade_verification":
         const shopNamingCompleted = steps.find(
           (s) => s.stepKey === "shop_naming"
         )?.completed;
         if (!shopNamingCompleted) {
           return (
             <div className="text-sm text-muted-foreground">
-              Complete shop naming first to set up payments.
+              Complete shop naming first to verify your handmade products.
+            </div>
+          );
+        }
+        return (
+          <Button asChild size="sm" className="mt-2">
+            <Link href="/onboarding/handmade-verification">
+              Upload Verification Photos
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
+          </Button>
+        );
+      case "payment_setup":
+        const handmadeVerificationCompleted = steps.find(
+          (s) => s.stepKey === "handmade_verification"
+        )?.completed;
+        if (!handmadeVerificationCompleted) {
+          return (
+            <div className="text-sm text-muted-foreground">
+              Complete handmade verification first to set up payments.
             </div>
           );
         }

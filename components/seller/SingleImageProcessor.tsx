@@ -123,7 +123,17 @@ export function SingleImageProcessor({
       };
 
       const compressedFile = await imageCompression(file, options);
-      return compressedFile;
+      
+      // Ensure we return a File instance (imageCompression might return a Blob)
+      if (compressedFile instanceof File) {
+        return compressedFile;
+      }
+      
+      // Convert Blob to File if needed
+      return new File([compressedFile], file.name, {
+        type: file.type,
+        lastModified: Date.now(),
+      });
     } catch (error) {
       console.error("Compression error:", error);
       toast.error("Failed to compress image");
