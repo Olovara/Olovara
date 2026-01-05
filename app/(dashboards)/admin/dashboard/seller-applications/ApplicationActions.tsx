@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -41,6 +42,9 @@ interface Application {
   certifyOver18?: boolean;
   agreeToTerms?: boolean;
   applicationApproved: boolean;
+  // Verification photos
+  productPhoto?: string | null;
+  workstationPhoto?: string | null;
 }
 
 export function ApplicationActions({
@@ -442,6 +446,52 @@ export function ApplicationActions({
             </div>
 
             <Separator />
+
+            {/* Handmade Verification Photos */}
+            {(application.productPhoto || application.workstationPhoto) && (
+              <>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Handmade Verification Photos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {application.productPhoto && (
+                      <div className="space-y-2">
+                        <strong className="text-sm text-gray-600">
+                          Product Photo:
+                        </strong>
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+                          <Image
+                            src={application.productPhoto}
+                            alt="Product verification photo"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {application.workstationPhoto && (
+                      <div className="space-y-2">
+                        <strong className="text-sm text-gray-600">
+                          Workstation Photo:
+                        </strong>
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+                          <Image
+                            src={application.workstationPhoto}
+                            alt="Workstation verification photo"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Legal Agreements */}
             <div className="space-y-4">

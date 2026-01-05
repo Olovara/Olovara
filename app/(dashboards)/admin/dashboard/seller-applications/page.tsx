@@ -168,6 +168,9 @@ export default async function AdminDashboardSellerApplications({
                         certifyOver18: application.certifyOver18,
                         agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
+                        // Verification photos
+                        productPhoto: (application as any).productPhoto || undefined,
+                        workstationPhoto: (application as any).workstationPhoto || undefined,
                       }}
                     />
                   </TableCell>
@@ -228,6 +231,9 @@ export default async function AdminDashboardSellerApplications({
                         certifyOver18: application.certifyOver18,
                         agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
+                        // Verification photos
+                        productPhoto: (application as any).productPhoto || undefined,
+                        workstationPhoto: (application as any).workstationPhoto || undefined,
                       }}
                     />
                   </TableCell>
@@ -288,6 +294,9 @@ export default async function AdminDashboardSellerApplications({
                         certifyOver18: application.certifyOver18,
                         agreeToTerms: application.agreeToTerms,
                         applicationApproved: application.applicationApproved,
+                        // Verification photos
+                        productPhoto: (application as any).productPhoto || undefined,
+                        workstationPhoto: (application as any).workstationPhoto || undefined,
                       }}
                     />
                   </TableCell>

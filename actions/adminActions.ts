@@ -143,6 +143,12 @@ export async function getAllSellers() {
           select: {
             username: true,
             email: true,
+            seller: {
+              select: {
+                productPhoto: true,
+                workstationPhoto: true,
+              },
+            },
           },
         },
       },
@@ -177,9 +183,16 @@ export async function getAllSellers() {
         birthdate = "Error decrypting";
       }
 
+      // Type assertion needed because Prisma select doesn't include seller in type inference
+      const userWithSeller = app.user as typeof app.user & {
+        seller?: { productPhoto: string | null; workstationPhoto: string | null } | null;
+      };
+
       return {
         ...app,
         birthdate,
+        productPhoto: userWithSeller?.seller?.productPhoto || null,
+        workstationPhoto: userWithSeller?.seller?.workstationPhoto || null,
       };
     });
 
@@ -386,6 +399,12 @@ export async function getApprovedSellers() {
           select: {
             username: true,
             email: true,
+            seller: {
+              select: {
+                productPhoto: true,
+                workstationPhoto: true,
+              },
+            },
           },
         },
       },
@@ -411,9 +430,16 @@ export async function getApprovedSellers() {
         birthdate = "Error decrypting";
       }
 
+      // Type assertion needed because Prisma select doesn't include seller in type inference
+      const userWithSeller = app.user as typeof app.user & {
+        seller?: { productPhoto: string | null; workstationPhoto: string | null } | null;
+      };
+
       return {
         ...app,
         birthdate,
+        productPhoto: userWithSeller?.seller?.productPhoto || null,
+        workstationPhoto: userWithSeller?.seller?.workstationPhoto || null,
       };
     });
 
@@ -534,9 +560,16 @@ export async function getUnapprovedSellers() {
         birthdate = "Error decrypting";
       }
 
+      // Type assertion needed because Prisma select doesn't include seller in type inference
+      const userWithSeller = app.user as typeof app.user & {
+        seller?: { productPhoto: string | null; workstationPhoto: string | null } | null;
+      };
+
       return {
         ...app,
         birthdate,
+        productPhoto: userWithSeller?.seller?.productPhoto || null,
+        workstationPhoto: userWithSeller?.seller?.workstationPhoto || null,
       };
     });
 
