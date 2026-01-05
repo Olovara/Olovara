@@ -13,6 +13,10 @@ import { QA_EVENTS, PRODUCT_STEPS } from "@/lib/qa-steps";
 import { hasPermission } from "@/lib/permissions";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
 import { isSellerGPSRComplianceRequired } from "@/lib/gpsr-compliance";
+import {
+  assignFoundingSellerStatus,
+  checkFoundingSellerEligibility,
+} from "@/lib/founding-seller";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -521,6 +525,23 @@ export async function POST(req: NextRequest) {
     // Determine userId - use selected seller's userId for admin creation, otherwise session user
     const productUserId = isAdminCreation ? targetSellerId : session.user.id;
 
+    // Check if this is the seller's first product (before creating it)
+    // Only check for non-admin creations (admin-created products shouldn't trigger founding seller status)
+    const existingProductCount = await db.product.count({
+      where: { userId: productUserId },
+    });
+    const isFirstProduct = existingProductCount === 0 && !isAdminCreation;
+
+    // Check if seller is already a founding seller (only for non-admin creations)
+    let sellerIsFoundingSeller = false;
+    if (!isAdminCreation) {
+      const sellerRecord = await db.seller.findUnique({
+        where: { userId: productUserId },
+        select: { isFoundingSeller: true },
+      });
+      sellerIsFoundingSeller = sellerRecord?.isFoundingSeller || false;
+    }
+
     const product = await db.product.create({
       data: {
         ...cleanedProductData,
@@ -596,6 +617,49 @@ export async function POST(req: NextRequest) {
           },
         });
         // Don't fail the entire request if batch number generation fails
+      }
+    }
+
+    // If this is their first product and they're not already a founding seller, check for founding seller eligibility
+    // Only assign for non-admin product creations
+    if (isFirstProduct && !sellerIsFoundingSeller) {
+      console.log(
+        `First product created for seller ${productUserId}, checking founding seller eligibility...`
+      );
+
+      try {
+        const eligibility = await checkFoundingSellerEligibility(productUserId);
+        console.log(
+          `Founding seller eligibility for ${productUserId}:`,
+          eligibility
+        );
+
+        if (eligibility.eligible) {
+          const result = await assignFoundingSellerStatus(
+            productUserId,
+            new Date()
+          );
+          if (result.success) {
+            console.log(
+              `🎉 Congratulations! Seller ${productUserId} is now Founding Seller #${result.status?.number}`
+            );
+          } else {
+            console.error(
+              `Failed to assign founding seller status to ${productUserId}:`,
+              result.error
+            );
+          }
+        } else {
+          console.log(
+            `Seller ${productUserId} not eligible for founding seller status: ${eligibility.reason}`
+          );
+        }
+      } catch (foundingSellerError) {
+        // Don't fail product creation if founding seller assignment fails
+        console.error(
+          "Error assigning founding seller status (non-critical):",
+          foundingSellerError
+        );
       }
     }
 

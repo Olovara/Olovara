@@ -8,6 +8,10 @@ import { updateOnboardingStep } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
 import { recalculateOnboardingSteps } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
+import {
+  assignFoundingSellerStatus,
+  checkFoundingSellerEligibility,
+} from "@/lib/founding-seller";
 
 /**
  * Recalculate onboarding steps when seller settings change
@@ -626,6 +630,7 @@ export const createFirstProduct = async (
         userId: true,
         applicationAccepted: true,
         isFullyActivated: true,
+        isFoundingSeller: true, // Check if already a founding seller
       },
     });
 
@@ -634,6 +639,12 @@ export const createFirstProduct = async (
         error: "Seller account not found. Please complete shop setup first.",
       };
     }
+
+    // Check if this is the seller's first product (before creating it)
+    const existingProductCount = await db.product.count({
+      where: { userId: currentUserId },
+    });
+    const isFirstProduct = existingProductCount === 0;
 
     // Determine product status based on seller approval and activation
     // Only allow ACTIVE status if seller is approved and fully activated
@@ -700,6 +711,41 @@ export const createFirstProduct = async (
 
       return product;
     });
+
+    // If this is their first product, check for founding seller eligibility
+    // Only assign founding seller status if they don't already have it
+    if (isFirstProduct && !seller.isFoundingSeller) {
+      console.log(
+        `First product created for seller ${currentUserId}, checking founding seller eligibility...`
+      );
+
+      const eligibility = await checkFoundingSellerEligibility(currentUserId);
+      console.log(
+        `Founding seller eligibility for ${currentUserId}:`,
+        eligibility
+      );
+
+      if (eligibility.eligible) {
+        const result = await assignFoundingSellerStatus(
+          currentUserId,
+          new Date()
+        );
+        if (result.success) {
+          console.log(
+            `🎉 Congratulations! Seller ${currentUserId} is now Founding Seller #${result.status?.number}`
+          );
+        } else {
+          console.error(
+            `Failed to assign founding seller status to ${currentUserId}:`,
+            result.error
+          );
+        }
+      } else {
+        console.log(
+          `Seller ${currentUserId} not eligible for founding seller status: ${eligibility.reason}`
+        );
+      }
+    }
 
     // Note: We don't mark first_product as completed since it's not a required step
     // Product creation is optional and sellers can create products whenever they want

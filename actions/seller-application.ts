@@ -14,8 +14,6 @@ import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
 import { encryptData, encryptBirthdate } from "@/lib/encryption";
 import { logError } from "@/lib/error-logger";
 
-import { FOUNDING_SELLER_BENEFITS } from "@/lib/founding-seller";
-
 export const sellerApplication = async (
   values: z.infer<typeof SellerApplicationSchema>
 ) => {
@@ -135,25 +133,9 @@ export const sellerApplication = async (
 
       // Only create seller if it doesn't exist
       if (!seller) {
-        // Check founding seller eligibility using transaction's db instance
-        // Count how many "NEW" founding sellers already exist
-        const newFoundingSellerCount = await tx.seller.count({
-          where: {
-            isFoundingSeller: true,
-            foundingSellerType: "NEW",
-          },
-        });
-
-        // Determine founding seller status based on availability (max 50)
-        const isFoundingSeller = newFoundingSellerCount < 50;
-        const foundingSellerType = isFoundingSeller ? "NEW" : null;
-        const foundingSellerNumber = isFoundingSeller
-          ? newFoundingSellerCount + 1
-          : null;
-        const foundingSellerBenefits = isFoundingSeller
-          ? FOUNDING_SELLER_BENEFITS
-          : null;
-
+        // Note: Founding seller status is NOT assigned here anymore
+        // It will be assigned when the seller creates their first product
+        // This ensures only serious sellers who actually create products become founding sellers
         seller = await tx.seller.create({
           data: {
             shopName: tempShopName,
@@ -164,11 +146,11 @@ export const sellerApplication = async (
             shopCountry: "US", // Default to US, can be updated later
             // Use unique temporary connectedAccountId to avoid constraint issues
             connectedAccountId: uniqueConnectedAccountId,
-            // Founding Seller Program - Assign status based on availability (max 50)
-            isFoundingSeller,
-            foundingSellerType,
-            foundingSellerNumber,
-            foundingSellerBenefits,
+            // Founding seller status will be assigned when they create their first product
+            isFoundingSeller: false,
+            foundingSellerType: null,
+            foundingSellerNumber: null,
+            foundingSellerBenefits: null,
             user: {
               connect: {
                 id: userId,
@@ -176,17 +158,6 @@ export const sellerApplication = async (
             },
           },
         });
-
-        // Log the founding seller assignment
-        if (isFoundingSeller) {
-          console.log(
-            `Assigned founding seller status to seller ${seller.id} as #${foundingSellerNumber} during signup (${newFoundingSellerCount + 1}/50)`
-          );
-        } else {
-          console.log(
-            `Founding seller program is full (${newFoundingSellerCount}/50). Seller ${seller.id} did not receive founding seller status.`
-          );
-        }
       }
 
       // Get the STARTER plan (free plan)
