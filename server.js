@@ -14,27 +14,77 @@ async function startBulkImportWorker() {
   try {
     // In development, TypeScript files aren't compiled to .js
     // So we need to use tsx to run the worker in a separate process
-    // In production, Next.js compiles everything, so we can import directly
+    // In production, Next.js compiles everything, but we need to use the correct import path
     if (process.env.NODE_ENV === "production") {
-      // Production: import compiled .js file (Next.js build compiles TS to JS)
-      const workerModule = await import("./lib/workers/bulk-import-worker.js");
-      const worker = workerModule.getBulkImportWorker();
-      console.log("[BULK IMPORT WORKER] Worker started in-process and ready to process jobs");
+      // Production: Try to import the module directly first (without .js extension)
+      // Node.js ESM will try to resolve it automatically
+      let workerModule;
+      let useTsx = false;
       
-      // Handle graceful shutdown
-      if (!process.listeners("SIGTERM").some(l => l.toString().includes("BULK IMPORT WORKER"))) {
-        process.on("SIGTERM", async () => {
-          console.log("[BULK IMPORT WORKER] Received SIGTERM, shutting down worker...");
-          await workerModule.closeBulkImportWorker();
-        });
-        
-        process.on("SIGINT", async () => {
-          console.log("[BULK IMPORT WORKER] Received SIGINT, shutting down worker...");
-          await workerModule.closeBulkImportWorker();
-        });
+      try {
+        // Try importing without extension - Node.js will try .js, .json, etc.
+        workerModule = await import("./lib/workers/bulk-import-worker");
+        console.log("[BULK IMPORT WORKER] Successfully imported worker module");
+      } catch (importError) {
+        // If direct import fails, use tsx as fallback
+        console.warn("[BULK IMPORT WORKER] Direct import failed, using tsx fallback");
+        console.warn("[BULK IMPORT WORKER] Import error:", importError.message);
+        useTsx = true;
       }
       
-      return worker;
+      if (useTsx) {
+        // Fallback: Use tsx to run TypeScript directly
+        const { spawn } = require("child_process");
+        const workerProcess = spawn("npx", ["tsx", "scripts/bulk-import-worker.ts"], {
+          stdio: "inherit",
+          shell: true,
+          env: { ...process.env },
+        });
+        
+        workerProcess.on("error", (error) => {
+          console.error("[BULK IMPORT WORKER] Worker process error:", error.message);
+          console.warn("[BULK IMPORT WORKER] tsx may not be available in production. Consider moving tsx to dependencies.");
+        });
+        
+        workerProcess.on("exit", (code) => {
+          if (code !== 0 && code !== null) {
+            console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}, restarting in 5 seconds...`);
+            // Restart worker after delay
+            setTimeout(() => {
+              console.log("[BULK IMPORT WORKER] Restarting worker...");
+              startBulkImportWorker();
+            }, 5000);
+          }
+        });
+        
+        console.log("[BULK IMPORT WORKER] Worker started in separate process (production mode with tsx)");
+        return workerProcess;
+      } else if (workerModule && workerModule.getBulkImportWorker) {
+        // Successfully imported module, start worker in-process
+        const worker = workerModule.getBulkImportWorker();
+        console.log("[BULK IMPORT WORKER] Worker started in-process and ready to process jobs");
+        
+        // Handle graceful shutdown
+        if (!process.listeners("SIGTERM").some(l => l.toString().includes("BULK IMPORT WORKER"))) {
+          process.on("SIGTERM", async () => {
+            console.log("[BULK IMPORT WORKER] Received SIGTERM, shutting down worker...");
+            if (workerModule.closeBulkImportWorker) {
+              await workerModule.closeBulkImportWorker();
+            }
+          });
+          
+          process.on("SIGINT", async () => {
+            console.log("[BULK IMPORT WORKER] Received SIGINT, shutting down worker...");
+            if (workerModule.closeBulkImportWorker) {
+              await workerModule.closeBulkImportWorker();
+            }
+          });
+        }
+        
+        return worker;
+      } else {
+        throw new Error("Worker module imported but getBulkImportWorker function not found");
+      }
     } else {
       // Development: spawn worker in separate process using tsx
       const { spawn } = require("child_process");
