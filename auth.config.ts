@@ -12,6 +12,9 @@ export const authConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Note: allowDangerousEmailAccountLinking is false by default (secure)
+      // This prevents account takeover if someone signs up with OAuth using an email
+      // that already has a password account. Users must use their original login method.
     }),
     Credentials({
       async authorize(credentials) {

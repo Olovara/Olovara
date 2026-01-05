@@ -27,6 +27,20 @@ export const ReCaptcha = ({ onVerify, onError, action, trigger = false }: ReCapt
   const [error, setError] = useState<string | null>(null);
   const hasExecuted = useRef(false); // Track if we've already executed for this trigger
 
+  // Check if site key is missing (check on mount and when trigger changes)
+  useEffect(() => {
+    if (!siteKey && trigger) {
+      const errorMsg = process.env.NODE_ENV === 'production' 
+        ? "reCAPTCHA is not configured. Please contact support."
+        : "reCAPTCHA site key is missing. Check NEXT_PUBLIC_RECAPTCHA_SITE_KEY environment variable.";
+      console.error("[ReCaptcha] Missing site key:", errorMsg);
+      setError(errorMsg);
+      onError?.(errorMsg);
+      // Reset trigger to prevent infinite loops
+      setIsLoading(false);
+    }
+  }, [siteKey, trigger, onError]);
+
   const executeReCaptcha = useCallback(async () => {
     if (!isReady.current || !isReadyState) {
       console.warn("[ReCaptcha] Not ready yet, waiting for script to load");

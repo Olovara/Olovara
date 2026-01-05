@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,6 +41,8 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
   const [shouldTriggerRecaptcha, setShouldTriggerRecaptcha] = useState(false);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
+  const recaptchaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const submissionIdRef = useRef<number>(0);
 
   const [isPending, startTransition] = useTransition();
 
@@ -57,19 +59,68 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
   });
 
   const onSubmit = (values: z.infer<typeof RegisterSchema>) => {
+    // Prevent duplicate submissions
+    if (isPending || shouldTriggerRecaptcha) {
+      console.warn("[REGISTER_FORM] Submission already in progress, ignoring duplicate submit");
+      return;
+    }
+
+    // Clear previous errors
+    setError("");
+    setRecaptchaError(null);
+    
     // Step 1: Check honeypot first (before any reCAPTCHA calls)
     if (!validateHoneypot(values.website)) {
       // If the honeypot field is filled, silently fail (don't waste reCAPTCHA quota)
       console.log("Bot detected via honeypot field");
+      // Show generic error that looks like normal validation (don't reveal bot detection)
+      setError("Invalid fields.");
       return;
     }
 
+    // Clear any existing timeout before starting new one
+    if (recaptchaTimeoutRef.current) {
+      clearTimeout(recaptchaTimeoutRef.current);
+      recaptchaTimeoutRef.current = null;
+    }
+
+    // Reset token state for new attempt
+    setRecaptchaToken("");
+
     // Step 2: Trigger reCAPTCHA verification
     setShouldTriggerRecaptcha(true);
-    setRecaptchaError(null);
+    
+    // Set timeout for reCAPTCHA (60 seconds / 1 minute)
+    // If reCAPTCHA doesn't complete, show error
+    // Track submission ID to prevent race conditions with multiple submissions
+    const currentSubmissionId = ++submissionIdRef.current;
+    
+    recaptchaTimeoutRef.current = setTimeout(() => {
+      // Only trigger timeout if this is still the current submission attempt
+      // This prevents timeout from firing if user submitted again
+      if (submissionIdRef.current === currentSubmissionId) {
+        setError("Security verification timed out. Please try again.");
+        setShouldTriggerRecaptcha(false);
+        setRecaptchaError("Timeout");
+        // Clear the timeout ref
+        recaptchaTimeoutRef.current = null;
+      }
+    }, 60000); // 60 seconds = 1 minute
   };
 
   const handleRecaptchaSuccess = (token: string) => {
+    // Clear timeout since reCAPTCHA completed
+    if (recaptchaTimeoutRef.current) {
+      clearTimeout(recaptchaTimeoutRef.current);
+      recaptchaTimeoutRef.current = null;
+    }
+    
+    // Prevent duplicate processing if already handling a token
+    if (recaptchaToken && recaptchaToken !== token) {
+      console.warn("[REGISTER_FORM] Received new reCAPTCHA token while already processing one");
+      return;
+    }
+    
     setRecaptchaToken(token);
     setShouldTriggerRecaptcha(false);
     
@@ -88,23 +139,53 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
             toast.success("Account created successfully! Please check your email to verify your account.");
             setSuccess(data.success);
           }
+          // Only reset form on success
+          form.reset();
+          setRecaptchaToken("");
+          // Clear any pending timeout
+          if (recaptchaTimeoutRef.current) {
+            clearTimeout(recaptchaTimeoutRef.current);
+            recaptchaTimeoutRef.current = null;
+          }
         }
-        if (data?.error) setError(data.error);
-        
-        // Reset form and state after the request completes
-        form.reset();
-        setSuccess("");
-        setError("");
-        setRecaptchaToken("");
+        if (data?.error) {
+          setError(data.error);
+          // Don't reset form on error - let user see their input and fix it
+          setRecaptchaToken(""); // Reset token so they can retry
+          setShouldTriggerRecaptcha(false); // Allow retry
+        }
+      }).catch((error) => {
+        // Handle unexpected errors (network issues, etc.)
+        console.error("[REGISTER_FORM] Unexpected error during registration:", error);
+        setError("An unexpected error occurred. Please try again.");
+        setRecaptchaToken(""); // Reset token so they can retry
+        setShouldTriggerRecaptcha(false); // Allow retry
       });
     });
   };
 
   const handleRecaptchaError = (error: string) => {
+    // Clear timeout since reCAPTCHA errored
+    if (recaptchaTimeoutRef.current) {
+      clearTimeout(recaptchaTimeoutRef.current);
+      recaptchaTimeoutRef.current = null;
+    }
+    
     setRecaptchaError(error);
     setShouldTriggerRecaptcha(false);
     setError("Security verification failed. Please try again.");
+    // Don't reset form - let user retry with their data still filled in
+    setRecaptchaToken(""); // Reset token so they can retry
   };
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (recaptchaTimeoutRef.current) {
+        clearTimeout(recaptchaTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isClient) return <Spinner />;
 
@@ -113,6 +194,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
       backButtonLabel="Have an account already?"
       backButtonHref="/login"
       showSocial
+      socialMode="signup"
       title="Create an account"
       subtitle="Join our community today"
     >

@@ -171,6 +171,53 @@ export function logError(options: LogErrorOptions): string {
   // Return user-friendly message
   // These messages should be shown to users in the UI
   const userMessages: Record<string, string> = {
+    // Registration & Login
+    REGISTER_VALIDATION_FAILED:
+      "Invalid registration information. Please check your details and try again.",
+    REGISTER_BOT_DETECTED:
+      "Please check your information and try again.",
+    REGISTER_INVALID_USERNAME:
+      "Username cannot contain 'Yarnnu'. Please choose a different username.",
+    REGISTER_RECAPTCHA_FAILED:
+      "Security verification failed. Please try again.",
+    REGISTER_RATE_LIMIT_EXCEEDED:
+      "Too many registration attempts. Please wait a moment and try again.",
+    REGISTER_EMAIL_EXISTS:
+      "This email is already registered. Please sign in instead.",
+    REGISTER_USERNAME_EXISTS:
+      "This username is already taken. Please choose a different username.",
+    REGISTER_REFERRAL_CODE_GENERATION_FAILED:
+      "We couldn't complete your registration. Please try again or contact support.",
+    REGISTER_DATABASE_CREATE_FAILED:
+      "We couldn't create your account. Please try again or contact support.",
+    REGISTER_VERIFICATION_EMAIL_FAILED:
+      "Your account was created, but we couldn't send the verification email. Please request a new verification email.",
+    
+    LOGIN_VALIDATION_FAILED:
+      "Invalid login information. Please check your details and try again.",
+    LOGIN_USER_NOT_FOUND:
+      "No account found with this email. Please check your email or register.",
+    LOGIN_OAUTH_ONLY_USER:
+      "This account was created with a social login. Please use the social login button.",
+    LOGIN_OAUTH_ONLY_USER_UNKNOWN_PROVIDER:
+      "This account was created with a social login. Please use the social login button.",
+    LOGIN_EMAIL_NOT_VERIFIED:
+      "Please verify your email before signing in. Check your inbox for the verification email.",
+    LOGIN_VERIFICATION_EMAIL_FAILED:
+      "We couldn't send a new verification email. Please try again or contact support.",
+    LOGIN_2FA_INVALID_CODE:
+      "Invalid verification code. Please try again.",
+    LOGIN_2FA_CODE_EXPIRED:
+      "Verification code has expired. Please request a new code.",
+    LOGIN_INVALID_CREDENTIALS:
+      "Invalid email or password. Please try again.",
+    LOGIN_CSRF_TOKEN_MISSING:
+      "Security token missing. Please refresh the page and try again.",
+    LOGIN_AUTH_ERROR:
+      "An authentication error occurred. Please try again.",
+    LOGIN_UNEXPECTED_ERROR:
+      "An unexpected error occurred during login. Please try again or contact support.",
+    
     // Seller Onboarding
     SIGNUP_FAILED:
       "We couldn't create your account. Please try again or contact support.",

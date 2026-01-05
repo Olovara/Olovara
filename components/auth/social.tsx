@@ -7,13 +7,19 @@ import { GrGoogle } from "react-icons/gr";
 import { Button } from "../ui/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
-const Social = () => {
+interface SocialProps {
+  mode?: "signin" | "signup";
+}
+
+const Social = ({ mode = "signin" }: SocialProps) => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
 
   const onClick = (provider: "google") => {
     signIn(provider, { callbackUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT });
   };
+
+  const buttonText = mode === "signup" ? "Sign up with Google" : "Sign in with Google";
 
   return (
     <div className="flex items-center w-full gap-x-2">
@@ -23,7 +29,8 @@ const Social = () => {
         variant="outline"
         onClick={() => onClick("google")}
       >
-        <GrGoogle />
+        <GrGoogle className="mr-2" />
+        {buttonText}
       </Button>
     </div>
   );

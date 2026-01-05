@@ -9,6 +9,7 @@ interface CardWrapperProps {
   backButtonLabel: string;
   backButtonHref: string;
   showSocial?: boolean;
+  socialMode?: "signin" | "signup";
   title: string;
   subtitle: string;
 }
@@ -18,6 +19,7 @@ const CardWrapper = ({
   backButtonHref,
   backButtonLabel,
   showSocial,
+  socialMode = "signin",
   title,
   subtitle,
 }: CardWrapperProps) => {
@@ -34,7 +36,7 @@ const CardWrapper = ({
       <CardContent>{children}</CardContent>
       {showSocial && (
         <CardFooter>
-          <Social />
+          <Social mode={socialMode} />
         </CardFooter>
       )}
       {backButtonLabel && backButtonHref && (
