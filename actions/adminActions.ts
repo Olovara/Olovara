@@ -2731,3 +2731,176 @@ export async function getErrorLogs({
     throw error;
   }
 }
+
+// Get all products with full information for social media post creation
+// This function returns all product data including images and URLs without requiring clicks
+export async function getProductsForSocialMedia({
+  search = "",
+  status = "ACTIVE",
+  page = 1,
+  limit = 20,
+}: {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) {
+  let currentUserData: any = null;
+
+  try {
+    currentUserData = await currentUserWithPermissions();
+
+    if (!currentUserData) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if user has ACCESS_ADMIN_DASHBOARD permission
+    const hasAccessAdminDashboard = currentUserData.permissions?.includes(
+      "ACCESS_ADMIN_DASHBOARD"
+    );
+
+    if (!hasAccessAdminDashboard) {
+      throw new Error("Forbidden: Insufficient permissions");
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const whereClause: any = {};
+
+    if (status && status !== "all") {
+      whereClause.status = status;
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { shortDescription: { contains: search, mode: "insensitive" } },
+        { tags: { hasSome: [search] } },
+      ];
+    }
+
+    // Get products with all necessary fields for social media
+    const [products, total] = await Promise.all([
+      db.product.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+          shortDescription: true,
+          shortDescriptionBullets: true,
+          description: true,
+          price: true,
+          currency: true,
+          images: true,
+          status: true,
+          tags: true,
+          materialTags: true,
+          primaryCategory: true,
+          secondaryCategory: true,
+          tertiaryCategory: true,
+          onSale: true,
+          discount: true,
+          stock: true,
+          isDigital: true,
+          sku: true,
+          createdAt: true,
+          seller: {
+            select: {
+              shopName: true,
+              shopNameSlug: true,
+              shopTagLine: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      db.product.count({ where: whereClause }),
+    ]);
+
+    // Generate product URLs and format data
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com";
+    const formattedProducts = products.map((product) => {
+      // Generate product URL
+      const productUrl = `${baseUrl}/product/${product.id}`;
+
+      // Format price
+      const formattedPrice = (product.price / 100).toFixed(2);
+      const salePrice =
+        product.onSale && product.discount
+          ? ((product.price * (100 - product.discount)) / 100 / 100).toFixed(2)
+          : null;
+
+      // Extract text from description JSON
+      let descriptionText = "";
+      if (product.description) {
+        if (typeof product.description === "string") {
+          descriptionText = product.description;
+        } else {
+          // Try to extract text from JSON structure
+          const desc = product.description as any;
+          if (desc.text) {
+            descriptionText = desc.text;
+          } else if (desc.html) {
+            // Strip HTML tags
+            descriptionText = desc.html.replace(/<[^>]*>/g, "");
+          } else {
+            descriptionText = JSON.stringify(desc);
+          }
+        }
+      }
+
+      return {
+        ...product,
+        productUrl,
+        formattedPrice,
+        salePrice,
+        descriptionText,
+        // All image URLs are already in the images array
+        imageUrls: product.images || [],
+      };
+    });
+
+    return {
+      products: formattedProducts,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching products for social media:", error);
+
+    if (
+      error instanceof Error &&
+      (error.message.includes("Not authenticated") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("Insufficient permissions"))
+    ) {
+      throw error;
+    }
+
+    logError({
+      code: "ADMIN_GET_PRODUCTS_FOR_SOCIAL_MEDIA_FAILED",
+      userId: currentUserData?.id,
+      route: "actions/adminActions",
+      method: "getProductsForSocialMedia",
+      error,
+      metadata: {
+        search,
+        status,
+        page,
+        limit,
+        note: "Failed to fetch products for social media posts",
+      },
+    });
+
+    throw error;
+  }
+}

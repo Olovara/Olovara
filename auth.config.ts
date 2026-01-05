@@ -15,25 +15,42 @@ export const authConfig = {
     }),
     Credentials({
       async authorize(credentials) {
-        const validatedFields = LoginSchema.safeParse(credentials);
+        try {
+          const validatedFields = LoginSchema.safeParse(credentials);
 
-        if (validatedFields.success) {
+          if (!validatedFields.success) {
+            console.error("[auth] Credentials validation failed:", validatedFields.error.format());
+            return null;
+          }
+
           const { email, password } = validatedFields.data;
 
           const user = await getUserByEmail(email);
-          if (!user || !user.password) return null;
+          if (!user) {
+            console.error("[auth] User not found for email:", email);
+            return null;
+          }
+
+          if (!user.password) {
+            console.error("[auth] User has no password (OAuth-only user):", email);
+            return null;
+          }
 
           // Dynamically import bcrypt only when needed (runs in Node.js API route, not Edge)
           // This prevents Edge Runtime bundling errors
           const bcrypt = (await import("bcryptjs")).default;
           const passwordsMatch = await bcrypt.compare(password, user.password);
 
-          if (passwordsMatch) {
-            return user;
+          if (!passwordsMatch) {
+            console.error("[auth] Password mismatch for email:", email);
+            return null;
           }
-        }
 
-        return null;
+          return user;
+        } catch (error) {
+          console.error("[auth] Unexpected error in authorize:", error);
+          return null;
+        }
       },
     }),
   ],

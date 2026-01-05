@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Bug,
   AlertCircle,
+  Share2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { UserNav } from "@/components/UserNav";
@@ -94,6 +95,14 @@ export default async function AdminDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <Package className="mr-2 h-4 w-4" />
                     All Products
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/admin/dashboard/social-media-posts">
+                  <Button variant="outline" className="w-full">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Social Media Posts
                   </Button>
                 </Link>
               </DialogClose>
