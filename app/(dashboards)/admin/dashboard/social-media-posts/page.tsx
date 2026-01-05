@@ -26,7 +26,7 @@ import Image from "next/image";
 import { Image as ImageIcon, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { SocialMediaPostsClient } from "./SocialMediaPostsClient";
-import { CopyButton } from "./CopyButton";
+import { CopyableUrl } from "./CopyableUrl";
 
 export const metadata = {
   title: "Admin - Social Media Posts",
@@ -408,19 +408,4 @@ function ProductCard({ product }: { product: any }) {
   );
 }
 
-// Copyable URL Component
-function CopyableUrl({ url, label }: { url: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-      <input
-        type="text"
-        value={url}
-        readOnly
-        className="flex-1 text-xs bg-transparent border-none outline-none text-muted-foreground"
-        onClick={(e) => (e.target as HTMLInputElement).select()}
-      />
-      <CopyButton url={url} />
-    </div>
-  );
-}
 
