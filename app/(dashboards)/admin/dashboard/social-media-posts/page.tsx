@@ -27,6 +27,7 @@ import { Image as ImageIcon, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { SocialMediaPostsClient } from "./SocialMediaPostsClient";
 import { CopyableUrl } from "./CopyableUrl";
+import { ExpandableDescription } from "./ExpandableDescription";
 
 export const metadata = {
   title: "Admin - Social Media Posts",
@@ -311,9 +312,10 @@ function ProductCard({ product }: { product: any }) {
         {product.shortDescription && (
           <div className="space-y-1">
             <h3 className="text-sm font-semibold">Short Description</h3>
-            <p className="text-sm text-muted-foreground">
-              {product.shortDescription}
-            </p>
+            <ExpandableDescription
+              text={product.shortDescription}
+              maxLength={150}
+            />
           </div>
         )}
 
@@ -336,9 +338,10 @@ function ProductCard({ product }: { product: any }) {
         {product.descriptionText && (
           <div className="space-y-1">
             <h3 className="text-sm font-semibold">Full Description</h3>
-            <p className="text-sm text-muted-foreground line-clamp-4">
-              {product.descriptionText}
-            </p>
+            <ExpandableDescription
+              text={product.descriptionText}
+              maxLength={200}
+            />
           </div>
         )}
 
