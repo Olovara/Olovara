@@ -15,32 +15,7 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   {
     id: "PAINTINGS",
     name: "Paintings",
-    keywords: ["painting", "paint", "canvas", "canvas art", "painted", "artwork painting", "original painting"]
-  },
-  {
-    id: "ACRYLIC",
-    name: "Acrylic",
-    keywords: ["acrylic", "acrylic paint", "acrylic painting", "acrylic art"]
-  },
-  {
-    id: "OIL",
-    name: "Oil",
-    keywords: ["oil", "oil painting", "oil paint", "oil on canvas", "oil artwork"]
-  },
-  {
-    id: "GOUACHE",
-    name: "Gouache",
-    keywords: ["gouache", "gouache painting", "gouache art"]
-  },
-  {
-    id: "INK",
-    name: "Ink",
-    keywords: ["ink", "ink painting", "ink art", "ink drawing", "ink wash"]
-  },
-  {
-    id: "SPRAY_PAINT",
-    name: "Spray Paint",
-    keywords: ["spray paint", "spray art", "street art", "graffiti", "aerosol"]
+    keywords: ["painting", "paint", "canvas", "canvas art", "painted", "artwork painting", "original painting", "acrylic", "oil", "gouache", "ink", "spray paint"]
   },
   {
     id: "PRINTS",
@@ -48,29 +23,14 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["print", "prints", "art print", "printable", "art reproduction", "poster", "art poster"]
   },
   {
-    id: "WOOD_AND_LINOCUT",
-    name: "Wood and Linocut",
-    keywords: ["woodcut", "linocut", "block print", "wood block", "lino print", "relief print"]
+    id: "FINE_ART_PRINTS",
+    name: "Fine Art Prints",
+    keywords: ["fine art print", "fine art prints", "giclee", "giclee print", "museum quality print", "digital art", "digital print", "digital artwork", "digital illustration"]
   },
   {
-    id: "DIGITAL_ART",
-    name: "Digital Art",
-    keywords: ["digital", "digital art", "digital print", "digital artwork", "digital illustration"]
-  },
-  {
-    id: "GICLEE",
-    name: "Giclee",
-    keywords: ["giclee", "giclee print", "fine art print", "museum quality print"]
-  },
-  {
-    id: "SCREENPRINTS",
-    name: "Screenprints",
-    keywords: ["screenprint", "screen print", "silkscreen", "serigraph", "screen printing"]
-  },
-  {
-    id: "LETTERPRESS",
-    name: "Letterpress",
-    keywords: ["letterpress", "letter press", "letterpress print", "typography print"]
+    id: "RELIEF_PRINTS",
+    name: "Relief Prints",
+    keywords: ["relief print", "relief prints", "woodcut", "linocut", "block print", "wood block", "lino print", "screenprint", "screen print", "silkscreen", "serigraph", "letterpress", "letter press"]
   },
   {
     id: "PHOTOGRAPHY",
@@ -80,27 +40,7 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   {
     id: "SCULPTURES",
     name: "Sculptures",
-    keywords: ["sculpture", "sculpt", "statue", "figurine", "3d art", "three dimensional"]
-  },
-  {
-    id: "CERAMIC",
-    name: "Ceramic",
-    keywords: ["ceramic", "ceramics", "clay", "pottery", "ceramic sculpture", "clay art"]
-  },
-  {
-    id: "GLASS",
-    name: "Glass",
-    keywords: ["glass", "glass sculpture", "glass art", "blown glass", "glasswork"]
-  },
-  {
-    id: "METAL",
-    name: "Metal",
-    keywords: ["metal", "metal sculpture", "metal art", "bronze", "steel sculpture", "iron art"]
-  },
-  {
-    id: "WOOD",
-    name: "Wood",
-    keywords: ["wood", "wood sculpture", "wood carving", "wooden art", "carved wood"]
+    keywords: ["sculpture", "sculpt", "statue", "figurine", "3d art", "three dimensional", "ceramic", "ceramics", "clay", "pottery", "glass", "glass sculpture", "metal", "bronze", "steel", "wood", "wood carving"]
   },
   {
     id: "COLLECTIBLES",
@@ -115,9 +55,9 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["bath", "beauty", "bath product", "beauty product", "personal care", "self care", "skincare"]
   },
   {
-    id: "SOAP",
-    name: "Soaps and Washes",
-    keywords: ["soap", "bar soap", "hand soap", "body wash", "cleanser", "wash", "cleansing"]
+    id: "SOAP_BATH",
+    name: "Soap & Bath",
+    keywords: ["soap", "bar soap", "hand soap", "body wash", "cleanser", "wash", "cleansing", "bath"]
   },
   {
     id: "BAR_SOAP",
@@ -140,9 +80,14 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["shower gel", "body gel", "shower wash", "gel cleanser"]
   },
   {
-    id: "BATH_SALTS_AND_SCRUBS",
-    name: "Bath Salts and Scrubs",
-    keywords: ["bath salt", "bath salts", "scrub", "body scrub", "exfoliating scrub", "salt scrub", "sugar scrub"]
+    id: "BATH_SALTS",
+    name: "Bath Salts",
+    keywords: ["bath salt", "bath salts", "soaking salt", "bath soak"]
+  },
+  {
+    id: "BODY_SCRUBS",
+    name: "Body Scrubs",
+    keywords: ["scrub", "body scrub", "exfoliating scrub", "salt scrub", "sugar scrub", "exfoliant", "exfoliate", "exfoliating"]
   },
   {
     id: "BATH_OILS",
@@ -150,14 +95,14 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["bath oil", "bath oils", "bathing oil", "aromatic oil"]
   },
   {
-    id: "SKIN",
+    id: "SKIN_CARE",
     name: "Skin Care",
     keywords: ["skincare", "skin care", "facial", "face care", "skin treatment"]
   },
   {
-    id: "FACIAL_CARE",
-    name: "Facial Care",
-    keywords: ["facial", "facial care", "face wash", "facial cleanser", "face treatment"]
+    id: "CLEANSERS",
+    name: "Cleansers",
+    keywords: ["cleanser", "facial cleanser", "face wash", "cleansing", "facial care", "face treatment"]
   },
   {
     id: "MOISTURIZERS",
@@ -165,82 +110,22 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["moisturizer", "moisturiser", "lotion", "cream", "face cream", "body lotion", "hydrating"]
   },
   {
-    id: "BALMS_AND_SALVES",
-    name: "Balms and Salves",
+    id: "SERUMS",
+    name: "Serums",
+    keywords: ["serum", "serums", "face serum", "skin serum", "eye serum", "eye treatment", "under eye"]
+  },
+  {
+    id: "BALMS_SALVES",
+    name: "Balms & Salves",
     keywords: ["balm", "salve", "healing balm", "lip balm", "ointment", "healing salve"]
   },
   {
-    id: "EXFOLIATION",
-    name: "Exfoliation",
-    keywords: ["exfoliant", "exfoliate", "exfoliating", "scrub", "peel", "face scrub"]
+    id: "MASKS",
+    name: "Masks",
+    keywords: ["mask", "masks", "face mask", "facial mask", "skin mask", "clay mask"]
   },
   {
-    id: "EYE_TREATMENTS",
-    name: "Eye Treatments",
-    keywords: ["eye cream", "eye treatment", "eye serum", "under eye", "eye care"]
-  },
-  {
-    id: "SPA",
-    name: "Spa and Relaxation",
-    keywords: ["spa", "relaxation", "spa product", "relaxing", "wellness", "self care"]
-  },
-  {
-    id: "AROMATHERAPY",
-    name: "Aromatherapy",
-    keywords: ["aromatherapy", "aromatic", "aroma", "therapeutic", "scent therapy"]
-  },
-  {
-    id: "HEAT_AND_COLD_PACKS",
-    name: "Heat and Cold Packs",
-    keywords: ["heat pack", "cold pack", "hot pack", "ice pack", "warming", "cooling", "compress"]
-  },
-  {
-    id: "MASSAGE",
-    name: "Massage",
-    keywords: ["massage", "massage oil", "massage cream", "massage lotion", "massage product"]
-  },
-  {
-    id: "ESSENTIAL_OILS",
-    name: "Essential Oils",
-    keywords: ["essential oil", "essential oils", "aromatherapy oil", "therapeutic oil", "oil blend"]
-  },
-  {
-    id: "SPA_KITS",
-    name: "Spa Kits",
-    keywords: ["spa kit", "spa set", "gift set", "spa bundle", "relaxation kit"]
-  },
-  {
-    id: "COSMETICS",
-    name: "Cosmetics",
-    keywords: ["cosmetic", "cosmetics", "makeup", "make up", "beauty", "beauty product"]
-  },
-  {
-    id: "EYES",
-    name: "Eyes",
-    keywords: ["eye makeup", "eyeshadow", "mascara", "eyeliner", "eye shadow", "eye cosmetic"]
-  },
-  {
-    id: "LIPS",
-    name: "Lips",
-    keywords: ["lipstick", "lip gloss", "lip balm", "lip color", "lip cosmetic", "lip product"]
-  },
-  {
-    id: "FACE",
-    name: "Face",
-    keywords: ["foundation", "concealer", "face powder", "blush", "bronzer", "face makeup"]
-  },
-  {
-    id: "NAILS_AND_NAIL_CARE",
-    name: "Nails and Nail Care",
-    keywords: ["nail polish", "nail care", "nail art", "nail treatment", "manicure", "nail product"]
-  },
-  {
-    id: "MAKEUP_TOOLS_BRUSHES",
-    name: "Makeup Tools and Brushes",
-    keywords: ["makeup brush", "beauty brush", "cosmetic brush", "makeup tool", "beauty tool", "brush set"]
-  },
-  {
-    id: "HAIR",
+    id: "HAIR_CARE",
     name: "Hair Care",
     keywords: ["hair", "hair care", "hair product", "hair treatment", "haircare"]
   },
@@ -250,19 +135,69 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["shampoo", "hair shampoo", "cleansing shampoo", "hair wash"]
   },
   {
-    id: "CONDITIONERS_AND_TREATMENTS",
-    name: "Conditioners and Treatments",
-    keywords: ["conditioner", "hair conditioner", "hair treatment", "hair mask", "deep conditioner"]
+    id: "CONDITIONERS",
+    name: "Conditioners",
+    keywords: ["conditioner", "hair conditioner", "deep conditioner"]
   },
   {
-    id: "BRUSHES_AND_COMBS",
-    name: "Brushes and Combs",
-    keywords: ["hair brush", "comb", "hair comb", "detangling brush", "hair tool"]
+    id: "HAIR_TREATMENTS",
+    name: "Hair Treatments",
+    keywords: ["hair treatment", "hair mask", "hair care treatment", "hair therapy"]
   },
   {
-    id: "WAXES_AND_GELS",
-    name: "Waxes and Gels",
-    keywords: ["hair gel", "hair wax", "styling gel", "hair styling", "hair product"]
+    id: "STYLING_PRODUCTS",
+    name: "Styling Products",
+    keywords: ["hair gel", "hair wax", "styling gel", "hair styling", "hair product", "styling product"]
+  },
+  {
+    id: "BRUSHES_COMBS",
+    name: "Brushes & Combs",
+    keywords: ["hair brush", "comb", "hair comb", "detangling brush", "hair tool", "brush", "combs"]
+  },
+  {
+    id: "COSMETICS",
+    name: "Cosmetics",
+    keywords: ["cosmetic", "cosmetics", "makeup", "make up", "beauty", "beauty product"]
+  },
+  {
+    id: "EYE_MAKEUP",
+    name: "Eye Makeup",
+    keywords: ["eye makeup", "eyeshadow", "mascara", "eyeliner", "eye shadow", "eye cosmetic"]
+  },
+  {
+    id: "LIP_MAKEUP",
+    name: "Lip Makeup",
+    keywords: ["lipstick", "lip gloss", "lip balm", "lip color", "lip cosmetic", "lip product", "lip makeup"]
+  },
+  {
+    id: "FACE_MAKEUP",
+    name: "Face Makeup",
+    keywords: ["foundation", "concealer", "face powder", "blush", "bronzer", "face makeup"]
+  },
+  {
+    id: "NAIL_CARE",
+    name: "Nail Care",
+    keywords: ["nail polish", "nail care", "nail art", "nail treatment", "manicure", "nail product"]
+  },
+  {
+    id: "MAKEUP_TOOLS",
+    name: "Makeup Tools & Brushes",
+    keywords: ["makeup brush", "beauty brush", "cosmetic brush", "makeup tool", "beauty tool", "brush set"]
+  },
+  {
+    id: "AROMATHERAPY",
+    name: "Aromatherapy",
+    keywords: ["aromatherapy", "aromatic", "aroma", "therapeutic", "scent therapy"]
+  },
+  {
+    id: "ESSENTIAL_OILS",
+    name: "Essential Oils",
+    keywords: ["essential oil", "essential oils", "aromatherapy oil", "therapeutic oil", "oil blend"]
+  },
+  {
+    id: "ROLL_ONS",
+    name: "Roll-Ons / Aromatic Roll-Ons",
+    keywords: ["roll on", "roll-on", "roll ons", "aromatic roll on", "essential oil roll on", "wellness roll on"]
   },
 
   // Books & Media - Primary
@@ -564,8 +499,8 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   },
   {
     id: "CANDLES",
-    name: "Candles",
-    keywords: ["candle", "candles", "scented candle", "wax candle", "jar candle", "pillar candle"]
+    name: "Candles / Aromatherapy Candles",
+    keywords: ["candle", "candles", "scented candle", "wax candle", "jar candle", "pillar candle", "aromatherapy candle", "aromatic candle", "wellness candle"]
   },
   {
     id: "VASES",
@@ -913,12 +848,89 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   },
   {
     id: "FIDGETS",
-    name: "Fidget Toys",
-    keywords: ["fidget", "fidgets", "fidget toy", "fidget spinner", "stress toy", "fidget toy"]
+    name: "Fidget Toys / Fidget & Stress Toys",
+    keywords: ["fidget", "fidgets", "fidget toy", "fidget spinner", "stress toy", "anxiety toy", "calming toy", "sensory toy"]
   },
   {
     id: "TEXTURED_TOYS",
     name: "Textured Toys",
     keywords: ["textured toy", "textured toys", "tactile toy", "texture", "sensory texture"]
+  },
+
+  // Wellness & Self-Care - Primary
+  {
+    id: "WELLNESS",
+    name: "Wellness & Self-Care",
+    keywords: ["wellness", "self care", "self-care", "wellbeing", "well being", "health", "mindfulness", "relaxation"]
+  },
+  {
+    id: "STRESS_RELIEF",
+    name: "Stress Relief",
+    keywords: ["stress relief", "stress", "anxiety", "calm", "relief", "stress management"]
+  },
+  {
+    id: "HANDHELD_TOOLS",
+    name: "Handheld Comfort Tools",
+    keywords: ["handheld", "comfort tool", "handheld tool", "comfort item", "stress relief tool"]
+  },
+  {
+    id: "WEIGHTED_ITEMS",
+    name: "Weighted Items",
+    keywords: ["weighted", "weighted item", "weighted blanket", "weighted product", "deep pressure"]
+  },
+  {
+    id: "RELAXATION",
+    name: "Relaxation",
+    keywords: ["relaxation", "relax", "relaxing", "calm", "peaceful", "rest"]
+  },
+  {
+    id: "EYE_PILLOWS",
+    name: "Eye Pillows",
+    keywords: ["eye pillow", "eye pillows", "eye mask", "sleep mask", "eye rest"]
+  },
+  {
+    id: "HEAT_COLD_PACKS",
+    name: "Heat & Cold Packs",
+    keywords: ["heat pack", "cold pack", "hot pack", "ice pack", "warming", "cooling", "compress", "heat cold"]
+  },
+  {
+    id: "NECK_SHOULDER_WRAPS",
+    name: "Neck & Shoulder Wraps",
+    keywords: ["neck wrap", "shoulder wrap", "neck shoulder wrap", "neck support", "shoulder support"]
+  },
+  {
+    id: "MINDFULNESS",
+    name: "Mindfulness",
+    keywords: ["mindfulness", "mindful", "meditation", "meditate", "awareness", "present moment"]
+  },
+  {
+    id: "MEDITATION_CUSHIONS",
+    name: "Meditation Cushions",
+    keywords: ["meditation cushion", "meditation cushions", "zafu", "meditation pillow", "sitting cushion"]
+  },
+  {
+    id: "JOURNALS",
+    name: "Journals",
+    keywords: ["journal", "journals", "journaling", "diary", "notebook", "writing journal"]
+  },
+  {
+    id: "TIMER_TOOLS",
+    name: "Mindfulness Timers",
+    keywords: ["timer", "mindfulness timer", "meditation timer", "mindful timer", "timer tool"]
+  },
+  {
+    id: "AROMATIC_ITEMS",
+    name: "Aromatic Items",
+    keywords: ["aromatic", "aroma", "scented", "fragrance", "aromatic item", "scent"]
+  },
+  {
+    id: "SACHETS",
+    name: "Scented Sachets",
+    keywords: ["sachet", "sachets", "scented sachet", "aromatic sachet", "scent bag"]
+  },
+  {
+    id: "AROMATHERAPY_CANDLES",
+    name: "Aromatic Candles",
+    keywords: ["candle", "candles", "aromatherapy candle", "scented candle", "aromatic candle", "wellness candle"]
   },
 ];

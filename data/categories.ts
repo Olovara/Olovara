@@ -25,23 +25,13 @@ export const Categories = [
       {
         id: "PAINTINGS",
         name: "Paintings",
-        children: [
-          { id: "ACRYLIC", name: "Acrylic" },
-          { id: "OIL", name: "Oil" },
-          { id: "GOUACHE", name: "Gouache" },
-          { id: "INK", name: "Ink" },
-          { id: "SPRAY_PAINT", name: "Spray Paint" },
-        ],
       },
       {
         id: "PRINTS",
         name: "Prints",
         children: [
-          { id: "WOOD_AND_LINOCUT", name: "Wood and Linocut" },
-          { id: "DIGITAL_ART", name: "Digital Art" },
-          { id: "GICLEE", name: "Giclee" },
-          { id: "SCREENPRINTS", name: "Screenprints" },
-          { id: "LETTERPRESS", name: "Letterpress" },
+          { id: "FINE_ART_PRINTS", name: "Fine Art Prints" },
+          { id: "RELIEF_PRINTS", name: "Relief Prints" },
         ],
       },
       {
@@ -51,12 +41,6 @@ export const Categories = [
       {
         id: "SCULPTURES",
         name: "Sculptures",
-        children: [
-          { id: "CERAMIC", name: "Ceramic" },
-          { id: "GLASS", name: "Glass" },
-          { id: "METAL", name: "Metal" },
-          { id: "WOOD", name: "Wood" },
-        ],
       },
       {
         id: "COLLECTIBLES",
@@ -69,61 +53,58 @@ export const Categories = [
     name: "Bath & Beauty",
     children: [
       {
-        id: "SOAP",
-        name: "Soaps and Washes",
+        id: "SOAP_BATH",
+        name: "Soap & Bath",
         children: [
           { id: "BAR_SOAP", name: "Bar Soap" },
           { id: "LIQUID_SOAP", name: "Liquid Soap" },
           { id: "BATH_BOMBS", name: "Bath Bombs" },
           { id: "SHOWER_GELS", name: "Shower Gels" },
-          { id: "BATH_SALTS_AND_SCRUBS", name: "Bath Salts and Scrubs" },
+          { id: "BATH_SALTS", name: "Bath Salts" },
+          { id: "BODY_SCRUBS", name: "Body Scrubs" },
           { id: "BATH_OILS", name: "Bath Oils" },
         ],
       },
       {
-        id: "SKIN",
+        id: "SKIN_CARE",
         name: "Skin Care",
         children: [
-          { id: "FACIAL_CARE", name: "Facial Care" },
+          { id: "CLEANSERS", name: "Cleansers" },
           { id: "MOISTURIZERS", name: "Moisturizers" },
-          { id: "BALMS_AND_SALVES", name: "Balms and Salves" },
-          { id: "EXFOLIATION", name: "Exfoliation" },
-          { id: "EYE_TREATMENTS", name: "Eye Treatments" },
+          { id: "SERUMS", name: "Serums" },
+          { id: "BALMS_SALVES", name: "Balms & Salves" },
+          { id: "MASKS", name: "Masks" },
         ],
       },
       {
-        id: "SPA",
-        name: "Spa and Relaxation",
+        id: "HAIR_CARE",
+        name: "Hair Care",
         children: [
-          { id: "AROMATHERAPY", name: "Aromatherapy" },
-          { id: "HEAT_AND_COLD_PACKS", name: "Heat and Cold Packs" },
-          { id: "MASSAGE", name: "Massage" },
-          { id: "ESSENTIAL_OILS", name: "Essential Oils" },
-          { id: "SPA_KITS", name: "Spa Kits" },
+          { id: "SHAMPOOS", name: "Shampoos" },
+          { id: "CONDITIONERS", name: "Conditioners" },
+          { id: "HAIR_TREATMENTS", name: "Hair Treatments" },
+          { id: "STYLING_PRODUCTS", name: "Styling Products" },
+          { id: "BRUSHES_COMBS", name: "Brushes & Combs" },
         ],
       },
       {
         id: "COSMETICS",
         name: "Cosmetics",
         children: [
-          { id: "EYES", name: "Eyes" },
-          { id: "LIPS", name: "Lips" },
-          { id: "FACE", name: "Face" },
-          { id: "NAILS_AND_NAIL_CARE", name: "Nails and Nail Care" },
-          { id: "MAKEUP_TOOLS_BRUSHES", name: "Makeup Tools and Brushes" },
+          { id: "EYE_MAKEUP", name: "Eye Makeup" },
+          { id: "LIP_MAKEUP", name: "Lip Makeup" },
+          { id: "FACE_MAKEUP", name: "Face Makeup" },
+          { id: "NAIL_CARE", name: "Nail Care" },
+          { id: "MAKEUP_TOOLS", name: "Makeup Tools & Brushes" },
         ],
       },
       {
-        id: "HAIR",
-        name: "Hair Care",
+        id: "AROMATHERAPY",
+        name: "Aromatherapy",
         children: [
-          { id: "SHAMPOOS", name: "Shampoos" },
-          {
-            id: "CONDITIONERS_AND_TREATMENTS",
-            name: "Conditioners and Treatments",
-          },
-          { id: "BRUSHES_AND_COMBS", name: "Brushes and Combs" },
-          { id: "WAXES_AND_GELS", name: "Waxes and Gels" },
+          { id: "ESSENTIAL_OILS", name: "Essential Oils" },
+          { id: "CANDLES", name: "Aromatherapy Candles" },
+          { id: "ROLL_ONS", name: "Roll-Ons" },
         ],
       },
     ],
@@ -419,6 +400,48 @@ export const Categories = [
         children: [
           { id: "FIDGETS", name: "Fidget Toys" },
           { id: "TEXTURED_TOYS", name: "Textured Toys" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "WELLNESS",
+    name: "Wellness & Self-Care",
+    children: [
+      {
+        id: "STRESS_RELIEF",
+        name: "Stress Relief",
+        children: [
+          { id: "FIDGETS", name: "Fidget & Stress Toys" },
+          { id: "HANDHELD_TOOLS", name: "Handheld Comfort Tools" },
+          { id: "WEIGHTED_ITEMS", name: "Weighted Items" },
+        ],
+      },
+      {
+        id: "RELAXATION",
+        name: "Relaxation",
+        children: [
+          { id: "EYE_PILLOWS", name: "Eye Pillows" },
+          { id: "HEAT_COLD_PACKS", name: "Heat & Cold Packs" },
+          { id: "NECK_SHOULDER_WRAPS", name: "Neck & Shoulder Wraps" },
+        ],
+      },
+      {
+        id: "MINDFULNESS",
+        name: "Mindfulness",
+        children: [
+          { id: "MEDITATION_CUSHIONS", name: "Meditation Cushions" },
+          { id: "JOURNALS", name: "Journals" },
+          { id: "TIMER_TOOLS", name: "Mindfulness Timers" },
+        ],
+      },
+      {
+        id: "AROMATIC_ITEMS",
+        name: "Aromatic Items",
+        children: [
+          { id: "SACHETS", name: "Scented Sachets" },
+          { id: "ROLL_ONS", name: "Aromatic Roll-Ons" },
+          { id: "AROMATHERAPY_CANDLES", name: "Aromatic Candles" },
         ],
       },
     ],
