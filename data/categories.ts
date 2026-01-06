@@ -149,34 +149,65 @@ export const Categories = [
       {
         id: "TOPS",
         name: "Tops",
+        children: [
+          { id: "SWEATERS", name: "Sweaters" },
+          { id: "CARDIGANS", name: "Cadigans" },
+          { id: "T_SHIRTS", name: "T-Shirts" },
+          { id: "BLOUSES", name: "Blouses" },
+          { id: "TANK_TOPS", name: "Tank Tops" },
+        ],
       },
       {
         id: "BOTTOMS",
         name: "Bottoms",
+        children: [
+          { id: "PANTS", name: "Pants" },
+          { id: "SHORTS", name: "Shorts" },
+          { id: "SKIRTS", name: "Skirts" },
+          { id: "LEGGINGS", name: "Leggings" },
+        ],
       },
       {
         id: "DRESSES",
         name: "Dresses",
+        children: [
+          { id: "CASUAL_DRESSES", name: "Casual Dresses" },
+          { id: "FORMAL_DRESSES", name: "Formal Dresses" },
+          { id: "MAXI_DRESSES", name: "Maxi Dresses" },
+          { id: "MIDI_DRESSES", name: "Midi Dresses" },
+          { id: "SUMMER_DRESSES", name: "Summer Dresses" },
+        ],
+      },
+      {
+        id: "OUTERWEAR",
+        name: "Outerwear",
+        children: [
+          { id: "COATS", name: "Coats" },
+          { id: "JACKETS", name: "Jackets" },
+          { id: "VESTS", name: "Vests" },
+          { id: "PONCHOS", name: "Ponchos" },
+          { id: "CAPES", name: "Capes" },
+        ],
       },
       {
         id: "ACCESSORIES",
         name: "Accessories",
-      },
-      {
-        id: "WOMENS",
-        name: "Women's",
-      },
-      {
-        id: "MENS",
-        name: "Men's",
-      },
-      {
-        id: "UNISEX",
-        name: "Unisex",
+        children: [
+          { id: "HATS", name: "Hats" },
+          { id: "SCARVES", name: "Scarves" },
+          { id: "GLOVES", name: "Gloves" },
+          { id: "BELTS", name: "Belts" },
+        ],
       },
       {
         id: "BAGS",
         name: "Bags and Purses",
+        children: [
+          { id: "TOTE_BAGS", name: "Tote Bags" },
+          { id: "BACKPACKS", name: "Backpacks" },
+          { id: "CROSSBODY_BAGS", name: "Crossbody Bags" },
+          { id: "POUCHES", name: "Pouches" },
+        ],
       },
     ],
   },
@@ -233,25 +264,35 @@ export const Categories = [
     name: "Home & Living",
     children: [
       {
-        id: "DECOR",
+        id: "HOME_DECOR",
         name: "Home Decor",
         children: [
           { id: "WALL_ART", name: "Wall Art" },
           { id: "CANDLES", name: "Candles" },
           { id: "VASES", name: "Vases" },
-          { id: "THROW_PILLOWS", name: "Throw Pillows" },
-          { id: "RUGS", name: "Rugs" },
+          { id: "DECORATIVE_BOWLS", name: "Decorative Bowls" },
         ],
       },
       {
-        id: "KITCHEN",
+        id: "TEXTILES",
+        name: "Textiles",
+        children: [
+          { id: "THROW_PILLOWS", name: "Throw Pillows" },
+          { id: "RUGS", name: "Rugs" },
+          { id: "BLANKETS", name: "Blankets & Throws" },
+          { id: "WALL_HANGINGS", name: "Wall Hangings" },
+        ],
+      },
+      {
+        id: "KITCHEN_DINING",
         name: "Kitchen & Dining",
         children: [
           { id: "DRINKWARE", name: "Drinkware" },
           { id: "TABLEWARE", name: "Tableware" },
-          { id: "COOKING_AND_BAKING", name: "Cooking and Baking" },
-          { id: "TRAYS_AND_PLATTERS", name: "Trays and Platters" },
+          { id: "SERVEWARE", name: "Serveware" },
+          { id: "TRAYS_PLATTERS", name: "Trays & Platters" },
           { id: "CUTTING_BOARDS", name: "Cutting Boards" },
+          { id: "LINENS", name: "Kitchen Linens" },
         ],
       },
       {
@@ -260,30 +301,19 @@ export const Categories = [
         children: [
           { id: "CHAIRS", name: "Chairs" },
           { id: "TABLES", name: "Tables" },
-          { id: "STOOLS", name: "Stools" },
           { id: "DESKS", name: "Desks" },
           { id: "BENCHES", name: "Benches" },
+          { id: "STOOLS", name: "Stools" },
         ],
       },
       {
-        id: "GARDEN",
-        name: "Garden & Outdoor",
-      },
-      {
-        id: "WALLDECOR",
-        name: "Wall Decor",
-      },
-      {
-        id: "KIDS",
-        name: "Baby and Kids",
-      },
-      {
-        id: "PETS",
-        name: "Pets",
-      },
-      {
-        id: "CHILD",
-        name: "Kids and Baby",
+        id: "OUTDOOR_GARDEN",
+        name: "Outdoor & Garden",
+        children: [
+          { id: "PLANTERS", name: "Planters" },
+          { id: "GARDEN_DECOR", name: "Garden Decor" },
+          { id: "OUTDOOR_FURNITURE", name: "Outdoor Furniture" },
+        ],
       },
     ],
   },
@@ -349,30 +379,47 @@ export const Categories = [
     name: "Toys & Games",
     children: [
       {
-        id: "TODDLER",
-        name: "Baby and Toddler Toys",
-      },
-      {
-        id: "KID",
-        name: "Big Kid Toys",
-      },
-      {
-        id: "GAMES",
-        name: "Games and Puzzles",
-      },
-      {
-        id: "STUFFED",
-        name: "Stuffed Animals, Dolls, and Plushies",
+        id: "PLUSH_TOYS",
+        name: "Plush Toys & Dolls",
         children: [
           { id: "TEDDY_BEARS", name: "Teddy Bears" },
-          { id: "ANIMALS", name: "Animals" },
+          { id: "ANIMAL_PLUSH", name: "Animal Plush" },
           { id: "DOLLS", name: "Dolls" },
           { id: "PLUSHIES", name: "Plushies" },
         ],
       },
       {
-        id: "SENSORY",
+        id: "GAMES_PUZZLES",
+        name: "Games & Puzzles",
+        children: [
+          { id: "BOARD_GAMES", name: "Board Games" },
+          { id: "PUZZLES", name: "Puzzles" },
+          { id: "CARD_GAMES", name: "Card Games" },
+        ],
+      },
+      {
+        id: "PRETEND_PLAY",
+        name: "Pretend Play",
+        children: [
+          { id: "PLAY_FOOD", name: "Play Food" },
+          { id: "DOLLS_ACCESSORIES", name: "Doll Accessories" },
+        ],
+      },
+      {
+        id: "EDUCATIONAL",
+        name: "Educational Toys",
+        children: [
+          { id: "STACKING_SORTING", name: "Stacking & Sorting" },
+          { id: "COUNTING_LEARNING", name: "Counting & Learning" },
+        ],
+      },
+      {
+        id: "SENSORY_TOYS",
         name: "Sensory Toys",
+        children: [
+          { id: "FIDGETS", name: "Fidget Toys" },
+          { id: "TEXTURED_TOYS", name: "Textured Toys" },
+        ],
       },
     ],
   },
@@ -537,4 +584,3 @@ export const getCategoryChain = (categoryId: string): CategoryChain | null => {
 
   return result;
 };
-

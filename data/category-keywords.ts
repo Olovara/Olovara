@@ -291,17 +291,117 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   {
     id: "TOPS",
     name: "Tops",
-    keywords: ["top", "shirt", "blouse", "tee", "t-shirt", "sweater", "hoodie", "jacket"]
+    keywords: ["top", "tops", "shirt", "blouse", "tee", "t-shirt", "sweater", "hoodie"]
+  },
+  {
+    id: "SWEATERS",
+    name: "Sweaters",
+    keywords: ["sweater", "sweaters", "pullover", "jumper", "knit sweater", "wool sweater"]
+  },
+  {
+    id: "CARDIGANS",
+    name: "Cadigans",
+    keywords: ["cardigan", "cardigans", "cardigan sweater", "button sweater", "open front sweater"]
+  },
+  {
+    id: "T_SHIRTS",
+    name: "T-Shirts",
+    keywords: ["t-shirt", "tshirt", "tee", "tees", "t shirt", "cotton tee", "basic tee"]
+  },
+  {
+    id: "BLOUSES",
+    name: "Blouses",
+    keywords: ["blouse", "blouses", "shirt", "top blouse", "womens blouse"]
+  },
+  {
+    id: "TANK_TOPS",
+    name: "Tank Tops",
+    keywords: ["tank top", "tank", "tanks", "sleeveless", "tank shirt", "camisole"]
   },
   {
     id: "BOTTOMS",
     name: "Bottoms",
-    keywords: ["pants", "trousers", "jeans", "shorts", "skirt", "leggings", "bottom"]
+    keywords: ["bottom", "bottoms", "pants", "trousers", "jeans", "shorts", "skirt", "leggings"]
+  },
+  {
+    id: "PANTS",
+    name: "Pants",
+    keywords: ["pants", "trousers", "slacks", "pant", "trouser"]
+  },
+  {
+    id: "SHORTS",
+    name: "Shorts",
+    keywords: ["shorts", "short", "short pants", "bermuda shorts"]
+  },
+  {
+    id: "SKIRTS",
+    name: "Skirts",
+    keywords: ["skirt", "skirts", "mini skirt", "maxi skirt", "midi skirt"]
+  },
+  {
+    id: "LEGGINGS",
+    name: "Leggings",
+    keywords: ["leggings", "legging", "yoga pants", "stretch pants", "athletic leggings"]
   },
   {
     id: "DRESSES",
     name: "Dresses",
-    keywords: ["dress", "gown", "frock", "dresses"]
+    keywords: ["dress", "dresses", "gown", "frock"]
+  },
+  {
+    id: "CASUAL_DRESSES",
+    name: "Casual Dresses",
+    keywords: ["casual dress", "casual dresses", "everyday dress", "day dress", "casual wear"]
+  },
+  {
+    id: "FORMAL_DRESSES",
+    name: "Formal Dresses",
+    keywords: ["formal dress", "formal dresses", "evening dress", "gown", "cocktail dress"]
+  },
+  {
+    id: "MAXI_DRESSES",
+    name: "Maxi Dresses",
+    keywords: ["maxi dress", "maxi dresses", "long dress", "floor length dress"]
+  },
+  {
+    id: "MIDI_DRESSES",
+    name: "Midi Dresses",
+    keywords: ["midi dress", "midi dresses", "mid length dress", "knee length dress"]
+  },
+  {
+    id: "SUMMER_DRESSES",
+    name: "Summer Dresses",
+    keywords: ["summer dress", "summer dresses", "sundress", "sundresses", "summer wear"]
+  },
+  {
+    id: "OUTERWEAR",
+    name: "Outerwear",
+    keywords: ["outerwear", "outer wear", "coat", "jacket", "winter wear", "outer layer"]
+  },
+  {
+    id: "COATS",
+    name: "Coats",
+    keywords: ["coat", "coats", "winter coat", "overcoat", "raincoat", "trench coat"]
+  },
+  {
+    id: "JACKETS",
+    name: "Jackets",
+    keywords: ["jacket", "jackets", "blazer", "windbreaker", "denim jacket", "leather jacket"]
+  },
+  {
+    id: "VESTS",
+    name: "Vests",
+    keywords: ["vest", "vests", "waistcoat", "sleeveless jacket", "puffer vest"]
+  },
+  {
+    id: "PONCHOS",
+    name: "Ponchos",
+    keywords: ["poncho", "ponchos", "cape poncho", "blanket poncho"]
+  },
+  {
+    id: "CAPES",
+    name: "Capes",
+    keywords: ["cape", "capes", "capelet", "shoulder cape", "fashion cape"]
   },
   {
     id: "ACCESSORIES",
@@ -309,24 +409,49 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["accessory", "accessories", "fashion accessory", "style accessory"]
   },
   {
-    id: "WOMENS",
-    name: "Women's",
-    keywords: ["women", "womens", "ladies", "female", "woman", "womenswear"]
+    id: "HATS",
+    name: "Hats",
+    keywords: ["hat", "hats", "cap", "beanie", "baseball cap", "sun hat", "winter hat"]
   },
   {
-    id: "MENS",
-    name: "Men's",
-    keywords: ["men", "mens", "male", "man", "menswear", "gentleman"]
+    id: "SCARVES",
+    name: "Scarves",
+    keywords: ["scarf", "scarves", "neck scarf", "winter scarf", "fashion scarf"]
   },
   {
-    id: "UNISEX",
-    name: "Unisex",
-    keywords: ["unisex", "gender neutral", "unisex clothing", "for all"]
+    id: "GLOVES",
+    name: "Gloves",
+    keywords: ["glove", "gloves", "winter gloves", "fingerless gloves", "mittens"]
+  },
+  {
+    id: "BELTS",
+    name: "Belts",
+    keywords: ["belt", "belts", "waist belt", "leather belt", "fashion belt"]
   },
   {
     id: "BAGS",
     name: "Bags and Purses",
     keywords: ["bag", "bags", "purse", "handbag", "tote", "backpack", "shoulder bag", "clutch"]
+  },
+  {
+    id: "TOTE_BAGS",
+    name: "Tote Bags",
+    keywords: ["tote bag", "tote", "totes", "tote bags", "canvas tote", "shopping tote"]
+  },
+  {
+    id: "BACKPACKS",
+    name: "Backpacks",
+    keywords: ["backpack", "backpacks", "rucksack", "daypack", "school backpack"]
+  },
+  {
+    id: "CROSSBODY_BAGS",
+    name: "Crossbody Bags",
+    keywords: ["crossbody bag", "crossbody", "cross body", "messenger bag", "shoulder bag"]
+  },
+  {
+    id: "POUCHES",
+    name: "Pouches",
+    keywords: ["pouch", "pouches", "wristlet", "coin pouch", "small bag"]
   },
 
   // Handmade Craft Supplies - Primary
@@ -428,14 +553,14 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["home", "home decor", "homeware", "house", "household", "interior", "decor"]
   },
   {
-    id: "DECOR",
+    id: "HOME_DECOR",
     name: "Home Decor",
     keywords: ["decor", "decoration", "home decor", "interior decor", "decorative", "ornament"]
   },
   {
     id: "WALL_ART",
     name: "Wall Art",
-    keywords: ["wall art", "wall decor", "wall hanging", "artwork", "picture", "print"]
+    keywords: ["wall art", "wall decor", "wall hanging", "artwork", "picture", "print", "wall decoration"]
   },
   {
     id: "CANDLES",
@@ -448,9 +573,19 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["vase", "vases", "flower vase", "decorative vase", "ceramic vase"]
   },
   {
+    id: "DECORATIVE_BOWLS",
+    name: "Decorative Bowls",
+    keywords: ["decorative bowl", "bowl", "decorative bowls", "display bowl", "ornamental bowl"]
+  },
+  {
+    id: "TEXTILES",
+    name: "Textiles",
+    keywords: ["textile", "textiles", "fabric decor", "soft furnishings", "home textiles"]
+  },
+  {
     id: "THROW_PILLOWS",
     name: "Throw Pillows",
-    keywords: ["pillow", "throw pillow", "cushion", "decorative pillow", "pillow cover"]
+    keywords: ["pillow", "throw pillow", "cushion", "decorative pillow", "pillow cover", "throw pillows"]
   },
   {
     id: "RUGS",
@@ -458,9 +593,19 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["rug", "rugs", "carpet", "area rug", "floor rug", "mat"]
   },
   {
-    id: "KITCHEN",
+    id: "BLANKETS",
+    name: "Blankets & Throws",
+    keywords: ["blanket", "blankets", "throw", "throws", "afghan", "coverlet", "quilt"]
+  },
+  {
+    id: "WALL_HANGINGS",
+    name: "Wall Hangings",
+    keywords: ["wall hanging", "wall hangings", "tapestry", "textile art", "fabric wall art"]
+  },
+  {
+    id: "KITCHEN_DINING",
     name: "Kitchen & Dining",
-    keywords: ["kitchen", "dining", "kitchenware", "dinnerware", "cookware"]
+    keywords: ["kitchen", "dining", "kitchenware", "dinnerware", "cookware", "kitchen dining"]
   },
   {
     id: "DRINKWARE",
@@ -473,19 +618,24 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["plate", "bowl", "tableware", "dinnerware", "dish", "serving dish"]
   },
   {
-    id: "COOKING_AND_BAKING",
-    name: "Cooking and Baking",
-    keywords: ["cooking", "baking", "bakeware", "cookware", "baking dish", "cooking tool"]
+    id: "SERVEWARE",
+    name: "Serveware",
+    keywords: ["serveware", "serving", "serving dish", "serving bowl", "serving platter", "serve ware"]
   },
   {
-    id: "TRAYS_AND_PLATTERS",
-    name: "Trays and Platters",
-    keywords: ["tray", "platter", "serving tray", "serving platter", "tray set"]
+    id: "TRAYS_PLATTERS",
+    name: "Trays & Platters",
+    keywords: ["tray", "platter", "serving tray", "serving platter", "tray set", "trays", "platters"]
   },
   {
     id: "CUTTING_BOARDS",
     name: "Cutting Boards",
     keywords: ["cutting board", "chopping board", "cutting block", "board"]
+  },
+  {
+    id: "LINENS",
+    name: "Kitchen Linens",
+    keywords: ["linen", "linens", "kitchen towel", "dish towel", "tea towel", "napkin", "tablecloth"]
   },
   {
     id: "FURNITURE",
@@ -503,11 +653,6 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["table", "tables", "dining table", "coffee table", "side table"]
   },
   {
-    id: "STOOLS",
-    name: "Stools",
-    keywords: ["stool", "stools", "bar stool", "counter stool", "seating stool"]
-  },
-  {
     id: "DESKS",
     name: "Desks",
     keywords: ["desk", "desks", "writing desk", "office desk", "work desk"]
@@ -518,29 +663,29 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["bench", "benches", "seating bench", "garden bench", "storage bench"]
   },
   {
-    id: "GARDEN",
-    name: "Garden & Outdoor",
-    keywords: ["garden", "outdoor", "garden decor", "outdoor decor", "patio", "yard"]
+    id: "STOOLS",
+    name: "Stools",
+    keywords: ["stool", "stools", "bar stool", "counter stool", "seating stool"]
   },
   {
-    id: "WALLDECOR",
-    name: "Wall Decor",
-    keywords: ["wall decor", "wall decoration", "wall hanging", "wall art"]
+    id: "OUTDOOR_GARDEN",
+    name: "Outdoor & Garden",
+    keywords: ["garden", "outdoor", "garden decor", "outdoor decor", "patio", "yard", "outdoor garden"]
   },
   {
-    id: "KIDS",
-    name: "Baby and Kids",
-    keywords: ["baby", "kids", "children", "kid", "child", "toddler", "infant", "nursery"]
+    id: "PLANTERS",
+    name: "Planters",
+    keywords: ["planter", "planters", "flower pot", "pot", "plant pot", "garden planter"]
   },
   {
-    id: "PETS",
-    name: "Pets",
-    keywords: ["pet", "pets", "dog", "cat", "animal", "pet product", "pet accessory"]
+    id: "GARDEN_DECOR",
+    name: "Garden Decor",
+    keywords: ["garden decor", "garden decoration", "outdoor decor", "yard decor", "patio decor"]
   },
   {
-    id: "CHILD",
-    name: "Kids and Baby",
-    keywords: ["child", "children", "kid", "kids", "baby", "toddler", "infant"]
+    id: "OUTDOOR_FURNITURE",
+    name: "Outdoor Furniture",
+    keywords: ["outdoor furniture", "patio furniture", "garden furniture", "outdoor seating", "patio set"]
   },
 
   // Jewelry - Primary
@@ -687,39 +832,24 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["toy", "toys", "game", "games", "play", "plaything", "children toy"]
   },
   {
-    id: "TODDLER",
-    name: "Baby and Toddler Toys",
-    keywords: ["toddler", "baby toy", "infant toy", "baby", "toddler toy", "early learning"]
-  },
-  {
-    id: "KID",
-    name: "Big Kid Toys",
-    keywords: ["kid toy", "children toy", "kids toy", "child toy", "big kid"]
-  },
-  {
-    id: "GAMES",
-    name: "Games and Puzzles",
-    keywords: ["game", "games", "puzzle", "puzzles", "board game", "card game", "puzzle game"]
-  },
-  {
-    id: "STUFFED",
-    name: "Stuffed Animals, Dolls, and Plushies",
-    keywords: ["stuffed", "plush", "plushie", "stuffed animal", "soft toy", "cuddly"]
+    id: "PLUSH_TOYS",
+    name: "Plush Toys & Dolls",
+    keywords: ["plush toy", "plush toys", "stuffed", "plush", "plushie", "stuffed animal", "soft toy", "cuddly", "doll"]
   },
   {
     id: "TEDDY_BEARS",
     name: "Teddy Bears",
-    keywords: ["bear plush", "teddy", "teddy bear", "crochet bear", "knit bear", "plush bear"]
+    keywords: ["bear plush", "teddy", "teddy bear", "crochet bear", "knit bear", "plush bear", "teddy bears"]
   },
   {
-    id: "ANIMALS",
-    name: "Animals",
-    keywords: ["animal", "animals", "stuffed animal", "plush animal", "animal toy"]
+    id: "ANIMAL_PLUSH",
+    name: "Animal Plush",
+    keywords: ["animal plush", "plush animal", "stuffed animal", "animal toy", "animals", "plush animals"]
   },
   {
     id: "DOLLS",
     name: "Dolls",
-    keywords: ["doll", "crochet doll", "rag doll", "plush doll", "amigurumi doll"]
+    keywords: ["doll", "dolls", "crochet doll", "rag doll", "plush doll", "amigurumi doll", "handmade doll"]
   },
   {
     id: "PLUSHIES",
@@ -727,8 +857,68 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["plushie", "plushies", "plush toy", "soft toy", "cuddly toy"]
   },
   {
-    id: "SENSORY",
+    id: "GAMES_PUZZLES",
+    name: "Games & Puzzles",
+    keywords: ["game", "games", "puzzle", "puzzles", "board game", "card game", "puzzle game", "games puzzles"]
+  },
+  {
+    id: "BOARD_GAMES",
+    name: "Board Games",
+    keywords: ["board game", "board games", "tabletop game", "boardgame"]
+  },
+  {
+    id: "PUZZLES",
+    name: "Puzzles",
+    keywords: ["puzzle", "puzzles", "jigsaw puzzle", "puzzle game", "brain teaser"]
+  },
+  {
+    id: "CARD_GAMES",
+    name: "Card Games",
+    keywords: ["card game", "card games", "playing cards", "card deck", "card set"]
+  },
+  {
+    id: "PRETEND_PLAY",
+    name: "Pretend Play",
+    keywords: ["pretend play", "imaginative play", "role play", "pretend", "play set"]
+  },
+  {
+    id: "PLAY_FOOD",
+    name: "Play Food",
+    keywords: ["play food", "toy food", "pretend food", "fake food", "play kitchen food"]
+  },
+  {
+    id: "DOLLS_ACCESSORIES",
+    name: "Doll Accessories",
+    keywords: ["doll accessory", "doll accessories", "doll clothes", "doll outfit", "doll furniture"]
+  },
+  {
+    id: "EDUCATIONAL",
+    name: "Educational Toys",
+    keywords: ["educational toy", "educational toys", "learning toy", "educational", "learning"]
+  },
+  {
+    id: "STACKING_SORTING",
+    name: "Stacking & Sorting",
+    keywords: ["stacking", "sorting", "stacking toy", "sorting toy", "stacking blocks", "sorting blocks"]
+  },
+  {
+    id: "COUNTING_LEARNING",
+    name: "Counting & Learning",
+    keywords: ["counting", "learning", "counting toy", "learning toy", "numbers", "math toy"]
+  },
+  {
+    id: "SENSORY_TOYS",
     name: "Sensory Toys",
-    keywords: ["sensory", "sensory toy", "sensory play", "tactile", "stimulation toy"]
+    keywords: ["sensory toy", "sensory toys", "sensory play", "tactile", "stimulation toy", "sensory"]
+  },
+  {
+    id: "FIDGETS",
+    name: "Fidget Toys",
+    keywords: ["fidget", "fidgets", "fidget toy", "fidget spinner", "stress toy", "fidget toy"]
+  },
+  {
+    id: "TEXTURED_TOYS",
+    name: "Textured Toys",
+    keywords: ["textured toy", "textured toys", "tactile toy", "texture", "sensory texture"]
   },
 ];
