@@ -404,7 +404,7 @@ export const Categories = [
       },
     ],
   },
-  {
+  /**{
     id: "WELLNESS",
     name: "Wellness & Self-Care",
     children: [
@@ -445,7 +445,7 @@ export const Categories = [
         ],
       },
     ],
-  },
+  }, **/
 ] as const;
 
 // Extract types from the hierarchical structure

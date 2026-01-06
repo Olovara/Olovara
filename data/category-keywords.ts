@@ -195,9 +195,14 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["essential oil", "essential oils", "aromatherapy oil", "therapeutic oil", "oil blend"]
   },
   {
+    id: "CANDLES",
+    name: "Aromatherapy Candles",
+    keywords: ["candle", "candles", "aromatherapy candle", "aromatic candle", "scented candle", "therapeutic candle", "aroma candle"]
+  },
+  {
     id: "ROLL_ONS",
-    name: "Roll-Ons / Aromatic Roll-Ons",
-    keywords: ["roll on", "roll-on", "roll ons", "aromatic roll on", "essential oil roll on", "wellness roll on"]
+    name: "Roll-Ons",
+    keywords: ["roll on", "roll-on", "roll ons", "aromatic roll on", "essential oil roll on"]
   },
 
   // Books & Media - Primary
@@ -857,7 +862,7 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["textured toy", "textured toys", "tactile toy", "texture", "sensory texture"]
   },
 
-  // Wellness & Self-Care - Primary
+  /* Wellness & Self-Care - Primary
   {
     id: "WELLNESS",
     name: "Wellness & Self-Care",
@@ -933,4 +938,5 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     name: "Aromatic Candles",
     keywords: ["candle", "candles", "aromatherapy candle", "scented candle", "aromatic candle", "wellness candle"]
   },
+  */
 ];
