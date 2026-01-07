@@ -14,7 +14,10 @@ export const reset = async (values: z.infer<typeof ResetSchema>) => {
     return { error: "Invalid emaiL!" };
   }
 
-  const { email } = validatedFields.data;
+  let { email } = validatedFields.data;
+  
+  // Normalize email to lowercase for consistent lookups
+  email = email.trim().toLowerCase();
 
   const existingUser = await getUserByEmail(email);
 

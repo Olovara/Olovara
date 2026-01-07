@@ -88,7 +88,11 @@ export const login = async (
     return { error: "Invalid fields" };
   }
 
-  const { email, password, code } = validatedFields.data;
+  let { email, password, code } = validatedFields.data;
+  
+  // Normalize email to lowercase for consistent lookups
+  // This prevents case-sensitivity issues (e.g., "User@Email.com" vs "user@email.com")
+  email = email.trim().toLowerCase();
 
   const existingUser = await getUserByEmail(email);
 
@@ -163,7 +167,7 @@ export const login = async (
       },
       message: "Login attempted with non-existent email",
     });
-    return { error: "User not registered!" };
+    return { error: "No account found with this email. Please check your email or register for a new account." };
   }
 
   if (!existingUser.emailVerified) {

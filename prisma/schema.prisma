@@ -102,7 +102,8 @@ model TwoFactorConfirmation {
 
 model User {
   id                    String                 @id @default(auto()) @map("_id") @db.ObjectId
-  username              String?                @unique
+  username              String?                // Original username (preserves case for display)
+  normalizedUsername    String?                @unique // Normalized username (lowercase, trimmed) for lookups
   email                 String?                @unique
   password              String?
   emailVerified         DateTime?

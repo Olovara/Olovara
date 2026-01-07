@@ -14,8 +14,10 @@ export const getTwoFactorTokenByToken = async (token: string) => {
 
 export const getTwoFactorTokenByEmail = async (email: string) => {
   try {
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.trim().toLowerCase();
     const twoFactorToken = await db.twoFactorToken.findFirst({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     return twoFactorToken;

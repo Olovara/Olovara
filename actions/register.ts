@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 
 import { RegisterSchema } from "@/schemas";
 import { db } from "@/lib/db";
-import { getUserByEmail, getUserByUsername } from "@/data/user";
+import { getUserByEmail, getUserByUsername, normalizeUsername } from "@/data/user";
 import { generateVerificationToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/mail";
 import { rateLimit } from "@/lib/rate-limit";
@@ -95,7 +95,18 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
     return { error: "Invalid fields." };
   }
 
-  const { username, password, email, recaptchaToken } = validatedFields.data;
+  let { username, password, email, recaptchaToken } = validatedFields.data;
+  
+  // Normalize email to lowercase for consistent storage and lookups
+  // This prevents case-sensitivity issues (e.g., "User@Email.com" vs "user@email.com")
+  email = email.trim().toLowerCase();
+  
+  // Trim username but preserve case for display
+  // We'll create a normalized version for lookups while keeping original for display
+  username = username.trim();
+  
+  // Create normalized username for case-insensitive lookups
+  const normalizedUsername = username.toLowerCase();
 
   // Check honeypot field
   if (validatedFields.data.website) {
@@ -240,9 +251,12 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
     return { error: "Email already exists." };
   }
 
-  // Check for existing username
-  const existingUserByUsername = await getUserByUsername(username);
+  // Check for existing username (using normalized version for case-insensitive lookup)
+  const existingUserByUsername = await getUserByUsername(normalizedUsername);
   if (existingUserByUsername) {
+    // Check if the email matches the existing account
+    const emailMatches = existingUserByUsername.email?.toLowerCase() === email.toLowerCase();
+    
     logError({
       code: "REGISTER_USERNAME_EXISTS",
       route: "actions/register",
@@ -250,15 +264,27 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
       metadata: {
         email: censorEmail(email),
         username: censorUsername(username),
+        normalizedUsername: censorUsername(normalizedUsername),
         clientIP,
         userAgent,
         existingUserId: existingUserByUsername.id,
+        existingUserEmail: censorEmail(existingUserByUsername.email),
+        emailMatches,
         timestamp: new Date().toISOString(),
-        reason: "Username already taken",
+        reason: emailMatches 
+          ? "Username already taken, but email matches existing account - user should login instead"
+          : "Username already taken with different email",
       },
       message: "Registration attempted with existing username",
     });
-    return { error: "Username already exists." };
+    
+    // If email matches, suggest they try logging in instead
+    if (emailMatches) {
+      return { error: "This username is already taken. If this is your account, please try logging in instead." };
+    }
+    
+    // If email doesn't match, suggest different username
+    return { error: "This username is already taken. Please choose a different username." };
   }
 
   // Generate a unique referral code with retry logic
@@ -313,9 +339,11 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
   
   try {
     // Create user in database
+    // Store both original username (for display) and normalizedUsername (for lookups)
     const newUser = await db.user.create({
       data: {
-        username,
+        username, // Original username with preserved case for display
+        normalizedUsername, // Lowercase, trimmed version for case-insensitive lookups
         email,
         password: hashedPassword,
         role: ROLES.MEMBER,

@@ -14,8 +14,10 @@ export const getVerificationTokenByToken = async (token: string) => {
 
 export const getVerificationTokenByEmail = async (email: string) => {
   try {
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.trim().toLowerCase();
     const verificationToken = await db.verificationToken.findFirst({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     return verificationToken;

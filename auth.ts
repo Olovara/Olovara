@@ -39,11 +39,39 @@ export const {
     async signIn({ user, account, profile, isNewUser }) {
       try {
         // Update user's last login information (IP tracking moved to API route)
+        const updateData: any = {
+          lastLoginAt: new Date(),
+        };
+        
+        // Check if user has username but no normalizedUsername, and set it if missing
+        // This handles OAuth users and ensures normalizedUsername is always set
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { username: true },
+        });
+        
+        // If user has username, check if normalizedUsername needs to be set
+        if (dbUser?.username) {
+          // Check if normalizedUsername exists by querying it separately
+          // This avoids TypeScript issues if Prisma types haven't updated yet
+          const userWithNormalized = await db.user.findUnique({
+            where: { id: user.id },
+            select: { 
+              username: true,
+              normalizedUsername: true 
+            },
+          });
+          
+          // @ts-ignore - normalizedUsername may not be in types yet
+          if (!userWithNormalized?.normalizedUsername) {
+            const normalized = dbUser.username.trim().toLowerCase();
+            updateData.normalizedUsername = normalized;
+          }
+        }
+        
         await db.user.update({
           where: { id: user.id },
-          data: {
-            lastLoginAt: new Date(),
-          },
+          data: updateData,
         });
       } catch (error) {
         console.error('Error updating user login info:', error);

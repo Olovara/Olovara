@@ -14,8 +14,10 @@ export const getPasswordResetTokenByToken = async (token: string) => {
 
 export const getPasswordResetTokenByEmail = async (email: string) => {
   try {
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.trim().toLowerCase();
     const passwordResetToken = await db.passwordResetToken.findFirst({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     return passwordResetToken;

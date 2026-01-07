@@ -16,7 +16,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:cleanup": "ts-node -r tsconfig-paths/register -P scripts/tsconfig.json scripts/test-cleanup.ts",
-    "migrate:encryption": "ts-node -r tsconfig-paths/register -P scripts/tsconfig.json scripts/fix-seller-encryption.ts"
+    "migrate:encryption": "ts-node -r tsconfig-paths/register -P scripts/tsconfig.json scripts/fix-seller-encryption.ts",
+    "migrate:normalize-emails": "ts-node -r tsconfig-paths/register -P scripts/tsconfig.json scripts/normalize-emails.ts",
+    "migrate:normalize-usernames": "ts-node -r tsconfig-paths/register -P scripts/tsconfig.json scripts/normalize-usernames.ts"
   },
   "dependencies": {
     "@auth/core": "^0.35.0",

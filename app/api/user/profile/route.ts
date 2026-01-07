@@ -37,8 +37,11 @@ export async function GET() {
       );
     }
 
+    // Normalize email to lowercase for consistent lookup
+    const normalizedEmail = session.user.email.trim().toLowerCase();
+
     const user = await db.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: normalizedEmail },
       select: {
         encryptedFirstName: true,
         firstNameIV: true,

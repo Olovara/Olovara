@@ -102,7 +102,8 @@ export const RegisterSchema = z
       })
       .regex(/^[a-zA-Z0-9_-]+$/, {
         message: "Username can only contain letters, numbers, underscores, and hyphens.",
-      }),
+      })
+      .transform((val) => val.trim()), // Trim whitespace but preserve case for display
     email: z
       .string()
       .email({

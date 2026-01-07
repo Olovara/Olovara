@@ -28,9 +28,13 @@ export const authConfig = {
 
           const { email, password } = validatedFields.data;
 
-          const user = await getUserByEmail(email);
+          // Normalize email to lowercase for consistent lookups
+          // This prevents case-sensitivity issues (e.g., "User@Email.com" vs "user@email.com")
+          const normalizedEmail = email.trim().toLowerCase();
+
+          const user = await getUserByEmail(normalizedEmail);
           if (!user) {
-            console.error("[auth] User not found for email:", email);
+            console.error("[auth] User not found for email:", normalizedEmail);
             return null;
           }
 
