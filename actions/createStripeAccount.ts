@@ -123,10 +123,22 @@ export async function CreateStripeAccountLink() {
         ])) as any;
 
         // redirect() throws NEXT_REDIRECT internally - this is expected
+        // Let it propagate - don't catch redirect errors
         redirect(loginLink.url);
       }
       // Account exists but not fully onboarded - continue to create account link
     } catch (stripeError: any) {
+      // Check if this is a redirect error - if so, re-throw it immediately
+      // Redirect errors should never be caught and handled as Stripe errors
+      if (
+        stripeError?.digest?.startsWith("NEXT_REDIRECT") ||
+        stripeError?.message === "NEXT_REDIRECT" ||
+        stripeError?.digest === "515638683" ||
+        (typeof stripeError?.digest === "string" && stripeError.digest.includes("515638683"))
+      ) {
+        throw stripeError; // Let redirect errors propagate
+      }
+
       // Only reset connectedAccountId if Stripe explicitly says the account doesn't exist
       // This prevents losing a valid account connection due to network errors, timeouts, etc.
       const isAccountNotFound =
@@ -211,37 +223,22 @@ export async function CreateStripeAccountLink() {
     );
   }
 
+  // Create the account link - catch Stripe API errors but let redirect errors propagate
+  let accountLink;
   try {
-    // Create the account link
-    const accountLink = await stripeSecret.instance.accountLinks.create({
+    accountLink = await stripeSecret.instance.accountLinks.create({
       account: connectedAccountId,
       refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/seller/dashboard/billing`,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/stripe-return/${connectedAccountId}`,
       type: "account_onboarding",
     });
-
-    // redirect() throws NEXT_REDIRECT error internally - this is expected behavior
-    // Next.js handles this automatically, but we need to let it propagate
-    redirect(accountLink.url);
   } catch (error: any) {
-    // Check if this is a Next.js redirect error - these are expected and should not be logged
-    if (
-      error?.digest?.startsWith("NEXT_REDIRECT") ||
-      error?.message === "NEXT_REDIRECT" ||
-      error?.digest === "515638683" ||
-      (typeof error?.digest === "string" && error.digest.includes("515638683"))
-    ) {
-      // Re-throw redirect errors - they're expected and handled by Next.js
-      // Do NOT log these - they're not errors
-      throw error;
-    }
-
-    // Only log actual errors (not redirects)
+    // Only log actual Stripe API errors (not redirect errors)
     const userMessage = logError({
       code: "STRIPE_ACCOUNT_LINK_FAILED",
       userId,
       route: "/actions/createStripeAccount",
-      method: "GET",
+      method: "CreateStripeAccountLink",
       error,
       metadata: {
         connectedAccountId,
@@ -250,4 +247,9 @@ export async function CreateStripeAccountLink() {
     });
     throw new Error(userMessage);
   }
+
+  // redirect() throws NEXT_REDIRECT error internally - this is expected behavior
+  // Next.js handles this automatically - we DON'T catch it, just let it propagate
+  // Catching redirect errors was causing them to be displayed as "Application error" to users
+  redirect(accountLink.url);
 }

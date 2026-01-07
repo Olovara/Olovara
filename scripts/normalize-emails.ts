@@ -48,11 +48,11 @@ async function normalizeEmails() {
 
     // Find duplicates (same normalized email, different user IDs)
     const duplicates: Array<{ email: string; userIds: string[] }> = [];
-    for (const [email, userIds] of emailMap.entries()) {
+    emailMap.forEach((userIds, email) => {
       if (userIds.length > 1) {
         duplicates.push({ email, userIds });
       }
-    }
+    });
 
     if (duplicates.length > 0) {
       console.log("⚠️  WARNING: Found duplicate emails (same email with different casing):");

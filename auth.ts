@@ -47,26 +47,13 @@ export const {
         // This handles OAuth users and ensures normalizedUsername is always set
         const dbUser = await db.user.findUnique({
           where: { id: user.id },
-          select: { username: true },
+          select: { username: true, normalizedUsername: true },
         });
         
-        // If user has username, check if normalizedUsername needs to be set
-        if (dbUser?.username) {
-          // Check if normalizedUsername exists by querying it separately
-          // This avoids TypeScript issues if Prisma types haven't updated yet
-          const userWithNormalized = await db.user.findUnique({
-            where: { id: user.id },
-            select: { 
-              username: true,
-              normalizedUsername: true 
-            },
-          });
-          
-          // @ts-ignore - normalizedUsername may not be in types yet
-          if (!userWithNormalized?.normalizedUsername) {
-            const normalized = dbUser.username.trim().toLowerCase();
-            updateData.normalizedUsername = normalized;
-          }
+        // If user has username but normalizedUsername is missing, set it
+        if (dbUser?.username && !dbUser.normalizedUsername) {
+          const normalized = dbUser.username.trim().toLowerCase();
+          updateData.normalizedUsername = normalized;
         }
         
         await db.user.update({

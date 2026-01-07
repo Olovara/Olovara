@@ -43,11 +43,11 @@ async function normalizeUsernames() {
 
     // Find duplicates (same normalized username, different user IDs)
     const duplicates: Array<{ normalized: string; userIds: string[] }> = [];
-    for (const [normalized, userIds] of normalizedMap.entries()) {
+    normalizedMap.forEach((userIds, normalized) => {
       if (userIds.length > 1) {
         duplicates.push({ normalized, userIds });
       }
-    }
+    });
 
     if (duplicates.length > 0) {
       console.log("⚠️  WARNING: Found duplicate normalized usernames:");
