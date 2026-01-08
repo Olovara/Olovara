@@ -6,7 +6,9 @@ export const metadata = {
 };
 
 export default function NewPasswordPage() {
-  <Suspense fallback={<div>Loading...</div>}>
-    return <NewPasswordForm />;
-  </Suspense>;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewPasswordForm />
+    </Suspense>
+  );
 }

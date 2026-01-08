@@ -83,7 +83,7 @@ const ResetPasswordForm = () => {
           <Button
             disabled={isPending}
             type="submit"
-            className="w-full hover:bg-sky-400"
+            className="w-full hover:bg-purple-400"
           >
             Send reset password email
           </Button>
@@ -91,6 +91,6 @@ const ResetPasswordForm = () => {
       </Form>
     </CardWrapper>
   );
-};
+}
 
 export default ResetPasswordForm;
