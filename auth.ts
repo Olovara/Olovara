@@ -7,48 +7,93 @@ import type { Adapter } from "@auth/core/adapters";
 
 // Custom adapter that maps OAuth 'name' field to 'username'
 // PrismaAdapter expects 'name' but our schema uses 'username'
+const baseAdapter = PrismaAdapter(db) as Adapter;
+
 const customAdapter: Adapter = {
-  ...PrismaAdapter(db),
+  ...baseAdapter,
   async createUser(user) {
-    // Map 'name' to 'username' and create normalizedUsername
-    const { name, ...userWithoutName } = user as any;
-    
-    // If name exists, use it as username
-    // Otherwise, generate a username from email or use a default
-    let username = name;
-    if (!username && user.email) {
-      // Generate username from email (e.g., "user@example.com" -> "user")
-      username = user.email.split('@')[0];
+    try {
+      // Map 'name' to 'username' and create normalizedUsername
+      const { name, ...userWithoutName } = user as any;
+      
+      // If name exists, use it as username
+      // Otherwise, generate a username from email or use a default
+      let username = name;
+      if (!username && user.email) {
+        // Generate username from email (e.g., "user@example.com" -> "user")
+        username = user.email.split('@')[0];
+      }
+      if (!username) {
+        // Fallback: use a generated username
+        username = `user_${Date.now()}`;
+      }
+      
+      // Create normalized username
+      const normalizedUsername = username.trim().toLowerCase();
+      
+      // Create user with username instead of name
+      // Only include fields that exist in our schema
+      const createdUser = await db.user.create({
+        data: {
+          email: user.email || null,
+          emailVerified: user.emailVerified || null,
+          image: user.image || null,
+          username,
+          normalizedUsername,
+          role: "MEMBER",
+          permissions: [],
+        },
+      });
+      
+      return {
+        id: createdUser.id,
+        email: createdUser.email || null,
+        emailVerified: createdUser.emailVerified,
+        name: username, // Return name for NextAuth compatibility
+        image: createdUser.image || null,
+      } as any;
+    } catch (error) {
+      // Log Prisma errors when creating user
+      logError({
+        code: "OAUTH_USER_CREATE_FAILED",
+        route: "auth.ts/customAdapter/createUser",
+        method: "POST",
+        error,
+        metadata: {
+          email: user.email ? `${user.email.substring(0, 3)}***@${user.email.split('@')[1]}` : "unknown",
+          name: (user as any).name || "unknown",
+          timestamp: new Date().toISOString(),
+          reason: "Prisma failed to create user record during OAuth sign-in",
+        },
+        message: "Failed to create user record during OAuth sign-in",
+      });
+      throw error; // Re-throw to let NextAuth handle it
     }
-    if (!username) {
-      // Fallback: use a generated username
-      username = `user_${Date.now()}`;
+  },
+  async linkAccount(account) {
+    try {
+      // Call base adapter's linkAccount if it exists
+      if (baseAdapter.linkAccount) {
+        await baseAdapter.linkAccount(account);
+      }
+    } catch (error) {
+      // Log Prisma errors when linking account
+      logError({
+        code: "OAUTH_ACCOUNT_LINK_CREATE_FAILED",
+        userId: account.userId,
+        route: "auth.ts/customAdapter/linkAccount",
+        method: "POST",
+        error,
+        metadata: {
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          timestamp: new Date().toISOString(),
+          reason: "Prisma failed to create Account record during OAuth account linking",
+        },
+        message: "Failed to create Account record during OAuth account linking",
+      });
+      throw error; // Re-throw to let NextAuth handle it
     }
-    
-    // Create normalized username
-    const normalizedUsername = username.trim().toLowerCase();
-    
-    // Create user with username instead of name
-    // Only include fields that exist in our schema
-    const createdUser = await db.user.create({
-      data: {
-        email: user.email || null,
-        emailVerified: user.emailVerified || null,
-        image: user.image || null,
-        username,
-        normalizedUsername,
-        role: "MEMBER",
-        permissions: [],
-      },
-    });
-    
-    return {
-      id: createdUser.id,
-      email: createdUser.email || null,
-      emailVerified: createdUser.emailVerified,
-      name: username, // Return name for NextAuth compatibility
-      image: createdUser.image || null,
-    } as any;
   },
 };
 
@@ -145,37 +190,43 @@ export const {
         // Google already verifies emails, so we trust OAuth providers
         // This fixes the issue where OAuth users might not have emailVerified set
         if (account) {
-          // This is an OAuth sign-in (Google, etc.)
-          // Automatically verify email since OAuth providers already verify emails
-          updateData.emailVerified = new Date();
+          // Only check for Account records for OAuth providers (not "credentials")
+          // Credentials-based logins don't create Account records
+          const isOAuthProvider = account.provider !== "credentials";
+          
+          if (isOAuthProvider) {
+            // This is an OAuth sign-in (Google, etc.)
+            // Automatically verify email since OAuth providers already verify emails
+            updateData.emailVerified = new Date();
 
-          // Check if Account record exists in database
-          // PrismaAdapter should have created it, but let's verify
-          const accountRecord = await db.account.findFirst({
-            where: {
-              userId: user.id,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            },
-          });
-
-          if (!accountRecord) {
-            // Account record missing - PrismaAdapter may have failed
-            logError({
-              code: "OAUTH_ACCOUNT_RECORD_MISSING_ON_SIGNIN",
-              userId: user.id,
-              route: "auth.ts/events/signIn",
-              method: "POST",
-              metadata: {
+            // Check if Account record exists in database
+            // PrismaAdapter should have created it, but let's verify
+            const accountRecord = await db.account.findFirst({
+              where: {
+                userId: user.id,
                 provider: account.provider,
                 providerAccountId: account.providerAccountId,
-                isNewUser,
-                email: user.email ? `${user.email.substring(0, 3)}***@${user.email.split('@')[1]}` : "unknown",
-                timestamp: new Date().toISOString(),
-                reason: "Account record not found in database - PrismaAdapter may have failed to create it",
               },
-              message: "OAuth Account record missing on sign-in",
             });
+
+            if (!accountRecord) {
+              // Account record missing - PrismaAdapter may have failed
+              logError({
+                code: "OAUTH_ACCOUNT_RECORD_MISSING_ON_SIGNIN",
+                userId: user.id,
+                route: "auth.ts/events/signIn",
+                method: "POST",
+                metadata: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  isNewUser,
+                  email: user.email ? `${user.email.substring(0, 3)}***@${user.email.split('@')[1]}` : "unknown",
+                  timestamp: new Date().toISOString(),
+                  reason: "Account record not found in database - PrismaAdapter may have failed to create it",
+                },
+                message: "OAuth Account record missing on sign-in",
+              });
+            }
           }
         }
         
