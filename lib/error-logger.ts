@@ -174,8 +174,7 @@ export function logError(options: LogErrorOptions): string {
     // Registration & Login
     REGISTER_VALIDATION_FAILED:
       "Invalid registration information. Please check your details and try again.",
-    REGISTER_BOT_DETECTED:
-      "Please check your information and try again.",
+    REGISTER_BOT_DETECTED: "Please check your information and try again.",
     REGISTER_INVALID_USERNAME:
       "Username cannot contain 'Yarnnu'. Please choose a different username.",
     REGISTER_RECAPTCHA_FAILED:
@@ -192,7 +191,7 @@ export function logError(options: LogErrorOptions): string {
       "We couldn't create your account. Please try again or contact support.",
     REGISTER_VERIFICATION_EMAIL_FAILED:
       "Your account was created, but we couldn't send the verification email. Please request a new verification email.",
-    
+
     LOGIN_VALIDATION_FAILED:
       "Invalid login information. Please check your details and try again.",
     LOGIN_USER_NOT_FOUND:
@@ -205,19 +204,16 @@ export function logError(options: LogErrorOptions): string {
       "Please verify your email before signing in. Check your inbox for the verification email.",
     LOGIN_VERIFICATION_EMAIL_FAILED:
       "We couldn't send a new verification email. Please try again or contact support.",
-    LOGIN_2FA_INVALID_CODE:
-      "Invalid verification code. Please try again.",
+    LOGIN_2FA_INVALID_CODE: "Invalid verification code. Please try again.",
     LOGIN_2FA_CODE_EXPIRED:
       "Verification code has expired. Please request a new code.",
-    LOGIN_INVALID_CREDENTIALS:
-      "Invalid email or password. Please try again.",
+    LOGIN_INVALID_CREDENTIALS: "Invalid email or password. Please try again.",
     LOGIN_CSRF_TOKEN_MISSING:
       "Security token missing. Please refresh the page and try again.",
-    LOGIN_AUTH_ERROR:
-      "An authentication error occurred. Please try again.",
+    LOGIN_AUTH_ERROR: "An authentication error occurred. Please try again.",
     LOGIN_UNEXPECTED_ERROR:
       "An unexpected error occurred during login. Please try again or contact support.",
-    
+
     // Seller Onboarding
     SIGNUP_FAILED:
       "We couldn't create your account. Please try again or contact support.",
@@ -430,6 +426,8 @@ export function logError(options: LogErrorOptions): string {
       "We couldn't upvote the suggestion. Please try again or contact support.",
     SUGGESTION_UPVOTE_REMOVE_FAILED:
       "We couldn't remove your upvote. Please try again or contact support.",
+    SUGGESTION_DELETE_FAILED:
+      "We couldn't delete your suggestion. Please try again or contact support.",
 
     // Analytics
     MARKETPLACE_ANALYTICS_FETCH_FAILED:
