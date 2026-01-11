@@ -53,6 +53,7 @@ const SUPPORTED_PLATFORMS = [
   "Shopify",
   "WooCommerce",
   "Squarespace",
+  "Wix",
   "Other",
 ];
 
@@ -84,7 +85,7 @@ export default function BulkImportPage() {
   const [primaryCategory, setPrimaryCategory] = useState<string>("");
   const [secondaryCategory, setSecondaryCategory] = useState<string>("");
   const [tertiaryCategory, setTertiaryCategory] = useState<string>("");
-  
+
   // Shipping settings
   const [freeShipping, setFreeShipping] = useState<boolean>(false);
   const [shippingOptionId, setShippingOptionId] = useState<string>("");
@@ -95,21 +96,24 @@ export default function BulkImportPage() {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Fetch shipping options
-  const fetchShippingOptions = useCallback(async (newShippingOptionId?: string) => {
-    try {
-      const response = await fetch("/api/shipping-options");
-      if (!response.ok) throw new Error("Failed to fetch shipping options");
-      const data = await response.json();
-      setShippingOptions(data);
+  const fetchShippingOptions = useCallback(
+    async (newShippingOptionId?: string) => {
+      try {
+        const response = await fetch("/api/shipping-options");
+        if (!response.ok) throw new Error("Failed to fetch shipping options");
+        const data = await response.json();
+        setShippingOptions(data);
 
-      // Auto-select the newly created shipping option
-      if (newShippingOptionId && !shippingOptionId) {
-        setShippingOptionId(newShippingOptionId);
+        // Auto-select the newly created shipping option
+        if (newShippingOptionId && !shippingOptionId) {
+          setShippingOptionId(newShippingOptionId);
+        }
+      } catch (error) {
+        console.error("Error fetching shipping options:", error);
       }
-    } catch (error) {
-      console.error("Error fetching shipping options:", error);
-    }
-  }, [shippingOptionId]);
+    },
+    [shippingOptionId]
+  );
 
   useEffect(() => {
     if (currentStep === 3) {
@@ -280,7 +284,11 @@ export default function BulkImportPage() {
           secondaryCategory,
           tertiaryCategory: tertiaryCategory || undefined,
           freeShipping,
-          shippingOptionId: freeShipping ? undefined : (shippingOptionId && shippingOptionId.trim() !== "" ? shippingOptionId : undefined),
+          shippingOptionId: freeShipping
+            ? undefined
+            : shippingOptionId && shippingOptionId.trim() !== ""
+              ? shippingOptionId
+              : undefined,
           handlingFee: parseFloat(handlingFee) || 0,
         }),
       });
@@ -298,7 +306,9 @@ export default function BulkImportPage() {
       // Poll for job status
       pollJobStatus(data.jobId);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to start import");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start import"
+      );
       console.error(error);
     }
   };
@@ -319,7 +329,7 @@ export default function BulkImportPage() {
             ? Math.round((job.processed / job.totalRows) * 100)
             : 0
         );
-        
+
         // Track failed rows count
         if (job.failedRows && Array.isArray(job.failedRows)) {
           setFailedRowsCount(job.failedRows.length);
@@ -330,20 +340,23 @@ export default function BulkImportPage() {
         if (job.status === "DONE" || job.status === "FAILED") {
           clearInterval(interval);
           if (job.status === "DONE") {
-            const failedCount = job.failedRows && Array.isArray(job.failedRows) ? job.failedRows.length : 0;
+            const failedCount =
+              job.failedRows && Array.isArray(job.failedRows)
+                ? job.failedRows.length
+                : 0;
             const needsReviewCount = job.needsInventoryReviewCount || 0;
-            
+
             // Build completion message
             let message = `Import completed! ${job.successCount} products imported successfully.`;
-            
+
             if (failedCount > 0) {
               message += ` ${failedCount} rows failed.`;
             }
-            
+
             if (needsReviewCount > 0) {
-              message += ` ${needsReviewCount} product${needsReviewCount === 1 ? '' : 's'} need${needsReviewCount === 1 ? 's' : ''} inventory review.`;
+              message += ` ${needsReviewCount} product${needsReviewCount === 1 ? "" : "s"} need${needsReviewCount === 1 ? "s" : ""} inventory review.`;
             }
-            
+
             toast.success(message);
           } else {
             toast.error("Import failed");
@@ -589,53 +602,66 @@ export default function BulkImportPage() {
                       <SelectValue placeholder="Select secondary category..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {Categories.find((c) => c.id === primaryCategory)
-                        ?.children.map((child) => (
-                          <SelectItem key={child.id} value={child.id}>
-                            {child.name}
-                          </SelectItem>
-                        ))}
+                      {Categories.find(
+                        (c) => c.id === primaryCategory
+                      )?.children.map((child) => (
+                        <SelectItem key={child.id} value={child.id}>
+                          {child.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
               {/* Tertiary Category */}
-              {secondaryCategory && (() => {
-                const primary = Categories.find((c) => c.id === primaryCategory);
-                const secondary = primary?.children.find((c) => c.id === secondaryCategory);
-                const hasTertiary = secondary && "children" in secondary && secondary.children && secondary.children.length > 0;
-                
-                return hasTertiary ? (
-                  <div>
-                    <Label htmlFor="tertiary-category">
-                      Tertiary Category (Optional)
-                    </Label>
-                    <Select
-                      value={tertiaryCategory}
-                      onValueChange={setTertiaryCategory}
-                    >
-                      <SelectTrigger id="tertiary-category">
-                        <SelectValue placeholder="Select tertiary category..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {secondary.children.map((child) => (
-                          <SelectItem key={child.id} value={child.id}>
-                            {child.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null;
-              })()}
+              {secondaryCategory &&
+                (() => {
+                  const primary = Categories.find(
+                    (c) => c.id === primaryCategory
+                  );
+                  const secondary = primary?.children.find(
+                    (c) => c.id === secondaryCategory
+                  );
+                  const hasTertiary =
+                    secondary &&
+                    "children" in secondary &&
+                    secondary.children &&
+                    secondary.children.length > 0;
+
+                  return hasTertiary ? (
+                    <div>
+                      <Label htmlFor="tertiary-category">
+                        Tertiary Category (Optional)
+                      </Label>
+                      <Select
+                        value={tertiaryCategory}
+                        onValueChange={setTertiaryCategory}
+                      >
+                        <SelectTrigger id="tertiary-category">
+                          <SelectValue placeholder="Select tertiary category..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {secondary.children.map((child) => (
+                            <SelectItem key={child.id} value={child.id}>
+                              {child.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null;
+                })()}
 
               {/* Shipping Settings */}
               <div className="space-y-4 pt-4 border-t">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Shipping Settings</h3>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Shipping Settings
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Configure shipping options that will be applied to all products in this import.
+                    Configure shipping options that will be applied to all
+                    products in this import.
                   </p>
                 </div>
 
@@ -661,9 +687,7 @@ export default function BulkImportPage() {
                 {/* Shipping Option */}
                 {!freeShipping && (
                   <div>
-                    <Label htmlFor="shipping-option">
-                      Shipping Option *
-                    </Label>
+                    <Label htmlFor="shipping-option">Shipping Option *</Label>
                     <div className="flex gap-2">
                       <Select
                         value={shippingOptionId}
@@ -675,7 +699,8 @@ export default function BulkImportPage() {
                         <SelectContent>
                           {shippingOptions.map((option) => (
                             <SelectItem key={option.id} value={option.id}>
-                              {option.name} {option.isDefault ? "(Default)" : ""}
+                              {option.name}{" "}
+                              {option.isDefault ? "(Default)" : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -743,13 +768,13 @@ export default function BulkImportPage() {
 
               {/* Navigation */}
               <div className="flex justify-between pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(2)}
-                >
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>
                   Back
                 </Button>
-                <Button onClick={handleStartImport} disabled={!primaryCategory || !secondaryCategory}>
+                <Button
+                  onClick={handleStartImport}
+                  disabled={!primaryCategory || !secondaryCategory}
+                >
                   Start Import
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -764,7 +789,9 @@ export default function BulkImportPage() {
         <Card>
           <CardHeader>
             <CardTitle>Import Progress</CardTitle>
-            <CardDescription>Your products are being imported...</CardDescription>
+            <CardDescription>
+              Your products are being imported...
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -789,9 +816,7 @@ export default function BulkImportPage() {
                 ) : jobStatus === "FAILED" ? (
                   <>
                     <XCircle className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-red-600">
-                      Import failed
-                    </span>
+                    <span className="text-sm text-red-600">Import failed</span>
                   </>
                 ) : (
                   <>
@@ -800,8 +825,8 @@ export default function BulkImportPage() {
                       {jobStatus === "QUEUED"
                         ? "Waiting to start..."
                         : jobStatus === "RUNNING"
-                        ? "Processing..."
-                        : "Unknown status"}
+                          ? "Processing..."
+                          : "Unknown status"}
                     </span>
                   </>
                 )}
@@ -809,11 +834,16 @@ export default function BulkImportPage() {
 
               {jobStatus === "DONE" && (
                 <div className="flex gap-2">
-                  <Button onClick={() => router.push("/seller/dashboard/products")}>
+                  <Button
+                    onClick={() => router.push("/seller/dashboard/products")}
+                  >
                     View Products
                   </Button>
                   {failedRowsCount > 0 && (
-                    <Button variant="outline" onClick={handleDownloadFailedRows}>
+                    <Button
+                      variant="outline"
+                      onClick={handleDownloadFailedRows}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Download Failed Rows ({failedRowsCount})
                     </Button>
@@ -827,4 +857,3 @@ export default function BulkImportPage() {
     </div>
   );
 }
-

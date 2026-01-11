@@ -87,29 +87,75 @@ async function startBulkImportWorker() {
         throw new Error("Worker module imported but getBulkImportWorker function not found");
       }
     } else {
-      // Development: spawn worker in separate process using tsx
-      const { spawn } = require("child_process");
-      // Use shell: false and pass executable and args separately to avoid security warning
-      const workerProcess = spawn("npx", ["tsx", "scripts/bulk-import-worker.ts"], {
-        stdio: "inherit",
-        shell: false, // More secure - don't use shell
-        env: { ...process.env },
-      });
+      // Development: Try to import directly first, then fallback to tsx
+      let workerModule;
+      let useTsx = false;
       
-      workerProcess.on("error", (error) => {
-        console.error("[BULK IMPORT WORKER] Worker process error:", error.message);
-        console.warn("[BULK IMPORT WORKER] Make sure tsx is installed: yarn add -D tsx");
-      });
+      try {
+        // Try importing the worker module directly (works if TypeScript is compiled or using ts-node/tsx)
+        workerModule = await import("./lib/workers/bulk-import-worker");
+        console.log("[BULK IMPORT WORKER] Successfully imported worker module (development)");
+      } catch (importError) {
+        // If direct import fails, use tsx as fallback
+        console.warn("[BULK IMPORT WORKER] Direct import failed, using tsx fallback");
+        console.warn("[BULK IMPORT WORKER] Import error:", importError.message);
+        useTsx = true;
+      }
       
-      workerProcess.on("exit", (code) => {
-        if (code !== 0 && code !== null) {
-          console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}`);
-          // Don't restart automatically in development - let user restart manually
+      if (useTsx) {
+        // Fallback: Use tsx to run TypeScript directly
+        const { spawn } = require("child_process");
+        // On Windows, try yarn first (since user is using yarn), then npx
+        const isWindows = process.platform === "win32";
+        const command = isWindows ? "yarn" : "npx";
+        const args = isWindows ? ["tsx", "scripts/bulk-import-worker.ts"] : ["tsx", "scripts/bulk-import-worker.ts"];
+        
+        const workerProcess = spawn(command, args, {
+          stdio: "inherit",
+          shell: isWindows, // On Windows, shell: true may be needed to find yarn/npx in PATH
+          env: { ...process.env },
+        });
+        
+        workerProcess.on("error", (error) => {
+          console.error("[BULK IMPORT WORKER] Worker process error:", error.message);
+          console.warn("[BULK IMPORT WORKER] Make sure tsx is installed: yarn add -D tsx");
+        });
+      
+        workerProcess.on("exit", (code) => {
+          if (code !== 0 && code !== null) {
+            console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}`);
+            // Don't restart automatically in development - let user restart manually
+          }
+        });
+        
+        console.log("[BULK IMPORT WORKER] Worker started in separate process (development mode with tsx)");
+        return workerProcess;
+      } else if (workerModule && workerModule.getBulkImportWorker) {
+        // Successfully imported module, start worker in-process
+        const worker = workerModule.getBulkImportWorker();
+        console.log("[BULK IMPORT WORKER] Worker started in-process (development mode)");
+        
+        // Handle graceful shutdown
+        if (!process.listeners("SIGTERM").some(l => l.toString().includes("BULK IMPORT WORKER"))) {
+          process.on("SIGTERM", async () => {
+            console.log("[BULK IMPORT WORKER] Received SIGTERM, shutting down worker...");
+            if (workerModule.closeBulkImportWorker) {
+              await workerModule.closeBulkImportWorker();
+            }
+          });
+          
+          process.on("SIGINT", async () => {
+            console.log("[BULK IMPORT WORKER] Received SIGINT, shutting down worker...");
+            if (workerModule.closeBulkImportWorker) {
+              await workerModule.closeBulkImportWorker();
+            }
+          });
         }
-      });
-      
-      console.log("[BULK IMPORT WORKER] Worker started in separate process (development mode)");
-      return workerProcess;
+        
+        return worker;
+      } else {
+        throw new Error("Worker module imported but getBulkImportWorker function not found");
+      }
     }
   } catch (error) {
     console.error("[BULK IMPORT WORKER] Failed to start worker:", error.message);

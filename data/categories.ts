@@ -132,7 +132,7 @@ export const Categories = [
         name: "Tops",
         children: [
           { id: "SWEATERS", name: "Sweaters" },
-          { id: "CARDIGANS", name: "Cadigans" },
+          { id: "CARDIGANS", name: "Cardigans" },
           { id: "T_SHIRTS", name: "T-Shirts" },
           { id: "BLOUSES", name: "Blouses" },
           { id: "TANK_TOPS", name: "Tank Tops" },

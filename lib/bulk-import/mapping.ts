@@ -15,7 +15,12 @@ export const PRODUCT_FIELDS = [
   { field: "stock", label: "Stock/Quantity", required: false },
   { field: "sku", label: "SKU", required: false },
   { field: "tags[]", label: "Tags", required: false, isArray: true },
-  { field: "materialTags[]", label: "Materials", required: false, isArray: true },
+  {
+    field: "materialTags[]",
+    label: "Materials",
+    required: false,
+    isArray: true,
+  },
   { field: "images[]", label: "Images", required: true, isArray: true },
   { field: "shortDescription", label: "Short Description", required: false },
   { field: "primaryCategory", label: "Primary Category", required: false },
@@ -41,7 +46,21 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     sku: ["sku", "product_sku", "item_sku"],
     "tags[]": ["tags", "tag", "categories"],
     "materialTags[]": ["materials", "material", "fabric"],
-    "images[]": ["image", "image_url", "photo", "image1", "image2", "image3", "image4", "image5", "image6", "image7", "image8", "image9", "image10"],
+    "images[]": [
+      "image",
+      "image_url",
+      "photo",
+      "image1",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "image10",
+    ],
     variation1Type: ["variation 1 type", "variation1type", "var1type"],
     variation1Name: ["variation 1 name", "variation1name", "var1name"],
     variation1Values: ["variation 1 values", "variation1values", "var1values"],
@@ -82,6 +101,32 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     "materialTags[]": ["material"],
     "images[]": ["image", "image_url"],
   },
+  Wix: {
+    name: ["name"],
+    description: ["description"],
+    price: ["price"],
+    currency: ["currency", "currency_code"], // May not be in CSV, will default to seller's preferred currency
+    // Note: inventory is "InStock" status, not a quantity - stock will default to 0 for products with variations
+    sku: ["sku"],
+    "tags[]": ["collection"], // Note: brand is auto-skipped, removed from tags mapping
+    "materialTags[]": [], // Note: brand is auto-skipped
+    "images[]": ["productImageUrl"],
+    // Wix variations: productOptionName1-6 defines the option name, productOptionDescription1-6 contains semicolon-separated values
+    // Variants are separate rows with fieldType="Variant" that reference the product by handleId
+    // Note: productOptionType1-6 are auto-skipped (we use productOptionName and productOptionDescription instead)
+    variation1Name: ["productOptionName1"],
+    variation1Values: ["productOptionDescription1"], // Semicolon-separated values
+    variation2Name: ["productOptionName2"],
+    variation2Values: ["productOptionDescription2"],
+    variation3Name: ["productOptionName3"],
+    variation3Values: ["productOptionDescription3"],
+    variation4Name: ["productOptionName4"],
+    variation4Values: ["productOptionDescription4"],
+    variation5Name: ["productOptionName5"],
+    variation5Values: ["productOptionDescription5"],
+    variation6Name: ["productOptionName6"],
+    variation6Values: ["productOptionDescription6"],
+  },
 };
 
 /**
@@ -101,14 +146,17 @@ export function autoMapHeaders(
       // Find matching CSV header
       for (const csvHeader of csvHeaders) {
         const normalizedHeader = csvHeader.toLowerCase().trim();
-        
+
         // Check if header matches any pattern (exact match or contains pattern)
-        const matched = patterns.some(pattern => {
+        const matched = patterns.some((pattern) => {
           const normalizedPattern = pattern.toLowerCase();
           // Try exact match first, then contains
-          return normalizedHeader === normalizedPattern || normalizedHeader.includes(normalizedPattern);
+          return (
+            normalizedHeader === normalizedPattern ||
+            normalizedHeader.includes(normalizedPattern)
+          );
         });
-        
+
         if (matched) {
           mapping[csvHeader] = productField;
           break; // Only map one header per field
@@ -126,13 +174,13 @@ export function autoMapHeaders(
     // Separate required and optional fields - process required fields first
     const requiredFields = PRODUCT_FIELDS.filter((f) => f.required);
     const optionalFields = PRODUCT_FIELDS.filter((f) => !f.required);
-    
+
     // Process required fields first, then optional fields
     const fieldsToProcess = [...requiredFields, ...optionalFields];
 
     for (const productField of fieldsToProcess) {
       const fieldName = productField.field;
-      
+
       // Skip if already mapped
       if (Object.values(mapping).includes(fieldName)) {
         continue;
@@ -152,13 +200,15 @@ export function autoMapHeaders(
         const normalizedHeader = header.toLowerCase().trim();
         const normalizedField = fieldName.replace("[]", "").toLowerCase();
         const normalizedLabel = productField.label.toLowerCase();
-        
+
         // Check exact matches first
-        return normalizedHeader === normalizedField || 
-               normalizedHeader === normalizedLabel ||
-               (PLATFORM_PATTERNS[sourcePlatform || "Etsy"]?.[fieldName] || []).some(
-                 (pattern) => normalizedHeader === pattern.toLowerCase()
-               );
+        return (
+          normalizedHeader === normalizedField ||
+          normalizedHeader === normalizedLabel ||
+          (PLATFORM_PATTERNS[sourcePlatform || "Etsy"]?.[fieldName] || []).some(
+            (pattern) => normalizedHeader === pattern.toLowerCase()
+          )
+        );
       });
 
       if (exactMatch) {
@@ -223,13 +273,12 @@ export function validateMapping(
     (f) => f.field
   );
   const mappedFields = Object.values(mapping);
-  const missing = requiredFields.filter((field) => !mappedFields.includes(field));
+  const missing = requiredFields.filter(
+    (field) => !mappedFields.includes(field)
+  );
 
   return {
     valid: missing.length === 0,
     missing,
   };
 }
-
-
-
