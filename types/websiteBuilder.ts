@@ -221,7 +221,7 @@ export const SUBSCRIPTION_FEATURES = {
     '8% commission fee instead of 10%',
     'Advanced analytics',
     'SEO assistance',
-    'Basic CRM (track repeat buyers)',
+    'Basic CRM',
     'Digital product stamping + licensing options'
   ],
   STUDIO: [
@@ -230,10 +230,10 @@ export const SUBSCRIPTION_FEATURES = {
     'Email marketing',
     'Priority search placement',
     'Team access',
-    'Advanced integration (Pinterest, IG, Google Shopping)',
+    'Advanced integration',
     'Advanced CRM',
     'Material forecasting',
-    'Profit and expenses tracking (pricing calculator integrated with product will also work with material forecasting)'
+    'Profit and expenses tracking'
   ]
 } as const
 

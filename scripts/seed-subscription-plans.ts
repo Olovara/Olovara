@@ -31,7 +31,7 @@ const subscriptionPlans = [
       '8% commission fee instead of 10%',
       'Advanced analytics',
       'SEO assistance',
-      'Basic CRM (track repeat buyers)',
+      'Basic CRM',
       'Digital product stamping + licensing options'
     ],
     customDomain: false,
@@ -52,10 +52,10 @@ const subscriptionPlans = [
       'Email marketing',
       'Priority search placement',
       'Team access',
-      'Advanced integration (Pinterest, IG, Google Shopping)',
+      'Advanced integration',
       'Advanced CRM',
       'Material forecasting',
-      'Profit and expenses tracking (pricing calculator integrated with product will also work with material forecasting)'
+      'Profit and expenses tracking'
     ],
     customDomain: true,
     analytics: true, // advanced analytics
@@ -95,10 +95,10 @@ const subscriptionPlans = [
       'Email marketing',
       'Priority search placement',
       'Team access',
-      'Advanced integration (Pinterest, IG, Google Shopping)',
+      'Advanced integration',
       'Advanced CRM',
       'Material forecasting',
-      'Profit and expenses tracking (pricing calculator integrated with product will also work with material forecasting)'
+      'Profit and expenses tracking'
     ],
     customDomain: true,
     analytics: true, // advanced analytics

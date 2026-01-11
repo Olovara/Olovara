@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { getSellerSubscription, getSubscriptionPlans, getSellerByUserId } from '@/lib/queries'
+import { canUserAccessTestEnvironment } from '@/lib/test-environment'
 import { redirect } from 'next/navigation'
 import SubscriptionDashboard from './_components/subscription-dashboard'
 
@@ -23,9 +24,12 @@ export default async function SubscriptionPage() {
   let subscriptionsNotSetup = false
 
   try {
+    // Check if user has test environment access (to show MAKER_FREE and STUDIO_FREE plans)
+    const canAccessTest = await canUserAccessTestEnvironment(session.user.id)
+    
     const [subscription, plans] = await Promise.all([
       getSellerSubscription(seller.id),
-      getSubscriptionPlans()
+      getSubscriptionPlans(canAccessTest)
     ])
     currentSubscription = subscription
     availablePlans = plans

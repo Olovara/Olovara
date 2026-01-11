@@ -323,9 +323,17 @@ export const reorderWebsitePages = async (
 };
 
 // Subscription Queries
-export const getSubscriptionPlans = async () => {
+export const getSubscriptionPlans = async (canAccessTest: boolean = false) => {
   const plans = await db.subscriptionPlan.findMany({
-    where: { isActive: true },
+    where: { 
+      isActive: true,
+      // Filter out free test plans (MAKER_FREE, STUDIO_FREE) unless user has test environment access
+      ...(canAccessTest ? {} : {
+        name: {
+          notIn: ['MAKER_FREE', 'STUDIO_FREE']
+        }
+      })
+    },
     orderBy: { price: "asc" },
   });
 

@@ -34,37 +34,16 @@ export default function SubscriptionDashboard({
     }
   }
 
-  const getPlanFeatures = (planName: string) => {
-    switch (planName) {
-      case 'STARTER':
-        return [
-          'Up to 10 products',
-          'Basic shop features',
-          'Standard commission rates',
-          'Email support'
-        ]
-      case 'MAKER':
-        return [
-          'Up to 100 products',
-          'Advanced shop features',
-          'Reduced commission rates',
-          'Priority support',
-          'Analytics dashboard'
-        ]
-      case 'STUDIO':
-        return [
-          'Unlimited products',
-          'All shop features',
-          'Lowest commission rates',
-          'Priority support',
-          'Advanced analytics',
-          'Website builder',
-          'Custom domain support',
-          'White-label options'
-        ]
-      default:
-        return []
+  // Use features from the plan object instead of hardcoded values
+  const getPlanFeatures = (plan: SubscriptionPlanWithFeatures): string[] => {
+    // Features are stored in the plan object from the database
+    // Ensure we return a string array, filtering out any null/undefined values
+    if (!plan.features || !Array.isArray(plan.features)) {
+      return []
     }
+    return plan.features.filter((feature): feature is string => 
+      typeof feature === 'string' && feature !== null
+    )
   }
 
   const formatPrice = (priceInCents: number) => {
@@ -125,11 +104,9 @@ export default function SubscriptionDashboard({
                 </Button>
               </Link>
               {currentSubscription.plan.name !== 'STUDIO' && (
-                <Link href="/seller/dashboard/subscription/upgrade">
-                  <Button>
-                    Upgrade Plan
-                  </Button>
-                </Link>
+              <Button disabled>
+                Coming Soon
+              </Button>
               )}
             </div>
           </CardContent>
@@ -191,9 +168,10 @@ export default function SubscriptionDashboard({
               
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
-                  {getPlanFeatures(plan.name).map((feature, index) => (
+                  {getPlanFeatures(plan).map((feature, index) => (
                     <li key={index} className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      {/* Features are already capitalized in the database */}
                       {feature}
                     </li>
                   ))}
@@ -209,12 +187,9 @@ export default function SubscriptionDashboard({
                       className="w-full" 
                       variant={hasWebsiteBuilder ? "default" : plan.name === 'MAKER' ? "default" : "outline"}
                       onClick={() => handleUpgrade(plan.id)}
-                      disabled={isUpgrading}
+                      disabled={true}
                     >
-                      {isUpgrading ? 'Processing...' : 
-                       isUpgrade ? 'Upgrade' : 
-                       isDowngrade ? 'Downgrade' : 
-                       'Get Started'}
+                      Coming Soon
                     </Button>
                   )}
                 </div>
@@ -236,11 +211,9 @@ export default function SubscriptionDashboard({
                   Upgrade to Studio to access the website builder and create your custom website.
                 </p>
               </div>
-              <Link href="/seller/dashboard/subscription/upgrade?plan=studio">
-                <Button className="ml-auto">
-                  Upgrade to Studio
-                </Button>
-              </Link>
+              <Button className="ml-auto" disabled>
+                Coming Soon
+              </Button>
             </div>
           </CardContent>
         </Card>
