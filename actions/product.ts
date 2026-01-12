@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/data/roles-and-permissions";
+import { headers } from "next/headers";
 
 export async function getSellerProducts(
   status?: string,
@@ -102,6 +103,10 @@ export async function deleteProduct(productId: string) {
   }
 
   try {
+    // Get cookies from request headers to forward authentication
+    const headersList = await headers();
+    const cookieHeader = headersList.get("cookie");
+
     // Construct absolute URL for server-side fetch
     // Server actions run on the server, so fetch needs an absolute URL
     const baseUrl =
@@ -109,11 +114,19 @@ export async function deleteProduct(productId: string) {
       (process.env.NODE_ENV === "development"
         ? "http://localhost:3000"
         : "https://yarnnu.com");
+    
+    // Forward cookies to maintain authentication session
+    const fetchHeaders: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+    
+    if (cookieHeader) {
+      fetchHeaders["Cookie"] = cookieHeader;
+    }
+
     const response = await fetch(`${baseUrl}/api/products/${productId}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: fetchHeaders,
     });
 
     const data = await response.json();
