@@ -85,16 +85,24 @@ const baseProductSchema = z.object({
     message: "Please enter your product's name, required.",
   }),
   sku: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ), // Optional SKU - will be auto-generated if not provided
   shortDescription: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ), // Short description with bullet points for product overview (optional)
   shortDescriptionBullets: z
     .array(z.string())
@@ -279,18 +287,26 @@ const baseProductSchema = z.object({
     .enum(SUPPORTED_DIMENSION_UNITS.map((u) => u.code) as [string, ...string[]])
     .default("in"),
   shippingNotes: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   inStockProcessingTime: z.number().optional(),
   outStockLeadTime: z.number().optional(),
   howItsMade: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   productDrop: z.boolean().default(false),
   dropDate: z
@@ -333,89 +349,133 @@ const baseProductSchema = z.object({
   shippingOptionId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
   needsInventoryReview: z.boolean().default(false), // Flag for products with variations that need stock review
-  // SEO fields
+  // SEO fields - handle null values from database (convert to undefined before validation)
   metaTitle: z
-    .string()
-    .max(60, "Meta title must be 60 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(60, "Meta title must be 60 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   metaDescription: z
-    .string()
-    .max(160, "Meta description must be 160 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(160, "Meta description must be 160 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   keywords: z.array(z.string()).default([]),
   ogTitle: z
-    .string()
-    .max(60, "Social media title must be 60 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(60, "Social media title must be 60 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   ogDescription: z
-    .string()
-    .max(160, "Social media description must be 160 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(160, "Social media description must be 160 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   ogImage: z
-    .string()
-    .url("Please enter a valid URL")
-    .optional()
-    .or(z.literal(""))
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .url("Please enter a valid URL")
+        .optional()
+        .or(z.literal(""))
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
 
-  // GPSR (General Product Safety Regulation) compliance fields
+  // GPSR (General Product Safety Regulation) compliance fields - handle null values from database
   safetyWarnings: z
-    .string()
-    .max(1000, "Safety warnings must be 1000 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(1000, "Safety warnings must be 1000 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   materialsComposition: z
-    .string()
-    .max(1000, "Materials composition must be 1000 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(1000, "Materials composition must be 1000 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   safeUseInstructions: z
-    .string()
-    .max(1000, "Safe use instructions must be 1000 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(1000, "Safe use instructions must be 1000 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   ageRestriction: z
-    .string()
-    .max(200, "Age restriction must be 200 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(200, "Age restriction must be 200 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   chokingHazard: z.boolean().default(false),
   smallPartsWarning: z.boolean().default(false),
   chemicalWarnings: z
-    .string()
-    .max(500, "Chemical warnings must be 500 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(500, "Chemical warnings must be 500 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
   careInstructions: z
-    .string()
-    .max(1000, "Care instructions must be 1000 characters or less")
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : undefined
+    .preprocess(
+      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+      z
+        .string()
+        .max(1000, "Care instructions must be 1000 characters or less")
+        .optional()
+        .transform((val) =>
+          val && typeof val === "string" && val.trim() !== "" ? val : undefined
+        )
     ),
 });
 

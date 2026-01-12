@@ -12,6 +12,8 @@ import {
 import { logError } from "@/lib/error-logger";
 import { logQaEvent } from "@/lib/qa-logger";
 import { QA_EVENTS, PRODUCT_STEPS } from "@/lib/qa-steps";
+import { hasPermission } from "@/lib/permissions";
+import { Permission } from "@/data/roles-and-permissions";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -813,6 +815,21 @@ export async function DELETE(
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401 }
+      );
+    }
+
+    // Check permission to delete products
+    const canDeleteProducts = await hasPermission(
+      session.user.id,
+      "DELETE_PRODUCTS" as Permission
+    );
+    if (!canDeleteProducts) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "You don't have permission to delete products.",
+        }),
+        { status: 403 }
       );
     }
 
