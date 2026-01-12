@@ -862,27 +862,72 @@ export async function DELETE(
     }
 
     // Collect all file keys to delete from UploadThing
+    // NOTE: Bulk import should only create products with UploadThing URLs (all images are uploaded to our storage).
+    // However, we check for external URLs defensively because:
+    // 1. Legacy products may have been created before bulk import was fixed
+    // 2. Products can be created through other means (manual creation, API) that might have external URLs
+    // 3. It prevents errors if an external URL somehow slips through
     const fileKeysToDelete: string[] = [];
 
-    // Extract file keys from images array
+    // Helper function to check if URL is an UploadThing URL
+    const isUploadThingUrl = (url: string): boolean => {
+      if (!url || typeof url !== "string") return false;
+      // UploadThing URLs typically contain "utfs.io" or "uploadthing.com"
+      return (
+        url.includes("utfs.io") ||
+        url.includes("uploadthing.com") ||
+        url.includes("uploadthing-prod.s3.us-west-2.amazonaws.com")
+      );
+    };
+
+    // Helper function to extract file key from UploadThing URL
+    const extractFileKey = (url: string): string | null => {
+      if (!url || typeof url !== "string" || url.trim() === "") return null;
+      
+      // Only process UploadThing URLs
+      if (!isUploadThingUrl(url)) return null;
+
+      const lastSlashIndex = url.lastIndexOf("/");
+      if (lastSlashIndex === -1) {
+        // No slash found - might be just a key, but log warning
+        console.warn(
+          `[DELETE PRODUCT] Unexpected URL format (no slash): ${url}`
+        );
+        return null;
+      }
+
+      const fileKey = url.substring(lastSlashIndex + 1);
+      // Remove query parameters if present
+      const keyWithoutParams = fileKey.split("?")[0];
+      
+      if (!keyWithoutParams || keyWithoutParams.trim() === "") {
+        console.warn(`[DELETE PRODUCT] Empty file key extracted from URL: ${url}`);
+        return null;
+      }
+
+      return keyWithoutParams;
+    };
+
+    // Extract file keys from images array (only UploadThing URLs)
     if (
       product.images &&
       Array.isArray(product.images) &&
       product.images.length > 0
     ) {
-      const imageKeys = product.images.map((url: string) => {
-        // Extract file key from URL (everything after last "/")
-        return url.substring(url.lastIndexOf("/") + 1);
+      product.images.forEach((url: string) => {
+        const fileKey = extractFileKey(url);
+        if (fileKey) {
+          fileKeysToDelete.push(fileKey);
+        }
       });
-      fileKeysToDelete.push(...imageKeys);
     }
 
-    // Extract file key from productFile if it exists
+    // Extract file key from productFile if it exists (only UploadThing URLs)
     if (product.productFile) {
-      const productFileKey = product.productFile.substring(
-        product.productFile.lastIndexOf("/") + 1
-      );
-      fileKeysToDelete.push(productFileKey);
+      const productFileKey = extractFileKey(product.productFile);
+      if (productFileKey) {
+        fileKeysToDelete.push(productFileKey);
+      }
     }
 
     // Delete files from UploadThing storage
@@ -945,11 +990,59 @@ export async function DELETE(
     }
 
     // Delete the product from database
-    await db.product.delete({
-      where: { id: productId },
-    });
+    try {
+      await db.product.delete({
+        where: { id: productId },
+      });
+      console.log(`[DELETE PRODUCT] Successfully deleted product: ${productId}`);
+    } catch (dbDeleteError) {
+      // Database deletion failed - this is critical, so we should fail
+      // But provide a clear error message
+      const errorMessage =
+        dbDeleteError instanceof Error
+          ? dbDeleteError.message
+          : "Database deletion failed";
 
-    console.log(`[DELETE PRODUCT] Successfully deleted product: ${productId}`);
+      // Check if product was already deleted (race condition)
+      const productStillExists = await db.product.findUnique({
+        where: { id: productId },
+        select: { id: true },
+      });
+
+      if (!productStillExists) {
+        // Product was already deleted - treat as success (idempotent)
+        console.log(
+          `[DELETE PRODUCT] Product ${productId} was already deleted (race condition)`
+        );
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Product deleted successfully",
+            productId: productId,
+            productName: product.name,
+          }),
+          { status: 200 }
+        );
+      }
+
+      // Product still exists - deletion actually failed
+      logError({
+        code: "PRODUCT_DELETE_DB_FAILED",
+        userId: session.user.id,
+        route: `/api/products/${productId}`,
+        method: "DELETE",
+        error: dbDeleteError,
+        metadata: {
+          productId,
+          productName: product.name,
+          note: "Database deletion failed - product may have active orders or other constraints",
+        },
+      });
+
+      throw new Error(
+        `Failed to delete product from database: ${errorMessage}. The product may have active orders or other database constraints preventing deletion.`
+      );
+    }
 
     return new Response(
       JSON.stringify({

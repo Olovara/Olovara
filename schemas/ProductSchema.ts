@@ -7,23 +7,40 @@ import {
 } from "@/data/units";
 
 // JSON schema for product description
+// Note: HTML can be longer than plain text due to HTML tags
+// HTML limit is higher (10000) to accommodate rich formatting, while text is limited to 5000
 const descriptionJsonSchema = z
   .object({
-    html: z.string().max(2000, "Description must be 2000 characters or less"),
-    text: z.string().max(2000, "Description must be 2000 characters or less"),
+    html: z.string().max(10000, "Description HTML must be 10000 characters or less"), // Higher limit for HTML to accommodate tags
+    text: z.string().max(5000, "Description text must be 5000 characters or less"), // Plain text limit
   })
   .nullable()
   .refine(
     (val) => {
       if (!val) return false;
-      // Check if text content is empty or only contains empty HTML tags
+      // Check if either html or text has actual content (not just empty HTML tags)
+      const htmlContent = val.html?.trim() || "";
       const textContent = val.text?.trim() || "";
-      const isEmpty =
-        textContent === "" ||
+      
+      // Strip HTML tags from html to check for actual content
+      const htmlPlainText = htmlContent.replace(/<[^>]*>/g, "").trim();
+      const textPlainText = textContent.replace(/<[^>]*>/g, "").trim();
+      
+      // Check if content is empty or only contains empty HTML tags
+      const isEmptyHtml = 
+        htmlPlainText === "" ||
+        htmlContent === "<p><br></p>" ||
+        htmlContent === "<p></p>" ||
+        htmlContent === "<br>" ||
+        htmlContent === "<br/>";
+      
+      const isEmptyText = 
+        textPlainText === "" ||
         textContent === "<p><br></p>" ||
-        textContent === "<p></p>" ||
-        textContent.replace(/<[^>]*>/g, "").trim() === "";
-      return !isEmpty;
+        textContent === "<p></p>";
+      
+      // Description is valid if either html or text has content
+      return !isEmptyHtml || !isEmptyText;
     },
     {
       message: "Product description is required.",
@@ -1089,16 +1106,42 @@ export const ProductSchema = baseProductSchema
     }
 
     // Additional validations for active products
-    if (
-      !data.description ||
-      !data.description.html ||
-      data.description.html.trim() === ""
-    ) {
+    // Check if description has actual content (either html or text)
+    if (!data.description) {
       ctx.addIssue({
         code: "custom",
         message: "Product description is required for active products.",
         path: ["description"],
       });
+    } else {
+      const htmlContent = data.description.html?.trim() || "";
+      const textContent = data.description.text?.trim() || "";
+      
+      // Strip HTML tags to check for actual content
+      const htmlPlainText = htmlContent.replace(/<[^>]*>/g, "").trim();
+      const textPlainText = textContent.replace(/<[^>]*>/g, "").trim();
+      
+      // Check if content is empty or only contains empty HTML tags
+      const isEmptyHtml = 
+        htmlPlainText === "" ||
+        htmlContent === "<p><br></p>" ||
+        htmlContent === "<p></p>" ||
+        htmlContent === "<br>" ||
+        htmlContent === "<br/>";
+      
+      const isEmptyText = 
+        textPlainText === "" ||
+        textContent === "<p><br></p>" ||
+        textContent === "<p></p>";
+      
+      // Description is invalid if both html and text are empty
+      if (isEmptyHtml && isEmptyText) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Product description is required for active products.",
+          path: ["description"],
+        });
+      }
     }
 
     if (!data.images || data.images.length === 0) {

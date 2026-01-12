@@ -40,25 +40,66 @@ export default function EditProductPage() {
         const data = await response.json();
 
         // Transform the product data to match the expected format
+        // Handle description transformation - it can be a string, object with html/text, object with ops, or null/undefined
+        let transformedDescription: { html: string; text: string };
+        if (!data.description || data.description === null) {
+          // If description is null or undefined, use empty default
+          transformedDescription = { html: "", text: "" };
+        } else if (typeof data.description === "string") {
+          // If it's a string, convert to object format
+          transformedDescription = {
+            html: data.description,
+            text: data.description.replace(/<[^>]*>?/gm, ""),
+          };
+        } else if (typeof data.description === "object") {
+          // If it's already an object, check its structure
+          if (data.description.html !== undefined || data.description.text !== undefined) {
+            // Has html or text property - use them, generating missing one if needed
+            // Priority: if both exist, use them; if only one exists, generate the other
+            let html = "";
+            let text = "";
+            
+            if (data.description.html) {
+              html = data.description.html;
+              // Generate text from html if text doesn't exist or is empty
+              text = data.description.text || html.replace(/<[^>]*>?/gm, "").trim();
+            } else if (data.description.text) {
+              text = data.description.text;
+              // If only text exists, use it as html (it might already be HTML or plain text)
+              html = text;
+            }
+            
+            transformedDescription = {
+              html: html,
+              text: text,
+            };
+          } else if (data.description.ops && Array.isArray(data.description.ops)) {
+            // Old format with ops array (Quill Delta format)
+            transformedDescription = {
+              html: data.description.ops
+                .map((op: { insert: string }) => op.insert)
+                .join(""),
+              text: data.description.ops
+                .map((op: { insert: string }) => op.insert)
+                .join("")
+                .replace(/<[^>]*>?/gm, ""),
+            };
+          } else {
+            // Unknown object format, try to extract text or use empty
+            const htmlStr = JSON.stringify(data.description);
+            transformedDescription = {
+              html: htmlStr,
+              text: htmlStr.replace(/<[^>]*>?/gm, ""),
+            };
+          }
+        } else {
+          // Fallback for any other type
+          transformedDescription = { html: "", text: "" };
+        }
+
         const transformedProduct: ProductFormValues = {
           ...data,
-          description:
-            typeof data.description === "string"
-              ? {
-                  html: data.description,
-                  text: data.description.replace(/<[^>]*>?/gm, ""),
-                }
-              : data.description.ops
-                ? {
-                    html: data.description.ops
-                      .map((op: { insert: string }) => op.insert)
-                      .join(""),
-                    text: data.description.ops
-                      .map((op: { insert: string }) => op.insert)
-                      .join("")
-                      .replace(/<[^>]*>?/gm, ""),
-                  }
-                : data.description || { html: "", text: "" },
+          description: transformedDescription,
           shippingCost: data.shippingCost || 0,
           handlingFee: data.handlingFee || 0,
           itemWeight: data.itemWeight || 0,

@@ -123,9 +123,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
   >(null);
   const [loadingSellers, setLoadingSellers] = useState(false);
 
-  const [description, setDescription] = useState<string>(
-    initialData?.description?.html || ""
-  );
+  // Safely extract description HTML, handling various formats
+  const getDescriptionHtml = (): string => {
+    if (!initialData?.description) return "";
+    if (typeof initialData.description === "string")
+      return initialData.description;
+    if (typeof initialData.description === "object") {
+      // Prefer html, but fall back to text if html doesn't exist
+      if (initialData.description.html) {
+        return initialData.description.html;
+      }
+      if (initialData.description.text) {
+        return initialData.description.text; // Use text as html if html is missing
+      }
+    }
+    return "";
+  };
+
+  const [description, setDescription] = useState<string>(getDescriptionHtml());
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [materialTags, setMaterialTags] = useState<string[]>(
     initialData?.materialTags || []
@@ -156,7 +171,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
 
   // Track removed existing images (URLs that should be deleted from Uploadthing)
-  const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
+  const [removedExistingImages, setRemovedExistingImages] = useState<string[]>(
+    []
+  );
 
   // Store processed file (before upload) - similar to processedImages
   const [processedFile, setProcessedFile] = useState<ProcessedFile | null>(
@@ -469,7 +486,23 @@ export function ProductForm({ initialData }: ProductFormProps) {
       shortDescription: initialData?.shortDescription || "",
       shortDescriptionBullets: initialData?.shortDescriptionBullets || [],
       price: initialData?.price ? initialData.price / 100 : 0,
-      description: initialData?.description || { html: "", text: "" },
+      description: (() => {
+        const desc = initialData?.description;
+        // Check if it's already in the correct object format
+        if (desc && typeof desc === "object" && "html" in desc) {
+          return desc;
+        }
+        // Check if it's a string and convert it
+        if (desc && typeof desc === "string") {
+          const descString = desc as string; // Type assertion to help TypeScript
+          return {
+            html: descString,
+            text: descString.replace(/<[^>]*>?/gm, ""),
+          };
+        }
+        // Default to empty
+        return { html: "", text: "" };
+      })(),
       images: initialData?.images || [],
       freeShipping: initialData?.freeShipping || false,
       handlingFee: initialData?.handlingFee ? initialData.handlingFee / 100 : 0,

@@ -171,20 +171,45 @@ function normalizeRow(
   // Full URL format: https://static.wixstatic.com/media/<MEDIA_ID>
   if (sourcePlatform === "Wix" && imageFields.length > 0) {
     imageFields.forEach((imageValue, index) => {
+      // Trim whitespace and check if it's already a URL
+      const trimmedValue = imageValue.trim();
+      if (!trimmedValue) {
+        // Empty value after trimming - remove it
+        imageFields[index] = "";
+        return;
+      }
+
       // Check if it's already a URL (starts with http/https)
       if (
-        !imageValue.startsWith("http://") &&
-        !imageValue.startsWith("https://")
+        !trimmedValue.startsWith("http://") &&
+        !trimmedValue.startsWith("https://")
       ) {
         // It's a filename, construct the full Wix URL
-        const wixImageUrl = `https://static.wixstatic.com/media/${imageValue}`;
+        // Ensure no leading/trailing slashes in the filename
+        const cleanFilename = trimmedValue.replace(/^\/+|\/+$/g, "");
+        const wixImageUrl = `https://static.wixstatic.com/media/${cleanFilename}`;
         imageFields[index] = wixImageUrl;
         console.log(
-          `[BULK IMPORT] Row ${rowNumber}: Constructed Wix image URL: ${wixImageUrl}`
+          `[BULK IMPORT] Row ${rowNumber}: Constructed Wix image URL from filename "${cleanFilename}" -> ${wixImageUrl}`
+        );
+      } else {
+        // Already a URL - log for debugging
+        console.log(
+          `[BULK IMPORT] Row ${rowNumber}: Image already has full URL: ${trimmedValue}`
         );
       }
-      // If it's already a URL, leave it as is
     });
+
+    // Filter out any empty values that were created
+    const filteredImages = imageFields.filter((img) => img && img.trim());
+    if (filteredImages.length !== imageFields.length) {
+      console.warn(
+        `[BULK IMPORT] Row ${rowNumber}: Filtered out ${imageFields.length - filteredImages.length} empty image(s)`
+      );
+    }
+    // Update imageFields array in place
+    imageFields.length = 0;
+    imageFields.push(...filteredImages);
   }
 
   // If we found image fields, add them to images array
@@ -508,29 +533,60 @@ function normalizeRow(
 /**
  * Process image URLs - fetch and upload to storage
  */
-async function processImages(imageUrls: string[]): Promise<string[]> {
+async function processImages(imageUrls: string[]): Promise<{
+  uploadedUrls: string[];
+  failedUrls: Array<{ url: string; error: string }>;
+}> {
   const storage = getStorage();
   const uploadedUrls: string[] = [];
+  const failedUrls: Array<{ url: string; error: string }> = [];
+
+  console.log(
+    `[BULK IMPORT] Processing ${imageUrls.length} image URL(s):`,
+    imageUrls
+  );
 
   for (const url of imageUrls) {
     try {
       // Validate URL
       if (!url || typeof url !== "string" || !url.startsWith("http")) {
-        console.warn(`[BULK IMPORT] Invalid image URL: ${url}`);
+        failedUrls.push({
+          url,
+          error: "Invalid URL format (must start with http:// or https://)",
+        });
+        console.warn(
+          `[BULK IMPORT] Invalid image URL format: "${url}" (type: ${typeof url})`
+        );
         continue;
       }
+
+      console.log(`[BULK IMPORT] Attempting to fetch and upload: ${url}`);
 
       // Upload image from URL
       const storedUrl = await storage.uploadFromUrl(url);
       uploadedUrls.push(storedUrl);
+      console.log(
+        `[BULK IMPORT] Successfully uploaded image: ${url} -> ${storedUrl}`
+      );
     } catch (error) {
-      console.error(`[BULK IMPORT] Failed to process image ${url}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      failedUrls.push({ url, error: errorMessage });
+      console.error(
+        `[BULK IMPORT] Failed to process image ${url}:`,
+        errorMessage,
+        error instanceof Error ? error.stack : ""
+      );
       // Continue processing other images even if one fails
       // We'll validate that at least one image exists later
     }
   }
 
-  return uploadedUrls;
+  console.log(
+    `[BULK IMPORT] Image processing complete: ${uploadedUrls.length} succeeded, ${failedUrls.length} failed`
+  );
+
+  return { uploadedUrls, failedUrls };
 }
 
 /**
@@ -599,15 +655,32 @@ async function processWixProductGroup(
         // Found a variation option - collect values from variant rows
         const variantValues: string[] = [];
         
-        variantRows.forEach((variantRow) => {
-          const variantValue = getValue(variantRow, `productOptionDescription${i}`);
-          if (variantValue && variantValue.trim()) {
-            variantValues.push(variantValue.trim());
+        // If we have variant rows, collect values from them
+        if (variantRows.length > 0) {
+          variantRows.forEach((variantRow) => {
+            const variantValue = getValue(variantRow, `productOptionDescription${i}`);
+            if (variantValue && variantValue.trim()) {
+              variantValues.push(variantValue.trim());
+            }
+          });
+        } else {
+          // No variant rows - try to parse semicolon-separated values from product row
+          const productOptionDesc = getValue(productRow, `productOptionDescription${i}`);
+          if (productOptionDesc && productOptionDesc.trim()) {
+            // Wix uses semicolons to separate values in productOptionDescription
+            const values = productOptionDesc
+              .split(";")
+              .map((v: string) => v.trim())
+              .filter((v: string) => v.length > 0);
+            variantValues.push(...values);
           }
-        });
+        }
+
+        // Deduplicate variant values to prevent duplicate variation names
+        const uniqueVariantValues = Array.from(new Set(variantValues));
 
         // If we have variant values, create the option
-        if (variantValues.length > 0) {
+        if (uniqueVariantValues.length > 0) {
           // Get currency for price conversion
           const currency = normalized.currency || "USD";
           const currencyDecimals = getCurrencyDecimals(currency);
@@ -615,7 +688,7 @@ async function processWixProductGroup(
 
           options.push({
             label: optionName,
-            values: variantValues.map((valueName: string) => {
+            values: uniqueVariantValues.map((valueName: string) => {
               // Variation prices default to 0 (no additional price)
               const variationPriceInCurrencyUnits = 0;
               const variationPriceInLowestDenomination = Math.round(
@@ -784,13 +857,26 @@ async function processRowWithNormalizedData(
     }
 
     // Process and upload images (only for validated products)
-    const processedImages = await processImages(originalImageUrls);
-    if (processedImages.length === 0) {
-      throw new Error("No valid images could be processed");
+    const imageResult = await processImages(originalImageUrls);
+    if (imageResult.uploadedUrls.length === 0) {
+      // Provide detailed error message about which images failed
+      const errorDetails = imageResult.failedUrls
+        .map((f) => `${f.url}: ${f.error}`)
+        .join("; ");
+      throw new Error(
+        `No valid images could be processed. Failed images: ${errorDetails}`
+      );
+    }
+
+    // Log warnings if some images failed but at least one succeeded
+    if (imageResult.failedUrls.length > 0) {
+      console.warn(
+        `[BULK IMPORT] Row ${rowNumber}: ${imageResult.failedUrls.length} image(s) failed, but ${imageResult.uploadedUrls.length} succeeded`
+      );
     }
 
     // Update validated data with processed image URLs
-    validated.images = processedImages;
+    validated.images = imageResult.uploadedUrls;
 
     // Build product data
     const productData: any = {

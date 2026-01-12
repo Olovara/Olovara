@@ -409,20 +409,48 @@ export const ProductInfoSection = ({
         render={({ fieldState }) => {
           // Only show error if status is not DRAFT
           const shouldShowError = currentStatus !== "DRAFT" && fieldState.error;
+          
+          // Calculate character count (strip HTML tags to get plain text length)
+          // Ensure description is treated as a string to avoid TypeScript errors
+          const descriptionStr = typeof description === "string" ? description : "";
+          const plainTextLength = descriptionStr
+            ? descriptionStr.replace(/<[^>]*>/g, "").length
+            : 0;
+          
+          const maxLength = 5000;
+          const isNearLimit = plainTextLength > maxLength * 0.9; // 90% of limit
+          const isOverLimit = plainTextLength > maxLength;
+          
           return (
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <div
-                  className={
-                    shouldShowError ? "border border-red-500 rounded-md" : ""
-                  }
-                >
-                  <QuillEditor
-                    value={description}
-                    onChange={setDescription}
-                    placeholder="Enter product description..."
-                  />
+                <div className="space-y-2">
+                  <div
+                    className={
+                      shouldShowError ? "border border-red-500 rounded-md" : ""
+                    }
+                  >
+                    <QuillEditor
+                      value={description}
+                      onChange={setDescription}
+                      placeholder="Enter product description..."
+                    />
+                  </div>
+                  {/* Character counter */}
+                  <div className="flex justify-end">
+                    <span
+                      className={`text-xs ${
+                        isOverLimit
+                          ? "text-red-500 font-medium"
+                          : isNearLimit
+                          ? "text-amber-500"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {plainTextLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                    </span>
+                  </div>
                 </div>
               </FormControl>
               {shouldShowError && <FormMessage />}
