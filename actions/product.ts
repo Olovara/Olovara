@@ -154,3 +154,46 @@ export async function deleteProduct(productId: string) {
     };
   }
 }
+
+/**
+ * Delete multiple products in bulk
+ * Only allows deletion if numberSold === 0 for all products
+ * Also deletes all associated images and files from UploadThing
+ * Returns summary of successful and failed deletions
+ */
+export async function deleteProductsBulk(productIds: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "User is not authenticated." };
+  }
+
+  if (!productIds || productIds.length === 0) {
+    return { success: false, error: "No products selected for deletion." };
+  }
+
+  const results = {
+    success: true,
+    deleted: [] as string[],
+    failed: [] as Array<{ productId: string; error: string }>,
+  };
+
+  // Delete products sequentially to avoid overwhelming the server
+  for (const productId of productIds) {
+    const result = await deleteProduct(productId);
+    if (result.success) {
+      results.deleted.push(productId);
+    } else {
+      results.failed.push({ productId, error: result.error || "Unknown error" });
+      results.success = false; // Mark overall as failed if any deletion fails
+    }
+  }
+
+  return {
+    success: results.success,
+    deleted: results.deleted,
+    failed: results.failed,
+    message: results.failed.length > 0
+      ? `Deleted ${results.deleted.length} product(s). ${results.failed.length} failed.`
+      : `Successfully deleted ${results.deleted.length} product(s).`,
+  };
+}

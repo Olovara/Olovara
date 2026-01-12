@@ -20,13 +20,14 @@ import { Ellipsis, Trash2, Copy, Pencil, ImageIcon, AlertCircle } from "lucide-r
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { formatPriceInCurrency } from "@/lib/utils";
-import { deleteProduct } from "@/actions/product";
+import { deleteProduct, deleteProductsBulk } from "@/actions/product";
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Product {
   id: string;
@@ -63,6 +64,33 @@ export function ProductTable({ products }: ProductTableProps) {
   } | null>(null);
   // Track which product images have failed to load
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  // Track selected products for bulk deletion
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  );
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Clean up stale selections when products list changes
+  // Remove selections for products that no longer exist or have sales
+  useMemo(() => {
+    if (selectedProducts.size > 0) {
+      const validProductIds = new Set(
+        products
+          .filter((p) => p.numberSold === 0)
+          .map((p) => p.id)
+      );
+      
+      const staleSelections = Array.from(selectedProducts).filter(
+        (id) => !validProductIds.has(id)
+      );
+      
+      if (staleSelections.length > 0) {
+        const cleaned = new Set(selectedProducts);
+        staleSelections.forEach((id) => cleaned.delete(id));
+        setSelectedProducts(cleaned);
+      }
+    }
+  }, [products, selectedProducts]);
 
   // Handler function to duplicate a product
   const handleDuplicate = async (productId: string) => {
@@ -140,6 +168,165 @@ export function ProductTable({ products }: ProductTableProps) {
     }
   };
 
+  // Handler for bulk delete confirmation
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedProducts.size === 0) return;
+
+    setIsBulkDeleting(true);
+    setDeleteModalOpen(false);
+
+    try {
+      // Validate selected products still exist and are deletable before attempting deletion
+      // This prevents errors from stale selections (e.g., products deleted elsewhere, got sales, etc.)
+      const productIds = Array.from(selectedProducts);
+      const validProductIds = productIds.filter((id) => {
+        const product = products.find((p) => p.id === id);
+        // Only include products that exist in current list and have no sales
+        return product && product.numberSold === 0;
+      });
+
+      // Remove invalid selections (products not in current list or have sales)
+      const invalidIds = productIds.filter((id) => !validProductIds.includes(id));
+      if (invalidIds.length > 0) {
+        const remaining = new Set(selectedProducts);
+        invalidIds.forEach((id) => remaining.delete(id));
+        setSelectedProducts(remaining);
+        
+        if (validProductIds.length === 0) {
+          toast.error(
+            "Selected products are no longer available for deletion. They may have been deleted, have sales, or are not on this page."
+          );
+          setIsBulkDeleting(false);
+          return;
+        } else {
+          toast.warning(
+            `${invalidIds.length} product(s) were removed from selection as they are no longer deletable.`
+          );
+        }
+      }
+
+      if (validProductIds.length === 0) {
+        setIsBulkDeleting(false);
+        return;
+      }
+
+      const result = await deleteProductsBulk(validProductIds);
+
+      if (result.success && result.deleted) {
+        toast.success(
+          result.message || `Successfully deleted ${result.deleted.length} product(s).`
+        );
+        // Clear selection after successful deletion
+        setSelectedProducts(new Set());
+        router.refresh(); // Refresh to remove deleted products from the list
+      } else {
+        // Show detailed error message (truncate if too long)
+        if (result.failed && result.failed.length > 0) {
+          const errorMessages = result.failed
+            .map((f) => `Product ${f.productId}: ${f.error}`)
+            .join(", ");
+          
+          // Truncate very long error messages
+          const displayMessage = errorMessages.length > 200
+            ? `${errorMessages.substring(0, 200)}... (${result.failed.length} failed)`
+            : errorMessages;
+          
+          toast.error(
+            result.message || `Some deletions failed: ${displayMessage}`
+          );
+        } else {
+          toast.error(result.message || result.error || "Failed to delete products");
+        }
+        // Remove successfully deleted products from selection
+        if (result.deleted && result.deleted.length > 0) {
+          const remaining = new Set(selectedProducts);
+          result.deleted.forEach((id) => remaining.delete(id));
+          setSelectedProducts(remaining);
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting products:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while deleting products"
+      );
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  // Handler to toggle product selection
+  const toggleProductSelection = (productId: string) => {
+    // Prevent selection changes during bulk delete operation
+    if (isBulkDeleting) return;
+    
+    // Verify product exists and is deletable before allowing selection
+    const product = products.find((p) => p.id === productId);
+    if (!product) {
+      toast.error("Product not found. Please refresh the page.");
+      return;
+    }
+    
+    if (product.numberSold > 0) {
+      toast.error("Products with sales cannot be deleted.");
+      return;
+    }
+
+    setSelectedProducts((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  // Handler to toggle select all
+  const toggleSelectAll = () => {
+    // Prevent selection changes during bulk delete operation
+    if (isBulkDeleting) return;
+    
+    // Only select products that can be deleted (numberSold === 0)
+    const deletableProducts = products.filter((p) => p.numberSold === 0);
+    const deletableIds = new Set(deletableProducts.map((p) => p.id));
+    
+    if (selectedProducts.size === deletableIds.size && 
+        Array.from(selectedProducts).every(id => deletableIds.has(id))) {
+      // All are selected, deselect all
+      setSelectedProducts(new Set());
+    } else {
+      // Select all deletable products
+      setSelectedProducts(new Set(deletableIds));
+    }
+  };
+
+  // Get deletable products count (products with no sales)
+  const deletableProducts = useMemo(() => {
+    return products.filter((p) => p.numberSold === 0);
+  }, [products]);
+
+  // Check if all deletable products are selected
+  const allDeletableSelected = useMemo(() => {
+    if (deletableProducts.length === 0) return false;
+    const deletableIds = new Set(deletableProducts.map((p) => p.id));
+    return (
+      selectedProducts.size === deletableIds.size &&
+      Array.from(selectedProducts).every((id) => deletableIds.has(id))
+    );
+  }, [selectedProducts, deletableProducts]);
+
+  // Handler to open bulk delete modal
+  const handleBulkDeleteClick = () => {
+    if (selectedProducts.size === 0) {
+      toast.error("Please select at least one product to delete");
+      return;
+    }
+    setDeleteModalOpen(true);
+  };
+
   // Helper function to format date
   const formatDate = (date: Date | string) => {
     try {
@@ -215,19 +402,75 @@ export function ProductTable({ products }: ProductTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={allDeletableSelected}
+                  onCheckedChange={toggleSelectAll}
+                  disabled={deletableProducts.length === 0}
+                />
+              </TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Sold</TableHead>
               <TableHead>Created</TableHead>
-              <TableHead className="w-[50px] text-center">Actions</TableHead>
+              <TableHead className="w-[100px] text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <span>Actions</span>
+                  {selectedProducts.size > 0 ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="h-8 w-8 p-0 relative disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted rounded-md transition-colors"
+                          disabled={isBulkDeleting}
+                        >
+                          <span className="sr-only">Bulk actions</span>
+                          <Ellipsis className="h-4 w-4" />
+                          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium border-2 border-background">
+                            {selectedProducts.size}
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Bulk Actions</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={handleBulkDeleteClick}
+                          disabled={isBulkDeleting}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete {selectedProducts.size} product{selectedProducts.size !== 1 ? "s" : ""}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <button
+                      className="h-8 w-8 p-0 relative opacity-50 cursor-not-allowed"
+                      disabled
+                      aria-label="Bulk actions (disabled - no products selected)"
+                    >
+                      <span className="sr-only">Bulk actions</span>
+                      <Ellipsis className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((product) => {
+              const isSelected = selectedProducts.has(product.id);
+              const canDelete = product.numberSold === 0;
               return (
                 <TableRow key={product.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleProductSelection(product.id)}
+                      disabled={!canDelete || isBulkDeleting}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -378,10 +621,63 @@ export function ProductTable({ products }: ProductTableProps) {
 
       {/* Mobile Card View - Hidden on desktop */}
       <div className="md:hidden space-y-4 w-full max-w-full">
-        {products.map((product) => (
-          <Card key={product.id} className="w-full max-w-full">
-            <CardContent className="p-4 w-full max-w-full">
-              <div className="flex gap-4 w-full">
+        {/* Mobile Bulk Actions Button */}
+        <div className="sticky top-0 z-10 bg-background pb-2">
+          {selectedProducts.size > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full relative"
+                  disabled={isBulkDeleting}
+                >
+                  <Ellipsis className="h-4 w-4 mr-2" />
+                  Bulk Actions
+                  <span className="ml-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+                    {selectedProducts.size}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Bulk Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={handleBulkDeleteClick}
+                  disabled={isBulkDeleting}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete {selectedProducts.size} product{selectedProducts.size !== 1 ? "s" : ""}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full opacity-50 cursor-not-allowed"
+              disabled
+            >
+              <Ellipsis className="h-4 w-4 mr-2" />
+              Bulk Actions
+            </Button>
+          )}
+        </div>
+        {products.map((product) => {
+          const isSelected = selectedProducts.has(product.id);
+          const canDelete = product.numberSold === 0;
+          return (
+            <Card key={product.id} className="w-full max-w-full">
+              <CardContent className="p-4 w-full max-w-full">
+                <div className="flex gap-4 w-full">
+                  {/* Checkbox */}
+                  <div className="flex items-start pt-1">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleProductSelection(product.id)}
+                      disabled={!canDelete || isBulkDeleting}
+                    />
+                  </div>
                 {/* Product Image */}
                 <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
                   {hasValidImage(product) ? (
@@ -527,17 +823,34 @@ export function ProductTable({ products }: ProductTableProps) {
               </div>
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
       </div>
 
       <DeleteConfirmationModal
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Product"
-        description="This action cannot be undone and will delete all associated images and files."
-        itemName={productToDelete ? `"${productToDelete.name}"` : undefined}
-        isLoading={deletingProductId !== null}
+        onConfirm={
+          selectedProducts.size > 0 ? handleBulkDeleteConfirm : handleDeleteConfirm
+        }
+        title={
+          selectedProducts.size > 0
+            ? `Delete ${selectedProducts.size} Product${selectedProducts.size !== 1 ? "s" : ""}`
+            : "Delete Product"
+        }
+        description={
+          selectedProducts.size > 0
+            ? `This action cannot be undone and will delete ${selectedProducts.size} product${selectedProducts.size !== 1 ? "s" : ""} and all associated images and files.`
+            : "This action cannot be undone and will delete all associated images and files."
+        }
+        itemName={
+          productToDelete
+            ? `"${productToDelete.name}"`
+            : selectedProducts.size > 0
+              ? `${selectedProducts.size} product${selectedProducts.size !== 1 ? "s" : ""}`
+              : undefined
+        }
+        isLoading={deletingProductId !== null || isBulkDeleting}
       />
     </>
   );
