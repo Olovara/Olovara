@@ -206,8 +206,25 @@ export default function BulkImportPage() {
   // Handle platform change
   const handlePlatformChange = async (platform: string) => {
     setSourcePlatform(platform);
-    // Regenerate mapping with new platform
-    await generateMapping();
+    // Regenerate mapping with new platform - use the new platform value directly
+    const headersToUse = csvHeaders;
+    if (headersToUse.length === 0) return;
+
+    try {
+      const response = await fetch(
+        `/api/bulk-import/mapping?headers=${headersToUse.join(",")}&platform=${platform}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate mapping");
+      }
+
+      const data = await response.json();
+      setMapping(data.mapping || {});
+    } catch (error) {
+      console.error("Failed to generate mapping:", error);
+      toast.error("Failed to regenerate mapping with new platform");
+    }
   };
 
   // Save mapping

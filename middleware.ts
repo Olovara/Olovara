@@ -76,16 +76,19 @@ export default auth(async (req) => {
   const isClearCacheApi = nextUrl.pathname === "/api/auth/clear-cache";
   // Category navigation routes - users should be able to browse categories freely
   const isCategoryRoute = nextUrl.pathname.startsWith("/categories");
+  // Price range API - users move sliders frequently, shouldn't be rate limited
+  const isPriceRangeApi = nextUrl.pathname === "/api/products/price-range";
 
-  // Skip rate limiting for auth routes, API auth routes, critical APIs, and category browsing
-  // These routes are hit frequently during login/authentication flow or normal browsing
+  // Skip rate limiting for auth routes, API auth routes, critical APIs, category browsing, and price range
+  // These routes are hit frequently during login/authentication flow, normal browsing, or filter interactions
   const shouldSkipRateLimit =
     isApiAuthRoute ||
     isAuthRoute ||
     isStripeWebhook ||
     isPermissionsApi ||
     isClearCacheApi ||
-    isCategoryRoute;
+    isCategoryRoute ||
+    isPriceRangeApi;
 
   // Rate limiting for all other requests
   if (!shouldSkipRateLimit) {

@@ -9,7 +9,6 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
-import { getPriceRange } from "@/actions/getPriceRange";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -113,11 +112,29 @@ export function ProductFilters() {
 
   useEffect(() => {
     const fetchPriceRange = async () => {
-      const range = await getPriceRange(selectedCategory);
-      setPriceRange(range);
-      // Only update current range if it hasn't been set by URL params
-      if (!searchParams.get("priceRange")) {
-        setCurrentPriceRange([range.min, range.max]);
+      try {
+        // Build query params
+        const params = new URLSearchParams();
+        if (selectedCategory) {
+          params.set("category", selectedCategory);
+        }
+        
+        // Fetch price range from API route instead of server action
+        const response = await fetch(`/api/products/price-range?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch price range");
+        }
+        
+        const range = await response.json();
+        setPriceRange(range);
+        // Only update current range if it hasn't been set by URL params
+        if (!searchParams.get("priceRange")) {
+          setCurrentPriceRange([range.min, range.max]);
+        }
+      } catch (error) {
+        console.error("Error fetching price range:", error);
+        // Fallback to default range on error
+        setPriceRange({ min: 0, max: 100000 });
       }
     };
     fetchPriceRange();

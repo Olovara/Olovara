@@ -104,6 +104,7 @@ export function HeaderMapping({
       if (/^additionalInfo\d+$/i.test(h)) {
         return false;
       }
+      // Note: additionalInfoDescription1-6 are marked as SKIP but will appear in unmapped columns for manual selection
     }
     return true;
   });
@@ -118,9 +119,9 @@ export function HeaderMapping({
         <Card>
           <CardHeader>
             <CardTitle>Source Platform</CardTitle>
-            <CardDescription>
+            <div className="text-sm text-muted-foreground">
               Selected platform: <Badge>{sourcePlatform}</Badge>
-            </CardDescription>
+            </div>
           </CardHeader>
         </Card>
       )}
@@ -222,14 +223,14 @@ export function HeaderMapping({
                         </SelectContent>
                       </Select>
                       {fieldInfo && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {fieldInfo.label}
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                          <span>{fieldInfo.label}</span>
                           {isRequired && (
-                            <Badge variant="outline" className="ml-2">
+                            <Badge variant="outline">
                               Required
                             </Badge>
                           )}
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>

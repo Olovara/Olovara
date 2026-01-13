@@ -135,7 +135,7 @@ The following files have been updated to use the centralized system:
 - ⏳ `app/(site)/shops/[shopNameSlug]/page.tsx`
 - ⏳ `app/(site)/shops/page.tsx`
 - ⏳ `components/ProductRow.tsx`
-- ⏳ `actions/getPriceRange.ts`
+- ✅ `app/api/products/price-range/route.ts` (converted from server action to API route)
 
 ## Testing
 

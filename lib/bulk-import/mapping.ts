@@ -33,6 +33,18 @@ export const PRODUCT_FIELDS = [
   { field: "variation2Type", label: "Variation 2 Type", required: false },
   { field: "variation2Name", label: "Variation 2 Name", required: false },
   { field: "variation2Values", label: "Variation 2 Values", required: false },
+  { field: "variation3Type", label: "Variation 3 Type", required: false },
+  { field: "variation3Name", label: "Variation 3 Name", required: false },
+  { field: "variation3Values", label: "Variation 3 Values", required: false },
+  { field: "variation4Type", label: "Variation 4 Type", required: false },
+  { field: "variation4Name", label: "Variation 4 Name", required: false },
+  { field: "variation4Values", label: "Variation 4 Values", required: false },
+  { field: "variation5Type", label: "Variation 5 Type", required: false },
+  { field: "variation5Name", label: "Variation 5 Name", required: false },
+  { field: "variation5Values", label: "Variation 5 Values", required: false },
+  { field: "variation6Type", label: "Variation 6 Type", required: false },
+  { field: "variation6Name", label: "Variation 6 Name", required: false },
+  { field: "variation6Values", label: "Variation 6 Values", required: false },
   // SEO fields
   { field: "metaTitle", label: "Meta Title", required: false },
   { field: "metaDescription", label: "Meta Description", required: false },
@@ -91,6 +103,18 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     variation2Type: ["variation 2 type", "variation2type", "var2type"],
     variation2Name: ["variation 2 name", "variation2name", "var2name"],
     variation2Values: ["variation 2 values", "variation2values", "var2values"],
+    variation3Type: ["variation 3 type", "variation3type", "var3type"],
+    variation3Name: ["variation 3 name", "variation3name", "var3name"],
+    variation3Values: ["variation 3 values", "variation3values", "var3values"],
+    variation4Type: ["variation 4 type", "variation4type", "var4type"],
+    variation4Name: ["variation 4 name", "variation4name", "var4name"],
+    variation4Values: ["variation 4 values", "variation4values", "var4values"],
+    variation5Type: ["variation 5 type", "variation5type", "var5type"],
+    variation5Name: ["variation 5 name", "variation5name", "var5name"],
+    variation5Values: ["variation 5 values", "variation5values", "var5values"],
+    variation6Type: ["variation 6 type", "variation6type", "var6type"],
+    variation6Name: ["variation 6 name", "variation6name", "var6name"],
+    variation6Values: ["variation 6 values", "variation6values", "var6values"],
   },
   Shopify: {
     name: ["title", "name", "product_title"],
@@ -102,6 +126,24 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     "tags[]": ["tags", "tag"],
     "materialTags[]": ["material", "fabric"],
     "images[]": ["image_src", "image", "image_url"],
+    variation1Type: ["option1 name", "variant option1", "option 1 type"],
+    variation1Name: ["option1 name", "variant option1", "option 1 name"],
+    variation1Values: ["option1 value", "variant option1 value", "option 1 values"],
+    variation2Type: ["option2 name", "variant option2", "option 2 type"],
+    variation2Name: ["option2 name", "variant option2", "option 2 name"],
+    variation2Values: ["option2 value", "variant option2 value", "option 2 values"],
+    variation3Type: ["option3 name", "variant option3", "option 3 type"],
+    variation3Name: ["option3 name", "variant option3", "option 3 name"],
+    variation3Values: ["option3 value", "variant option3 value", "option 3 values"],
+    variation4Type: ["option4 name", "variant option4", "option 4 type"],
+    variation4Name: ["option4 name", "variant option4", "option 4 name"],
+    variation4Values: ["option4 value", "variant option4 value", "option 4 values"],
+    variation5Type: ["option5 name", "variant option5", "option 5 type"],
+    variation5Name: ["option5 name", "variant option5", "option 5 name"],
+    variation5Values: ["option5 value", "variant option5 value", "option 5 values"],
+    variation6Type: ["option6 name", "variant option6", "option 6 type"],
+    variation6Name: ["option6 name", "variant option6", "option 6 name"],
+    variation6Values: ["option6 value", "variant option6 value", "option 6 values"],
   },
   WooCommerce: {
     name: ["name", "product_name", "title"],
@@ -113,6 +155,24 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     "tags[]": ["tags", "product_tags"],
     "materialTags[]": ["material", "fabric"],
     "images[]": ["image", "image_url", "product_image"],
+    variation1Type: ["attribute 1", "attribute_1", "variation 1 type"],
+    variation1Name: ["attribute 1 name", "attribute_1_name", "variation 1 name"],
+    variation1Values: ["attribute 1 value", "attribute_1_value", "variation 1 values"],
+    variation2Type: ["attribute 2", "attribute_2", "variation 2 type"],
+    variation2Name: ["attribute 2 name", "attribute_2_name", "variation 2 name"],
+    variation2Values: ["attribute 2 value", "attribute_2_value", "variation 2 values"],
+    variation3Type: ["attribute 3", "attribute_3", "variation 3 type"],
+    variation3Name: ["attribute 3 name", "attribute_3_name", "variation 3 name"],
+    variation3Values: ["attribute 3 value", "attribute_3_value", "variation 3 values"],
+    variation4Type: ["attribute 4", "attribute_4", "variation 4 type"],
+    variation4Name: ["attribute 4 name", "attribute_4_name", "variation 4 name"],
+    variation4Values: ["attribute 4 value", "attribute_4_value", "variation 4 values"],
+    variation5Type: ["attribute 5", "attribute_5", "variation 5 type"],
+    variation5Name: ["attribute 5 name", "attribute_5_name", "variation 5 name"],
+    variation5Values: ["attribute 5 value", "attribute_5_value", "variation 5 values"],
+    variation6Type: ["attribute 6", "attribute_6", "variation 6 type"],
+    variation6Name: ["attribute 6 name", "attribute_6_name", "variation 6 name"],
+    variation6Values: ["attribute 6 value", "attribute_6_value", "variation 6 values"],
   },
   Squarespace: {
     name: ["title", "name", "product_name"],
@@ -124,6 +184,24 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     "tags[]": ["tags", "categories"],
     "materialTags[]": ["material"],
     "images[]": ["image", "image_url"],
+    variation1Type: ["variant option 1", "option 1 type", "variation 1 type"],
+    variation1Name: ["variant option 1 name", "option 1 name", "variation 1 name"],
+    variation1Values: ["variant option 1 values", "option 1 values", "variation 1 values"],
+    variation2Type: ["variant option 2", "option 2 type", "variation 2 type"],
+    variation2Name: ["variant option 2 name", "option 2 name", "variation 2 name"],
+    variation2Values: ["variant option 2 values", "option 2 values", "variation 2 values"],
+    variation3Type: ["variant option 3", "option 3 type", "variation 3 type"],
+    variation3Name: ["variant option 3 name", "option 3 name", "variation 3 name"],
+    variation3Values: ["variant option 3 values", "option 3 values", "variation 3 values"],
+    variation4Type: ["variant option 4", "option 4 type", "variation 4 type"],
+    variation4Name: ["variant option 4 name", "option 4 name", "variation 4 name"],
+    variation4Values: ["variant option 4 values", "option 4 values", "variation 4 values"],
+    variation5Type: ["variant option 5", "option 5 type", "variation 5 type"],
+    variation5Name: ["variant option 5 name", "option 5 name", "variation 5 name"],
+    variation5Values: ["variant option 5 values", "option 5 values", "variation 5 values"],
+    variation6Type: ["variant option 6", "option 6 type", "variation 6 type"],
+    variation6Name: ["variant option 6 name", "option 6 name", "variation 6 name"],
+    variation6Values: ["variant option 6 values", "option 6 values", "variation 6 values"],
   },
   Wix: {
     name: ["name"],
@@ -132,25 +210,24 @@ export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
     currency: ["currency", "currency_code"], // May not be in CSV, will default to seller's preferred currency
     // Note: inventory is "InStock" status, not a quantity - stock will default to 0 for products with variations
     sku: ["sku"],
-    "tags[]": ["collection"], // Note: brand is auto-skipped, removed from tags mapping
+    "tags[]": [], // Note: collection is not auto-mapped - let seller choose
     "materialTags[]": [], // Note: brand is auto-skipped
     "images[]": ["productImageUrl"],
     // Wix variations: productOptionName1-6 defines the option name, productOptionDescription1-6 contains semicolon-separated values
     // Variants are separate rows with fieldType="Variant" that reference the product by handleId
     // Note: productOptionType1-6 are auto-skipped (we use productOptionName and productOptionDescription instead)
-    // Note: productOptionDescription1-6 are NOT auto-mapped - sellers must manually select them to prevent incorrect mapping
     variation1Name: ["productOptionName1"],
-    variation1Values: [], // productOptionDescription1 intentionally NOT auto-mapped - let seller select manually
+    variation1Values: ["productOptionDescription1"], // Semicolon-separated values
     variation2Name: ["productOptionName2"],
-    variation2Values: [], // productOptionDescription2 intentionally NOT auto-mapped
+    variation2Values: ["productOptionDescription2"],
     variation3Name: ["productOptionName3"],
-    variation3Values: [], // productOptionDescription3 intentionally NOT auto-mapped
+    variation3Values: ["productOptionDescription3"],
     variation4Name: ["productOptionName4"],
-    variation4Values: [], // productOptionDescription4 intentionally NOT auto-mapped
+    variation4Values: ["productOptionDescription4"],
     variation5Name: ["productOptionName5"],
-    variation5Values: [], // productOptionDescription5 intentionally NOT auto-mapped
+    variation5Values: ["productOptionDescription5"],
     variation6Name: ["productOptionName6"],
-    variation6Values: [], // productOptionDescription6 intentionally NOT auto-mapped
+    variation6Values: ["productOptionDescription6"],
   },
 };
 
@@ -161,11 +238,13 @@ export function autoMapHeaders(
   csvHeaders: string[],
   sourcePlatform?: string
 ): Record<string, string> {
+  console.log(`[AUTO-MAP] autoMapHeaders called - Platform: "${sourcePlatform}", Headers: ${csvHeaders.length}`);
   const mapping: Record<string, string> = {};
 
   // For Wix, automatically skip productOptionType1-6 headers (they just indicate field type like "dropdown")
   // Also skip additionalInfoTitle1-6 (Wix additional info fields that aren't needed)
   if (sourcePlatform === "Wix") {
+    console.log(`[AUTO-MAP] Wix platform detected in autoMapHeaders!`);
     for (let i = 1; i <= 6; i++) {
       const headerToSkip = `productOptionType${i}`;
       if (csvHeaders.includes(headerToSkip)) {
@@ -176,15 +255,8 @@ export function autoMapHeaders(
       if (csvHeaders.includes(additionalInfoHeader)) {
         mapping[additionalInfoHeader] = "SKIP";
       }
-    }
-    
-    // CRITICAL: Mark productOptionDescription headers as "DO_NOT_MAP" at the start
-    // This prevents them from being matched by any logic
-    // We'll remove this marker at the end so they appear in unmapped columns
-    for (const header of csvHeaders) {
-      if (/^productOptionDescription\d+$/i.test(header)) {
-        mapping[header] = "DO_NOT_MAP"; // Temporary marker to prevent any matching
-      }
+      // Note: additionalInfoDescription fields are NOT marked as SKIP - they'll appear in unmapped columns
+      // but will be prevented from auto-mapping via the safeguards below
     }
   }
 
@@ -206,18 +278,17 @@ export function autoMapHeaders(
 
     for (const productField of fieldOrder) {
       const patterns = platformPatterns[productField];
-      if (!patterns || patterns.length === 0) continue;
+      if (!patterns || patterns.length === 0) {
+        if (sourcePlatform === "Wix" && productField.startsWith("variation")) {
+          console.warn(`[AUTO-MAP] Wix: No patterns found for "${productField}"`);
+        }
+        continue;
+      }
 
       // Find matching CSV header
       for (const csvHeader of csvHeaders) {
-        // Skip if already mapped (including "DO_NOT_MAP" marker)
+        // Skip if already mapped
         if (mapping[csvHeader]) continue;
-
-        // For Wix, skip productOptionDescription headers entirely - let sellers map them manually
-        // This prevents incorrect auto-mapping to description fields
-        if (sourcePlatform === "Wix" && /^productOptionDescription\d+$/i.test(csvHeader)) {
-          continue; // Skip auto-mapping - let seller select manually
-        }
 
         const normalizedHeader = csvHeader.toLowerCase().trim();
 
@@ -232,7 +303,9 @@ export function autoMapHeaders(
             // Exact match only - no substring matching
             const isMatch = normalizedHeader === normalizedPattern;
             if (isMatch) {
-              console.log(`[AUTO-MAP] Wix: Matched "${csvHeader}" to "${productField}" via platform pattern`);
+              console.log(`[AUTO-MAP] Wix: Matched "${csvHeader}" to "${productField}" via platform pattern "${pattern}"`);
+            } else {
+              console.log(`[AUTO-MAP] Wix: No match - "${csvHeader}" (${normalizedHeader}) !== "${pattern}" (${normalizedPattern}) for "${productField}"`);
             }
             return isMatch;
           }
@@ -271,6 +344,8 @@ export function autoMapHeaders(
       // Exclude additionalInfoTitle1-6 (Wix additional info fields)
       if (/^additionalInfoTitle\d+$/i.test(h)) return false;
       if (/^additionalInfo\d+$/i.test(h)) return false;
+      // Exclude additionalInfoDescription1-6 - let seller choose manually
+      if (/^additionalInfoDescription\d+$/i.test(h)) return false;
     }
     
     return true;
@@ -307,9 +382,19 @@ export function autoMapHeaders(
 
       // First, try exact match (case-insensitive)
       const exactMatch = currentRemainingHeaders.find((header) => {
-        // For Wix, skip productOptionDescription headers in exact matching - let sellers map them manually
-        if (sourcePlatform === "Wix" && /^productOptionDescription\d+$/i.test(header)) {
-          return false; // Skip - let seller select manually
+        // CRITICAL: For Wix, prevent productOptionDescription and additionalInfoDescription headers from matching description fields
+        if (sourcePlatform === "Wix") {
+          // productOptionDescription should ONLY map to variation1Values-6Values via platform patterns
+          if (/^productOptionDescription\d+$/i.test(header)) {
+            // Only allow matching to variation fields, never to description fields
+            if (!fieldName.startsWith("variation")) {
+              return false; // Block matching to non-variation fields
+            }
+          }
+          // additionalInfoDescription should NOT be auto-mapped - let seller choose manually
+          if (/^additionalInfoDescription\d+$/i.test(header)) {
+            return false; // Block ALL auto-matching for additionalInfoDescription
+          }
         }
         
         const normalizedHeader = header.toLowerCase().trim();
@@ -317,6 +402,15 @@ export function autoMapHeaders(
         const normalizedLabel = productField.label.toLowerCase();
 
         // Check exact matches first
+        // BUT: For Wix productOptionDescription headers, NEVER match to description fields
+        // This is a critical safeguard
+        if (sourcePlatform === "Wix" && /^productOptionDescription\d+$/i.test(header)) {
+          // Only allow matching if it's a variation field
+          if (!fieldName.startsWith("variation")) {
+            return false; // Block ALL matching to non-variation fields
+          }
+        }
+        
         return (
           normalizedHeader === normalizedField ||
           normalizedHeader === normalizedLabel ||
@@ -332,15 +426,18 @@ export function autoMapHeaders(
       }
 
       // If no exact match, use Fuse.js for fuzzy matching
-      // For Wix, exclude productOptionDescription and additionalInfoTitle headers from fuzzy matching
-      // productOptionDescription headers should only be mapped manually by sellers
+      // For Wix, exclude productOptionDescription, additionalInfoTitle, and additionalInfoDescription headers from fuzzy matching
+      // productOptionDescription should ONLY map via platform patterns to variation fields
+      // additionalInfoDescription should NOT be auto-mapped - let seller choose manually
       const headersForFuzzyMatch = sourcePlatform === "Wix"
         ? currentRemainingHeaders.filter((h) => {
-            // Exclude productOptionDescription headers - let sellers map them manually
+            // Exclude productOptionDescription headers - they should only map via platform patterns
             if (/^productOptionDescription\d+$/i.test(h)) return false;
             // Exclude additional info headers
             if (/^additionalInfoTitle\d+$/i.test(h)) return false;
             if (/^additionalInfo\d+$/i.test(h)) return false;
+            // Exclude additionalInfoDescription - let seller choose manually
+            if (/^additionalInfoDescription\d+$/i.test(h)) return false;
             return true;
           })
         : currentRemainingHeaders;
@@ -391,26 +488,38 @@ export function autoMapHeaders(
     }
   }
 
-  // CRITICAL: For Wix, remove ANY auto-mappings of productOptionDescription headers
-  // These should NEVER be auto-mapped - sellers must manually select them
-  // This fixes any incorrect mappings that might have occurred despite our safeguards
-  // We remove ALL mappings (even to variation fields) to force manual selection
+  // CRITICAL: For Wix, FORCE correct mapping of productOptionDescription1-6 to variation1Values-6Values
+  // This is a final enforcement step that ensures the mapping is correct regardless of what happened before
+  console.log(`[AUTO-MAP] Final enforcement in autoMapHeaders - sourcePlatform: "${sourcePlatform}"`);
   if (sourcePlatform === "Wix") {
-    // Check ALL mapping keys (not just csvHeaders) to catch any case variations
-    for (const mappedHeader of Object.keys(mapping)) {
-      // Check if this header matches productOptionDescription pattern (case-insensitive)
-      if (/^productOptionDescription\d+$/i.test(mappedHeader)) {
-        const currentMapping = mapping[mappedHeader];
-        // Remove ANY mapping (including "DO_NOT_MAP" marker, variation fields, etc.) - sellers must manually select
-        // This prevents any auto-mapping, even if it's technically correct
-        if (currentMapping && currentMapping !== "SKIP") {
-          console.warn(
-            `[AUTO-MAP] Removing auto-mapping for "${mappedHeader}" (was mapped to "${currentMapping}") - requires manual selection`
-          );
-          delete mapping[mappedHeader]; // Remove the mapping so it appears in unmapped columns
+    console.log(`[AUTO-MAP] Running final enforcement in autoMapHeaders for Wix...`);
+    for (let i = 1; i <= 6; i++) {
+      const headerPattern = new RegExp(`^productOptionDescription${i}$`, "i");
+      const correctField = `variation${i}Values`;
+      
+      // First, check if header is already in mapping (case-insensitive)
+      const matchingHeaderInMapping = Object.keys(mapping).find(k => headerPattern.test(k));
+      
+      if (matchingHeaderInMapping) {
+        // Force the correct mapping - override anything that was set before
+        if (mapping[matchingHeaderInMapping] !== correctField) {
+          console.log(`[AUTO-MAP] *** FORCING Wix mapping in autoMapHeaders: "${matchingHeaderInMapping}" → "${correctField}" (was: "${mapping[matchingHeaderInMapping]}") ***`);
+          mapping[matchingHeaderInMapping] = correctField;
+        } else {
+          console.log(`[AUTO-MAP] Mapping already correct in autoMapHeaders: "${matchingHeaderInMapping}" → "${correctField}"`);
+        }
+      } else {
+        // Header exists in CSV but not in mapping yet - find it and add the mapping
+        const csvHeader = csvHeaders.find(h => headerPattern.test(h));
+        if (csvHeader) {
+          console.log(`[AUTO-MAP] *** Adding missing Wix mapping in autoMapHeaders: "${csvHeader}" → "${correctField}" ***`);
+          mapping[csvHeader] = correctField;
+        } else {
+          console.log(`[AUTO-MAP] productOptionDescription${i} not found in CSV headers`);
         }
       }
     }
+    console.log(`[AUTO-MAP] Final mapping state in autoMapHeaders:`, Object.entries(mapping).filter(([k]) => /^productOptionDescription\d+$/i.test(k)));
   }
 
   return mapping;
