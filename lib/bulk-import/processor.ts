@@ -78,8 +78,11 @@ function normalizeRow(
     "brand",
   ];
   // Also skip productOptionType1-6 (we use productOptionName and productOptionDescription instead)
+  // Skip additionalInfoTitle1-6 (Wix additional info fields)
   for (let i = 1; i <= 6; i++) {
     WIX_SKIP_FIELDS.push(`productOptionType${i}`);
+    WIX_SKIP_FIELDS.push(`additionalInfoTitle${i}`);
+    WIX_SKIP_FIELDS.push(`additionalInfo${i}`);
   }
 
   // Apply mapping
@@ -98,7 +101,7 @@ function normalizeRow(
       continue; // Skip empty values
     }
 
-    // Handle array fields (tags, materialTags, images)
+    // Handle array fields (tags, materialTags, images, keywords)
     if (productField.endsWith("[]")) {
       const fieldName = productField.slice(0, -2); // Remove "[]"
       if (!normalized[fieldName]) {
@@ -127,6 +130,22 @@ function normalizeRow(
             ? parseFloat(csvValue.replace(/[^0-9.-]/g, "")) // Remove currency symbols, commas, etc.
             : Number(csvValue);
         normalized[productField] = isNaN(numValue) ? undefined : numValue;
+      } else if (
+        productField === "itemWeight" ||
+        productField === "itemLength" ||
+        productField === "itemWidth" ||
+        productField === "itemHeight"
+      ) {
+        // Convert dimension/weight fields to number
+        const numValue =
+          typeof csvValue === "string"
+            ? parseFloat(csvValue.replace(/[^0-9.-]/g, ""))
+            : Number(csvValue);
+        // Only set if valid number and greater than 0 (schema requires > 0 if provided)
+        if (!isNaN(numValue) && numValue > 0) {
+          normalized[productField] = numValue;
+        }
+        // If invalid or <= 0, don't set it (will be undefined, which schema allows)
       } else {
         normalized[productField] = csvValue;
       }
@@ -843,8 +862,77 @@ async function processRowWithNormalizedData(
       };
     }
 
+    // Validate optional fields separately and exclude invalid ones
+    // This prevents optional field errors from failing the entire row
+    const optionalFieldsToValidate = [
+      "metaTitle",
+      "metaDescription",
+      "ogTitle",
+      "ogDescription",
+      "ogImage",
+      "safetyWarnings",
+      "materialsComposition",
+      "safeUseInstructions",
+      "ageRestriction",
+      "chemicalWarnings",
+      "careInstructions",
+      "itemWeight",
+      "itemWeightUnit",
+      "itemLength",
+      "itemWidth",
+      "itemHeight",
+      "itemDimensionUnit",
+      "shippingNotes",
+      "howItsMade",
+    ];
+
+    // Create a copy of normalized data for validation
+    const dataForValidation = { ...normalized };
+    const invalidOptionalFields: string[] = [];
+
+    // Validate optional fields using safeParse approach
+    // Try full validation first, and if it fails, remove problematic optional fields
+    let validationResult = ProductSchema.safeParse(dataForValidation);
+    
+    if (!validationResult.success) {
+      // Check if errors are only in optional fields
+      const errorPaths = validationResult.error.errors.map((e) => e.path.join("."));
+      const optionalFieldErrors = errorPaths.filter((path) =>
+        optionalFieldsToValidate.includes(path)
+      );
+
+      // If all errors are in optional fields, remove them and retry
+      if (optionalFieldErrors.length === errorPaths.length) {
+        for (const field of optionalFieldErrors) {
+          console.warn(
+            `[BULK IMPORT] Row ${rowNumber}: Optional field "${field}" validation failed, excluding from product data`
+          );
+          invalidOptionalFields.push(field);
+          delete dataForValidation[field];
+        }
+        // Retry validation after removing invalid optional fields
+        validationResult = ProductSchema.safeParse(dataForValidation);
+      } else {
+        // Some required fields have errors - this will fail the row
+        throw validationResult.error;
+      }
+    }
+
+    // Log if any optional fields were excluded
+    if (invalidOptionalFields.length > 0) {
+      console.log(
+        `[BULK IMPORT] Row ${rowNumber}: Excluded ${invalidOptionalFields.length} invalid optional field(s): ${invalidOptionalFields.join(", ")}`
+      );
+    }
+
+    // If validation still failed after removing optional fields, throw error
+    if (!validationResult.success) {
+      throw validationResult.error;
+    }
+
     // Validate with Zod schema FIRST (before uploading images)
-    const validated = ProductSchema.parse(normalized);
+    // Use validated data from safeParse
+    const validated = validationResult.data;
 
     // Only process images AFTER validation passes
     const originalImageUrls =

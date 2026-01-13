@@ -74,15 +74,18 @@ export default auth(async (req) => {
   const isStripeWebhook = nextUrl.pathname.startsWith("/api/stripe/webhooks");
   const isPermissionsApi = nextUrl.pathname === "/api/auth/permissions";
   const isClearCacheApi = nextUrl.pathname === "/api/auth/clear-cache";
+  // Category navigation routes - users should be able to browse categories freely
+  const isCategoryRoute = nextUrl.pathname.startsWith("/categories");
 
-  // Skip rate limiting for auth routes, API auth routes, and critical APIs
-  // These routes are hit frequently during login/authentication flow
+  // Skip rate limiting for auth routes, API auth routes, critical APIs, and category browsing
+  // These routes are hit frequently during login/authentication flow or normal browsing
   const shouldSkipRateLimit =
     isApiAuthRoute ||
     isAuthRoute ||
     isStripeWebhook ||
     isPermissionsApi ||
-    isClearCacheApi;
+    isClearCacheApi ||
+    isCategoryRoute;
 
   // Rate limiting for all other requests
   if (!shouldSkipRateLimit) {

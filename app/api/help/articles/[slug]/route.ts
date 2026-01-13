@@ -17,8 +17,12 @@ export async function GET(
   try {
     slug = params.slug;
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    // This prevents case-sensitivity issues when users manually type URLs
+    const normalizedSlug = slug.toLowerCase();
+
     const article = await db.helpArticle.findUnique({
-      where: { slug },
+      where: { slug: normalizedSlug },
       include: {
         cat: {
           select: {
@@ -45,7 +49,7 @@ export async function GET(
     // Increment view count for published articles
     if (article.status === "PUBLISHED" && !article.isPrivate) {
       await db.helpArticle.update({
-        where: { slug },
+        where: { slug: normalizedSlug },
         data: { views: { increment: 1 } },
       });
     }
@@ -84,6 +88,10 @@ export async function PUT(
   try {
     permissionCheck = await checkApiPermissions(["WRITE_HELP_ARTICLES"]);
     slug = params.slug;
+    
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    const normalizedSlug = slug.toLowerCase();
+    
     if (!permissionCheck.authorized) {
       return NextResponse.json(
         { error: permissionCheck.error },
@@ -224,9 +232,9 @@ export async function DELETE(
 ) {
   // Declare variables outside try block so they're accessible in catch
   let permissionCheck: any = null;
-  // Extract slug from params immediately to avoid scope issues
-  const slugParam = params.slug;
-  let slug: string | undefined = slugParam;
+    // Extract slug from params immediately to avoid scope issues
+    const slugParam = params.slug;
+    let slug: string | undefined = slugParam;
 
   try {
     permissionCheck = await checkApiPermissions(["DELETE_HELP_ARTICLES"]);
@@ -237,9 +245,12 @@ export async function DELETE(
       );
     }
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    const normalizedSlug = slug.toLowerCase();
+
     // Check if article exists
     const article = await db.helpArticle.findUnique({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
     });
 
     if (!article) {
@@ -254,7 +265,7 @@ export async function DELETE(
 
     // Delete the article
     await db.helpArticle.delete({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
     });
 
     return NextResponse.json({ message: "Article deleted successfully" });

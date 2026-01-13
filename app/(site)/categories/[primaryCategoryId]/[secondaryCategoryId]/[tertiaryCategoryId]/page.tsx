@@ -104,12 +104,14 @@ export default async function TertiaryCategoryPage({
   const followedSellers = searchParams.followedSellers === "true";
 
   // Build additional filters - match the main products page structure
+  // CRITICAL: Use the actual category IDs from the found category objects, not the URL parameters
+  // This ensures case-insensitive matching works correctly (DB stores uppercase, URLs may be lowercase)
   const additionalFilters: Prisma.ProductWhereInput = {
     AND: [
       {
-        primaryCategory: primaryCategoryId,
-        secondaryCategory: secondaryCategoryId,
-        tertiaryCategory: tertiaryCategoryId,
+        primaryCategory: primaryCategory.id,
+        secondaryCategory: secondaryCategory.id,
+        tertiaryCategory: tertiaryCategory.id,
         price: {
           gte: priceRange[0] * 100, // Convert to cents
           lte: priceRange[1] * 100, // Convert to cents
@@ -244,9 +246,12 @@ export default async function TertiaryCategoryPage({
   });
 
   // Apply location filtering in memory
+  // Note: Products without sellers should already be filtered out by debugProductQuery,
+  // but we handle this edge case defensively
   let filteredProducts = userCountryCode
     ? productsWithSellerInfo.filter((product) => {
-      if (!product.seller) return true;
+      // Products without sellers should have been filtered out already, but if one slips through, exclude it
+      if (!product.seller) return false;
       const excludedCountries = product.seller.excludedCountries || [];
       return !excludedCountries.includes(userCountryCode);
     })

@@ -90,8 +90,26 @@ export function HeaderMapping({
   );
 
   // Group headers by mapping status
-  const mappedHeaders = csvHeaders.filter((h) => mapping[h]);
-  const unmappedHeaders = csvHeaders.filter((h) => !mapping[h]);
+  // Filter out Wix headers that should be automatically skipped
+  const headersToShow = csvHeaders.filter((h) => {
+    if (sourcePlatform === "Wix") {
+      // Automatically hide productOptionType1-6 headers (they just indicate field type like "dropdown")
+      if (/^productOptionType\d+$/i.test(h)) {
+        return false; // Don't show in unmapped columns
+      }
+      // Also hide additionalInfoTitle1-6 headers (Wix additional info fields)
+      if (/^additionalInfoTitle\d+$/i.test(h)) {
+        return false;
+      }
+      if (/^additionalInfo\d+$/i.test(h)) {
+        return false;
+      }
+    }
+    return true;
+  });
+  
+  const mappedHeaders = headersToShow.filter((h) => mapping[h] && mapping[h] !== "SKIP");
+  const unmappedHeaders = headersToShow.filter((h) => !mapping[h]);
 
   return (
     <div className="space-y-6">

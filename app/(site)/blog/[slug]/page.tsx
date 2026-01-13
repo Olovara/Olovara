@@ -23,9 +23,13 @@ interface BlogPostPageProps {
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = params;
 
+  // Normalize slug to lowercase - slugs are always stored in lowercase
+  // This prevents case-sensitivity issues when users manually type URLs
+  const normalizedSlug = slug.toLowerCase();
+
   // Fetch the blog post
   const post = await db.blogPost.findUnique({
-    where: { slug },
+    where: { slug: normalizedSlug },
     select: {
       id: true,
       title: true,
@@ -66,7 +70,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   // Increment view count
   await db.blogPost.update({
-    where: { slug },
+    where: { slug: normalizedSlug },
     data: { views: { increment: 1 } },
   });
 

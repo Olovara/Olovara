@@ -35,6 +35,10 @@ async function getShopData(
   userCountryCode?: string,
   canAccessTest: boolean = false
 ) {
+  // Normalize shopNameSlug to lowercase - slugs are always stored in lowercase
+  // This prevents case-sensitivity issues when users manually type URLs
+  const normalizedSlug = shopNameSlug.toLowerCase();
+  
   // Get centralized filter configuration
   const filterConfig = await getProductFilterConfig(
     userCountryCode,
@@ -44,7 +48,7 @@ async function getShopData(
   const productWhere = await createProductFilterWhereClause({}, filterConfig);
 
   const seller = await db.seller.findUnique({
-    where: { shopNameSlug }, // Fetch using the slug
+    where: { shopNameSlug: normalizedSlug }, // Fetch using the normalized slug
     select: {
       id: true,
       shopName: true,

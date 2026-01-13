@@ -49,6 +49,26 @@ export async function GET(request: NextRequest) {
       // Use saved mapping
       const savedMapping = seller.csvMappings[0];
       mapping = savedMapping.mapping as Record<string, string>;
+      
+      // CRITICAL: For Wix, remove ANY mappings of productOptionDescription headers from saved mappings
+      // These should NEVER be auto-mapped - sellers must manually select them
+      // We remove ALL mappings (even to variation fields) to force manual selection
+      if (sourcePlatform === "Wix") {
+        // Check ALL mapping keys (not just csvHeaders) to catch any case variations
+        for (const mappedHeader of Object.keys(mapping)) {
+          // Check if this header matches productOptionDescription pattern (case-insensitive)
+          if (/^productOptionDescription\d+$/i.test(mappedHeader)) {
+            // Remove ANY mapping (including to variation fields) - sellers must manually select
+            // Only keep if it's explicitly set to SKIP
+            if (mapping[mappedHeader] !== "SKIP") {
+              console.warn(
+                `[AUTO-MAP] Removing saved mapping for "${mappedHeader}" (was mapped to "${mapping[mappedHeader]}") - requires manual selection`
+              );
+              delete mapping[mappedHeader];
+            }
+          }
+        }
+      }
     } else {
       // Auto-generate mapping
       mapping = autoMapHeaders(csvHeaders, sourcePlatform);

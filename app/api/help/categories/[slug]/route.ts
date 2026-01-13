@@ -17,8 +17,12 @@ export async function GET(
   try {
     slug = params.slug;
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    // This prevents case-sensitivity issues when users manually type URLs
+    const normalizedSlug = slug.toLowerCase();
+
     const category = await db.helpCategory.findUnique({
-      where: { slug },
+      where: { slug: normalizedSlug },
       include: {
         articles: {
           where: {
@@ -96,6 +100,9 @@ export async function PUT(
 
     body = await request.json();
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    const normalizedSlug = slug.toLowerCase();
+
     // Validate request body
     const validation = updateHelpCategorySchema.safeParse(body);
     if (!validation.success) {
@@ -109,7 +116,7 @@ export async function PUT(
 
     // Check if category exists
     const existingCategory = await db.helpCategory.findUnique({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
     });
 
     if (!existingCategory) {
@@ -142,7 +149,7 @@ export async function PUT(
 
     // Update the category
     const updatedCategory = await db.helpCategory.update({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
       data: {
         title,
         description: description || "",
@@ -204,9 +211,12 @@ export async function DELETE(
       );
     }
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    const normalizedSlug = slug.toLowerCase();
+
     // Check if category exists
     const category = await db.helpCategory.findUnique({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
       include: {
         _count: {
           select: {
@@ -236,7 +246,7 @@ export async function DELETE(
 
     // Delete the category
     await db.helpCategory.delete({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
     });
 
     return NextResponse.json({ message: "Category deleted successfully" });

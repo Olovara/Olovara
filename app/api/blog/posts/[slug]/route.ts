@@ -25,9 +25,13 @@ export async function GET(
       );
     }
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    // This prevents case-sensitivity issues when users manually type URLs
+    const normalizedSlug = slug.toLowerCase();
+
     // Get the blog post by slug and check if it belongs to the user
     const post = await db.blogPost.findUnique({
-      where: { slug },
+      where: { slug: normalizedSlug },
       select: {
         id: true,
         title: true,
@@ -119,9 +123,12 @@ export async function PUT(
       metaDescription,
     } = body;
 
+    // Normalize slug to lowercase - slugs are always stored in lowercase
+    const normalizedSlug = slug.toLowerCase();
+
     // First, get the blog post to check ownership
     const existingPost = await db.blogPost.findUnique({
-      where: { slug },
+      where: { slug: normalizedSlug },
       select: { id: true, userEmail: true },
     });
 
@@ -149,7 +156,7 @@ export async function PUT(
         .replace(/(^-|-$)/g, "");
 
       // Check if new slug already exists (excluding current post)
-      if (newSlug !== slug) {
+      if (newSlug !== normalizedSlug) {
         const slugExists = await db.blogPost.findUnique({
           where: { slug: newSlug },
         });
