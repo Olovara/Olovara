@@ -73,20 +73,65 @@ const FirstProductSchema = z.object({
     }
   ),
   options: z
-    .array(
-      z.object({
-        label: z.string().min(1, "Option label is required"),
-        values: z.array(
+    .preprocess(
+      // Filter out incomplete options before validation
+      // This handles cases where users add option groups but don't fill them out
+      (val) => {
+        // If null, undefined, or not an array, return null
+        if (!val || !Array.isArray(val)) {
+          return null;
+        }
+        // Filter out incomplete options:
+        // - Options with empty labels
+        // - Options with empty values arrays
+        // - Options where all values have empty names
+        const filtered = val.filter((option: any) => {
+          if (!option || typeof option !== "object") return false;
+          // Must have a non-empty label
+          if (!option.label || typeof option.label !== "string" || option.label.trim() === "") {
+            return false;
+          }
+          // Must have a values array with at least one value that has a non-empty name
+          if (!Array.isArray(option.values) || option.values.length === 0) {
+            return false;
+          }
+          // At least one value must have a non-empty name
+          const hasValidValue = option.values.some(
+            (value: any) =>
+              value &&
+              typeof value === "object" &&
+              value.name &&
+              typeof value.name === "string" &&
+              value.name.trim() !== ""
+          );
+          return hasValidValue;
+        });
+        // If no valid options remain, return null instead of empty array
+        return filtered.length > 0 ? filtered : null;
+      },
+      z
+        .array(
           z.object({
-            name: z.string().min(1, "Option value name is required"),
-            price: z.number().min(0, "Price must be non-negative").default(0), // Optional additional price - defaults to 0 (base price only) if not provided
-            stock: z.number().int().min(0, "Stock must be non-negative").default(0),
+            label: z.string().min(1, "Option label is required"),
+            values: z.array(
+              z.object({
+                name: z.string().min(1, "Option value name is required"),
+                description: z
+                  .string()
+                  .max(500, "Description must be 500 characters or less")
+                  .optional()
+                  .transform((val) =>
+                    val && typeof val === "string" && val.trim() !== "" ? val.trim() : undefined
+                  ), // Optional description explaining what makes this value special
+                price: z.number().min(0, "Price must be non-negative").default(0), // Optional additional price - defaults to 0 (base price only) if not provided
+                stock: z.number().int().min(0, "Stock must be non-negative").default(0),
+              })
+            ).min(1, "At least one option value is required"),
           })
-        ).min(1, "At least one option value is required"),
-      })
-    )
-    .nullable()
-    .optional(),
+        )
+        .nullable()
+        .optional()
+    ),
   price: z.number().min(0.01, "Price must be greater than 0"), // Note: ProductSchema uses createMonetarySchema with min(0), but has currency-specific validation in superRefine
   currency: z
     .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
@@ -397,7 +442,7 @@ type FirstProductFormValues = z.infer<typeof FirstProductSchema>;
 // This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
-  values: { name: string; price?: number; stock: number }[];
+  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
 };
 
 export default function CreateFirstProductForm() {

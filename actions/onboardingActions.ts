@@ -515,12 +515,15 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
       return { error: "Shop name cannot contain 'Yarnnu'." };
     }
 
-    // Check if shop name is already taken
+    // Check if shop name is already taken (excluding current user's own shop)
     const existingSeller = await db.seller.findFirst({
       where: {
         shopName: {
           equals: shopName,
           mode: "insensitive", // Case-insensitive search
+        },
+        userId: {
+          not: session.user.id, // Exclude current user's own shop
         },
       },
     });
@@ -538,12 +541,15 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    // Check if slug is already taken
+    // Check if slug is already taken (excluding current user's own shop)
     const existingSlug = await db.seller.findFirst({
       where: {
         shopNameSlug: {
           equals: shopNameSlug,
           mode: "insensitive",
+        },
+        userId: {
+          not: session.user.id, // Exclude current user's own shop
         },
       },
     });

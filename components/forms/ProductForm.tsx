@@ -71,13 +71,13 @@ type ProductFormProps = {
 // This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
-  values: { name: string; price?: number; stock: number }[];
+  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
 };
 
 // This is the type defined in the schema
 type SchemaOption = {
   label: string;
-  values: { name: string; price?: number; stock: number }[];
+  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
@@ -216,6 +216,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       label: option.label,
       values: option.values.map((value) => ({
         name: value.name,
+        description: value.description || undefined, // Include description if present
         price: value.price ? value.price / divisor : undefined, // Convert from smallest unit to currency units
         stock: value.stock || 0,
       })),
@@ -919,6 +920,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
       label: option.label,
       values: option.values.map((value) => ({
         name: value.name,
+        description: value.description && value.description.trim() !== "" 
+          ? value.description.trim() 
+          : undefined, // Only include description if it's not empty
         price: value.price ? Math.round(value.price * multiplier) : undefined, // Convert to smallest unit
         stock: value.stock || 0,
       })),

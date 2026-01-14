@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useFormContext } from "react-hook-form";
 import { ProductSchema } from "@/schemas/ProductSchema";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
@@ -11,7 +12,7 @@ import { Trash2 } from "lucide-react";
 
 type DropdownOption = {
   label: string;
-  values: { name: string; price?: number; stock: number }[];
+  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
 };
 
 type ProductOptionsSectionProps = {
@@ -52,7 +53,7 @@ export function ProductOptionsSection({
               ...option,
               values: [
                 ...option.values,
-                { name: "", price: undefined, stock: 0 },
+                { name: "", description: "", price: undefined, stock: 0 },
               ],
             }
           : option
@@ -69,7 +70,7 @@ export function ProductOptionsSection({
   const updateDropdownOption = (
     index: number,
     field: "label" | "values",
-    value: string | { name: string; stock: number }[]
+    value: string | { name: string; description?: string; stock: number }[]
   ) => {
     setDropdownOptions((prev) =>
       prev.map((option, i) =>
@@ -78,7 +79,7 @@ export function ProductOptionsSection({
               ...option,
               [field]:
                 field === "values"
-                  ? (value as { name: string; stock: number }[])
+                  ? (value as { name: string; description?: string; stock: number }[])
                   : (value as string),
             }
           : option
@@ -235,6 +236,30 @@ export function ProductOptionsSection({
                     }}
                     className="mt-1"
                   />
+                </div>
+
+                {/* Value Description */}
+                <div>
+                  <Label className="text-xs text-gray-600">
+                    Description (Optional)
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1 mb-1">
+                    Explain what makes this value special
+                  </p>
+                  <Textarea
+                    placeholder="e.g., This size includes extra fabric for a looser fit..."
+                    value={value.description || ""}
+                    onChange={(e) => {
+                      const newValues = [...option.values];
+                      newValues[valueIndex].description = e.target.value;
+                      updateDropdownOption(index, "values", newValues);
+                    }}
+                    className="mt-1 min-h-[60px]"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {(value.description || "").length}/500 characters
+                  </p>
                 </div>
               </div>
             </div>

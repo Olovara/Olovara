@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { EEA_COUNTRIES, NORTHERN_IRELAND_CODE } from "@/lib/gpsr-compliance";
 
+// Cutoff date for auto-completing handmade_verification
+// Sellers created before this date have handmade_verification auto-completed
+// Sellers created on or after this date must complete it manually
+const HANDMADE_VERIFICATION_CUTOFF_DATE = new Date("2026-01-05T00:00:00.000Z");
+
 // Define the base onboarding steps (always required)
 export const BASE_ONBOARDING_STEPS = [
   "application_submitted",
@@ -253,24 +258,22 @@ export async function initializeOnboardingSteps(
   // Always include all base steps plus GPSR compliance (even if not required)
   const allSteps = [...BASE_ONBOARDING_STEPS, GPSR_COMPLIANCE_STEP];
 
-  // Check if this is an existing seller (already completed shop_naming before this step was added)
-  // If so, auto-complete handmade_verification for them
-  const existingShopNaming = await prisma.onboardingStep.findUnique({
-    where: {
-      sellerId_stepKey: {
-        sellerId,
-        stepKey: "shop_naming",
-      },
-    },
+  // Check if this seller was created before the cutoff date
+  // Sellers created before January 5, 2026 have handmade_verification auto-completed
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { createdAt: true },
   });
 
-  const isExistingSeller = existingShopNaming?.completed === true;
+  const isLegacySeller = seller?.createdAt 
+    ? seller.createdAt < HANDMADE_VERIFICATION_CUTOFF_DATE
+    : false;
 
   // Create records for all steps
   const stepData = allSteps.map((stepKey) => ({
     sellerId,
     stepKey,
-    completed: isExistingSeller && stepKey === "handmade_verification" ? true : false,
+    completed: isLegacySeller && stepKey === "handmade_verification" ? true : false,
   }));
 
   // Use upsert for each step to handle duplicates gracefully
@@ -283,9 +286,9 @@ export async function initializeOnboardingSteps(
         },
       },
       update: {
-        // If this is an existing seller and we're initializing handmade_verification,
+        // If this is a legacy seller (created before cutoff) and we're initializing handmade_verification,
         // mark it as completed
-        completed: isExistingSeller && step.stepKey === "handmade_verification" ? true : undefined,
+        completed: isLegacySeller && step.stepKey === "handmade_verification" ? true : undefined,
       },
       create: step,
     });
@@ -437,19 +440,27 @@ export async function recalculateOnboardingSteps(
       where: { sellerId },
     });
 
-    // Check if this is an existing seller (already completed shop_naming before handmade_verification was added)
-    // If so, auto-complete handmade_verification for them
-    const shopNamingStep = existingSteps.find(
-      (step) => step.stepKey === "shop_naming"
-    );
+    // Check if this seller was created before the cutoff date
+    // Sellers created before January 5, 2026 have handmade_verification auto-completed
+    // Sellers created on or after January 5, 2026 must complete it manually
+    const seller = await prisma.seller.findUnique({
+      where: { id: sellerId },
+      select: { createdAt: true },
+    });
+
     const handmadeVerificationStep = existingSteps.find(
       (step) => step.stepKey === "handmade_verification"
     );
 
-    // If seller already completed shop_naming but handmade_verification doesn't exist or isn't completed,
-    // auto-complete it for them (they're an existing seller)
+    // Only auto-complete handmade_verification if:
+    // 1. Seller was created before the cutoff date (January 5, 2026)
+    // 2. Handmade verification step doesn't exist or isn't completed
+    const isLegacySeller = seller?.createdAt 
+      ? seller.createdAt < HANDMADE_VERIFICATION_CUTOFF_DATE
+      : false;
+
     if (
-      shopNamingStep?.completed &&
+      isLegacySeller &&
       (!handmadeVerificationStep || !handmadeVerificationStep.completed)
     ) {
       await updateOnboardingStep(sellerId, "handmade_verification", true);
