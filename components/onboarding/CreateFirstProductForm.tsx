@@ -154,13 +154,6 @@ const FirstProductSchema = z.object({
   numberSold: z.number().int().optional().default(0),
   primaryCategory: z.string().min(1, "Primary category is required"),
   secondaryCategory: z.string().min(1, "Secondary category is required"),
-  tertiaryCategory: z
-    .string()
-    .nullable()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : null
-    ), // Match ProductSchema - transform empty strings to null
   tags: z.array(z.string()).default([]),
   materialTags: z.array(z.string()).default([]),
   itemWeight: z

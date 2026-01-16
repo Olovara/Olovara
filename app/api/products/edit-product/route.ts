@@ -196,8 +196,6 @@ export async function PATCH(req: Request) {
       shippingCost: Number(updateData.shippingCost),
       handlingFee: Number(updateData.handlingFee),
       discount: updateData.discount ? Number(updateData.discount) : null,
-      // Handle tertiary category (can be null/undefined)
-      tertiaryCategory: updateData.tertiaryCategory || null,
       // Explicitly exclude fields that shouldn't be directly updated if necessary
     };
     console.log("[PRE-UPDATE] Data prepared for db.product.update:", cleanData);

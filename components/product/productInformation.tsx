@@ -32,7 +32,6 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Categories,
   getSecondaryCategories,
-  getTertiaryCategories,
   SecondaryCategoryID,
   getCategoryChain,
   CategoryChain,
@@ -227,8 +226,7 @@ export const ProductInfoSection = ({
         const isDuplicate = suggestions.some(
           (s) =>
             s.primary.id === chain.primary.id &&
-            s.secondary?.id === chain.secondary?.id &&
-            s.tertiary?.id === chain.tertiary?.id
+            s.secondary?.id === chain.secondary?.id
         );
         if (!isDuplicate) {
           suggestions.push(chain);
@@ -252,23 +250,11 @@ export const ProductInfoSection = ({
       setTimeout(() => {
         setValue("secondaryCategory", chain.secondary!.id);
 
-        if (chain.tertiary) {
-          // Wait for tertiary options to update, then set tertiary
-          setTimeout(() => {
-            setValue("tertiaryCategory", chain.tertiary!.id);
-          }, 50);
-        } else {
-          // Clear tertiary if not needed
-          setTimeout(() => {
-            setValue("tertiaryCategory", "");
-          }, 50);
-        }
       }, 50);
     } else {
-      // Clear secondary and tertiary if no secondary category
+      // Clear secondary if no secondary category
       setTimeout(() => {
         setValue("secondaryCategory", "");
-        setValue("tertiaryCategory", "");
       }, 50);
     }
   };
@@ -292,30 +278,6 @@ export const ProductInfoSection = ({
       })()
     : [];
 
-  // Get tertiary categories based on selected secondary category
-  const availableTertiaryCategories = selectedSecondaryCategory
-    ? (() => {
-        const tertiaryIds = getTertiaryCategories(
-          selectedSecondaryCategory as SecondaryCategoryID
-        );
-        const result: { id: string; name: string }[] = [];
-        for (const id of tertiaryIds) {
-          // Find the tertiary category by searching the tree
-          for (const primary of Categories) {
-            for (const secondary of primary.children) {
-              if ("children" in secondary && secondary.children) {
-                const tertiary = secondary.children.find((t) => t.id === id);
-                if (tertiary) {
-                  result.push({ id: tertiary.id, name: tertiary.name });
-                  break;
-                }
-              }
-            }
-          }
-        }
-        return result;
-      })()
-    : [];
 
   // Add tag
   const addTag = () => {
@@ -609,45 +571,6 @@ export const ProductInfoSection = ({
         )}
       />
 
-      {/* Tertiary Categories (Optional) */}
-      {availableTertiaryCategories.length > 0 && (
-        <FormField
-          control={control}
-          name="tertiaryCategory"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Tertiary Category (Optional)</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  // Convert "none" to empty string for the form
-                  field.onChange(value === "none" ? "" : value);
-                }}
-                defaultValue={field.value || "none"}
-                value={field.value || "none"}
-                disabled={!selectedSecondaryCategory}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tertiary category (optional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {availableTertiaryCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Adding a tertiary category helps buyers find your product more
-                easily
-              </p>
-            </FormItem>
-          )}
-        />
-      )}
 
       {/* Product Status */}
       <div className="space-y-4">

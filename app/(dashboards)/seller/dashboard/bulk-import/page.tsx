@@ -84,7 +84,6 @@ export default function BulkImportPage() {
   // Step 2.5: Category Selection
   const [primaryCategory, setPrimaryCategory] = useState<string>("");
   const [secondaryCategory, setSecondaryCategory] = useState<string>("");
-  const [tertiaryCategory, setTertiaryCategory] = useState<string>("");
 
   // Shipping settings
   const [freeShipping, setFreeShipping] = useState<boolean>(false);
@@ -299,7 +298,6 @@ export default function BulkImportPage() {
           mappingId,
           primaryCategory,
           secondaryCategory,
-          tertiaryCategory: tertiaryCategory || undefined,
           freeShipping,
           shippingOptionId: freeShipping
             ? undefined
@@ -586,7 +584,6 @@ export default function BulkImportPage() {
                   onValueChange={(value) => {
                     setPrimaryCategory(value);
                     setSecondaryCategory(""); // Reset secondary when primary changes
-                    setTertiaryCategory(""); // Reset tertiary when primary changes
                   }}
                 >
                   <SelectTrigger id="primary-category">
@@ -631,44 +628,6 @@ export default function BulkImportPage() {
                 </div>
               )}
 
-              {/* Tertiary Category */}
-              {secondaryCategory &&
-                (() => {
-                  const primary = Categories.find(
-                    (c) => c.id === primaryCategory
-                  );
-                  const secondary = primary?.children.find(
-                    (c) => c.id === secondaryCategory
-                  );
-                  const hasTertiary =
-                    secondary &&
-                    "children" in secondary &&
-                    secondary.children &&
-                    secondary.children.length > 0;
-
-                  return hasTertiary ? (
-                    <div>
-                      <Label htmlFor="tertiary-category">
-                        Tertiary Category (Optional)
-                      </Label>
-                      <Select
-                        value={tertiaryCategory}
-                        onValueChange={setTertiaryCategory}
-                      >
-                        <SelectTrigger id="tertiary-category">
-                          <SelectValue placeholder="Select tertiary category..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {secondary.children.map((child) => (
-                            <SelectItem key={child.id} value={child.id}>
-                              {child.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null;
-                })()}
 
               {/* Shipping Settings */}
               <div className="space-y-4 pt-4 border-t">

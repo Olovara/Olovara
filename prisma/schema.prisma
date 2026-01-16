@@ -483,6 +483,7 @@ model Product {
   tertiaryCategory      String? // Optional tertiary category
   tags                  String[]
   materialTags          String[]
+  attributes            Json? // Product attributes (material, size, color, technique, room, recipient, occasion, style, scent, weight)
   options               Json? // Array of option groups with values containing price and stock
   inStockProcessingTime Int?
   outStockLeadTime      Int?

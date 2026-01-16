@@ -12,7 +12,6 @@ import { getCurrencyDecimals } from "@/data/units";
 import {
   Categories,
   findCategoryById,
-  getTertiaryCategories,
 } from "@/data/categories";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { generateUniqueSKU } from "@/lib/sku-generator";
@@ -30,7 +29,6 @@ interface ProcessBulkImportParams {
   mappingId?: string;
   primaryCategory?: string; // Category to apply to all products
   secondaryCategory?: string; // Category to apply to all products
-  tertiaryCategory?: string; // Optional category to apply to all products
   freeShipping?: boolean; // Shipping setting to apply to all products
   shippingOptionId?: string; // Shipping option ID to apply to all products
   handlingFee?: number; // Handling fee to apply to all products
@@ -55,7 +53,6 @@ function normalizeRow(
   categories?: {
     primaryCategory?: string;
     secondaryCategory?: string;
-    tertiaryCategory?: string;
   },
   shipping?: {
     freeShipping?: boolean;
@@ -340,41 +337,9 @@ function normalizeRow(
     }
   }
 
-  // Validate tertiary category exists and belongs to secondary
-  if (tertiaryCategory && secondaryCategory) {
-    const validTertiaryCategories = getTertiaryCategories(secondaryCategory);
-    if (
-      validTertiaryCategories.length > 0 &&
-      !validTertiaryCategories.includes(tertiaryCategory)
-    ) {
-      // Tertiary doesn't belong to secondary, clear it
-      console.warn(
-        `[BULK IMPORT] Row ${rowNumber}: Tertiary category "${tertiaryCategory}" doesn't belong to secondary "${secondaryCategory}", clearing tertiary`
-      );
-      tertiaryCategory = undefined;
-    } else if (validTertiaryCategories.length === 0) {
-      // Secondary doesn't have tertiary children, clear tertiary
-      console.warn(
-        `[BULK IMPORT] Row ${rowNumber}: Secondary category "${secondaryCategory}" doesn't have tertiary children, clearing tertiary`
-      );
-      tertiaryCategory = undefined;
-    }
-  } else if (tertiaryCategory && !secondaryCategory) {
-    // Tertiary provided but no secondary, clear it
-    console.warn(
-      `[BULK IMPORT] Row ${rowNumber}: Tertiary category provided but no secondary category, clearing tertiary`
-    );
-    tertiaryCategory = undefined;
-  }
-
   // Set validated categories
   normalized.primaryCategory = primaryCategory;
   normalized.secondaryCategory = secondaryCategory;
-  if (tertiaryCategory) {
-    normalized.tertiaryCategory = tertiaryCategory;
-  } else {
-    normalized.tertiaryCategory = null;
-  }
 
   // Apply shipping settings from job settings (seller-selected shipping applies to all products)
   // Note: shippingCost is set later in processRow after fetching the shipping option
@@ -621,7 +586,6 @@ async function processWixProductGroup(
   categories?: {
     primaryCategory?: string;
     secondaryCategory?: string;
-    tertiaryCategory?: string;
   },
   shipping?: {
     freeShipping?: boolean;
@@ -772,7 +736,6 @@ async function processRowWithNormalizedData(
   categories?: {
     primaryCategory?: string;
     secondaryCategory?: string;
-    tertiaryCategory?: string;
   },
   shipping?: {
     freeShipping?: boolean;
@@ -1069,7 +1032,6 @@ async function processRow(
   categories?: {
     primaryCategory?: string;
     secondaryCategory?: string;
-    tertiaryCategory?: string;
   },
   shipping?: {
     freeShipping?: boolean;

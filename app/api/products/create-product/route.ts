@@ -118,7 +118,6 @@ export async function POST(req: NextRequest) {
       discount,
       primaryCategory,
       secondaryCategory,
-      tertiaryCategory,
       tags = [],
       materialTags = [],
       options,
@@ -153,6 +152,8 @@ export async function POST(req: NextRequest) {
       taxExempt = false,
       // Shipping option
       shippingOptionId,
+      // Attributes
+      attributes,
     } = data;
 
     // Check if admin is creating product for a seller
@@ -461,10 +462,7 @@ export async function POST(req: NextRequest) {
       // For non-drafts, these are required and validated earlier
       primaryCategory: isDraft ? primaryCategory || "" : primaryCategory,
       secondaryCategory: isDraft ? secondaryCategory || "" : secondaryCategory,
-      tertiaryCategory:
-        tertiaryCategory && tertiaryCategory.trim() !== ""
-          ? tertiaryCategory.trim()
-          : null, // This one is nullable in schema
+ // This one is nullable in schema
       tags,
       materialTags,
       options,
@@ -507,6 +505,8 @@ export async function POST(req: NextRequest) {
       taxExempt: taxExempt || false,
       // Shipping option - link to seller's shipping profile
       shippingOptionId: shippingOptionId || null,
+      // Attributes - optional field, can be null or object
+      attributes: attributes || null,
     };
 
     // --- Step 3: Validate data structure (but don't transform, since form already transformed) ---

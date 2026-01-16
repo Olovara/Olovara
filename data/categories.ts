@@ -1,13 +1,7 @@
 // Type definitions for the hierarchical category structure
-export interface TertiaryCategoryNode {
-  id: string;
-  name: string;
-}
-
 export interface SecondaryCategoryNode {
   id: string;
   name: string;
-  children?: TertiaryCategoryNode[];
 }
 
 export interface PrimaryCategoryNode {
@@ -16,285 +10,52 @@ export interface PrimaryCategoryNode {
   children: SecondaryCategoryNode[];
 }
 
-// The single source of truth - hierarchical category tree
+// The single source of truth - simplified hierarchical category tree
+// This new structure is designed to be scalable and less complex than the previous version
 export const Categories = [
   {
     id: "ART",
-    name: "Art & Collectibles",
+    name: "Art",
     children: [
       {
-        id: "PAINTINGS",
-        name: "Paintings",
-      },
-      {
-        id: "PRINTS",
-        name: "Prints",
-        children: [
-          { id: "FINE_ART_PRINTS", name: "Fine Art Prints" },
-          { id: "RELIEF_PRINTS", name: "Relief Prints" },
-        ],
+        id: "PRINTS_POSTERS",
+        name: "Prints & Posters",
       },
       {
         id: "PHOTOGRAPHY",
         name: "Photography",
       },
       {
-        id: "SCULPTURES",
-        name: "Sculptures",
+        id: "SCULPTURE_3D",
+        name: "Sculptures & 3D Art",
+      },
+      {
+        id: "GLASS",
+        name: "Glass Art",
+      },
+      {
+        id: "FIBER_ART",
+        name: "Fiber Art (macrame, weaving, textile wall art)",
+      },
+      {
+        id: "CERAMICS_POTTERY",
+        name: "Ceramics & Pottery",
+      },
+      {
+        id: "DRAWING_ILLUSTRATION",
+        name: "Drawing & Illustration",
+      },
+      {
+        id: "STICKERS",
+        name: "Stickers",
+      },
+      {
+        id: "MINIATURES_DIORAMAS",
+        name: "Miniatures & Dioramas",
       },
       {
         id: "COLLECTIBLES",
         name: "Collectibles",
-      },
-    ],
-  },
-  {
-    id: "BATH",
-    name: "Bath & Beauty",
-    children: [
-      {
-        id: "SOAP_BATH",
-        name: "Soap & Bath",
-        children: [
-          { id: "BAR_SOAP", name: "Bar Soap" },
-          { id: "LIQUID_SOAP", name: "Liquid Soap" },
-          { id: "BATH_BOMBS", name: "Bath Bombs" },
-          { id: "SHOWER_GELS", name: "Shower Gels" },
-          { id: "BATH_SALTS", name: "Bath Salts" },
-          { id: "BODY_SCRUBS", name: "Body Scrubs" },
-          { id: "BATH_OILS", name: "Bath Oils" },
-        ],
-      },
-      {
-        id: "SKIN_CARE",
-        name: "Skin Care",
-        children: [
-          { id: "CLEANSERS", name: "Cleansers" },
-          { id: "MOISTURIZERS", name: "Moisturizers" },
-          { id: "SERUMS", name: "Serums" },
-          { id: "BALMS_SALVES", name: "Balms & Salves" },
-          { id: "MASKS", name: "Masks" },
-        ],
-      },
-      {
-        id: "HAIR_CARE",
-        name: "Hair Care",
-        children: [
-          { id: "SHAMPOOS", name: "Shampoos" },
-          { id: "CONDITIONERS", name: "Conditioners" },
-          { id: "HAIR_TREATMENTS", name: "Hair Treatments" },
-          { id: "STYLING_PRODUCTS", name: "Styling Products" },
-          { id: "BRUSHES_COMBS", name: "Brushes & Combs" },
-        ],
-      },
-      {
-        id: "COSMETICS",
-        name: "Cosmetics",
-        children: [
-          { id: "EYE_MAKEUP", name: "Eye Makeup" },
-          { id: "LIP_MAKEUP", name: "Lip Makeup" },
-          { id: "FACE_MAKEUP", name: "Face Makeup" },
-          { id: "NAIL_CARE", name: "Nail Care" },
-          { id: "MAKEUP_TOOLS", name: "Makeup Tools & Brushes" },
-        ],
-      },
-      {
-        id: "AROMATHERAPY",
-        name: "Aromatherapy",
-        children: [
-          { id: "ESSENTIAL_OILS", name: "Essential Oils" },
-          { id: "CANDLES", name: "Aromatherapy Candles" },
-          { id: "ROLL_ONS", name: "Roll-Ons" },
-        ],
-      },
-    ],
-  },
-  {
-    id: "BOOKS",
-    name: "Books & Media",
-    children: [
-      {
-        id: "COMICS",
-        name: "Books and Comics",
-      },
-      {
-        id: "AUDIO",
-        name: "Music and Audio",
-      },
-    ],
-  },
-  {
-    id: "CLOTHING",
-    name: "Clothing & Accessories",
-    children: [
-      {
-        id: "TOPS",
-        name: "Tops",
-        children: [
-          { id: "SWEATERS", name: "Sweaters" },
-          { id: "CARDIGANS", name: "Cardigans" },
-          { id: "T_SHIRTS", name: "T-Shirts" },
-          { id: "BLOUSES", name: "Blouses" },
-          { id: "TANK_TOPS", name: "Tank Tops" },
-        ],
-      },
-      {
-        id: "BOTTOMS",
-        name: "Bottoms",
-        children: [
-          { id: "PANTS", name: "Pants" },
-          { id: "SHORTS", name: "Shorts" },
-          { id: "SKIRTS", name: "Skirts" },
-          { id: "LEGGINGS", name: "Leggings" },
-        ],
-      },
-      {
-        id: "DRESSES",
-        name: "Dresses",
-        children: [
-          { id: "CASUAL_DRESSES", name: "Casual Dresses" },
-          { id: "FORMAL_DRESSES", name: "Formal Dresses" },
-          { id: "MAXI_DRESSES", name: "Maxi Dresses" },
-          { id: "MIDI_DRESSES", name: "Midi Dresses" },
-          { id: "SUMMER_DRESSES", name: "Summer Dresses" },
-        ],
-      },
-      {
-        id: "OUTERWEAR",
-        name: "Outerwear",
-        children: [
-          { id: "COATS", name: "Coats" },
-          { id: "JACKETS", name: "Jackets" },
-          { id: "VESTS", name: "Vests" },
-          { id: "PONCHOS", name: "Ponchos" },
-          { id: "CAPES", name: "Capes" },
-        ],
-      },
-      {
-        id: "ACCESSORIES",
-        name: "Accessories",
-        children: [
-          { id: "HATS", name: "Hats" },
-          { id: "SCARVES", name: "Scarves" },
-          { id: "GLOVES", name: "Gloves" },
-          { id: "BELTS", name: "Belts" },
-        ],
-      },
-      {
-        id: "BAGS",
-        name: "Bags and Purses",
-        children: [
-          { id: "TOTE_BAGS", name: "Tote Bags" },
-          { id: "BACKPACKS", name: "Backpacks" },
-          { id: "CROSSBODY_BAGS", name: "Crossbody Bags" },
-          { id: "POUCHES", name: "Pouches" },
-        ],
-      },
-    ],
-  },
-  {
-    id: "CRAFT_SUPPLIES",
-    name: "Handmade Craft Supplies",
-    children: [
-      {
-        id: "YARN",
-        name: "Yarn",
-        children: [
-          { id: "COTTON_YARN", name: "Cotton Yarn" },
-          { id: "WOOL_YARN", name: "Wool Yarn" },
-          { id: "ACRYLIC_YARN", name: "Acrylic Yarn" },
-          { id: "MERINO_WOOL", name: "Merino Wool" },
-          { id: "BULKY_YARN", name: "Bulky Yarn" },
-          { id: "FINGERING_YARN", name: "Fingering Yarn" },
-          { id: "POLYESTER_YARN", name: "Polyester Yarn" },
-        ],
-      },
-      {
-        id: "FABRIC",
-        name: "Fabric",
-      },
-      {
-        id: "TOOLS",
-        name: "Tools & Equipment",
-        children: [
-          { id: "STITCH_MARKERS", name: "Stitch Markers" },
-          { id: "CROCHET_HOOKS", name: "Crochet Hooks" },
-          { id: "KNITTING_NEEDLES", name: "Knitting Needles" },
-        ],
-      },
-      {
-        id: "BEADS",
-        name: "Beads & Jewelry Making",
-      },
-      {
-        id: "FIBER",
-        name: "Fiber and Sewing",
-      },
-      {
-        id: "PAPER",
-        name: "Paper Supplies",
-      },
-      {
-        id: "PAINT",
-        name: "Paint, Stain, and Dye",
-      },
-    ],
-  },
-  {
-    id: "HOME",
-    name: "Home & Living",
-    children: [
-      {
-        id: "HOME_DECOR",
-        name: "Home Decor",
-        children: [
-          { id: "WALL_ART", name: "Wall Art" },
-          { id: "CANDLES", name: "Candles" },
-          { id: "VASES", name: "Vases" },
-          { id: "DECORATIVE_BOWLS", name: "Decorative Bowls" },
-        ],
-      },
-      {
-        id: "TEXTILES",
-        name: "Textiles",
-        children: [
-          { id: "THROW_PILLOWS", name: "Throw Pillows" },
-          { id: "RUGS", name: "Rugs" },
-          { id: "BLANKETS", name: "Blankets & Throws" },
-          { id: "WALL_HANGINGS", name: "Wall Hangings" },
-        ],
-      },
-      {
-        id: "KITCHEN_DINING",
-        name: "Kitchen & Dining",
-        children: [
-          { id: "DRINKWARE", name: "Drinkware" },
-          { id: "TABLEWARE", name: "Tableware" },
-          { id: "SERVEWARE", name: "Serveware" },
-          { id: "TRAYS_PLATTERS", name: "Trays & Platters" },
-          { id: "CUTTING_BOARDS", name: "Cutting Boards" },
-          { id: "LINENS", name: "Kitchen Linens" },
-        ],
-      },
-      {
-        id: "FURNITURE",
-        name: "Furniture",
-        children: [
-          { id: "CHAIRS", name: "Chairs" },
-          { id: "TABLES", name: "Tables" },
-          { id: "DESKS", name: "Desks" },
-          { id: "BENCHES", name: "Benches" },
-          { id: "STOOLS", name: "Stools" },
-        ],
-      },
-      {
-        id: "OUTDOOR_GARDEN",
-        name: "Outdoor & Garden",
-        children: [
-          { id: "PLANTERS", name: "Planters" },
-          { id: "GARDEN_DECOR", name: "Garden Decor" },
-          { id: "OUTDOOR_FURNITURE", name: "Outdoor Furniture" },
-        ],
       },
     ],
   },
@@ -305,161 +66,320 @@ export const Categories = [
       {
         id: "NECKLACES",
         name: "Necklaces",
-        children: [
-          { id: "CHOKERS", name: "Chokers" },
-          { id: "BEADED_NECKLACES", name: "Beaded Necklaces" },
-          { id: "PENDANT_NECKLACES", name: "Pendant Necklaces" },
-          { id: "LAYERED_NECKLACES", name: "Layered Necklaces" },
-          { id: "STATEMENT_NECKLACES", name: "Statement Necklaces" },
-        ],
-      },
-      {
-        id: "RINGS",
-        name: "Rings",
-        children: [
-          { id: "ENGAGEMENT_RINGS", name: "Engagement Rings" },
-          { id: "WEDDING_RINGS", name: "Wedding Rings" },
-          { id: "STACKING_RINGS", name: "Stacking Rings" },
-          { id: "COCKTAIL_RINGS", name: "Cocktail Rings" },
-        ],
       },
       {
         id: "EARRINGS",
         name: "Earrings",
-        children: [
-          { id: "STUDS", name: "Studs" },
-          { id: "HOOPS", name: "Hoops" },
-          { id: "DANGLES", name: "Dangles" },
-          { id: "CHANDELIER", name: "Chandelier" },
-        ],
+      },
+      {
+        id: "RINGS",
+        name: "Rings",
       },
       {
         id: "BRACELETS",
         name: "Bracelets",
-        children: [
-          { id: "BEADED", name: "Beaded" },
-          { id: "BANGLES", name: "Bangles" },
-          { id: "CUFF", name: "Cuff" },
-          { id: "CHARM", name: "Charm" },
-          { id: "CHAIN_AND_LINK", name: "Chain and Link" },
-        ],
       },
       {
-        id: "PINS",
-        name: "Pins and Brooches",
-        children: [
-          { id: "ENAMEL_PINS", name: "Enamel Pins" },
-          { id: "NOVELTY_PINS", name: "Novelty Pins" },
-          { id: "BROOCHES", name: "Brooches" },
-        ],
+        id: "ANKLETS",
+        name: "Anklets",
+      },
+      {
+        id: "BROOCHES_PINS",
+        name: "Brooches & Pins",
+      },
+      {
+        id: "BODY_JEWELRY",
+        name: "Body Jewelry",
+      },
+      {
+        id: "JEWELRY_SETS",
+        name: "Jewelry Sets",
+      },
+      {
+        id: "CHARMS",
+        name: "Charms",
+      },
+      {
+        id: "CUSTOM_JEWELRY",
+        name: "Custom Jewelry",
       },
     ],
   },
   {
-    id: "TOYS",
-    name: "Toys & Games",
+    id: "CLOTHING_ACCESSORIES",
+    name: "Clothing & Accessories",
     children: [
       {
-        id: "PLUSH_TOYS",
-        name: "Plush Toys & Dolls",
-        children: [
-          { id: "TEDDY_BEARS", name: "Teddy Bears" },
-          { id: "ANIMAL_PLUSH", name: "Animal Plush" },
-          { id: "DOLLS", name: "Dolls" },
-          { id: "PLUSHIES", name: "Plushies" },
-        ],
+        id: "TOPS",
+        name: "Tops",
+      },
+      {
+        id: "BOTTOMS",
+        name: "Bottoms",
+      },
+      {
+        id: "DRESSES_ONEPIECE",
+        name: "Dresses & One-Piece",
+      },
+      {
+        id: "OUTERWEAR",
+        name: "Outerwear",
+      },
+      {
+        id: "KNITWEAR",
+        name: "Knitwear",
+      },
+      {
+        id: "BAGS_PURSES",
+        name: "Bags & Purses",
+      },
+      {
+        id: "SCARVES_WRAPS",
+        name: "Scarves & Wraps",
+      },
+      {
+        id: "HATS_HEADWEAR",
+        name: "Hats & Headwear",
+      },
+      {
+        id: "GLOVES_MITTENS",
+        name: "Gloves & Mittens",
+      },
+      {
+        id: "ACCESSORIES",
+        name: "Accessories",
+      },
+    ],
+  },
+  {
+    id: "HOME_LIVING",
+    name: "Home & Living",
+    children: [
+      {
+        id: "HOME_DECOR",
+        name: "Home Decor",
+      },
+      {
+        id: "WALL_ART_HANGINGS",
+        name: "Wall Art & Hangings",
+      },
+      {
+        id: "CANDLES_HOLDERS",
+        name: "Candles & Holders",
+      },
+      {
+        id: "KITCHEN_DINING",
+        name: "Kitchen & Dining",
+      },
+      {
+        id: "FURNITURE",
+        name: "Furniture",
+      },
+      {
+        id: "STORAGE_ORGANIZATION",
+        name: "Storage & Organization",
+      },
+      {
+        id: "LIGHTING",
+        name: "Lighting",
+      },
+      {
+        id: "GARDEN_OUTDOOR",
+        name: "Garden & Outdoor",
+      },
+      {
+        id: "SEASONAL_DECOR",
+        name: "Seasonal Decor",
+      },
+      {
+        id: "OFFICE_DESK",
+        name: "Office & Desk",
+      },
+    ],
+  },
+  {
+    id: "BATH_BEAUTY",
+    name: "Bath & Beauty",
+    children: [
+      {
+        id: "SOAP_BATH",
+        name: "Soap & Bath",
+      },
+      {
+        id: "SKINCARE",
+        name: "Skincare",
+      },
+      {
+        id: "HAIRCARE",
+        name: "Haircare",
+      },
+      {
+        id: "COSMETICS",
+        name: "Cosmetics",
+      },
+      {
+        id: "FRAGRANCE",
+        name: "Fragrance",
+      },
+      {
+        id: "GROOMING",
+        name: "Grooming",
+      },
+      {
+        id: "GIFT_SETS",
+        name: "Gift Sets",
+      },
+      {
+        id: "COSMETIC_TOILETRY_STORAGE",
+        name: "Cosmetic & Toiletry Storage",
+      },
+      {
+        id: "TOOLS_ACCESSORIES",
+        name: "Tools & Accessories",
+      },
+    ],
+  },
+  {
+    id: "TOYS_KIDS",
+    name: "Toys & Kids",
+    children: [
+      {
+        id: "PLUSH_DOLLS",
+        name: "Plush & Dolls",
+      },
+      {
+        id: "WOODEN_TOYS",
+        name: "Wooden Toys",
       },
       {
         id: "GAMES_PUZZLES",
         name: "Games & Puzzles",
-        children: [
-          { id: "BOARD_GAMES", name: "Board Games" },
-          { id: "PUZZLES", name: "Puzzles" },
-          { id: "CARD_GAMES", name: "Card Games" },
-        ],
       },
       {
         id: "PRETEND_PLAY",
         name: "Pretend Play",
-        children: [
-          { id: "PLAY_FOOD", name: "Play Food" },
-          { id: "DOLLS_ACCESSORIES", name: "Doll Accessories" },
-        ],
       },
       {
-        id: "EDUCATIONAL",
+        id: "EDUCATIONAL_TOYS",
         name: "Educational Toys",
-        children: [
-          { id: "STACKING_SORTING", name: "Stacking & Sorting" },
-          { id: "COUNTING_LEARNING", name: "Counting & Learning" },
-        ],
       },
       {
         id: "SENSORY_TOYS",
         name: "Sensory Toys",
-        children: [
-          { id: "FIDGETS", name: "Fidget Toys" },
-          { id: "TEXTURED_TOYS", name: "Textured Toys" },
-        ],
+      },
+      {
+        id: "BABY_TOYS",
+        name: "Baby Toys",
+      },
+      {
+        id: "KIDS_DECOR",
+        name: "Kids Decor",
+      },
+      {
+        id: "KIDS_CLOTHING",
+        name: "Kids Clothing",
+      },
+      {
+        id: "PARTY_ACTIVITIES",
+        name: "Party & Activities",
       },
     ],
   },
-  /**{
-    id: "WELLNESS",
-    name: "Wellness & Self-Care",
+  {
+    id: "CRAFT_SUPPLIES",
+    name: "Craft Supplies",
     children: [
       {
-        id: "STRESS_RELIEF",
-        name: "Stress Relief",
-        children: [
-          { id: "FIDGETS", name: "Fidget & Stress Toys" },
-          { id: "HANDHELD_TOOLS", name: "Handheld Comfort Tools" },
-          { id: "WEIGHTED_ITEMS", name: "Weighted Items" },
-        ],
+        id: "YARN_FIBER",
+        name: "Yarn & Fiber",
       },
       {
-        id: "RELAXATION",
-        name: "Relaxation",
-        children: [
-          { id: "EYE_PILLOWS", name: "Eye Pillows" },
-          { id: "HEAT_COLD_PACKS", name: "Heat & Cold Packs" },
-          { id: "NECK_SHOULDER_WRAPS", name: "Neck & Shoulder Wraps" },
-        ],
+        id: "FABRIC_TEXTILES",
+        name: "Fabric & Textiles",
       },
       {
-        id: "MINDFULNESS",
-        name: "Mindfulness",
-        children: [
-          { id: "MEDITATION_CUSHIONS", name: "Meditation Cushions" },
-          { id: "JOURNALS", name: "Journals" },
-          { id: "TIMER_TOOLS", name: "Mindfulness Timers" },
-        ],
+        id: "BEADS_JEWELRY_SUPPLIES",
+        name: "Beads & Jewelry Supplies",
       },
       {
-        id: "AROMATIC_ITEMS",
-        name: "Aromatic Items",
-        children: [
-          { id: "SACHETS", name: "Scented Sachets" },
-          { id: "ROLL_ONS", name: "Aromatic Roll-Ons" },
-          { id: "AROMATHERAPY_CANDLES", name: "Aromatic Candles" },
-        ],
+        id: "TOOLS_EQUIPMENT",
+        name: "Tools & Equipment",
+      },
+      {
+        id: "PATTERNS_TEMPLATES",
+        name: "Patterns & Templates (physical only)",
+      },
+      {
+        id: "PAINTS_INKS_DYES",
+        name: "Paints, Inks & Dyes",
+      },
+      {
+        id: "PAPER_STATIONERY",
+        name: "Paper & Stationery",
+      },
+      {
+        id: "MOLDS_BLANKS",
+        name: "Molds & Blanks",
+      },
+      {
+        id: "KITS_BUNDLES",
+        name: "Kits & Bundles",
+      },
+      {
+        id: "NOTIONS_FINDINGS",
+        name: "Notions & Findings",
       },
     ],
-  }, **/
+  },
+  {
+    id: "DIGITAL_MEDIA",
+    name: "Digital & Media",
+    children: [
+      {
+        id: "CROCHET_PATTERNS",
+        name: "Crochet Patterns",
+      },
+      {
+        id: "KNITTING_PATTERNS",
+        name: "Knitting Patterns",
+      },
+      {
+        id: "SEWING_PATTERNS",
+        name: "Sewing Patterns",
+      },
+      {
+        id: "PRINTABLE_ART",
+        name: "Printable Art",
+      },
+      {
+        id: "TEMPLATES_PLANNERS",
+        name: "Templates & Planners",
+      },
+      {
+        id: "MUSIC_AUDIO",
+        name: "Music & Audio",
+      },
+    ],
+  },
 ] as const;
 
 // Extract types from the hierarchical structure
 export type PrimaryCategoryID = (typeof Categories)[number]["id"];
 export type SecondaryCategoryID =
   (typeof Categories)[number]["children"][number]["id"];
-export type TertiaryCategoryID =
-  (typeof Categories)[number]["children"][number] extends {
-    children: readonly (infer T)[];
-  }
-    ? T extends { id: infer ID }
-      ? ID
-      : never
-    : never;
+
+/**
+ * @deprecated Tertiary categories have been removed. This type is kept for backward compatibility only.
+ */
+export type TertiaryCategoryID = never;
+
+/**
+ * @deprecated Tertiary categories have been removed. This interface is kept for backward compatibility only.
+ */
+export interface TertiaryCategoryNode {
+  id: string;
+  name: string;
+}
 
 // Legacy interfaces (kept for type compatibility if needed elsewhere)
 export interface PrimaryCategory {
@@ -473,11 +393,6 @@ export interface SecondaryCategory {
   primaryCategoryId: string;
 }
 
-export interface TertiaryCategory {
-  id: string;
-  name: string;
-  secondaryCategoryId: string;
-}
 
 /**
  * Helper function to get secondary categories for a primary category
@@ -491,27 +406,18 @@ export const getSecondaryCategories = (
 
 /**
  * Helper function to get tertiary categories for a secondary category
+ * @deprecated Tertiary categories have been removed. This function always returns an empty array for backward compatibility.
  */
 export const getTertiaryCategories = (
   secondaryId: SecondaryCategoryID | string
 ): string[] => {
-  for (const primary of Categories) {
-    const secondary = primary.children.find((c) => c.id === secondaryId);
-    if (
-      secondary &&
-      "children" in secondary &&
-      secondary.children &&
-      secondary.children.length > 0
-    ) {
-      return secondary.children.map((c) => c.id);
-    }
-  }
+  // Tertiary categories have been removed - always return empty array
   return [];
 };
 
 /**
  * Helper function to get full category path (for breadcrumbs and filters)
- * Returns [primaryId, secondaryId?, tertiaryId?]
+ * Returns [primaryId] or [primaryId, secondaryId]
  */
 export const getCategoryPath = (id: string): string[] => {
   for (const primary of Categories) {
@@ -519,13 +425,6 @@ export const getCategoryPath = (id: string): string[] => {
 
     for (const secondary of primary.children) {
       if (secondary.id === id) return [primary.id, secondary.id];
-
-      if ("children" in secondary && secondary.children) {
-        for (const tertiary of secondary.children) {
-          if (tertiary.id === id)
-            return [primary.id, secondary.id, tertiary.id];
-        }
-      }
     }
   }
   return [];
@@ -536,7 +435,7 @@ export const getCategoryPath = (id: string): string[] => {
  */
 export const findCategoryById = (
   id: string
-): PrimaryCategory | SecondaryCategory | TertiaryCategory | null => {
+): PrimaryCategory | SecondaryCategory | null => {
   for (const primary of Categories) {
     if (primary.id === id) {
       return { id: primary.id, name: primary.name };
@@ -550,18 +449,6 @@ export const findCategoryById = (
           primaryCategoryId: primary.id,
         };
       }
-
-      if ("children" in secondary && secondary.children) {
-        for (const tertiary of secondary.children) {
-          if (tertiary.id === id) {
-            return {
-              id: tertiary.id,
-              name: tertiary.name,
-              secondaryCategoryId: secondary.id,
-            };
-          }
-        }
-      }
     }
   }
   return null;
@@ -569,12 +456,11 @@ export const findCategoryById = (
 
 /**
  * Helper function to get category chain with names
- * Returns an object with primary, secondary (optional), and tertiary (optional) category info
+ * Returns an object with primary and secondary (optional) category info
  */
 export interface CategoryChain {
   primary: { id: string; name: string };
   secondary?: { id: string; name: string };
-  tertiary?: { id: string; name: string };
 }
 
 export const getCategoryChain = (categoryId: string): CategoryChain | null => {
@@ -592,16 +478,6 @@ export const getCategoryChain = (categoryId: string): CategoryChain | null => {
     const secondary = primary.children.find((c) => c.id === path[1]);
     if (secondary) {
       result.secondary = { id: secondary.id, name: secondary.name };
-    }
-  }
-
-  if (path.length >= 3 && result.secondary) {
-    const secondary = primary.children.find((c) => c.id === path[1]);
-    if (secondary && "children" in secondary && secondary.children) {
-      const tertiary = secondary.children.find((c) => c.id === path[2]);
-      if (tertiary) {
-        result.tertiary = { id: tertiary.id, name: tertiary.name };
-      }
     }
   }
 

@@ -1,36 +1,22 @@
 export interface CategoryKeywordEntry {
-  id: string;          // category ID in your real category tree (Primary / Secondary / Tertiary)
+  id: string;          // category ID in your category tree (Primary / Secondary)
   name: string;        // shown label - optional but nice for debugging
   keywords: string[];  // all synonyms and natural-language matches
 }
 
 // This file maps keywords to category IDs for intelligent category suggestions
+// Updated to match the new simplified category structure (Primary -> Secondary only)
 export const CategoryKeywords: CategoryKeywordEntry[] = [
-  // Art & Collectibles - Primary
+  // Art - Primary
   {
     id: "ART",
-    name: "Art & Collectibles",
-    keywords: ["art", "artwork", "collectible", "collectibles", "art piece", "artwork", "fine art", "original art"]
+    name: "Art",
+    keywords: ["art", "artwork", "collectible", "collectibles", "art piece", "fine art", "original art", "artwork"]
   },
   {
-    id: "PAINTINGS",
-    name: "Paintings",
-    keywords: ["painting", "paint", "canvas", "canvas art", "painted", "artwork painting", "original painting", "acrylic", "oil", "gouache", "ink", "spray paint"]
-  },
-  {
-    id: "PRINTS",
-    name: "Prints",
-    keywords: ["print", "prints", "art print", "printable", "art reproduction", "poster", "art poster"]
-  },
-  {
-    id: "FINE_ART_PRINTS",
-    name: "Fine Art Prints",
-    keywords: ["fine art print", "fine art prints", "giclee", "giclee print", "museum quality print", "digital art", "digital print", "digital artwork", "digital illustration"]
-  },
-  {
-    id: "RELIEF_PRINTS",
-    name: "Relief Prints",
-    keywords: ["relief print", "relief prints", "woodcut", "linocut", "block print", "wood block", "lino print", "screenprint", "screen print", "silkscreen", "serigraph", "letterpress", "letter press"]
+    id: "PRINTS_POSTERS",
+    name: "Prints & Posters",
+    keywords: ["print", "prints", "art print", "printable", "art reproduction", "poster", "art poster", "fine art print", "giclee", "giclee print", "museum quality print", "relief print", "woodcut", "linocut", "block print", "wood block", "lino print", "screenprint", "screen print", "silkscreen", "serigraph", "letterpress", "letter press"]
   },
   {
     id: "PHOTOGRAPHY",
@@ -38,594 +24,44 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
     keywords: ["photo", "photograph", "photography", "picture", "print photo", "art photo", "fine art photography"]
   },
   {
-    id: "SCULPTURES",
-    name: "Sculptures",
-    keywords: ["sculpture", "sculpt", "statue", "figurine", "3d art", "three dimensional", "ceramic", "ceramics", "clay", "pottery", "glass", "glass sculpture", "metal", "bronze", "steel", "wood", "wood carving"]
+    id: "SCULPTURE_3D",
+    name: "Sculptures & 3D Art",
+    keywords: ["sculpture", "sculpt", "statue", "figurine", "3d art", "three dimensional", "metal", "bronze", "steel", "wood", "wood carving"]
+  },
+  {
+    id: "GLASS",
+    name: "Glass Art",
+    keywords: ["glass", "glass sculpture", "glass art", "stained glass", "blown glass", "glasswork", "glassware"]
+  },
+  {
+    id: "FIBER_ART",
+    name: "Fiber Art (macrame, weaving, textile wall art)",
+    keywords: ["fiber art", "fibre art", "macrame", "macramé", "weaving", "textile wall art", "textile art", "wall hanging", "tapestry", "fabric art"]
+  },
+  {
+    id: "CERAMICS_POTTERY",
+    name: "Ceramics & Pottery",
+    keywords: ["ceramic", "ceramics", "pottery", "clay", "ceramic art", "pottery piece", "handmade ceramic", "handmade pottery"]
+  },
+  {
+    id: "DRAWING_ILLUSTRATION",
+    name: "Drawing & Illustration",
+    keywords: ["drawing", "illustration", "illustrated", "sketch", "sketches", "pen and ink", "pencil", "charcoal", "pastel", "comic", "comics", "graphic novel", "manga", "illustrated book"]
+  },
+  {
+    id: "STICKERS",
+    name: "Stickers",
+    keywords: ["sticker", "stickers", "decal", "decals", "vinyl sticker", "sticker pack"]
+  },
+  {
+    id: "MINIATURES_DIORAMAS",
+    name: "Miniatures & Dioramas",
+    keywords: ["miniature", "miniatures", "diorama", "dioramas", "scale model", "miniature art", "tiny art"]
   },
   {
     id: "COLLECTIBLES",
     name: "Collectibles",
     keywords: ["collectible", "collectibles", "vintage", "antique", "rare", "limited edition"]
-  },
-
-  // Bath & Beauty - Primary
-  {
-    id: "BATH",
-    name: "Bath & Beauty",
-    keywords: ["bath", "beauty", "bath product", "beauty product", "personal care", "self care", "skincare"]
-  },
-  {
-    id: "SOAP_BATH",
-    name: "Soap & Bath",
-    keywords: ["soap", "bar soap", "hand soap", "body wash", "cleanser", "wash", "cleansing", "bath"]
-  },
-  {
-    id: "BAR_SOAP",
-    name: "Bar Soap",
-    keywords: ["bar soap", "soap bar", "handmade soap", "artisan soap", "natural soap"]
-  },
-  {
-    id: "LIQUID_SOAP",
-    name: "Liquid Soap",
-    keywords: ["liquid soap", "hand soap", "body wash", "liquid cleanser"]
-  },
-  {
-    id: "BATH_BOMBS",
-    name: "Bath Bombs",
-    keywords: ["bath bomb", "bath fizz", "fizzy", "soak bomb", "bath fizzer"]
-  },
-  {
-    id: "SHOWER_GELS",
-    name: "Shower Gels",
-    keywords: ["shower gel", "body gel", "shower wash", "gel cleanser"]
-  },
-  {
-    id: "BATH_SALTS",
-    name: "Bath Salts",
-    keywords: ["bath salt", "bath salts", "soaking salt", "bath soak"]
-  },
-  {
-    id: "BODY_SCRUBS",
-    name: "Body Scrubs",
-    keywords: ["scrub", "body scrub", "exfoliating scrub", "salt scrub", "sugar scrub", "exfoliant", "exfoliate", "exfoliating"]
-  },
-  {
-    id: "BATH_OILS",
-    name: "Bath Oils",
-    keywords: ["bath oil", "bath oils", "bathing oil", "aromatic oil"]
-  },
-  {
-    id: "SKIN_CARE",
-    name: "Skin Care",
-    keywords: ["skincare", "skin care", "facial", "face care", "skin treatment"]
-  },
-  {
-    id: "CLEANSERS",
-    name: "Cleansers",
-    keywords: ["cleanser", "facial cleanser", "face wash", "cleansing", "facial care", "face treatment"]
-  },
-  {
-    id: "MOISTURIZERS",
-    name: "Moisturizers",
-    keywords: ["moisturizer", "moisturiser", "lotion", "cream", "face cream", "body lotion", "hydrating"]
-  },
-  {
-    id: "SERUMS",
-    name: "Serums",
-    keywords: ["serum", "serums", "face serum", "skin serum", "eye serum", "eye treatment", "under eye"]
-  },
-  {
-    id: "BALMS_SALVES",
-    name: "Balms & Salves",
-    keywords: ["balm", "salve", "healing balm", "lip balm", "ointment", "healing salve"]
-  },
-  {
-    id: "MASKS",
-    name: "Masks",
-    keywords: ["mask", "masks", "face mask", "facial mask", "skin mask", "clay mask"]
-  },
-  {
-    id: "HAIR_CARE",
-    name: "Hair Care",
-    keywords: ["hair", "hair care", "hair product", "hair treatment", "haircare"]
-  },
-  {
-    id: "SHAMPOOS",
-    name: "Shampoos",
-    keywords: ["shampoo", "hair shampoo", "cleansing shampoo", "hair wash"]
-  },
-  {
-    id: "CONDITIONERS",
-    name: "Conditioners",
-    keywords: ["conditioner", "hair conditioner", "deep conditioner"]
-  },
-  {
-    id: "HAIR_TREATMENTS",
-    name: "Hair Treatments",
-    keywords: ["hair treatment", "hair mask", "hair care treatment", "hair therapy"]
-  },
-  {
-    id: "STYLING_PRODUCTS",
-    name: "Styling Products",
-    keywords: ["hair gel", "hair wax", "styling gel", "hair styling", "hair product", "styling product"]
-  },
-  {
-    id: "BRUSHES_COMBS",
-    name: "Brushes & Combs",
-    keywords: ["hair brush", "comb", "hair comb", "detangling brush", "hair tool", "brush", "combs"]
-  },
-  {
-    id: "COSMETICS",
-    name: "Cosmetics",
-    keywords: ["cosmetic", "cosmetics", "makeup", "make up", "beauty", "beauty product"]
-  },
-  {
-    id: "EYE_MAKEUP",
-    name: "Eye Makeup",
-    keywords: ["eye makeup", "eyeshadow", "mascara", "eyeliner", "eye shadow", "eye cosmetic"]
-  },
-  {
-    id: "LIP_MAKEUP",
-    name: "Lip Makeup",
-    keywords: ["lipstick", "lip gloss", "lip balm", "lip color", "lip cosmetic", "lip product", "lip makeup"]
-  },
-  {
-    id: "FACE_MAKEUP",
-    name: "Face Makeup",
-    keywords: ["foundation", "concealer", "face powder", "blush", "bronzer", "face makeup"]
-  },
-  {
-    id: "NAIL_CARE",
-    name: "Nail Care",
-    keywords: ["nail polish", "nail care", "nail art", "nail treatment", "manicure", "nail product"]
-  },
-  {
-    id: "MAKEUP_TOOLS",
-    name: "Makeup Tools & Brushes",
-    keywords: ["makeup brush", "beauty brush", "cosmetic brush", "makeup tool", "beauty tool", "brush set"]
-  },
-  {
-    id: "AROMATHERAPY",
-    name: "Aromatherapy",
-    keywords: ["aromatherapy", "aromatic", "aroma", "therapeutic", "scent therapy"]
-  },
-  {
-    id: "ESSENTIAL_OILS",
-    name: "Essential Oils",
-    keywords: ["essential oil", "essential oils", "aromatherapy oil", "therapeutic oil", "oil blend"]
-  },
-  {
-    id: "CANDLES",
-    name: "Aromatherapy Candles",
-    keywords: ["candle", "candles", "aromatherapy candle", "aromatic candle", "scented candle", "therapeutic candle", "aroma candle"]
-  },
-  {
-    id: "ROLL_ONS",
-    name: "Roll-Ons",
-    keywords: ["roll on", "roll-on", "roll ons", "aromatic roll on", "essential oil roll on"]
-  },
-
-  // Books & Media - Primary
-  {
-    id: "BOOKS",
-    name: "Books & Media",
-    keywords: ["book", "books", "media", "reading", "publication", "ebook", "digital book"]
-  },
-  {
-    id: "COMICS",
-    name: "Books and Comics",
-    keywords: ["comic", "comics", "graphic novel", "manga", "comic book", "illustrated book"]
-  },
-  {
-    id: "AUDIO",
-    name: "Music and Audio",
-    keywords: ["music", "audio", "mp3", "song", "album", "audio book", "podcast", "sound"]
-  },
-
-  // Clothing & Accessories - Primary
-  {
-    id: "CLOTHING",
-    name: "Clothing & Accessories",
-    keywords: ["clothing", "clothes", "apparel", "garment", "wear", "fashion", "outfit"]
-  },
-  {
-    id: "TOPS",
-    name: "Tops",
-    keywords: ["top", "tops", "shirt", "blouse", "tee", "t-shirt", "sweater", "hoodie"]
-  },
-  {
-    id: "SWEATERS",
-    name: "Sweaters",
-    keywords: ["sweater", "sweaters", "pullover", "jumper", "knit sweater", "wool sweater"]
-  },
-  {
-    id: "CARDIGANS",
-    name: "Cadigans",
-    keywords: ["cardigan", "cardigans", "cardigan sweater", "button sweater", "open front sweater"]
-  },
-  {
-    id: "T_SHIRTS",
-    name: "T-Shirts",
-    keywords: ["t-shirt", "tshirt", "tee", "tees", "t shirt", "cotton tee", "basic tee"]
-  },
-  {
-    id: "BLOUSES",
-    name: "Blouses",
-    keywords: ["blouse", "blouses", "shirt", "top blouse", "womens blouse"]
-  },
-  {
-    id: "TANK_TOPS",
-    name: "Tank Tops",
-    keywords: ["tank top", "tank", "tanks", "sleeveless", "tank shirt", "camisole"]
-  },
-  {
-    id: "BOTTOMS",
-    name: "Bottoms",
-    keywords: ["bottom", "bottoms", "pants", "trousers", "jeans", "shorts", "skirt", "leggings"]
-  },
-  {
-    id: "PANTS",
-    name: "Pants",
-    keywords: ["pants", "trousers", "slacks", "pant", "trouser"]
-  },
-  {
-    id: "SHORTS",
-    name: "Shorts",
-    keywords: ["shorts", "short", "short pants", "bermuda shorts"]
-  },
-  {
-    id: "SKIRTS",
-    name: "Skirts",
-    keywords: ["skirt", "skirts", "mini skirt", "maxi skirt", "midi skirt"]
-  },
-  {
-    id: "LEGGINGS",
-    name: "Leggings",
-    keywords: ["leggings", "legging", "yoga pants", "stretch pants", "athletic leggings"]
-  },
-  {
-    id: "DRESSES",
-    name: "Dresses",
-    keywords: ["dress", "dresses", "gown", "frock"]
-  },
-  {
-    id: "CASUAL_DRESSES",
-    name: "Casual Dresses",
-    keywords: ["casual dress", "casual dresses", "everyday dress", "day dress", "casual wear"]
-  },
-  {
-    id: "FORMAL_DRESSES",
-    name: "Formal Dresses",
-    keywords: ["formal dress", "formal dresses", "evening dress", "gown", "cocktail dress"]
-  },
-  {
-    id: "MAXI_DRESSES",
-    name: "Maxi Dresses",
-    keywords: ["maxi dress", "maxi dresses", "long dress", "floor length dress"]
-  },
-  {
-    id: "MIDI_DRESSES",
-    name: "Midi Dresses",
-    keywords: ["midi dress", "midi dresses", "mid length dress", "knee length dress"]
-  },
-  {
-    id: "SUMMER_DRESSES",
-    name: "Summer Dresses",
-    keywords: ["summer dress", "summer dresses", "sundress", "sundresses", "summer wear"]
-  },
-  {
-    id: "OUTERWEAR",
-    name: "Outerwear",
-    keywords: ["outerwear", "outer wear", "coat", "jacket", "winter wear", "outer layer"]
-  },
-  {
-    id: "COATS",
-    name: "Coats",
-    keywords: ["coat", "coats", "winter coat", "overcoat", "raincoat", "trench coat"]
-  },
-  {
-    id: "JACKETS",
-    name: "Jackets",
-    keywords: ["jacket", "jackets", "blazer", "windbreaker", "denim jacket", "leather jacket"]
-  },
-  {
-    id: "VESTS",
-    name: "Vests",
-    keywords: ["vest", "vests", "waistcoat", "sleeveless jacket", "puffer vest"]
-  },
-  {
-    id: "PONCHOS",
-    name: "Ponchos",
-    keywords: ["poncho", "ponchos", "cape poncho", "blanket poncho"]
-  },
-  {
-    id: "CAPES",
-    name: "Capes",
-    keywords: ["cape", "capes", "capelet", "shoulder cape", "fashion cape"]
-  },
-  {
-    id: "ACCESSORIES",
-    name: "Accessories",
-    keywords: ["accessory", "accessories", "fashion accessory", "style accessory"]
-  },
-  {
-    id: "HATS",
-    name: "Hats",
-    keywords: ["hat", "hats", "cap", "beanie", "baseball cap", "sun hat", "winter hat"]
-  },
-  {
-    id: "SCARVES",
-    name: "Scarves",
-    keywords: ["scarf", "scarves", "neck scarf", "winter scarf", "fashion scarf"]
-  },
-  {
-    id: "GLOVES",
-    name: "Gloves",
-    keywords: ["glove", "gloves", "winter gloves", "fingerless gloves", "mittens"]
-  },
-  {
-    id: "BELTS",
-    name: "Belts",
-    keywords: ["belt", "belts", "waist belt", "leather belt", "fashion belt"]
-  },
-  {
-    id: "BAGS",
-    name: "Bags and Purses",
-    keywords: ["bag", "bags", "purse", "handbag", "tote", "backpack", "shoulder bag", "clutch"]
-  },
-  {
-    id: "TOTE_BAGS",
-    name: "Tote Bags",
-    keywords: ["tote bag", "tote", "totes", "tote bags", "canvas tote", "shopping tote"]
-  },
-  {
-    id: "BACKPACKS",
-    name: "Backpacks",
-    keywords: ["backpack", "backpacks", "rucksack", "daypack", "school backpack"]
-  },
-  {
-    id: "CROSSBODY_BAGS",
-    name: "Crossbody Bags",
-    keywords: ["crossbody bag", "crossbody", "cross body", "messenger bag", "shoulder bag"]
-  },
-  {
-    id: "POUCHES",
-    name: "Pouches",
-    keywords: ["pouch", "pouches", "wristlet", "coin pouch", "small bag"]
-  },
-
-  // Handmade Craft Supplies - Primary
-  {
-    id: "CRAFT_SUPPLIES",
-    name: "Handmade Craft Supplies",
-    keywords: ["craft", "craft supply", "crafting", "supplies", "craft material", "diy", "handmade supply"]
-  },
-  {
-    id: "YARN",
-    name: "Yarn",
-    keywords: ["yarn", "wool", "thread", "fiber", "knitting yarn", "crochet yarn", "yarn ball"]
-  },
-  {
-    id: "COTTON_YARN",
-    name: "Cotton Yarn",
-    keywords: ["cotton", "cotton yarn", "dishcloth yarn", "kitchen yarn", "worsted cotton", "dk cotton", "soft cotton"]
-  },
-  {
-    id: "WOOL_YARN",
-    name: "Wool Yarn",
-    keywords: ["wool", "wool yarn", "natural wool", "handspun wool", "roving wool", "felting wool"]
-  },
-  {
-    id: "ACRYLIC_YARN",
-    name: "Acrylic Yarn",
-    keywords: ["acrylic yarn", "synthetic yarn", "acrylic fiber", "acrylic wool"]
-  },
-  {
-    id: "MERINO_WOOL",
-    name: "Merino Wool",
-    keywords: ["merino", "merino wool", "merino yarn", "merino fiber"]
-  },
-  {
-    id: "BULKY_YARN",
-    name: "Bulky Yarn",
-    keywords: ["bulky", "bulky yarn", "chunky yarn", "thick yarn", "super bulky"]
-  },
-  {
-    id: "FINGERING_YARN",
-    name: "Fingering Yarn",
-    keywords: ["fingering", "fingering yarn", "sock yarn", "fine yarn", "thin yarn"]
-  },
-  {
-    id: "POLYESTER_YARN",
-    name: "Polyester Yarn",
-    keywords: ["polyester", "polyester yarn", "poly yarn", "synthetic yarn"]
-  },
-  {
-    id: "FABRIC",
-    name: "Fabric",
-    keywords: ["fabric", "cloth", "textile", "material", "fabric yard", "fabric bolt"]
-  },
-  {
-    id: "TOOLS",
-    name: "Tools & Equipment",
-    keywords: ["tool", "tools", "equipment", "craft tool", "sewing tool", "knitting tool", "crochet hook", "needle"]
-  },
-  {
-    id: "STITCH_MARKERS",
-    name: "Stitch Markers",
-    keywords: ["stitch", "marker", "stitch marker", "crochet tool", "knitting tool"]
-  },
-  {
-    id: "CROCHET_HOOKS",
-    name: "Crochet Hooks",
-    keywords: ["crochet", "hook", "crochet hook", "crochet tool"]
-  },
-  {
-    id: "KNITTING_NEEDLES",
-    name: "Knitting Needles",
-    keywords: ["knitting", "needle", "knitting needle", "knitting tool"]
-  },
-  {
-    id: "BEADS",
-    name: "Beads & Jewelry Making",
-    keywords: ["bead", "beads", "jewelry making", "beading", "jewelry supply", "bead supply"]
-  },
-  {
-    id: "FIBER",
-    name: "Fiber and Sewing",
-    keywords: ["fiber", "fibre", "sewing", "sewing supply", "thread", "embroidery thread"]
-  },
-  {
-    id: "PAPER",
-    name: "Paper Supplies",
-    keywords: ["paper", "cardstock", "scrapbook paper", "craft paper", "paper supply"]
-  },
-  {
-    id: "PAINT",
-    name: "Paint, Stain, and Dye",
-    keywords: ["paint", "stain", "dye", "fabric paint", "fabric dye", "wood stain", "textile dye"]
-  },
-
-  // Home & Living - Primary
-  {
-    id: "HOME",
-    name: "Home & Living",
-    keywords: ["home", "home decor", "homeware", "house", "household", "interior", "decor"]
-  },
-  {
-    id: "HOME_DECOR",
-    name: "Home Decor",
-    keywords: ["decor", "decoration", "home decor", "interior decor", "decorative", "ornament"]
-  },
-  {
-    id: "WALL_ART",
-    name: "Wall Art",
-    keywords: ["wall art", "wall decor", "wall hanging", "artwork", "picture", "print", "wall decoration"]
-  },
-  {
-    id: "CANDLES",
-    name: "Candles / Aromatherapy Candles",
-    keywords: ["candle", "candles", "scented candle", "wax candle", "jar candle", "pillar candle", "aromatherapy candle", "aromatic candle", "wellness candle"]
-  },
-  {
-    id: "VASES",
-    name: "Vases",
-    keywords: ["vase", "vases", "flower vase", "decorative vase", "ceramic vase"]
-  },
-  {
-    id: "DECORATIVE_BOWLS",
-    name: "Decorative Bowls",
-    keywords: ["decorative bowl", "bowl", "decorative bowls", "display bowl", "ornamental bowl"]
-  },
-  {
-    id: "TEXTILES",
-    name: "Textiles",
-    keywords: ["textile", "textiles", "fabric decor", "soft furnishings", "home textiles"]
-  },
-  {
-    id: "THROW_PILLOWS",
-    name: "Throw Pillows",
-    keywords: ["pillow", "throw pillow", "cushion", "decorative pillow", "pillow cover", "throw pillows"]
-  },
-  {
-    id: "RUGS",
-    name: "Rugs",
-    keywords: ["rug", "rugs", "carpet", "area rug", "floor rug", "mat"]
-  },
-  {
-    id: "BLANKETS",
-    name: "Blankets & Throws",
-    keywords: ["blanket", "blankets", "throw", "throws", "afghan", "coverlet", "quilt"]
-  },
-  {
-    id: "WALL_HANGINGS",
-    name: "Wall Hangings",
-    keywords: ["wall hanging", "wall hangings", "tapestry", "textile art", "fabric wall art"]
-  },
-  {
-    id: "KITCHEN_DINING",
-    name: "Kitchen & Dining",
-    keywords: ["kitchen", "dining", "kitchenware", "dinnerware", "cookware", "kitchen dining"]
-  },
-  {
-    id: "DRINKWARE",
-    name: "Drinkware",
-    keywords: ["cup", "mug", "glass", "drinkware", "coffee cup", "tea cup", "water glass"]
-  },
-  {
-    id: "TABLEWARE",
-    name: "Tableware",
-    keywords: ["plate", "bowl", "tableware", "dinnerware", "dish", "serving dish"]
-  },
-  {
-    id: "SERVEWARE",
-    name: "Serveware",
-    keywords: ["serveware", "serving", "serving dish", "serving bowl", "serving platter", "serve ware"]
-  },
-  {
-    id: "TRAYS_PLATTERS",
-    name: "Trays & Platters",
-    keywords: ["tray", "platter", "serving tray", "serving platter", "tray set", "trays", "platters"]
-  },
-  {
-    id: "CUTTING_BOARDS",
-    name: "Cutting Boards",
-    keywords: ["cutting board", "chopping board", "cutting block", "board"]
-  },
-  {
-    id: "LINENS",
-    name: "Kitchen Linens",
-    keywords: ["linen", "linens", "kitchen towel", "dish towel", "tea towel", "napkin", "tablecloth"]
-  },
-  {
-    id: "FURNITURE",
-    name: "Furniture",
-    keywords: ["furniture", "furnishing", "chair", "table", "desk", "furniture piece"]
-  },
-  {
-    id: "CHAIRS",
-    name: "Chairs",
-    keywords: ["chair", "chairs", "seating", "seat", "dining chair"]
-  },
-  {
-    id: "TABLES",
-    name: "Tables",
-    keywords: ["table", "tables", "dining table", "coffee table", "side table"]
-  },
-  {
-    id: "DESKS",
-    name: "Desks",
-    keywords: ["desk", "desks", "writing desk", "office desk", "work desk"]
-  },
-  {
-    id: "BENCHES",
-    name: "Benches",
-    keywords: ["bench", "benches", "seating bench", "garden bench", "storage bench"]
-  },
-  {
-    id: "STOOLS",
-    name: "Stools",
-    keywords: ["stool", "stools", "bar stool", "counter stool", "seating stool"]
-  },
-  {
-    id: "OUTDOOR_GARDEN",
-    name: "Outdoor & Garden",
-    keywords: ["garden", "outdoor", "garden decor", "outdoor decor", "patio", "yard", "outdoor garden"]
-  },
-  {
-    id: "PLANTERS",
-    name: "Planters",
-    keywords: ["planter", "planters", "flower pot", "pot", "plant pot", "garden planter"]
-  },
-  {
-    id: "GARDEN_DECOR",
-    name: "Garden Decor",
-    keywords: ["garden decor", "garden decoration", "outdoor decor", "yard decor", "patio decor"]
-  },
-  {
-    id: "OUTDOOR_FURNITURE",
-    name: "Outdoor Furniture",
-    keywords: ["outdoor furniture", "patio furniture", "garden furniture", "outdoor seating", "patio set"]
   },
 
   // Jewelry - Primary
@@ -637,306 +73,368 @@ export const CategoryKeywords: CategoryKeywordEntry[] = [
   {
     id: "NECKLACES",
     name: "Necklaces",
-    keywords: ["necklace", "pendant", "chain", "jewelry necklace", "beaded necklace", "handmade necklace"]
-  },
-  {
-    id: "CHOKERS",
-    name: "Chokers",
-    keywords: ["choker", "chokers", "choker necklace", "choker chain"]
-  },
-  {
-    id: "BEADED_NECKLACES",
-    name: "Beaded Necklaces",
-    keywords: ["beaded necklace", "bead necklace", "bead jewelry"]
-  },
-  {
-    id: "PENDANT_NECKLACES",
-    name: "Pendant Necklaces",
-    keywords: ["pendant", "pendant necklace", "pendant chain", "necklace pendant"]
-  },
-  {
-    id: "LAYERED_NECKLACES",
-    name: "Layered Necklaces",
-    keywords: ["layered necklace", "multi layer", "layered chain"]
-  },
-  {
-    id: "STATEMENT_NECKLACES",
-    name: "Statement Necklaces",
-    keywords: ["statement necklace", "bold necklace", "statement piece"]
-  },
-  {
-    id: "RINGS",
-    name: "Rings",
-    keywords: ["ring", "rings", "finger ring", "jewelry ring"]
-  },
-  {
-    id: "ENGAGEMENT_RINGS",
-    name: "Engagement Rings",
-    keywords: ["engagement ring", "engagement", "proposal ring", "diamond ring"]
-  },
-  {
-    id: "WEDDING_RINGS",
-    name: "Wedding Rings",
-    keywords: ["wedding ring", "wedding band", "marriage ring", "wedding"]
-  },
-  {
-    id: "STACKING_RINGS",
-    name: "Stacking Rings",
-    keywords: ["stacking ring", "stack ring", "ring set", "multiple rings"]
-  },
-  {
-    id: "COCKTAIL_RINGS",
-    name: "Cocktail Rings",
-    keywords: ["cocktail ring", "statement ring", "large ring"]
+    keywords: ["necklace", "pendant", "chain", "jewelry necklace", "beaded necklace", "handmade necklace", "choker", "chokers", "choker necklace", "beaded necklace", "bead necklace", "pendant necklace", "pendant chain", "layered necklace", "multi layer", "statement necklace", "bold necklace"]
   },
   {
     id: "EARRINGS",
     name: "Earrings",
-    keywords: ["earring", "earrings", "ear jewelry", "ear piece"]
+    keywords: ["earring", "earrings", "ear jewelry", "ear piece", "stud", "studs", "stud earring", "hoop", "hoops", "hoop earring", "circle earring", "dangle", "dangles", "dangle earring", "drop earring", "chandelier", "chandelier earring", "drop earring"]
   },
   {
-    id: "STUDS",
-    name: "Studs",
-    keywords: ["stud", "studs", "stud earring", "stud earrings", "post earring"]
-  },
-  {
-    id: "HOOPS",
-    name: "Hoops",
-    keywords: ["hoop", "hoops", "hoop earring", "hoop earrings", "circle earring"]
-  },
-  {
-    id: "DANGLES",
-    name: "Dangles",
-    keywords: ["dangle", "dangles", "dangle earring", "drop earring", "dangling"]
-  },
-  {
-    id: "CHANDELIER",
-    name: "Chandelier",
-    keywords: ["chandelier", "chandelier earring", "chandelier earrings", "drop earring"]
+    id: "RINGS",
+    name: "Rings",
+    keywords: ["ring", "rings", "finger ring", "jewelry ring", "engagement ring", "wedding ring", "wedding band", "stacking ring", "stack ring", "ring set", "cocktail ring", "statement ring"]
   },
   {
     id: "BRACELETS",
     name: "Bracelets",
-    keywords: ["bracelet", "bracelets", "wrist jewelry", "wristband"]
+    keywords: ["bracelet", "bracelets", "wrist jewelry", "wristband", "beaded bracelet", "bangle", "bangles", "cuff", "cuff bracelet", "charm", "charms", "charm bracelet", "chain bracelet", "link bracelet"]
   },
   {
-    id: "BEADED",
-    name: "Beaded",
-    keywords: ["beaded bracelet", "bead bracelet", "bead jewelry"]
+    id: "ANKLETS",
+    name: "Anklets",
+    keywords: ["anklet", "anklets", "ankle jewelry", "ankle chain", "ankle bracelet"]
   },
   {
-    id: "BANGLES",
-    name: "Bangles",
-    keywords: ["bangle", "bangles", "bangle bracelet", "rigid bracelet"]
+    id: "BROOCHES_PINS",
+    name: "Brooches & Pins",
+    keywords: ["pin", "pins", "brooch", "brooches", "lapel pin", "enamel pin", "enamel pins", "hard enamel", "soft enamel", "novelty pin", "fun pin", "decorative pin", "collectible pin", "vintage brooch"]
   },
   {
-    id: "CUFF",
-    name: "Cuff",
-    keywords: ["cuff", "cuff bracelet", "cuff jewelry", "wide bracelet"]
+    id: "BODY_JEWELRY",
+    name: "Body Jewelry",
+    keywords: ["body jewelry", "body piercing", "piercing jewelry", "body art jewelry"]
   },
   {
-    id: "CHARM",
-    name: "Charm",
-    keywords: ["charm", "charms", "charm bracelet", "charm jewelry"]
+    id: "JEWELRY_SETS",
+    name: "Jewelry Sets",
+    keywords: ["jewelry set", "jewelry sets", "jewelry collection", "matching jewelry", "jewelry bundle"]
   },
   {
-    id: "CHAIN_AND_LINK",
-    name: "Chain and Link",
-    keywords: ["chain bracelet", "link bracelet", "chain jewelry", "link jewelry"]
+    id: "CHARMS",
+    name: "Charms",
+    keywords: ["charm", "charms", "charm jewelry", "pendant charm", "bracelet charm"]
   },
   {
-    id: "PINS",
-    name: "Pins and Brooches",
-    keywords: ["pin", "pins", "brooch", "brooches", "lapel pin", "enamel pin"]
-  },
-  {
-    id: "ENAMEL_PINS",
-    name: "Enamel Pins",
-    keywords: ["enamel pin", "enamel pins", "hard enamel", "soft enamel"]
-  },
-  {
-    id: "NOVELTY_PINS",
-    name: "Novelty Pins",
-    keywords: ["novelty pin", "fun pin", "decorative pin", "collectible pin"]
-  },
-  {
-    id: "BROOCHES",
-    name: "Brooches",
-    keywords: ["brooch", "brooches", "vintage brooch", "decorative brooch"]
+    id: "CUSTOM_JEWELRY",
+    name: "Custom Jewelry",
+    keywords: ["custom jewelry", "custom made", "personalized jewelry", "bespoke jewelry", "made to order"]
   },
 
-  // Toys & Games - Primary
+  // Clothing & Accessories - Primary
   {
-    id: "TOYS",
-    name: "Toys & Games",
-    keywords: ["toy", "toys", "game", "games", "play", "plaything", "children toy"]
+    id: "CLOTHING_ACCESSORIES",
+    name: "Clothing & Accessories",
+    keywords: ["clothing", "clothes", "apparel", "garment", "wear", "fashion", "outfit"]
   },
   {
-    id: "PLUSH_TOYS",
-    name: "Plush Toys & Dolls",
-    keywords: ["plush toy", "plush toys", "stuffed", "plush", "plushie", "stuffed animal", "soft toy", "cuddly", "doll"]
+    id: "TOPS",
+    name: "Tops",
+    keywords: ["top", "tops", "shirt", "blouse", "tee", "t-shirt", "sweater", "hoodie", "pullover", "jumper", "knit sweater", "wool sweater", "cardigan", "cardigans", "tank top", "tank", "tanks", "sleeveless", "camisole"]
   },
   {
-    id: "TEDDY_BEARS",
-    name: "Teddy Bears",
-    keywords: ["bear plush", "teddy", "teddy bear", "crochet bear", "knit bear", "plush bear", "teddy bears"]
+    id: "BOTTOMS",
+    name: "Bottoms",
+    keywords: ["bottom", "bottoms", "pants", "trousers", "jeans", "shorts", "skirt", "leggings", "slacks", "yoga pants", "stretch pants", "athletic leggings"]
   },
   {
-    id: "ANIMAL_PLUSH",
-    name: "Animal Plush",
-    keywords: ["animal plush", "plush animal", "stuffed animal", "animal toy", "animals", "plush animals"]
+    id: "DRESSES_ONEPIECE",
+    name: "Dresses & One-Piece",
+    keywords: ["dress", "dresses", "gown", "frock", "casual dress", "formal dress", "evening dress", "cocktail dress", "maxi dress", "long dress", "floor length dress", "midi dress", "mid length dress", "summer dress", "sundress", "one piece", "jumpsuit", "romper"]
   },
   {
-    id: "DOLLS",
-    name: "Dolls",
-    keywords: ["doll", "dolls", "crochet doll", "rag doll", "plush doll", "amigurumi doll", "handmade doll"]
+    id: "OUTERWEAR",
+    name: "Outerwear",
+    keywords: ["outerwear", "outer wear", "coat", "jacket", "winter wear", "outer layer", "winter coat", "overcoat", "raincoat", "trench coat", "blazer", "windbreaker", "denim jacket", "leather jacket", "vest", "vests", "waistcoat", "sleeveless jacket", "puffer vest", "poncho", "ponchos", "cape", "capes", "capelet"]
   },
   {
-    id: "PLUSHIES",
-    name: "Plushies",
-    keywords: ["plushie", "plushies", "plush toy", "soft toy", "cuddly toy"]
+    id: "KNITWEAR",
+    name: "Knitwear",
+    keywords: ["knitwear", "knit", "knitted", "knit clothing", "knit garment", "hand knit", "hand knitted"]
+  },
+  {
+    id: "BAGS_PURSES",
+    name: "Bags & Purses",
+    keywords: ["bag", "bags", "purse", "handbag", "tote", "backpack", "shoulder bag", "clutch", "tote bag", "canvas tote", "shopping tote", "rucksack", "daypack", "crossbody bag", "crossbody", "cross body", "messenger bag", "pouch", "pouches", "wristlet", "coin pouch"]
+  },
+  {
+    id: "SCARVES_WRAPS",
+    name: "Scarves & Wraps",
+    keywords: ["scarf", "scarves", "neck scarf", "winter scarf", "fashion scarf", "wrap", "wraps", "shawl", "shawls", "pashmina"]
+  },
+  {
+    id: "HATS_HEADWEAR",
+    name: "Hats & Headwear",
+    keywords: ["hat", "hats", "cap", "beanie", "baseball cap", "sun hat", "winter hat", "headwear", "head band", "headband"]
+  },
+  {
+    id: "GLOVES_MITTENS",
+    name: "Gloves & Mittens",
+    keywords: ["glove", "gloves", "winter gloves", "fingerless gloves", "mittens", "mitten", "hand warmers"]
+  },
+  {
+    id: "ACCESSORIES",
+    name: "Accessories",
+    keywords: ["accessory", "accessories", "fashion accessory", "style accessory", "belt", "belts", "waist belt", "leather belt", "fashion belt"]
+  },
+
+  // Home & Living - Primary
+  {
+    id: "HOME_LIVING",
+    name: "Home & Living",
+    keywords: ["home", "home decor", "homeware", "house", "household", "interior", "decor"]
+  },
+  {
+    id: "HOME_DECOR",
+    name: "Home Decor",
+    keywords: ["decor", "decoration", "home decor", "interior decor", "decorative", "ornament", "vase", "vases", "flower vase", "decorative vase", "ceramic vase", "decorative bowl", "bowl", "display bowl", "ornamental bowl"]
+  },
+  {
+    id: "WALL_ART_HANGINGS",
+    name: "Wall Art & Hangings",
+    keywords: ["wall art", "wall decor", "wall hanging", "artwork", "picture", "print", "wall decoration", "wall hangings", "tapestry", "textile art", "fabric wall art"]
+  },
+  {
+    id: "CANDLES_HOLDERS",
+    name: "Candles & Holders",
+    keywords: ["candle", "candles", "scented candle", "wax candle", "jar candle", "pillar candle", "candle holder", "candlestick", "candle stand"]
+  },
+  {
+    id: "KITCHEN_DINING",
+    name: "Kitchen & Dining",
+    keywords: ["kitchen", "dining", "kitchenware", "dinnerware", "cookware", "kitchen dining", "cup", "mug", "glass", "drinkware", "coffee cup", "tea cup", "water glass", "plate", "bowl", "tableware", "dinnerware", "dish", "serving dish", "serveware", "serving", "serving bowl", "serving platter", "tray", "platter", "serving tray", "serving platter", "cutting board", "chopping board", "cutting block", "linen", "linens", "kitchen towel", "dish towel", "tea towel", "napkin", "tablecloth"]
+  },
+  {
+    id: "FURNITURE",
+    name: "Furniture",
+    keywords: ["furniture", "furnishing", "chair", "table", "furniture piece", "chairs", "seating", "seat", "dining chair", "dining table", "coffee table", "side table", "writing desk", "work desk", "bench", "benches", "seating bench", "garden bench", "storage bench", "stool", "stools", "bar stool", "counter stool"]
+  },
+  {
+    id: "STORAGE_ORGANIZATION",
+    name: "Storage & Organization",
+    keywords: ["storage", "organization", "organizer", "organizing", "storage box", "storage basket", "storage container", "organizer box"]
+  },
+  {
+    id: "LIGHTING",
+    name: "Lighting",
+    keywords: ["lighting", "lamp", "lamps", "light", "lights", "table lamp", "floor lamp", "pendant light", "light fixture"]
+  },
+  {
+    id: "GARDEN_OUTDOOR",
+    name: "Garden & Outdoor",
+    keywords: ["garden", "outdoor", "garden decor", "outdoor decor", "patio", "yard", "outdoor garden", "planter", "planters", "flower pot", "pot", "plant pot", "garden planter", "garden decoration", "yard decor", "patio decor", "outdoor furniture", "patio furniture", "garden furniture", "outdoor seating", "patio set"]
+  },
+  {
+    id: "SEASONAL_DECOR",
+    name: "Seasonal Decor",
+    keywords: ["seasonal", "seasonal decor", "holiday decor", "holiday decoration", "christmas", "halloween", "thanksgiving", "easter", "valentine"]
+  },
+  {
+    id: "OFFICE_DESK",
+    name: "Office & Desk",
+    keywords: ["office", "desk", "office decor", "desk accessory", "desk organizer", "desk set", "office supply", "stationery", "pen holder", "desk lamp"]
+  },
+
+  // Bath & Beauty - Primary
+  {
+    id: "BATH_BEAUTY",
+    name: "Bath & Beauty",
+    keywords: ["bath", "beauty", "bath product", "beauty product", "personal care", "self care", "skincare"]
+  },
+  {
+    id: "SOAP_BATH",
+    name: "Soap & Bath",
+    keywords: ["soap", "bar soap", "hand soap", "body wash", "cleanser", "wash", "cleansing", "bath", "handmade soap", "artisan soap", "natural soap", "liquid soap", "liquid cleanser", "bath bomb", "bath fizz", "fizzy", "soak bomb", "bath fizzer", "shower gel", "body gel", "shower wash", "gel cleanser", "bath salt", "bath salts", "soaking salt", "bath soak", "scrub", "body scrub", "exfoliating scrub", "salt scrub", "sugar scrub", "exfoliant", "exfoliate", "exfoliating", "bath oil", "bath oils", "bathing oil", "aromatic oil"]
+  },
+  {
+    id: "SKINCARE",
+    name: "Skincare",
+    keywords: ["skincare", "skin care", "facial", "face care", "skin treatment", "cleanser", "facial cleanser", "face wash", "moisturizer", "moisturiser", "lotion", "cream", "face cream", "body lotion", "hydrating", "serum", "serums", "face serum", "skin serum", "eye serum", "eye treatment", "under eye", "balm", "salve", "healing balm", "lip balm", "ointment", "healing salve", "mask", "masks", "face mask", "facial mask", "skin mask", "clay mask"]
+  },
+  {
+    id: "HAIRCARE",
+    name: "Haircare",
+    keywords: ["hair", "hair care", "hair product", "hair treatment", "haircare", "shampoo", "hair shampoo", "cleansing shampoo", "hair wash", "conditioner", "hair conditioner", "deep conditioner", "hair treatment", "hair mask", "hair care treatment", "hair therapy", "hair gel", "hair wax", "styling gel", "hair styling", "styling product", "hair brush", "comb", "hair comb", "detangling brush", "hair tool", "brush", "combs"]
+  },
+  {
+    id: "COSMETICS",
+    name: "Cosmetics",
+    keywords: ["cosmetic", "cosmetics", "makeup", "make up", "beauty", "beauty product", "eye makeup", "eyeshadow", "mascara", "eyeliner", "eye shadow", "lipstick", "lip gloss", "lip color", "foundation", "concealer", "face powder", "blush", "bronzer", "makeup brush", "beauty brush", "cosmetic brush", "makeup tool", "beauty tool", "brush set"]
+  },
+  {
+    id: "FRAGRANCE",
+    name: "Fragrance",
+    keywords: ["fragrance", "perfume", "cologne", "scent", "aroma", "aromatic", "essential oil", "essential oils", "aromatherapy oil", "therapeutic oil", "oil blend", "aromatherapy", "scent therapy"]
+  },
+  {
+    id: "GROOMING",
+    name: "Grooming",
+    keywords: ["grooming", "grooming product", "personal grooming", "beard care", "shaving", "razor", "grooming tool"]
+  },
+  {
+    id: "GIFT_SETS",
+    name: "Gift Sets",
+    keywords: ["gift set", "gift sets", "beauty set", "bath set", "skincare set", "gift bundle", "beauty bundle"]
+  },
+  {
+    id: "COSMETIC_TOILETRY_STORAGE",
+    name: "Cosmetic & Toiletry Storage",
+    keywords: ["cosmetic storage", "toiletry storage", "makeup organizer", "beauty organizer", "cosmetic bag", "toiletry bag", "storage organizer"]
+  },
+  {
+    id: "TOOLS_ACCESSORIES",
+    name: "Tools & Accessories",
+    keywords: ["beauty tool", "cosmetic tool", "makeup tool", "nail care", "nail polish", "nail art", "nail treatment", "manicure", "nail product", "nail file", "cuticle tool"]
+  },
+
+  // Toys & Kids - Primary
+  {
+    id: "TOYS_KIDS",
+    name: "Toys & Kids",
+    keywords: ["toy", "toys", "game", "games", "play", "plaything", "children toy", "kids", "kid", "child", "children"]
+  },
+  {
+    id: "PLUSH_DOLLS",
+    name: "Plush & Dolls",
+    keywords: ["plush toy", "plush toys", "stuffed", "plush", "plushie", "stuffed animal", "soft toy", "cuddly", "doll", "dolls", "crochet doll", "rag doll", "plush doll", "amigurumi doll", "handmade doll", "teddy", "teddy bear", "crochet bear", "knit bear", "plush bear", "animal plush", "plush animal", "animal toy", "animals"]
+  },
+  {
+    id: "WOODEN_TOYS",
+    name: "Wooden Toys",
+    keywords: ["wooden toy", "wooden toys", "wood toy", "wooden block", "wooden puzzle", "wooden game", "natural toy"]
   },
   {
     id: "GAMES_PUZZLES",
     name: "Games & Puzzles",
-    keywords: ["game", "games", "puzzle", "puzzles", "board game", "card game", "puzzle game", "games puzzles"]
-  },
-  {
-    id: "BOARD_GAMES",
-    name: "Board Games",
-    keywords: ["board game", "board games", "tabletop game", "boardgame"]
-  },
-  {
-    id: "PUZZLES",
-    name: "Puzzles",
-    keywords: ["puzzle", "puzzles", "jigsaw puzzle", "puzzle game", "brain teaser"]
-  },
-  {
-    id: "CARD_GAMES",
-    name: "Card Games",
-    keywords: ["card game", "card games", "playing cards", "card deck", "card set"]
+    keywords: ["game", "games", "puzzle", "puzzles", "board game", "card game", "puzzle game", "board games", "tabletop game", "boardgame", "jigsaw puzzle", "brain teaser", "playing cards", "card deck", "card set"]
   },
   {
     id: "PRETEND_PLAY",
     name: "Pretend Play",
-    keywords: ["pretend play", "imaginative play", "role play", "pretend", "play set"]
+    keywords: ["pretend play", "imaginative play", "role play", "pretend", "play set", "play food", "toy food", "pretend food", "fake food", "play kitchen food", "doll accessory", "doll accessories", "doll clothes", "doll outfit", "doll furniture"]
   },
   {
-    id: "PLAY_FOOD",
-    name: "Play Food",
-    keywords: ["play food", "toy food", "pretend food", "fake food", "play kitchen food"]
-  },
-  {
-    id: "DOLLS_ACCESSORIES",
-    name: "Doll Accessories",
-    keywords: ["doll accessory", "doll accessories", "doll clothes", "doll outfit", "doll furniture"]
-  },
-  {
-    id: "EDUCATIONAL",
+    id: "EDUCATIONAL_TOYS",
     name: "Educational Toys",
-    keywords: ["educational toy", "educational toys", "learning toy", "educational", "learning"]
-  },
-  {
-    id: "STACKING_SORTING",
-    name: "Stacking & Sorting",
-    keywords: ["stacking", "sorting", "stacking toy", "sorting toy", "stacking blocks", "sorting blocks"]
-  },
-  {
-    id: "COUNTING_LEARNING",
-    name: "Counting & Learning",
-    keywords: ["counting", "learning", "counting toy", "learning toy", "numbers", "math toy"]
+    keywords: ["educational toy", "educational toys", "learning toy", "educational", "learning", "stacking", "sorting", "stacking toy", "sorting toy", "stacking blocks", "sorting blocks", "counting", "counting toy", "learning toy", "numbers", "math toy"]
   },
   {
     id: "SENSORY_TOYS",
     name: "Sensory Toys",
-    keywords: ["sensory toy", "sensory toys", "sensory play", "tactile", "stimulation toy", "sensory"]
+    keywords: ["sensory toy", "sensory toys", "sensory play", "tactile", "stimulation toy", "sensory", "fidget", "fidgets", "fidget toy", "fidget spinner", "stress toy", "anxiety toy", "calming toy", "textured toy", "textured toys", "tactile toy", "texture", "sensory texture"]
   },
   {
-    id: "FIDGETS",
-    name: "Fidget Toys / Fidget & Stress Toys",
-    keywords: ["fidget", "fidgets", "fidget toy", "fidget spinner", "stress toy", "anxiety toy", "calming toy", "sensory toy"]
+    id: "BABY_TOYS",
+    name: "Baby Toys",
+    keywords: ["baby toy", "baby toys", "infant toy", "baby play", "teething toy", "baby rattle"]
   },
   {
-    id: "TEXTURED_TOYS",
-    name: "Textured Toys",
-    keywords: ["textured toy", "textured toys", "tactile toy", "texture", "sensory texture"]
+    id: "KIDS_DECOR",
+    name: "Kids Decor",
+    keywords: ["kids decor", "children decor", "nursery decor", "kids room", "children room", "kids wall art", "kids decoration"]
+  },
+  {
+    id: "KIDS_CLOTHING",
+    name: "Kids Clothing",
+    keywords: ["kids clothing", "children clothing", "kids clothes", "children clothes", "kids apparel", "baby clothes", "toddler clothes"]
+  },
+  {
+    id: "PARTY_ACTIVITIES",
+    name: "Party & Activities",
+    keywords: ["party", "party supplies", "party decor", "party activity", "kids party", "children party", "party game", "activity", "activities"]
   },
 
-  /* Wellness & Self-Care - Primary
+  // Craft Supplies - Primary
   {
-    id: "WELLNESS",
-    name: "Wellness & Self-Care",
-    keywords: ["wellness", "self care", "self-care", "wellbeing", "well being", "health", "mindfulness", "relaxation"]
+    id: "CRAFT_SUPPLIES",
+    name: "Craft Supplies",
+    keywords: ["craft", "craft supply", "crafting", "supplies", "craft material", "diy", "handmade supply"]
   },
   {
-    id: "STRESS_RELIEF",
-    name: "Stress Relief",
-    keywords: ["stress relief", "stress", "anxiety", "calm", "relief", "stress management"]
+    id: "YARN_FIBER",
+    name: "Yarn & Fiber",
+    keywords: ["yarn", "wool", "thread", "fiber", "fibre", "knitting yarn", "crochet yarn", "yarn ball", "cotton", "cotton yarn", "dishcloth yarn", "kitchen yarn", "worsted cotton", "dk cotton", "soft cotton", "wool yarn", "natural wool", "handspun wool", "roving wool", "felting wool", "acrylic yarn", "synthetic yarn", "acrylic fiber", "merino", "merino wool", "merino yarn", "merino fiber", "bulky", "bulky yarn", "chunky yarn", "thick yarn", "super bulky", "fingering", "fingering yarn", "sock yarn", "fine yarn", "thin yarn", "polyester", "polyester yarn", "poly yarn"]
   },
   {
-    id: "HANDHELD_TOOLS",
-    name: "Handheld Comfort Tools",
-    keywords: ["handheld", "comfort tool", "handheld tool", "comfort item", "stress relief tool"]
+    id: "FABRIC_TEXTILES",
+    name: "Fabric & Textiles",
+    keywords: ["fabric", "cloth", "textile", "textiles", "material", "fabric yard", "fabric bolt", "fabric decor", "soft furnishings", "home textiles"]
   },
   {
-    id: "WEIGHTED_ITEMS",
-    name: "Weighted Items",
-    keywords: ["weighted", "weighted item", "weighted blanket", "weighted product", "deep pressure"]
+    id: "BEADS_JEWELRY_SUPPLIES",
+    name: "Beads & Jewelry Supplies",
+    keywords: ["bead", "beads", "jewelry making", "beading", "jewelry supply", "bead supply", "jewelry finding", "jewelry component", "beading supply"]
   },
   {
-    id: "RELAXATION",
-    name: "Relaxation",
-    keywords: ["relaxation", "relax", "relaxing", "calm", "peaceful", "rest"]
+    id: "TOOLS_EQUIPMENT",
+    name: "Tools & Equipment",
+    keywords: ["tool", "tools", "equipment", "craft tool", "sewing tool", "knitting tool", "crochet hook", "needle", "stitch", "marker", "stitch marker", "crochet", "hook", "crochet hook", "crochet tool", "knitting", "knitting needle", "knitting tool", "sewing", "sewing supply", "thread", "embroidery thread"]
   },
   {
-    id: "EYE_PILLOWS",
-    name: "Eye Pillows",
-    keywords: ["eye pillow", "eye pillows", "eye mask", "sleep mask", "eye rest"]
+    id: "PATTERNS_TEMPLATES",
+    name: "Patterns & Templates (physical only)",
+    keywords: ["pattern", "patterns", "template", "templates", "sewing pattern", "knitting pattern", "crochet pattern", "craft pattern", "physical pattern", "printed pattern"]
   },
   {
-    id: "HEAT_COLD_PACKS",
-    name: "Heat & Cold Packs",
-    keywords: ["heat pack", "cold pack", "hot pack", "ice pack", "warming", "cooling", "compress", "heat cold"]
+    id: "PAINTS_INKS_DYES",
+    name: "Paints, Inks & Dyes",
+    keywords: ["paint", "stain", "dye", "fabric paint", "fabric dye", "wood stain", "textile dye", "ink", "inks", "paint supply"]
   },
   {
-    id: "NECK_SHOULDER_WRAPS",
-    name: "Neck & Shoulder Wraps",
-    keywords: ["neck wrap", "shoulder wrap", "neck shoulder wrap", "neck support", "shoulder support"]
+    id: "PAPER_STATIONERY",
+    name: "Paper & Stationery",
+    keywords: ["paper", "cardstock", "scrapbook paper", "craft paper", "paper supply", "stationery", "stationary", "notebook", "journal"]
   },
   {
-    id: "MINDFULNESS",
-    name: "Mindfulness",
-    keywords: ["mindfulness", "mindful", "meditation", "meditate", "awareness", "present moment"]
+    id: "MOLDS_BLANKS",
+    name: "Molds & Blanks",
+    keywords: ["mold", "molds", "mould", "moulds", "blank", "blanks", "casting mold", "resin mold", "soap mold"]
   },
   {
-    id: "MEDITATION_CUSHIONS",
-    name: "Meditation Cushions",
-    keywords: ["meditation cushion", "meditation cushions", "zafu", "meditation pillow", "sitting cushion"]
+    id: "KITS_BUNDLES",
+    name: "Kits & Bundles",
+    keywords: ["kit", "kits", "bundle", "bundles", "craft kit", "starter kit", "supply bundle", "craft bundle"]
   },
   {
-    id: "JOURNALS",
-    name: "Journals",
-    keywords: ["journal", "journals", "journaling", "diary", "notebook", "writing journal"]
+    id: "NOTIONS_FINDINGS",
+    name: "Notions & Findings",
+    keywords: ["notion", "notions", "finding", "findings", "sewing notion", "jewelry finding", "hardware", "fastener", "button", "zipper", "snap"]
+  },
+
+  // Digital & Media - Primary
+  {
+    id: "DIGITAL_MEDIA",
+    name: "Digital & Media",
+    keywords: ["digital", "media", "digital product", "download", "downloadable", "file", "files"]
   },
   {
-    id: "TIMER_TOOLS",
-    name: "Mindfulness Timers",
-    keywords: ["timer", "mindfulness timer", "meditation timer", "mindful timer", "timer tool"]
+    id: "CROCHET_PATTERNS",
+    name: "Crochet Patterns",
+    keywords: ["crochet pattern", "crochet patterns", "crochet pdf", "crochet download", "crochet instruction", "crochet guide"]
   },
   {
-    id: "AROMATIC_ITEMS",
-    name: "Aromatic Items",
-    keywords: ["aromatic", "aroma", "scented", "fragrance", "aromatic item", "scent"]
+    id: "KNITTING_PATTERNS",
+    name: "Knitting Patterns",
+    keywords: ["knitting pattern", "knitting patterns", "knit pattern", "knit patterns", "knitting pdf", "knitting download", "knitting instruction", "knitting guide"]
   },
   {
-    id: "SACHETS",
-    name: "Scented Sachets",
-    keywords: ["sachet", "sachets", "scented sachet", "aromatic sachet", "scent bag"]
+    id: "SEWING_PATTERNS",
+    name: "Sewing Patterns",
+    keywords: ["sewing pattern", "sewing patterns", "sew pattern", "sewing pdf", "sewing download", "sewing instruction", "sewing guide", "pattern pdf"]
   },
   {
-    id: "AROMATHERAPY_CANDLES",
-    name: "Aromatic Candles",
-    keywords: ["candle", "candles", "aromatherapy candle", "scented candle", "aromatic candle", "wellness candle"]
+    id: "PRINTABLE_ART",
+    name: "Printable Art",
+    keywords: ["printable art", "printable", "printable download", "digital art", "printable file", "art print", "digital print", "instant download"]
   },
-  */
+  {
+    id: "TEMPLATES_PLANNERS",
+    name: "Templates & Planners",
+    keywords: ["template", "templates", "planner", "planners", "digital template", "digital planner", "printable template", "printable planner", "pdf template", "pdf planner"]
+  },
+  {
+    id: "MUSIC_AUDIO",
+    name: "Music & Audio",
+    keywords: ["music", "audio", "mp3", "song", "album", "audio book", "podcast", "sound", "music download", "audio file"]
+  },
 ];

@@ -20,6 +20,7 @@ import { Submitbutton } from "../SubmitButtons";
 import { useIsClient } from "@/hooks/use-is-client";
 import Spinner from "../spinner";
 import { ProductInfoSection } from "../product/productInformation";
+import { ProductAttributes } from "../product/productAttributes";
 import { ProductPhotosSection } from "../product/productPhotos";
 import { ProcessedImage } from "../product/ImageProcessor";
 import { uploadProcessedImages } from "@/lib/upload-images";
@@ -71,13 +72,23 @@ type ProductFormProps = {
 // This is the type expected by the ProductOptionsSection component
 type DropdownOption = {
   label: string;
-  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
+  values: {
+    name: string;
+    description?: string;
+    price?: number;
+    stock: number;
+  }[]; // Optional description for each value explaining what makes it special
 };
 
 // This is the type defined in the schema
 type SchemaOption = {
   label: string;
-  values: { name: string; description?: string; price?: number; stock: number }[]; // Optional description for each value explaining what makes it special
+  values: {
+    name: string;
+    description?: string;
+    price?: number;
+    stock: number;
+  }[]; // Optional description for each value explaining what makes it special
 };
 
 export function ProductForm({ initialData }: ProductFormProps) {
@@ -526,7 +537,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
       isDigital: initialData?.isDigital || false,
       primaryCategory: initialData?.primaryCategory || "",
       secondaryCategory: initialData?.secondaryCategory,
-      tertiaryCategory: initialData?.tertiaryCategory || null,
       stock: initialData?.stock || 0,
       inStockProcessingTime: initialData?.inStockProcessingTime || 0,
       outStockLeadTime: initialData?.outStockLeadTime || 0,
@@ -558,6 +568,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       smallPartsWarning: initialData?.smallPartsWarning || false,
       chemicalWarnings: initialData?.chemicalWarnings || "",
       careInstructions: initialData?.careInstructions || "",
+      // Attributes field
+      attributes: initialData?.attributes || null,
       // Options field
       options: initialData?.options || null,
       // Sale-related fields
@@ -920,9 +932,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
       label: option.label,
       values: option.values.map((value) => ({
         name: value.name,
-        description: value.description && value.description.trim() !== "" 
-          ? value.description.trim() 
-          : undefined, // Only include description if it's not empty
+        description:
+          value.description && value.description.trim() !== ""
+            ? value.description.trim()
+            : undefined, // Only include description if it's not empty
         price: value.price ? Math.round(value.price * multiplier) : undefined, // Convert to smallest unit
         stock: value.stock || 0,
       })),
@@ -2275,7 +2288,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
       isDigital: false,
       primaryCategory: "",
       secondaryCategory: "",
-      tertiaryCategory: "",
       stock: 0,
       inStockProcessingTime: 0,
       outStockLeadTime: 0,
@@ -2557,7 +2569,36 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   />
                 </div>
               </div>
+            </div>
 
+            {/* Product Attributes Section - Full Width */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  Product Attributes
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Optional Section. Help customers find your product with detailed attributes
+                </p>
+                <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  <span className="text-amber-600 text-base">⚠</span>
+                  <p className="text-sm text-amber-800 font-medium">
+                    Adding size and material improves discoverability by ~30%
+                  </p>
+                </div>
+              </div>
+              <div className="p-6">
+                <ProductAttributes
+                  productName={form.watch("name") || ""}
+                  description={form.watch("description") || description}
+                  primaryCategory={form.watch("primaryCategory")}
+                />
+              </div>
+            </div>
+
+            {/* Grid Layout for Sections - Continued */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Inventory & Options Section - Hidden for digital products */}
               {!form.watch("isDigital") && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

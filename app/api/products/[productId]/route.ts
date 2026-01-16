@@ -68,7 +68,6 @@ export async function GET(
         numberSold: true,
         primaryCategory: true,
         secondaryCategory: true,
-        tertiaryCategory: true,
         tags: true,
         materialTags: true,
         options: true, // Explicitly include options field
@@ -500,7 +499,6 @@ export async function PATCH(
       numberSold: updateData.numberSold,
       primaryCategory: updateData.primaryCategory,
       secondaryCategory: updateData.secondaryCategory,
-      tertiaryCategory: updateData.tertiaryCategory,
       tags: updateData.tags,
       materialTags: updateData.materialTags,
       options: updateData.options, // Add options field
@@ -531,7 +529,7 @@ export async function PATCH(
       shippingNotes: updateData.shippingNotes,
       inStockProcessingTime: updateData.inStockProcessingTime,
       outStockLeadTime: updateData.outStockLeadTime,
-      shippingOptionId: updateData.shippingOptionId,
+      // Note: shippingOptionId is handled separately below to avoid Prisma relation issues
     };
 
     const taxFields = {
@@ -566,6 +564,7 @@ export async function PATCH(
 
     const otherFields = {
       howItsMade: updateData.howItsMade,
+      // Note: attributes is handled separately below to avoid Prisma issues
     };
 
     // Filter out undefined values from each group
@@ -640,6 +639,32 @@ export async function PATCH(
       }
 
       console.log("[API] All chunks updated successfully:", updatedProduct.id);
+
+      // Handle attributes separately (if provided)
+      // This ensures Prisma recognizes the field even if client is slightly out of sync
+      if (updateData.attributes !== undefined) {
+        updatedProduct = await db.product.update({
+          where: { id: productId },
+          data: { attributes: updateData.attributes || null },
+        });
+
+        console.log("[API] Attributes updated successfully");
+      }
+
+      // Handle shippingOptionId separately using relation syntax (if provided)
+      // Prisma requires relation syntax for relation fields in updates
+      if (updateData.shippingOptionId !== undefined) {
+        const shippingOptionUpdate: any = updateData.shippingOptionId
+          ? { connect: { id: updateData.shippingOptionId } }
+          : { disconnect: true };
+
+        updatedProduct = await db.product.update({
+          where: { id: productId },
+          data: { shippingOption: shippingOptionUpdate },
+        });
+
+        console.log("[API] Shipping option updated successfully");
+      }
     } catch (dbError) {
       // Log database update errors
       console.error("[API] Database update error:", dbError);

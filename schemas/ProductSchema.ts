@@ -11,8 +11,12 @@ import {
 // HTML limit is higher (10000) to accommodate rich formatting, while text is limited to 5000
 const descriptionJsonSchema = z
   .object({
-    html: z.string().max(10000, "Description HTML must be 10000 characters or less"), // Higher limit for HTML to accommodate tags
-    text: z.string().max(5000, "Description text must be 5000 characters or less"), // Plain text limit
+    html: z
+      .string()
+      .max(10000, "Description HTML must be 10000 characters or less"), // Higher limit for HTML to accommodate tags
+    text: z
+      .string()
+      .max(5000, "Description text must be 5000 characters or less"), // Plain text limit
   })
   .nullable()
   .refine(
@@ -21,24 +25,24 @@ const descriptionJsonSchema = z
       // Check if either html or text has actual content (not just empty HTML tags)
       const htmlContent = val.html?.trim() || "";
       const textContent = val.text?.trim() || "";
-      
+
       // Strip HTML tags from html to check for actual content
       const htmlPlainText = htmlContent.replace(/<[^>]*>/g, "").trim();
       const textPlainText = textContent.replace(/<[^>]*>/g, "").trim();
-      
+
       // Check if content is empty or only contains empty HTML tags
-      const isEmptyHtml = 
+      const isEmptyHtml =
         htmlPlainText === "" ||
         htmlContent === "<p><br></p>" ||
         htmlContent === "<p></p>" ||
         htmlContent === "<br>" ||
         htmlContent === "<br/>";
-      
-      const isEmptyText = 
+
+      const isEmptyText =
         textPlainText === "" ||
         textContent === "<p><br></p>" ||
         textContent === "<p></p>";
-      
+
       // Description is valid if either html or text has content
       return !isEmptyHtml || !isEmptyText;
     },
@@ -84,97 +88,103 @@ const baseProductSchema = z.object({
   name: z.string().min(1, {
     message: "Please enter your product's name, required.",
   }),
-  sku: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ), // Optional SKU - will be auto-generated if not provided
-  shortDescription: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ), // Short description with bullet points for product overview (optional)
+  sku: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ), // Optional SKU - will be auto-generated if not provided
+  shortDescription: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ), // Short description with bullet points for product overview (optional)
   shortDescriptionBullets: z
     .array(z.string())
     .max(5, "Maximum 5 bullet points allowed")
     .default([]), // Array of bullet points for short description
   description: descriptionJsonSchema,
-  options: z
-    .preprocess(
-      // Filter out incomplete options before validation
-      // This handles cases where users add option groups but don't fill them out
-      (val) => {
-        // If null, undefined, or not an array, return null
-        if (!val || !Array.isArray(val)) {
-          return null;
+  options: z.preprocess(
+    // Filter out incomplete options before validation
+    // This handles cases where users add option groups but don't fill them out
+    (val) => {
+      // If null, undefined, or not an array, return null
+      if (!val || !Array.isArray(val)) {
+        return null;
+      }
+      // Filter out incomplete options:
+      // - Options with empty labels
+      // - Options with empty values arrays
+      // - Options where all values have empty names
+      const filtered = val.filter((option: any) => {
+        if (!option || typeof option !== "object") return false;
+        // Must have a non-empty label
+        if (
+          !option.label ||
+          typeof option.label !== "string" ||
+          option.label.trim() === ""
+        ) {
+          return false;
         }
-        // Filter out incomplete options:
-        // - Options with empty labels
-        // - Options with empty values arrays
-        // - Options where all values have empty names
-        const filtered = val.filter((option: any) => {
-          if (!option || typeof option !== "object") return false;
-          // Must have a non-empty label
-          if (!option.label || typeof option.label !== "string" || option.label.trim() === "") {
-            return false;
-          }
-          // Must have a values array with at least one value that has a non-empty name
-          if (!Array.isArray(option.values) || option.values.length === 0) {
-            return false;
-          }
-          // At least one value must have a non-empty name
-          const hasValidValue = option.values.some(
-            (value: any) =>
-              value &&
-              typeof value === "object" &&
-              value.name &&
-              typeof value.name === "string" &&
-              value.name.trim() !== ""
-          );
-          return hasValidValue;
-        });
-        // If no valid options remain, return null instead of empty array
-        return filtered.length > 0 ? filtered : null;
-      },
-      z
-        .array(
-          z.object({
-            label: z.string().min(1, "Option label is required"),
-            values: z
-              .array(
-                z.object({
-                  name: z.string().min(1, "Option value name is required"),
-                  description: z
-                    .string()
-                    .max(500, "Description must be 500 characters or less")
-                    .optional()
-                    .transform((val) =>
-                      val && typeof val === "string" && val.trim() !== "" ? val.trim() : undefined
-                    ), // Optional description explaining what makes this value special
-                  price: z.number().min(0, "Price must be non-negative").default(0), // Optional additional price in cents - defaults to 0 (base price only) if not provided
-                  stock: z
-                    .number()
-                    .int()
-                    .min(0, "Stock must be non-negative")
-                    .default(0),
-                })
-              )
-              .min(1, "At least one option value is required"),
-          })
-        )
-        .nullable()
-        .optional()
-    ),
+        // Must have a values array with at least one value that has a non-empty name
+        if (!Array.isArray(option.values) || option.values.length === 0) {
+          return false;
+        }
+        // At least one value must have a non-empty name
+        const hasValidValue = option.values.some(
+          (value: any) =>
+            value &&
+            typeof value === "object" &&
+            value.name &&
+            typeof value.name === "string" &&
+            value.name.trim() !== ""
+        );
+        return hasValidValue;
+      });
+      // If no valid options remain, return null instead of empty array
+      return filtered.length > 0 ? filtered : null;
+    },
+    z
+      .array(
+        z.object({
+          label: z.string().min(1, "Option label is required"),
+          values: z
+            .array(
+              z.object({
+                name: z.string().min(1, "Option value name is required"),
+                description: z
+                  .string()
+                  .max(500, "Description must be 500 characters or less")
+                  .optional()
+                  .transform((val) =>
+                    val && typeof val === "string" && val.trim() !== ""
+                      ? val.trim()
+                      : undefined
+                  ), // Optional description explaining what makes this value special
+                price: z
+                  .number()
+                  .min(0, "Price must be non-negative")
+                  .default(0), // Optional additional price in cents - defaults to 0 (base price only) if not provided
+                stock: z
+                  .number()
+                  .int()
+                  .min(0, "Stock must be non-negative")
+                  .default(0),
+              })
+            )
+            .min(1, "At least one option value is required"),
+        })
+      )
+      .nullable()
+      .optional()
+  ),
   price: createMonetarySchema("price"),
   currency: z
     .enum(SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]], {
@@ -227,15 +237,41 @@ const baseProductSchema = z.object({
   numberSold: z.number().int().optional().default(0),
   primaryCategory: z.string().min(1, "Primary category is required"),
   secondaryCategory: z.string().min(1, "Secondary category is required"),
-  tertiaryCategory: z
-    .string()
-    .nullable()
-    .optional()
-    .transform((val) =>
-      val && typeof val === "string" && val.trim() !== "" ? val : null
-    ),
   tags: z.array(z.string()).optional().default([]),
   materialTags: z.array(z.string()).optional().default([]),
+  attributes: z
+    .object({
+      material: z.array(z.string()).optional(),
+      size: z.array(z.string()).optional(),
+      color: z.array(z.string()).optional(),
+      technique: z.array(z.string()).optional(),
+      room: z.array(z.string()).optional(),
+      recipient: z.array(z.string()).optional(),
+      occasion: z.array(z.string()).optional(),
+      style: z.array(z.string()).optional(),
+      scent: z.array(z.string()).optional(),
+      weight: z.array(z.string()).optional(),
+      theme: z.array(z.string()).optional(),
+      aesthetic: z.array(z.string()).optional(),
+      useCase: z.array(z.string()).optional(),
+    })
+    .optional()
+    .nullable()
+    .transform((val) => {
+      // Remove empty arrays and return null if all attributes are empty
+      if (!val) return null;
+      const cleaned: any = {};
+      Object.keys(val).forEach((key) => {
+        const arr = val[key as keyof typeof val];
+        if (arr && Array.isArray(arr) && arr.length > 0) {
+          // Normalize values to lowercase
+          cleaned[key] = arr
+            .map((v) => v.toLowerCase().trim())
+            .filter((v) => v.length > 0);
+        }
+      });
+      return Object.keys(cleaned).length > 0 ? cleaned : null;
+    }),
   onSale: z.boolean().default(false),
   discount: z.number().int().optional(),
   saleStartDate: z
@@ -331,28 +367,26 @@ const baseProductSchema = z.object({
   itemDimensionUnit: z
     .enum(SUPPORTED_DIMENSION_UNITS.map((u) => u.code) as [string, ...string[]])
     .default("in"),
-  shippingNotes: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  shippingNotes: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
   inStockProcessingTime: z.number().optional(),
   outStockLeadTime: z.number().optional(),
-  howItsMade: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  howItsMade: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
   productDrop: z.boolean().default(false),
   dropDate: z
     .date()
@@ -380,148 +414,136 @@ const baseProductSchema = z.object({
       "HANDLING",
     ])
     .default("PHYSICAL_GOODS"),
-  taxCode: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  taxCode: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
   taxExempt: z.boolean().default(false),
   shippingOptionId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
   needsInventoryReview: z.boolean().default(false), // Flag for products with variations that need stock review
   // SEO fields - handle null values from database (convert to undefined before validation)
-  metaTitle: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(60, "Meta title must be 60 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  metaDescription: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(160, "Meta description must be 160 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  metaTitle: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(60, "Meta title must be 60 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  metaDescription: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(160, "Meta description must be 160 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
   keywords: z.array(z.string()).default([]),
-  ogTitle: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(60, "Social media title must be 60 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  ogDescription: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(160, "Social media description must be 160 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  ogImage: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .url("Please enter a valid URL")
-        .optional()
-        .or(z.literal(""))
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  ogTitle: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(60, "Social media title must be 60 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  ogDescription: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(160, "Social media description must be 160 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  ogImage: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .url("Please enter a valid URL")
+      .optional()
+      .or(z.literal(""))
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
 
   // GPSR (General Product Safety Regulation) compliance fields - handle null values from database
-  safetyWarnings: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(1000, "Safety warnings must be 1000 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  materialsComposition: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(1000, "Materials composition must be 1000 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  safeUseInstructions: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(1000, "Safe use instructions must be 1000 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  ageRestriction: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(200, "Age restriction must be 200 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  safetyWarnings: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(1000, "Safety warnings must be 1000 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  materialsComposition: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(1000, "Materials composition must be 1000 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  safeUseInstructions: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(1000, "Safe use instructions must be 1000 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  ageRestriction: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(200, "Age restriction must be 200 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
   chokingHazard: z.boolean().default(false),
   smallPartsWarning: z.boolean().default(false),
-  chemicalWarnings: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(500, "Chemical warnings must be 500 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
-  careInstructions: z
-    .preprocess(
-      (val) => (val === null ? undefined : val), // Convert null to undefined before validation
-      z
-        .string()
-        .max(1000, "Care instructions must be 1000 characters or less")
-        .optional()
-        .transform((val) =>
-          val && typeof val === "string" && val.trim() !== "" ? val : undefined
-        )
-    ),
+  chemicalWarnings: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(500, "Chemical warnings must be 500 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
+  careInstructions: z.preprocess(
+    (val) => (val === null ? undefined : val), // Convert null to undefined before validation
+    z
+      .string()
+      .max(1000, "Care instructions must be 1000 characters or less")
+      .optional()
+      .transform((val) =>
+        val && typeof val === "string" && val.trim() !== "" ? val : undefined
+      )
+  ),
 });
 
 // Draft schema - allows incomplete products (only name is required)
@@ -1221,24 +1243,24 @@ export const ProductSchema = baseProductSchema
     } else {
       const htmlContent = data.description.html?.trim() || "";
       const textContent = data.description.text?.trim() || "";
-      
+
       // Strip HTML tags to check for actual content
       const htmlPlainText = htmlContent.replace(/<[^>]*>/g, "").trim();
       const textPlainText = textContent.replace(/<[^>]*>/g, "").trim();
-      
+
       // Check if content is empty or only contains empty HTML tags
-      const isEmptyHtml = 
+      const isEmptyHtml =
         htmlPlainText === "" ||
         htmlContent === "<p><br></p>" ||
         htmlContent === "<p></p>" ||
         htmlContent === "<br>" ||
         htmlContent === "<br/>";
-      
-      const isEmptyText = 
+
+      const isEmptyText =
         textPlainText === "" ||
         textContent === "<p><br></p>" ||
         textContent === "<p></p>";
-      
+
       // Description is invalid if both html and text are empty
       if (isEmptyHtml && isEmptyText) {
         ctx.addIssue({
@@ -1258,7 +1280,12 @@ export const ProductSchema = baseProductSchema
     }
 
     // Allow HIDDEN/DRAFT products with variations to have 0 stock (for inventory review)
-    if (!data.isDigital && (!data.stock || data.stock < 1) && data.status !== "HIDDEN" && data.status !== "DRAFT") {
+    if (
+      !data.isDigital &&
+      (!data.stock || data.stock < 1) &&
+      data.status !== "HIDDEN" &&
+      data.status !== "DRAFT"
+    ) {
       ctx.addIssue({
         code: "custom",
         message:
