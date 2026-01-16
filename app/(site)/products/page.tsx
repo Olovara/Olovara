@@ -29,7 +29,6 @@ export async function generateMetadata({
 }: ProductsPageProps): Promise<Metadata> {
   const categories = searchParams.category?.split(",") || [];
   const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
-  const tertiaryCategories = searchParams.tertiaryCategory?.split(",") || [];
   const priceRange = searchParams.priceRange?.split(",").map(Number) || [
     0, 1000,
   ];
@@ -44,8 +43,6 @@ export async function generateMetadata({
     canonicalParams.set("category", categories.join(","));
   if (secondaryCategories.length > 0)
     canonicalParams.set("secondaryCategory", secondaryCategories.join(","));
-  if (tertiaryCategories.length > 0)
-    canonicalParams.set("tertiaryCategory", tertiaryCategories.join(","));
   if (priceRange[0] !== 0 || priceRange[1] !== 1000)
     canonicalParams.set("priceRange", priceRange.join(","));
   if (sortBy !== "relevant") canonicalParams.set("sortBy", sortBy);
@@ -111,7 +108,6 @@ interface ProductsPageProps {
   searchParams: {
     category?: string;
     secondaryCategory?: string;
-    tertiaryCategory?: string;
     priceRange?: string;
     sortBy?: string;
     page?: string;
@@ -139,7 +135,6 @@ export default async function ProductsPage({
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
   const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
-  const tertiaryCategories = searchParams.tertiaryCategory?.split(",") || [];
   const priceRange = searchParams.priceRange?.split(",").map(Number) || [
     0, 1000,
   ];
@@ -182,15 +177,6 @@ export default async function ProductsPage({
             {
               secondaryCategory: {
                 in: secondaryCategories,
-              },
-            },
-          ]
-        : []),
-      ...(tertiaryCategories.length > 0
-        ? [
-            {
-              tertiaryCategory: {
-                in: tertiaryCategories,
               },
             },
           ]
@@ -245,7 +231,6 @@ export default async function ProductsPage({
         const hasFilters =
           categories.length > 0 ||
           secondaryCategories.length > 0 ||
-          tertiaryCategories.length > 0 ||
           values.length > 0 ||
           followedSellers ||
           searchParams.q ||
@@ -294,7 +279,6 @@ export default async function ProductsPage({
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
-      tertiaryCategory: true,
       status: true,
       isDigital: true,
       onSale: true,
@@ -410,7 +394,6 @@ export default async function ProductsPage({
                 product={{
                   ...product,
                   secondaryCategory: product.secondaryCategory || undefined,
-                  tertiaryCategory: product.tertiaryCategory || undefined,
                   onSale: product.onSale,
                   saleStartDate: product.saleStartDate,
                   saleEndDate: product.saleEndDate,

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Categories, getTertiaryCategories } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import { ProductFilters } from "@/components/ProductFilters";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -197,7 +197,6 @@ export default async function PrimaryCategoryPage({
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
-      tertiaryCategory: true,
       status: true,
       isDigital: true,
       onSale: true,
@@ -285,38 +284,16 @@ export default async function PrimaryCategoryPage({
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
               <ul className="space-y-2">
-                {subcategories.map((subcategory) => {
-                  const tertiaryCategories = getTertiaryCategories(subcategory.id);
-                  return (
-                    <li key={subcategory.id}>
-                      <a
-                        href={`/categories/${params.primaryCategoryId}/${subcategory.id}`}
-                        className="text-gray-600 hover:text-primary font-medium"
-                      >
-                        {subcategory.name}
-                      </a>
-                      {tertiaryCategories.length > 0 && (
-                        <ul className="ml-4 mt-1 space-y-1">
-                          {tertiaryCategories.map((tertiaryId) => {
-                            const tertiaryCategory = ("children" in subcategory && subcategory.children)
-                              ? subcategory.children.find(t => t.id === tertiaryId)
-                              : undefined;
-                            return tertiaryCategory ? (
-                              <li key={tertiaryId}>
-                                <a
-                                  href={`/categories/${params.primaryCategoryId}/${subcategory.id}/${tertiaryId.toLowerCase()}`}
-                                  className="text-sm text-gray-500 hover:text-primary"
-                                >
-                                  {tertiaryCategory.name}
-                                </a>
-                              </li>
-                            ) : null;
-                          })}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
+                {subcategories.map((subcategory) => (
+                  <li key={subcategory.id}>
+                    <a
+                      href={`/categories/${params.primaryCategoryId}/${subcategory.id}`}
+                      className="text-gray-600 hover:text-primary font-medium"
+                    >
+                      {subcategory.name}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
             <ProductFilters />
@@ -343,7 +320,6 @@ export default async function PrimaryCategoryPage({
                 product={{
                   ...product,
                   secondaryCategory: product.secondaryCategory || undefined,
-                  tertiaryCategory: product.tertiaryCategory || undefined,
                   onSale: product.onSale,
                   saleStartDate: product.saleStartDate,
                   saleEndDate: product.saleEndDate,

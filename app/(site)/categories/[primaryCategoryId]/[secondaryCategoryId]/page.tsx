@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { Categories, getTertiaryCategories } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductFilters } from "@/components/ProductFilters";
@@ -205,7 +205,6 @@ export default async function SecondaryCategoryPage({
       images: true,
       primaryCategory: true,
       secondaryCategory: true,
-      tertiaryCategory: true,
       status: true,
       isDigital: true,
       onSale: true,
@@ -303,33 +302,6 @@ export default async function SecondaryCategoryPage({
         {/* Desktop Filters Sidebar */}
         <div className="hidden lg:block w-1/5">
           <div className="sticky top-4">
-            {/* Tertiary Categories Sidebar */}
-            {(() => {
-              const tertiaryCategories = getTertiaryCategories(secondaryCategoryId);
-              return tertiaryCategories.length > 0 ? (
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
-                  <ul className="space-y-2">
-                    {tertiaryCategories.map((tertiaryId) => {
-                      const tertiaryCategory = ("children" in secondaryCategory && secondaryCategory.children)
-                        ? secondaryCategory.children.find(t => t.id === tertiaryId)
-                        : undefined;
-                      return tertiaryCategory ? (
-                        <li key={tertiaryId}>
-                          <a
-                            href={`/categories/${primaryCategoryId}/${secondaryCategoryId}/${tertiaryId.toLowerCase()}`}
-                            className="text-gray-600 hover:text-primary"
-                          >
-                            {tertiaryCategory.name}
-                          </a>
-                        </li>
-                      ) : null;
-                    })}
-                  </ul>
-                </div>
-              ) : null;
-            })()}
-
             <ProductFilters />
           </div>
         </div>
@@ -354,7 +326,6 @@ export default async function SecondaryCategoryPage({
                 product={{
                   ...product,
                   secondaryCategory: product.secondaryCategory || undefined,
-                  tertiaryCategory: product.tertiaryCategory || undefined,
                   onSale: product.onSale,
                   saleStartDate: product.saleStartDate,
                   saleEndDate: product.saleEndDate,

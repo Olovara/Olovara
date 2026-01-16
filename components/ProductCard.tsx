@@ -33,7 +33,6 @@ interface SimplifiedProduct {
   images: string[];
   primaryCategory: string;
   secondaryCategory?: string;
-  tertiaryCategory?: string;
   stock: number;
   dropDate: Date | null;
   dropTime: string | null;
@@ -260,24 +259,8 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       })()
     : null;
 
-  const tertiaryLabel = product.tertiaryCategory
-    ? (() => {
-        for (const primary of Categories) {
-          for (const secondary of primary.children) {
-            if ("children" in secondary && secondary.children) {
-              const tertiary = secondary.children.find(
-                ({ id }) => id === product.tertiaryCategory
-              );
-              if (tertiary) return tertiary.name;
-            }
-          }
-        }
-        return null;
-      })()
-    : null;
-
   // Build category display string
-  const categoryDisplay = [tertiaryLabel, secondaryLabel, primaryLabel]
+  const categoryDisplay = [secondaryLabel, primaryLabel]
     .filter(Boolean)
     .join(" • ");
 

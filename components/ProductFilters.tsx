@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Categories, PrimaryCategoryID, SecondaryCategoryID, TertiaryCategoryID, getSecondaryCategories, getTertiaryCategories, TertiaryCategoryNode } from "@/data/categories";
+import { Categories, PrimaryCategoryID, SecondaryCategoryID, getSecondaryCategories } from "@/data/categories";
 import { shopValues } from "@/data/shop-values";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -32,7 +32,7 @@ export function ProductFilters() {
     const categoryPageMatch = pathname.match(/^\/categories\/([^\/]+)(?:\/([^\/]+))?(?:\/([^\/]+))?$/);
 
     if (categoryPageMatch) {
-      const [, primaryCategorySlug, secondaryCategorySlug, tertiaryCategorySlug] = categoryPageMatch;
+      const [, primaryCategorySlug, secondaryCategorySlug] = categoryPageMatch;
 
       // Find the actual category objects by matching slugs (case-insensitive)
       const primaryCategory = Categories.find(
@@ -40,18 +40,12 @@ export function ProductFilters() {
       );
 
       let secondaryCategory: any = null;
-      let tertiaryCategory: any = null;
 
       if (primaryCategory && secondaryCategorySlug) {
         secondaryCategory = primaryCategory.children.find(
           (cat) => cat.id.toLowerCase() === secondaryCategorySlug.toLowerCase()
         );
 
-        if (secondaryCategory && tertiaryCategorySlug && "children" in secondaryCategory && secondaryCategory.children) {
-          tertiaryCategory = secondaryCategory.children.find(
-            (cat: TertiaryCategoryNode) => cat.id.toLowerCase() === tertiaryCategorySlug.toLowerCase()
-          );
-        }
       }
 
       // Auto-expand relevant categories
@@ -67,10 +61,7 @@ export function ProductFilters() {
       const params = new URLSearchParams(searchParams.toString());
       let categoriesToSet: string[] = [];
 
-      if (tertiaryCategory) {
-        // On tertiary category page - only check that specific tertiary category (use actual ID)
-        categoriesToSet = [tertiaryCategory.id];
-      } else if (secondaryCategory) {
+      if (secondaryCategory) {
         // On secondary category page - only check that specific secondary category (use actual ID)
         categoriesToSet = [secondaryCategory.id];
       } else if (primaryCategory) {
@@ -79,12 +70,6 @@ export function ProductFilters() {
         // Add all secondary categories
         primaryCategory.children.forEach((secondary) => {
           categoriesToSet.push(secondary.id);
-          // Add all tertiary categories if they exist
-          if ("children" in secondary && secondary.children) {
-            secondary.children.forEach((tertiary) => {
-              categoriesToSet.push(tertiary.id);
-            });
-          }
         });
       }
 
@@ -223,7 +208,7 @@ export function ProductFilters() {
     setOpenSecondaryCategories(newOpenSecondaryCategories);
   };
 
-  const handleCategoryChange = (categoryId: string, level: 'primary' | 'secondary' | 'tertiary') => {
+  const handleCategoryChange = (categoryId: string, level: 'primary' | 'secondary') => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (level === 'primary') {
@@ -248,20 +233,6 @@ export function ProductFilters() {
       }
     } else if (level === 'secondary') {
       // For secondary categories, just toggle the specific category
-      const newCategories = new Set(selectedCategories);
-      if (newCategories.has(categoryId)) {
-        newCategories.delete(categoryId);
-      } else {
-        newCategories.add(categoryId);
-      }
-
-      if (newCategories.size === 0) {
-        params.delete("category");
-      } else {
-        params.set("category", Array.from(newCategories).join(","));
-      }
-    } else if (level === 'tertiary') {
-      // For tertiary categories, just toggle the specific category
       const newCategories = new Set(selectedCategories);
       if (newCategories.has(categoryId)) {
         newCategories.delete(categoryId);
@@ -341,68 +312,23 @@ export function ProductFilters() {
               </div>
               <CollapsibleContent className="pl-6">
                 <div className="space-y-0 divide-y divide-border mt-4">
-                  {primaryCategory.children.map((subcategory) => {
-                    const tertiaryCategories = getTertiaryCategories(subcategory.id);
-                    return (
-                      <div key={subcategory.id} className="py-2">
-                        <Collapsible
-                          open={openSecondaryCategories.has(subcategory.id)}
-                          onOpenChange={() => handleSecondaryCategoryToggle(subcategory.id)}
-                          className="py-1"
+                  {primaryCategory.children.map((subcategory) => (
+                    <div key={subcategory.id} className="py-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={subcategory.id}
+                          checked={selectedCategories.includes(subcategory.id)}
+                          onCheckedChange={() => handleCategoryChange(subcategory.id, 'secondary')}
+                        />
+                        <label
+                          htmlFor={subcategory.id}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
                         >
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={subcategory.id}
-                              checked={selectedCategories.includes(subcategory.id)}
-                              onCheckedChange={() => handleCategoryChange(subcategory.id, 'secondary')}
-                            />
-                            <label
-                              htmlFor={subcategory.id}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
-                            >
-                              {subcategory.name}
-                            </label>
-                            {tertiaryCategories.length > 0 && (
-                              <CollapsibleTrigger className="ml-2">
-                                {openSecondaryCategories.has(subcategory.id) ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </CollapsibleTrigger>
-                            )}
-                          </div>
-                          {tertiaryCategories.length > 0 && (
-                            <CollapsibleContent className="pl-6">
-                              <div className="space-y-2 mt-2 pt-2 border-t border-border ml-4">
-                                {tertiaryCategories.map((tertiaryId) => {
-                                  // Find tertiary category in tree
-                                  const tertiaryCategory = ("children" in subcategory && subcategory.children)
-                                    ? subcategory.children.find(t => t.id === tertiaryId)
-                                    : undefined;
-                                  return tertiaryCategory ? (
-                                    <div key={tertiaryId} className="flex items-center space-x-2">
-                                      <Checkbox
-                                        id={tertiaryId}
-                                        checked={selectedCategories.includes(tertiaryId)}
-                                        onCheckedChange={() => handleCategoryChange(tertiaryId, 'tertiary')}
-                                      />
-                                      <label
-                                        htmlFor={tertiaryId}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                      >
-                                        {tertiaryCategory.name}
-                                      </label>
-                                    </div>
-                                  ) : null;
-                                })}
-                              </div>
-                            </CollapsibleContent>
-                          )}
-                        </Collapsible>
+                          {subcategory.name}
+                        </label>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </CollapsibleContent>
             </Collapsible>

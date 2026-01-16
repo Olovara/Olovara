@@ -1,4 +1,4 @@
-import { Categories, getTertiaryCategories } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -33,37 +33,16 @@ export default function CategoriesPage() {
               <h2 className="text-2xl font-semibold mb-4">{category.name}</h2>
               
               <div className="space-y-2">
-                {category.children.map((subcategory) => {
-                  const tertiaryCategories = getTertiaryCategories(subcategory.id);
-                  return (
-                    <div key={subcategory.id} className="ml-2">
-                      <Link
-                        href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}`}
-                        className="block text-primary hover:text-primary/80 transition-colors font-medium"
-                      >
-                        {subcategory.name}
-                      </Link>
-                      {tertiaryCategories.length > 0 && (
-                        <div className="ml-4 mt-1 space-y-1">
-                          {tertiaryCategories.map((tertiaryId) => {
-                            const tertiaryCategory = ("children" in subcategory && subcategory.children) 
-                              ? subcategory.children.find(t => t.id === tertiaryId)
-                              : undefined;
-                            return tertiaryCategory ? (
-                              <Link
-                                key={tertiaryId}
-                                href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}/${tertiaryId.toLowerCase()}`}
-                                className="block text-sm text-gray-600 hover:text-primary transition-colors"
-                              >
-                                {tertiaryCategory.name}
-                              </Link>
-                            ) : null;
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {category.children.map((subcategory) => (
+                  <div key={subcategory.id} className="ml-2">
+                    <Link
+                      href={`/categories/${category.id.toLowerCase()}/${subcategory.id.toLowerCase()}`}
+                      className="block text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      {subcategory.name}
+                    </Link>
+                  </div>
+                ))}
               </div>
 
               <Link

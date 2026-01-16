@@ -249,7 +249,6 @@ export const ProductInfoSection = ({
       // Wait for secondary options to update, then set secondary
       setTimeout(() => {
         setValue("secondaryCategory", chain.secondary!.id);
-
       }, 50);
     } else {
       // Clear secondary if no secondary category
@@ -277,7 +276,6 @@ export const ProductInfoSection = ({
           : [];
       })()
     : [];
-
 
   // Add tag
   const addTag = () => {
@@ -371,18 +369,19 @@ export const ProductInfoSection = ({
         render={({ fieldState }) => {
           // Only show error if status is not DRAFT
           const shouldShowError = currentStatus !== "DRAFT" && fieldState.error;
-          
+
           // Calculate character count (strip HTML tags to get plain text length)
           // Ensure description is treated as a string to avoid TypeScript errors
-          const descriptionStr = typeof description === "string" ? description : "";
+          const descriptionStr =
+            typeof description === "string" ? description : "";
           const plainTextLength = descriptionStr
             ? descriptionStr.replace(/<[^>]*>/g, "").length
             : 0;
-          
+
           const maxLength = 5000;
           const isNearLimit = plainTextLength > maxLength * 0.9; // 90% of limit
           const isOverLimit = plainTextLength > maxLength;
-          
+
           return (
             <FormItem>
               <FormLabel>Description</FormLabel>
@@ -406,11 +405,12 @@ export const ProductInfoSection = ({
                         isOverLimit
                           ? "text-red-500 font-medium"
                           : isNearLimit
-                          ? "text-amber-500"
-                          : "text-muted-foreground"
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
                       }`}
                     >
-                      {plainTextLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                      {plainTextLength.toLocaleString()} /{" "}
+                      {maxLength.toLocaleString()} characters
                     </span>
                   </div>
                 </div>
@@ -467,11 +467,7 @@ export const ProductInfoSection = ({
           </p>
           <div className="space-y-1 w-full min-w-0 max-w-full">
             {categorySuggestions.map((chain, index) => {
-              const chainText = [
-                chain.primary.name,
-                chain.secondary?.name,
-                chain.tertiary?.name,
-              ]
+              const chainText = [chain.primary.name, chain.secondary?.name]
                 .filter(Boolean)
                 .join(" > ");
               return (
@@ -535,11 +531,7 @@ export const ProductInfoSection = ({
           <FormItem className="flex flex-col">
             <FormLabel>Secondary Categories</FormLabel>
             <Select
-              onValueChange={(value) => {
-                field.onChange(value);
-                // Clear tertiary category when secondary changes
-                setValue("tertiaryCategory", "");
-              }}
+              onValueChange={field.onChange}
               value={field.value || ""}
               disabled={!selectedPrimaryCategory}
             >
@@ -570,7 +562,6 @@ export const ProductInfoSection = ({
           </FormItem>
         )}
       />
-
 
       {/* Product Status */}
       <div className="space-y-4">

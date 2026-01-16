@@ -280,16 +280,12 @@ function normalizeRow(
     categories?.primaryCategory || normalized.primaryCategory;
   let secondaryCategory =
     categories?.secondaryCategory || normalized.secondaryCategory;
-  let tertiaryCategory =
-    categories?.tertiaryCategory || normalized.tertiaryCategory;
 
   // Normalize category IDs to uppercase
   if (primaryCategory)
     primaryCategory = String(primaryCategory).toUpperCase().trim();
   if (secondaryCategory)
     secondaryCategory = String(secondaryCategory).toUpperCase().trim();
-  if (tertiaryCategory)
-    tertiaryCategory = String(tertiaryCategory).toUpperCase().trim();
 
   // Validate primary category exists
   const primaryCategoryObj = Categories.find((c) => c.id === primaryCategory);
@@ -1099,7 +1095,6 @@ export async function processBulkImportBatch(
     sourcePlatform,
     primaryCategory,
     secondaryCategory,
-    tertiaryCategory,
     freeShipping,
     shippingOptionId,
     handlingFee,
@@ -1109,7 +1104,6 @@ export async function processBulkImportBatch(
   const categories = {
     primaryCategory,
     secondaryCategory,
-    tertiaryCategory,
   };
 
   // Prepare shipping object for normalization

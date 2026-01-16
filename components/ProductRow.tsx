@@ -44,7 +44,6 @@ type ProductWithSeller = {
   saleEndTime: string | null;
   primaryCategory: string;
   secondaryCategory: string | null;
-  tertiaryCategory: string | null;
   tags: string[];
   materialTags: string[];
   options: any;
@@ -95,7 +94,6 @@ const PRODUCT_SELECT_FIELDS = {
   saleEndTime: true,
   primaryCategory: true,
   secondaryCategory: true,
-  tertiaryCategory: true,
   tags: true,
   materialTags: true,
   options: true,
@@ -271,7 +269,6 @@ export async function LoadRows({ category }: iAppProps) {
               images: product.images,
               primaryCategory: product.primaryCategory || "",
               secondaryCategory: product.secondaryCategory || undefined,
-              tertiaryCategory: product.tertiaryCategory || undefined,
               stock: product.stock || 1,
               dropDate: product.dropDate || null,
               dropTime: product.dropTime || null,

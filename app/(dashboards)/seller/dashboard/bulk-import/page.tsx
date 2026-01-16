@@ -607,10 +607,7 @@ export default function BulkImportPage() {
                   </Label>
                   <Select
                     value={secondaryCategory}
-                    onValueChange={(value) => {
-                      setSecondaryCategory(value);
-                      setTertiaryCategory(""); // Reset tertiary when secondary changes
-                    }}
+                    onValueChange={setSecondaryCategory}
                   >
                     <SelectTrigger id="secondary-category">
                       <SelectValue placeholder="Select secondary category..." />

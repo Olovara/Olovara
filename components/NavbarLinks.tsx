@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Categories, getTertiaryCategories } from "@/data/categories";
+import { Categories } from "@/data/categories";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FONTS } from "@/lib/fonts";
@@ -118,35 +118,16 @@ export function NavbarLinks() {
 
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                    {secondaryCategories.map((secondary) => {
-                      const tertiaryCategories = ("children" in secondary && secondary.children) ? secondary.children : [];
-
-                      return (
-                        <div key={secondary.id} className="space-y-3">
-                          <Link
-                            href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
-                            className="block font-semibold text-lg text-gray-900 hover:text-primary transition-colors"
-                          >
-                            {secondary.name.toUpperCase()}
-                          </Link>
-
-                          {/* Tertiary Categories */}
-                          {tertiaryCategories.length > 0 && (
-                            <div className="space-y-2">
-                              {tertiaryCategories.map((tertiary) => (
-                                <Link
-                                  key={tertiary.id}
-                                  href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}/${tertiary.id.toLowerCase()}`}
-                                  className="block text-sm text-gray-600 hover:text-primary transition-colors"
-                                >
-                                  {tertiary.name.toUpperCase()}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {secondaryCategories.map((secondary) => (
+                      <div key={secondary.id} className="space-y-3">
+                        <Link
+                          href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
+                          className="block font-semibold text-lg text-gray-900 hover:text-primary transition-colors"
+                        >
+                          {secondary.name.toUpperCase()}
+                        </Link>
+                      </div>
+                    ))}
                   </div>
                 );
               })()}

@@ -20,14 +20,13 @@ interface MobileMenuProps {
   } | null;
 }
 
-type ViewState = 'main' | 'secondary' | 'tertiary';
+type ViewState = 'main' | 'secondary';
 
 export function MobileMenu({ userInfo }: MobileMenuProps) {
   const location = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewState, setViewState] = useState<ViewState>('main');
   const [selectedPrimary, setSelectedPrimary] = useState<string | null>(null);
-  const [selectedSecondary, setSelectedSecondary] = useState<string | null>(null);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -40,30 +39,14 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
     setViewState('secondary');
   };
 
-  const handleSecondaryClick = (secondaryId: string) => {
-    setSelectedSecondary(secondaryId);
-    setViewState('tertiary');
-  };
-
   const handleBack = () => {
-    if (viewState === 'tertiary') {
-      setViewState('secondary');
-      setSelectedSecondary(null);
-    } else if (viewState === 'secondary') {
+    if (viewState === 'secondary') {
       setViewState('main');
       setSelectedPrimary(null);
     }
   };
 
   const getCurrentPrimary = () => Categories.find(c => c.id === selectedPrimary);
-  const getCurrentSecondary = () => {
-    if (!selectedSecondary) return null;
-    for (const primary of Categories) {
-      const secondary = primary.children.find(s => s.id === selectedSecondary);
-      if (secondary) return secondary;
-    }
-    return null;
-  };
 
   const renderMainView = () => (
     <div className="space-y-4">
@@ -99,22 +82,15 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
         </div>
         
         <div className="space-y-2">
-          {secondaryCategories.map((secondary) => {
-            const tertiaryCategories = ("children" in secondary && secondary.children) ? secondary.children : [];
-            
-            return (
-              <button
-                key={secondary.id}
-                onClick={() => handleSecondaryClick(secondary.id)}
-                className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 transition-colors rounded-md"
-              >
-                <span className="font-medium text-gray-900">{secondary.name}</span>
-                {tertiaryCategories.length > 0 && (
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-            );
-          })}
+          {secondaryCategories.map((secondary) => (
+            <Link
+              key={secondary.id}
+              href={`/categories/${primary?.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
+              className="block w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 transition-colors rounded-md"
+            >
+              <span className="font-medium text-gray-900">{secondary.name}</span>
+            </Link>
+          ))}
         </div>
 
         {/* Shop All Primary Category */}
@@ -130,48 +106,6 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
     );
   };
 
-  const renderTertiaryView = () => {
-    const primary = getCurrentPrimary();
-    const secondary = getCurrentSecondary();
-    const tertiaryCategories = (secondary && "children" in secondary && secondary.children) ? secondary.children : [];
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <button onClick={handleBack} className="flex items-center gap-1 hover:text-gray-900">
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <ChevronRight className="w-3 h-3" />
-          <span className="font-medium text-gray-900">{primary?.name}</span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="font-medium text-gray-900">{secondary?.name}</span>
-        </div>
-        
-        <div className="space-y-2">
-          {tertiaryCategories.map((tertiary) => (
-            <Link
-              key={tertiary.id}
-              href={`/categories/${primary?.id.toLowerCase()}/${secondary?.id.toLowerCase()}/${tertiary.id.toLowerCase()}`}
-              className="block p-3 text-left hover:bg-gray-50 transition-colors rounded-md"
-            >
-              <span className="font-medium text-gray-900">{tertiary.name}</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Shop All Secondary Category */}
-        <div className="pt-4 border-t border-gray-200">
-          <Link
-            href={`/categories/${primary?.id.toLowerCase()}/${secondary?.id.toLowerCase()}`}
-            className="block p-3 text-left hover:bg-gray-50 transition-colors rounded-md"
-          >
-            <span className="font-medium text-primary">Shop all {secondary?.name}</span>
-          </Link>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <Sheet>
@@ -258,7 +192,6 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
             {/* Progressive Category Navigation */}
             {viewState === 'main' && renderMainView()}
             {viewState === 'secondary' && renderSecondaryView()}
-            {viewState === 'tertiary' && renderTertiaryView()}
           </div>
 
           {/* Footer */}

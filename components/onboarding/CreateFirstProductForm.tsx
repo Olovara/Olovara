@@ -476,7 +476,6 @@ export default function CreateFirstProductForm() {
       numberSold: 0,
       primaryCategory: "",
       secondaryCategory: "",
-      tertiaryCategory: "",
       tags: [],
       materialTags: [],
       itemWeight: undefined,
