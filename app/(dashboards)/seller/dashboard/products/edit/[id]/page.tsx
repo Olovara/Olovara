@@ -115,6 +115,7 @@ export default function EditProductPage() {
           howItsMade: data.howItsMade || "",
           tags: data.tags || [],
           materialTags: data.materialTags || [],
+          attributes: data.attributes || null, // Pass attributes directly
           options: data.options || null, // Pass options directly without transformation
           dropDate: data.dropDate ? new Date(data.dropDate) : null,
           // Sale-related fields - ensure they're properly transformed

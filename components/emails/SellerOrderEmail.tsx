@@ -25,6 +25,7 @@ interface SellerOrderEmailProps {
       country: string;
     };
     buyerName?: string;
+    orderInstructions?: string; // Order instructions from buyer
   };
 }
 
@@ -79,6 +80,15 @@ export default function SellerOrderEmail({ orderDetails }: SellerOrderEmailProps
                 </Text>
                 <Text className="text-gray-600">
                   {orderDetails.shippingAddress.country}
+                </Text>
+              </Section>
+            )}
+
+            {orderDetails.orderInstructions && orderDetails.orderInstructions.trim() && (
+              <Section className="mt-6">
+                <Text className="text-lg font-medium">Order Instructions / Personalization:</Text>
+                <Text className="text-gray-600 whitespace-pre-wrap bg-purple-50 p-4 rounded border border-purple-200">
+                  {orderDetails.orderInstructions}
                 </Text>
               </Section>
             )}

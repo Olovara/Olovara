@@ -457,6 +457,26 @@ export async function POST(req: Request) {
             session.metadata.finalOrderAmount || "0"
           );
 
+          // Retrieve order instructions from database (stored separately from Stripe)
+          // Use payment intent ID if available, otherwise use session ID
+          let orderInstructionsText: string | null = null;
+          const paymentIntentId = session.payment_intent 
+            ? (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id)
+            : session.id;
+          
+          try {
+            const instructionsRecord = await db.orderInstructions.findUnique({
+              where: { paymentIntentId },
+            });
+            if (instructionsRecord) {
+              orderInstructionsText = instructionsRecord.instructions;
+              console.log(`✅ Retrieved order instructions for session: ${session.id}`);
+            }
+          } catch (instructionsError) {
+            console.error("❌ Error retrieving order instructions:", instructionsError);
+            // Continue without instructions - not critical
+          }
+
           const preliminaryOrderData = {
             userId: session.metadata.userId || "",
             encryptedBuyerEmail,
@@ -514,6 +534,7 @@ export async function POST(req: Request) {
               : null,
             taxType: session.total_details?.amount_tax ? "VAT" : null, // Default to VAT, adjust based on jurisdiction
             batchNumber: product.batchNumber || null, // Include product batch number for traceability
+            orderInstructions: orderInstructionsText, // Order instructions from buyer (retrieved from database)
           };
 
           // Create order in database
@@ -531,6 +552,19 @@ export async function POST(req: Request) {
             console.log(
               `💰 Platform fee stored: ${preliminaryOrderData.platformFee} cents (${(preliminaryOrderData.platformFee / 100).toFixed(2)} ${session.currency?.toUpperCase() || "USD"})`
             );
+            
+            // Clean up temporary order instructions record after saving to order
+            if (orderInstructionsText) {
+              try {
+                await db.orderInstructions.delete({
+                  where: { paymentIntentId },
+                });
+                console.log(`✅ Cleaned up temporary order instructions for session: ${session.id}`);
+              } catch (cleanupError) {
+                console.error("❌ Error cleaning up order instructions:", cleanupError);
+                // Non-critical error, continue
+              }
+            }
           } catch (orderError) {
             console.error("❌ CRITICAL: Failed to create order in database");
             console.error(
@@ -1239,6 +1273,7 @@ export async function POST(req: Request) {
                             country: decryptedShippingAddress.country || "",
                           }
                         : undefined,
+                      orderInstructions: order.orderInstructions || undefined,
                     },
                   }),
                 });
@@ -1720,6 +1755,21 @@ export async function POST(req: Request) {
             paymentIntent.metadata.finalOrderAmount || "0"
           );
 
+          // Retrieve order instructions from database (stored separately from Stripe)
+          let orderInstructionsText: string | null = null;
+          try {
+            const instructionsRecord = await db.orderInstructions.findUnique({
+              where: { paymentIntentId: paymentIntent.id },
+            });
+            if (instructionsRecord) {
+              orderInstructionsText = instructionsRecord.instructions;
+              console.log(`✅ Retrieved order instructions for payment intent: ${paymentIntent.id}`);
+            }
+          } catch (instructionsError) {
+            console.error("❌ Error retrieving order instructions:", instructionsError);
+            // Continue without instructions - not critical
+          }
+
           const preliminaryOrderData = {
             userId:
               paymentIntent.metadata.userId &&
@@ -1779,12 +1829,26 @@ export async function POST(req: Request) {
             taxRate: null,
             taxType: null,
             batchNumber: product.batchNumber || null,
+            orderInstructions: orderInstructionsText, // Order instructions from buyer (retrieved from database)
           };
 
           let order;
           try {
             order = await db.order.create({ data: preliminaryOrderData });
             console.log(`✅ Created preliminary order: ${order.id}`);
+            
+            // Clean up temporary order instructions record after saving to order
+            if (orderInstructionsText) {
+              try {
+                await db.orderInstructions.delete({
+                  where: { paymentIntentId: paymentIntent.id },
+                });
+                console.log(`✅ Cleaned up temporary order instructions for payment intent: ${paymentIntent.id}`);
+              } catch (cleanupError) {
+                console.error("❌ Error cleaning up order instructions:", cleanupError);
+                // Non-critical error, continue
+              }
+            }
           } catch (orderError) {
             // Log order creation failure
             logError({
@@ -2135,6 +2199,7 @@ export async function POST(req: Request) {
                             country: decryptedShippingAddress.country || "",
                           }
                         : undefined,
+                      orderInstructions: order.orderInstructions || undefined,
                     },
                   }),
                 });

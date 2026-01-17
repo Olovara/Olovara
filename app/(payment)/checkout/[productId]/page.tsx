@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -65,6 +67,7 @@ export default function CheckoutPage() {
     country: userCountry,
   });
   const [sameAsShipping, setSameAsShipping] = useState(true);
+  const [orderInstructions, setOrderInstructions] = useState<string>("");
   
   // Embedded payment form state
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -87,12 +90,16 @@ export default function CheckoutPage() {
     }
   }, [locationPreferences?.countryCode]);
 
-  // Get quantity from URL params
+  // Get quantity and order instructions from URL params
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlQuantity = urlParams.get('quantity');
     if (urlQuantity) {
       setQuantity(parseInt(urlQuantity));
+    }
+    const urlInstructions = urlParams.get('instructions');
+    if (urlInstructions) {
+      setOrderInstructions(decodeURIComponent(urlInstructions));
     }
   }, []);
 
@@ -344,6 +351,7 @@ export default function CheckoutPage() {
           billingAddress: !product.isDigital ? (sameAsShipping ? shippingAddress : billingAddress) : undefined,
           abandonedCartSessionId: sessionId, // Include abandoned cart session ID
           recaptchaToken: process.env.NODE_ENV === 'development' ? 'dev-token' : token,
+          orderInstructions: orderInstructions.trim() || undefined, // Include order instructions if provided
         }),
       });
 
@@ -790,6 +798,27 @@ export default function CheckoutPage() {
                   onError={handleRecaptchaError}
                   trigger={shouldTriggerRecaptcha}
                 />
+              </div>
+
+              {/* Order Instructions Section */}
+              <div className="p-6 border-b border-gray-200">
+                <Label htmlFor="checkout-order-instructions" className="text-lg font-semibold text-gray-900 mb-2 block">
+                  Order Instructions / Personalization (Optional)
+                </Label>
+                <Textarea
+                  id="checkout-order-instructions"
+                  placeholder="Add any special instructions or personalization requests for the seller..."
+                  value={orderInstructions}
+                  onChange={(e) => setOrderInstructions(e.target.value)}
+                  className="min-h-[100px] resize-none"
+                  maxLength={1000}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {orderInstructions.length}/1000 characters
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  These instructions will be visible to the seller when processing your order.
+                </p>
               </div>
 
               {/* Payment Section */}

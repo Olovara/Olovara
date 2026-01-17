@@ -9,6 +9,7 @@ interface ProductOption {
   label: string;
   values: {
     name: string;
+    description?: string; // Optional description for the option value
     price?: number;
     stock: number;
   }[];
@@ -187,6 +188,30 @@ export default function ProductOptionSelector({
           </div>
         </div>
       ))}
+
+      {/* Display selected option descriptions */}
+      {Object.keys(selectedOptions).length > 0 && (
+        <div className="pt-4 space-y-3">
+          {options.map((option) => {
+            const selectedValue = selectedOptions[option.label];
+            if (!selectedValue || selectedValue === "Standard") return null;
+            
+            const optionValue = option.values.find(v => v.name === selectedValue);
+            if (!optionValue?.description) return null;
+            
+            return (
+              <div key={option.label} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="text-sm font-medium text-purple-900 mb-1">
+                  {option.label}: {optionValue.name}
+                </div>
+                <div className="text-sm text-purple-700">
+                  {optionValue.description}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Display total price if options are selected */}
       {Object.keys(selectedOptions).length > 0 && (

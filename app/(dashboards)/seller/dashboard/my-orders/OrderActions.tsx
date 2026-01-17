@@ -54,6 +54,7 @@ interface Order {
   buyerName?: string;
   shippingAddress?: any | null;
   batchNumber?: string | null;
+  orderInstructions?: string | null; // Order instructions from buyer
 }
 
 export function OrderActions({
@@ -192,6 +193,7 @@ export function OrderActions({
           paymentStatus: order.paymentStatus,
           shippingAddress: order.shippingAddress,
           batchNumber: order.batchNumber,
+          orderInstructions: (order as any).orderInstructions || null,
           createdAt: order.createdAt,
         }} 
         isOpen={isModalOpen} 

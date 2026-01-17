@@ -5,6 +5,8 @@ import QuantitySelector from "@/components/QuantitySelector";
 import CheckoutButton from "@/components/CheckoutButton";
 import ReportButton from "@/components/ReportButton";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { Heart } from "lucide-react";
 import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
@@ -42,6 +44,7 @@ export default function ProductActions({
 }: ProductActionsProps) {
   const [quantity, setQuantity] = useState(1);
   const [isDropActive, setIsDropActive] = useState(false);
+  const [orderInstructions, setOrderInstructions] = useState<string>("");
 
   // Use the sync system for wishlist state
   const isInWishlist = useIsInWishlist(productId);
@@ -184,7 +187,26 @@ export default function ProductActions({
             sellerId={sellerId}
             onSale={onSale}
             discount={discount}
+            orderInstructions={orderInstructions}
           />
+          
+          {/* Order Instructions/Personalization Text Box */}
+          <div className="space-y-2">
+            <Label htmlFor="orderInstructions" className="text-sm font-medium text-gray-700">
+              Order Instructions / Personalization (Optional)
+            </Label>
+            <Textarea
+              id="orderInstructions"
+              placeholder="Add any special instructions or personalization requests for the seller..."
+              value={orderInstructions}
+              onChange={(e) => setOrderInstructions(e.target.value)}
+              className="min-h-[80px] resize-none"
+              maxLength={1000}
+            />
+            <p className="text-xs text-gray-500">
+              {orderInstructions.length}/1000 characters
+            </p>
+          </div>
         </>
       ) : (
         <Button disabled className="w-full">

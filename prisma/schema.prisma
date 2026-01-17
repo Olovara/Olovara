@@ -680,6 +680,9 @@ model Order {
   
   // Product traceability
   batchNumber              String? // Product batch number for traceability
+  
+  // Order instructions/personalization from buyer
+  orderInstructions        String? // Optional instructions or personalization notes from the buyer
 }
 
 model HandmadeGuidelines {
@@ -1251,6 +1254,17 @@ model CustomOrderPayment {
   @@index([submissionId])
   @@index([stripeSessionId])
   @@index([status])
+}
+
+// Temporary storage for order instructions (before order is created)
+model OrderInstructions {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  paymentIntentId   String   @unique // Stripe payment intent ID (unique constraint creates index automatically)
+  instructions      String   // Order instructions from buyer
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime // Auto-cleanup after 24 hours
+
+  @@index([expiresAt]) // Index for cleanup queries
 }
 
 // Newsletter Subscription Model

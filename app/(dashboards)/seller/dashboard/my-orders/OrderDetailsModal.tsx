@@ -43,6 +43,7 @@ interface OrderDetailsModalProps {
     paymentStatus: string;
     shippingAddress?: any | null;
     batchNumber?: string | null;
+    orderInstructions?: string | null; // Order instructions from buyer
     createdAt: Date;
   };
   isOpen: boolean;
@@ -236,6 +237,21 @@ export function OrderDetailsModal({
                     <div>
                       <p className="text-sm text-muted-foreground">Shipping Address</p>
                       <p className="font-medium">{formatShippingAddress(order.shippingAddress)}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
+              
+              {/* Order Instructions (if provided) */}
+              {order.orderInstructions && order.orderInstructions.trim() && (
+                <>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">Order Instructions / Personalization</h3>
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <p className="text-sm text-purple-900 whitespace-pre-wrap">
+                        {order.orderInstructions}
+                      </p>
                     </div>
                   </div>
                   <Separator />

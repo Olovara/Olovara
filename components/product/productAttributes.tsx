@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import * as React from "react";
 import { useFormContext } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -48,9 +49,6 @@ export function ProductAttributes({
   const { control, watch, setValue } =
     useFormContext<z.infer<typeof ProductSchema>>();
 
-  // Watch current attributes
-  const currentAttributes = watch("attributes") || {};
-
   // State for suggestions
   const [suggestions, setSuggestions] = useState<AttributeSuggestions>({});
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -82,59 +80,8 @@ export function ProductAttributes({
   // Get attribute types from dictionary
   const attributeTypes = getAttributeTypes();
 
-  // Handle adding a suggested attribute
-  const handleAddSuggestion = (
-    attributeType: keyof AttributeSuggestions,
-    value: string
-  ) => {
-    const normalized = normalizeAttributeValue(value);
-    const current = currentAttributes[attributeType] || [];
-
-    // Check if already exists
-    if (current.map(normalizeAttributeValue).includes(normalized)) {
-      return;
-    }
-
-    // Add to current attributes
-    const updated = {
-      ...currentAttributes,
-      [attributeType]: [...current, normalized],
-    };
-
-    setValue("attributes", updated, { shouldValidate: true });
-  };
-
-  // Handle removing an attribute
-  const handleRemoveAttribute = (
-    attributeType: keyof AttributeSuggestions,
-    value: string
-  ) => {
-    const current = currentAttributes[attributeType] || [];
-    const normalized = normalizeAttributeValue(value);
-
-    const updated = {
-      ...currentAttributes,
-      [attributeType]: current.filter(
-        (v: string) => normalizeAttributeValue(v) !== normalized
-      ),
-    };
-
-    // Remove attribute type if empty
-    if (updated[attributeType].length === 0) {
-      delete updated[attributeType];
-    }
-
-    setValue("attributes", updated, { shouldValidate: true });
-  };
-
   // Check if we have any suggestions
   const hasSuggestions = Object.keys(suggestions).length > 0;
-
-  // Check if we have any current attributes
-  const hasAttributes = Object.keys(currentAttributes).some(
-    (key) =>
-      currentAttributes[key as keyof typeof currentAttributes]?.length > 0
-  );
 
   // Filter attributes based on search query
   const searchResults = useMemo(() => {
@@ -162,13 +109,106 @@ export function ProductAttributes({
 
   const hasSearchResults = Object.keys(searchResults).length > 0;
 
+  // Watch attributes to ensure we have the latest value
+  const watchedAttributes = watch("attributes");
+  
+  // Debug: log attributes when they're loaded (only once to avoid spam)
+  useEffect(() => {
+    if (watchedAttributes && typeof watchedAttributes === 'object' && !Array.isArray(watchedAttributes) && watchedAttributes !== null) {
+      console.log("[ProductAttributes] Attributes loaded from form:", watchedAttributes);
+    }
+  }, []); // Only run once on mount
+
   return (
     <FormField
       control={control}
       name="attributes"
-      render={({ field }) => (
-        <FormItem>
-          <div className="space-y-4">
+      render={({ field }) => {
+        // Use field.value as the source of truth, fallback to watched value
+        // This ensures we get the value even if field.value hasn't been set yet
+        const fieldValue = field.value || watchedAttributes;
+        const currentAttributes = (
+          fieldValue && 
+          typeof fieldValue === 'object' && 
+          !Array.isArray(fieldValue) &&
+          fieldValue !== null
+            ? fieldValue 
+            : {}
+        ) as Record<string, string[]>;
+        
+        // Debug: log current attributes to help diagnose the issue
+        // Only log when we actually have attributes to avoid console spam
+        if (Object.keys(currentAttributes).length > 0) {
+          console.log("[ProductAttributes] Current attributes for display:", currentAttributes);
+          // Log each attribute type and its values for debugging
+          Object.entries(currentAttributes).forEach(([type, values]) => {
+            if (Array.isArray(values) && values.length > 0) {
+              console.log(`[ProductAttributes] ${type}:`, values);
+            }
+          });
+        } else if (watchedAttributes && typeof watchedAttributes === 'object') {
+          console.log("[ProductAttributes] Watched attributes exist but currentAttributes is empty. field.value:", field.value, "watchedAttributes:", watchedAttributes);
+        }
+        
+        // Check if we have any current attributes
+        const hasAttributes = Object.keys(currentAttributes).some(
+          (key) => currentAttributes[key]?.length > 0
+        );
+        
+        // Sync function that updates both setValue and field.onChange
+        const updateAttributes = (updated: Record<string, string[]>) => {
+          setValue("attributes", updated, { shouldValidate: true });
+          field.onChange(updated); // Also update the field directly
+        };
+
+        // Handle adding a suggested attribute
+        const handleAddSuggestion = (
+          attributeType: keyof AttributeSuggestions,
+          value: string
+        ) => {
+          const normalized = normalizeAttributeValue(value);
+          const current = currentAttributes[attributeType] || [];
+
+          // Check if already exists
+          if (current.map(normalizeAttributeValue).includes(normalized)) {
+            return;
+          }
+
+          // Add to current attributes
+          const updated = {
+            ...currentAttributes,
+            [attributeType]: [...current, normalized],
+          };
+
+          updateAttributes(updated);
+        };
+
+        // Handle removing an attribute
+        const handleRemoveAttribute = (
+          attributeType: keyof AttributeSuggestions,
+          value: string
+        ) => {
+          const current = currentAttributes[attributeType] || [];
+          const normalized = normalizeAttributeValue(value);
+
+          const updated = {
+            ...currentAttributes,
+            [attributeType]: current.filter(
+              (v: string) => normalizeAttributeValue(v) !== normalized
+            ),
+          };
+
+          // Remove attribute type if empty
+          if (updated[attributeType].length === 0) {
+            delete updated[attributeType];
+          }
+
+          updateAttributes(updated);
+        };
+
+        return (
+          <FormItem>
+            <div className="space-y-4">
               {/* Search Section */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">
@@ -420,14 +460,15 @@ export function ProductAttributes({
                   })}
                 </div>
               </div>
+            </div>
 
             <FormControl>
               <input type="hidden" {...field} />
             </FormControl>
             <FormMessage />
-          </div>
-        </FormItem>
-      )}
+          </FormItem>
+        );
+      }}
     />
   );
 }

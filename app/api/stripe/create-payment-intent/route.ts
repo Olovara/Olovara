@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       billingAddress,
       recaptchaToken,
       abandonedCartSessionId,
+      orderInstructions, // Optional order instructions from buyer
     } = body;
 
     if (!productId || !quantity) {
@@ -572,6 +573,7 @@ export async function POST(req: Request) {
           billingAddress?.name ||
           session?.user?.name ||
           "",
+        // Note: Order instructions are stored in database, not in Stripe metadata
         // Discount information
         discountCodeId: discountCodeId || "",
         discountCodeUsed: discountCodeUsed || "",
@@ -604,6 +606,27 @@ export async function POST(req: Request) {
     console.log(
       `✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`
     );
+
+    // Store order instructions in database (if provided)
+    // This is separate from Stripe since it's not needed for payment processing
+    if (orderInstructions && orderInstructions.trim()) {
+      try {
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24); // Expire after 24 hours
+        
+        await db.orderInstructions.create({
+          data: {
+            paymentIntentId: paymentIntent.id,
+            instructions: orderInstructions.trim(),
+            expiresAt,
+          },
+        });
+        console.log(`✅ Order instructions stored for payment intent: ${paymentIntent.id}`);
+      } catch (instructionsError) {
+        // Log error but don't fail the payment intent creation
+        console.error("❌ Error storing order instructions:", instructionsError);
+      }
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

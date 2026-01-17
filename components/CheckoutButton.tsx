@@ -18,6 +18,7 @@ interface CheckoutButtonProps {
   sellerId?: string;
   onSale?: boolean;
   discount?: number | null;
+  orderInstructions?: string; // Optional order instructions from buyer
 }
 
 const CheckoutButton = ({
@@ -30,6 +31,7 @@ const CheckoutButton = ({
   sellerId,
   onSale = false,
   discount = null,
+  orderInstructions = "",
 }: CheckoutButtonProps) => {
   const [loading, setLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -72,7 +74,14 @@ const CheckoutButton = ({
       }
 
       // If no auth required, proceed to checkout
-      router.push(`/checkout/${productId}?quantity=${quantity}`);
+      // Pass order instructions via URL params (encode to handle special characters)
+      const params = new URLSearchParams({
+        quantity: quantity.toString(),
+      });
+      if (orderInstructions && orderInstructions.trim()) {
+        params.append("instructions", orderInstructions.trim());
+      }
+      router.push(`/checkout/${productId}?${params.toString()}`);
     } catch (error) {
       console.error("Checkout error:", error);
       toast.error("Something went wrong");

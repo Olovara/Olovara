@@ -70,6 +70,7 @@ export async function GET(
         secondaryCategory: true,
         tags: true,
         materialTags: true,
+        attributes: true, // Include attributes field
         options: true, // Explicitly include options field
         onSale: true,
         freeShipping: true,

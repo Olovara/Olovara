@@ -134,6 +134,8 @@ export async function getBuyerOrders(userId: string) {
         completedAt: true,
         createdAt: true,
         updatedAt: true,
+        orderInstructions: true, // Include order instructions
+        batchNumber: true, // Include batch number
         product: {
           select: {
             name: true,

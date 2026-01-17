@@ -919,28 +919,75 @@ export function ProductForm({ initialData }: ProductFormProps) {
   }, []);
 
   // Convert dropdown options back to schema format
+  // Return type ensures price is always a number (never undefined) to match form schema
   const convertDropdownOptionsToSchema = (
     dropdownOptions: DropdownOption[],
     currency: string = "USD"
-  ): SchemaOption[] => {
+  ): Array<{
+    label: string;
+    values: Array<{
+      name: string;
+      price: number; // Always a number, never undefined
+      stock: number;
+      description?: string;
+    }>;
+  }> => {
     // Get currency decimals to properly convert from currency units to smallest unit
     const currencyInfo = SUPPORTED_CURRENCIES.find((c) => c.code === currency);
     const decimals = currencyInfo?.decimals || 2;
     const multiplier = Math.pow(10, decimals);
 
-    return dropdownOptions.map((option) => ({
+    // Filter out invalid options (empty labels or values with empty names)
+    const validOptions = dropdownOptions
+      .filter((option) => option.label && option.label.trim() !== "")
+      .map((option) => ({
+        label: option.label.trim(),
+        values: option.values.filter(
+          (value) => value.name && value.name.trim() !== ""
+        ),
+      }))
+      .filter((option) => option.values.length > 0); // Remove options with no valid values
+
+    return validOptions.map((option) => ({
       label: option.label,
       values: option.values.map((value) => ({
-        name: value.name,
+        name: value.name.trim(),
         description:
           value.description && value.description.trim() !== ""
             ? value.description.trim()
             : undefined, // Only include description if it's not empty
-        price: value.price ? Math.round(value.price * multiplier) : undefined, // Convert to smallest unit
+        price: value.price ? Math.round(value.price * multiplier) : 0, // Convert to smallest unit, default to 0 (always a number)
         stock: value.stock || 0,
       })),
     }));
   };
+
+  // Sync dropdownOptions to form's options field whenever dropdownOptions changes
+  // This ensures form validation always has the latest option data
+  useEffect(() => {
+    const currency = form.getValues("currency") || "USD";
+    // Filter out invalid options before converting
+    const validDropdownOptions = dropdownOptions.filter(
+      (option) =>
+        option.label &&
+        option.label.trim() !== "" &&
+        option.values.some((value) => value.name && value.name.trim() !== "")
+    );
+
+    const schemaOptions =
+      validDropdownOptions.length > 0
+        ? convertDropdownOptionsToSchema(validDropdownOptions, currency)
+        : null;
+
+    // Only update if the value has actually changed to avoid infinite loops
+    const currentOptions = form.getValues("options");
+    const optionsChanged =
+      JSON.stringify(currentOptions) !== JSON.stringify(schemaOptions);
+
+    if (optionsChanged) {
+      form.setValue("options", schemaOptions, { shouldValidate: false });
+    }
+  }, [dropdownOptions, form]);
 
   const onSubmit = async (data: ProductFormValues) => {
     console.log("[DEBUG] onSubmit function called!");
