@@ -33,6 +33,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { uploadProcessedImages } from "@/lib/upload-images";
+import { logClientError } from "@/lib/client-error-logger";
 
 // Import the same components as the main product form
 import { ProductInfoSection } from "@/components/product/productInformation";
@@ -687,6 +688,24 @@ export default function CreateFirstProductForm() {
           toast.dismiss(uploadToastId);
         } catch (uploadError) {
           console.error("Error uploading images:", uploadError);
+          
+          // Log upload failure to server error database
+          logClientError({
+            code: "ONBOARDING_IMAGE_UPLOAD_FAILED",
+            message: uploadError instanceof Error ? uploadError.message : "Image upload failed during onboarding",
+            metadata: {
+              error: uploadError instanceof Error
+                ? {
+                    name: uploadError.name,
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                  }
+                : String(uploadError),
+              imagesCount: newProcessedImages.length,
+              route: typeof window !== "undefined" ? window.location.pathname : "/onboarding",
+            },
+          });
+          
           toast.dismiss();
           toast.error("Failed to upload images. Please try again.");
           setIsSubmitting(false);

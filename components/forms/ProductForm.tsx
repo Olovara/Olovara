@@ -45,6 +45,7 @@ import { logQaStep } from "@/lib/qa-logger";
 import { getQaSessionId } from "@/lib/qa-session";
 import { PRODUCT_STEPS, QA_EVENTS } from "@/lib/qa-steps";
 import { useSession } from "next-auth/react";
+import { logClientError } from "@/lib/client-error-logger";
 import Image from "next/image";
 import { usePermissions } from "@/components/providers/PermissionProvider";
 import { PERMISSIONS } from "@/data/roles-and-permissions";
@@ -1696,6 +1697,32 @@ export function ProductForm({ initialData }: ProductFormProps) {
             timestamp: new Date().toISOString(),
           });
 
+          // Log upload failure to server error database
+          logClientError({
+            code: "PRODUCT_IMAGE_UPLOAD_FAILED",
+            message: uploadError instanceof Error ? uploadError.message : "Image upload failed",
+            metadata: {
+              error: uploadError instanceof Error
+                ? {
+                    name: uploadError.name,
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                  }
+                : String(uploadError),
+              imagesCount: newProcessedImages.length,
+              fileNames: newProcessedImages.map(
+                (img) => img.originalName || "unknown"
+              ),
+              fileSizes: newProcessedImages.map((img) =>
+                img.file ? `${(img.file.size / 1024).toFixed(2)}KB` : "unknown"
+              ),
+              existingImagesCount: validExistingImageUrls.length,
+              productId: initialData?.id || "new",
+              isDraft,
+              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+            },
+          });
+
           // QA logging: Log image upload failure
           if (userId) {
             logQaStep({
@@ -1831,6 +1858,26 @@ export function ProductForm({ initialData }: ProductFormProps) {
             productId: initialData?.id || "new",
             timestamp: new Date().toISOString(),
           });
+
+          // Log upload failure to server error database
+          logClientError({
+            code: "PRODUCT_FILE_UPLOAD_FAILED",
+            message: uploadError instanceof Error ? uploadError.message : "Product file upload failed",
+            metadata: {
+              error: uploadError instanceof Error
+                ? {
+                    name: uploadError.name,
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                  }
+                : String(uploadError),
+              fileName: processedFile?.originalName,
+              fileSize: processedFile?.file?.size,
+              productId: initialData?.id || "new",
+              route: typeof window !== "undefined" ? window.location.pathname : "/sell/new",
+            },
+          });
+
           toast.dismiss(fileUploadToastId);
           toast.error("Failed to upload product file. Please try again.");
           setIsLoading(false);
