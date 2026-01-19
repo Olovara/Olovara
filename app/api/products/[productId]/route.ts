@@ -1032,6 +1032,58 @@ export async function DELETE(
       );
     }
 
+    // Delete all ProductInteraction records associated with this product
+    // This is required because ProductInteraction has a required relation to Product
+    // If this fails, we cannot delete the product, so we must throw the error
+    try {
+      // First, check if there are any ProductInteraction records
+      const interactionCount = await db.productInteraction.count({
+        where: { productId: productId },
+      });
+      
+      if (interactionCount > 0) {
+        const deletedInteractions = await db.productInteraction.deleteMany({
+          where: { productId: productId },
+        });
+        console.log(
+          `[DELETE PRODUCT] Successfully deleted ${deletedInteractions.count} ProductInteraction record(s)`
+        );
+        
+        // Verify deletion succeeded
+        if (deletedInteractions.count !== interactionCount) {
+          console.warn(
+            `[DELETE PRODUCT] Warning: Expected to delete ${interactionCount} interactions but deleted ${deletedInteractions.count}`
+          );
+        }
+      } else {
+        console.log(`[DELETE PRODUCT] No ProductInteraction records found for product ${productId}`);
+      }
+    } catch (interactionDeleteError) {
+      // If ProductInteraction deletion fails, we cannot proceed with product deletion
+      // Log the error and throw it so the deletion fails early with a clear message
+      const errorMessage =
+        interactionDeleteError instanceof Error
+          ? interactionDeleteError.message
+          : "Failed to delete ProductInteraction records";
+      
+      logError({
+        code: "PRODUCT_DELETE_INTERACTIONS_FAILED",
+        userId: session.user.id,
+        route: `/api/products/${productId}`,
+        method: "DELETE",
+        error: interactionDeleteError,
+        metadata: {
+          productId,
+          productName: product.name,
+          note: "Failed to delete ProductInteraction records - product deletion aborted",
+        },
+      });
+      
+      throw new Error(
+        `Failed to delete ProductInteraction records: ${errorMessage}. Cannot delete product until interactions are removed.`
+      );
+    }
+
     // Delete the product from database
     try {
       await db.product.delete({

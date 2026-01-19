@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "@/lib/db";
 import authConfig from "@/auth.config";
 import { logError } from "@/lib/error-logger";
+import { generateReferralCode } from "@/lib/utils";
 import type { Adapter } from "@auth/core/adapters";
 
 // Custom adapter that maps OAuth 'name' field to 'username'
@@ -31,6 +32,56 @@ const customAdapter: Adapter = {
       // Create normalized username
       const normalizedUsername = username.trim().toLowerCase();
       
+      // Generate a unique referral code (required for user creation)
+      // Use retry logic to ensure uniqueness, similar to registration flow
+      let referralCode: string | null = null;
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10; // Maximum attempts to generate unique code
+      
+      while (!isUnique && attempts < maxAttempts) {
+        referralCode = generateReferralCode();
+        
+        try {
+          // Check if the referral code already exists
+          const existingUser = await db.user.findUnique({
+            where: { referralCode },
+            select: { id: true }
+          });
+          
+          if (!existingUser) {
+            isUnique = true;
+          } else {
+            attempts++;
+            console.log(`[OAUTH] Referral code ${referralCode} already exists, trying again...`);
+          }
+        } catch (error) {
+          // If there's an error checking, assume it's not unique and try again
+          attempts++;
+          console.log(`[OAUTH] Error checking referral code ${referralCode}, trying again...`);
+        }
+      }
+      
+      if (!isUnique) {
+        // If we couldn't generate a unique code, log error and throw
+        const error = new Error(`Failed to generate unique referral code after ${maxAttempts} attempts`);
+        logError({
+          code: "OAUTH_REFERRAL_CODE_GENERATION_FAILED",
+          route: "auth.ts/customAdapter/createUser",
+          method: "POST",
+          error,
+          metadata: {
+            email: user.email ? `${user.email.substring(0, 3)}***@${user.email.split('@')[1]}` : "unknown",
+            name: (user as any).name || "unknown",
+            maxAttempts,
+            timestamp: new Date().toISOString(),
+            reason: `Failed to generate unique referral code after ${maxAttempts} attempts during OAuth sign-in`,
+          },
+          message: "Referral code generation failed during OAuth sign-in",
+        });
+        throw error;
+      }
+      
       // Create user with username instead of name
       // Only include fields that exist in our schema
       const createdUser = await db.user.create({
@@ -40,6 +91,7 @@ const customAdapter: Adapter = {
           image: user.image || null,
           username,
           normalizedUsername,
+          referralCode, // Set the unique referral code
           role: "MEMBER",
           permissions: [],
         },

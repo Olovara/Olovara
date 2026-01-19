@@ -7,11 +7,38 @@ import { db } from "@/lib/db";
 import { LoginSchema } from "@/schemas";
 import { getUserByEmail } from "@/data/user";
 
+// Validate OAuth environment variables
+// Missing or empty values will cause "Configuration" errors
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const authSecret = process.env.AUTH_SECRET;
+
+// Only validate in non-production or if explicitly enabled
+// In production, we want the app to fail fast if config is missing
+if (process.env.NODE_ENV !== "production" || process.env.VALIDATE_AUTH_ENV === "true") {
+  if (!googleClientId || !googleClientSecret) {
+    console.error(
+      "[AUTH CONFIG] ⚠️  Missing Google OAuth credentials!",
+      {
+        GOOGLE_CLIENT_ID: googleClientId ? "SET" : "MISSING",
+        GOOGLE_CLIENT_SECRET: googleClientSecret ? "SET" : "MISSING",
+      }
+    );
+    console.error(
+      "[AUTH CONFIG] This will cause 'Configuration' errors when users try to sign in with Google."
+    );
+  }
+  
+  if (!authSecret) {
+    console.error("[AUTH CONFIG] ⚠️  Missing AUTH_SECRET! This is required for session encryption.");
+  }
+}
+
 export const authConfig = {
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       // Note: allowDangerousEmailAccountLinking is false by default (secure)
       // This prevents account takeover if someone signs up with OAuth using an email
       // that already has a password account. Users must use their original login method.
@@ -127,7 +154,7 @@ export const authConfig = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
     updateAge: 24 * 60 * 60, // 24 hours
   },
-  secret: process.env.AUTH_SECRET,
+  secret: authSecret,
 } satisfies NextAuthConfig;
 
 export default authConfig;
