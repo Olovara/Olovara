@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Categories } from "@/data/categories";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FONTS } from "@/lib/fonts";
 
@@ -37,8 +37,57 @@ export function NavbarLinks() {
     setLastOpenedCategory(null);
   };
 
+  // Close dropdown when a category link is clicked
+  const handleCategoryClick = () => {
+    setHoveredCategory(null);
+    setLastOpenedCategory(null);
+  };
+
   // Use lastOpenedCategory for dropdown content, but hoveredCategory for visual feedback
   const activeCategory = hoveredCategory || lastOpenedCategory;
+
+  // Prevent page scrolling when dropdown is open
+  useEffect(() => {
+    if (activeCategory) {
+      // Calculate scrollbar width to prevent layout shift
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      
+      // Save the current scroll position and disable scrolling
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      // Compensate for scrollbar width to prevent horizontal shift
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+    } else {
+      // Restore scrolling when dropdown closes
+      const scrollY = document.body.style.top;
+      const paddingRight = document.body.style.paddingRight;
+      
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+
+    // Cleanup function to ensure scrolling is restored on unmount
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [activeCategory]);
 
   return (
     <>
@@ -62,6 +111,7 @@ export function NavbarLinks() {
               >
                 <Link
                   href={`/categories/${category.id.toLowerCase()}`}
+                  onClick={handleCategoryClick}
                   className={cn(
                     "text-xs font-medium transition-colors duration-200 py-2 relative",
                     location === `/categories/${category.id.toLowerCase()}`
@@ -122,6 +172,7 @@ export function NavbarLinks() {
                       <div key={secondary.id} className="space-y-3">
                         <Link
                           href={`/categories/${category?.id.toLowerCase()}/${secondary.id.toLowerCase()}`}
+                          onClick={handleCategoryClick}
                           className="block font-semibold text-lg text-gray-900 hover:text-primary transition-colors"
                         >
                           {secondary.name.toUpperCase()}
@@ -136,6 +187,7 @@ export function NavbarLinks() {
               <div className="mt-8 pt-6 border-t border-gray-100">
                 <Link
                   href={`/categories/${activeCategory.toLowerCase()}`}
+                  onClick={handleCategoryClick}
                   className="inline-flex items-center text-primary hover:underline font-medium"
                 >
                   View all{" "}

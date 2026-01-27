@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -25,8 +25,11 @@ export function ProductFilters() {
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
   const [openSecondaryCategories, setOpenSecondaryCategories] = useState<Set<SecondaryCategoryID>>(new Set());
   const selectedCategory = searchParams.get("category")?.split(",")[0];
+  // Track the last pathname to detect navigation changes
+  const lastPathname = useRef<string | null>(null);
 
-  // Auto-check categories based on URL path when on category pages
+  // Auto-check categories based on URL path when navigating to category pages
+  // This syncs the filter checkboxes with the category page URL
   useEffect(() => {
     // Check if we're on a category page
     const categoryPageMatch = pathname.match(/^\/categories\/([^\/]+)(?:\/([^\/]+))?(?:\/([^\/]+))?$/);
@@ -45,10 +48,9 @@ export function ProductFilters() {
         secondaryCategory = primaryCategory.children.find(
           (cat) => cat.id.toLowerCase() === secondaryCategorySlug.toLowerCase()
         );
-
       }
 
-      // Auto-expand relevant categories
+      // Auto-expand relevant categories for better UX
       if (primaryCategory) {
         setOpenCategories((prev) => new Set([...Array.from(prev), primaryCategory.id]));
 
@@ -57,34 +59,38 @@ export function ProductFilters() {
         }
       }
 
-      // Always set categories based on URL path when on category pages
-      const params = new URLSearchParams(searchParams.toString());
-      let categoriesToSet: string[] = [];
+      // Only auto-set categories when navigating to a new category page (pathname changed)
+      // This allows manual filter changes without being overridden
+      const pathnameChanged = lastPathname.current !== pathname;
+      lastPathname.current = pathname;
 
-      if (secondaryCategory) {
-        // On secondary category page - only check that specific secondary category (use actual ID)
-        categoriesToSet = [secondaryCategory.id];
-      } else if (primaryCategory) {
-        // On primary category page - check primary category and all its subcategories
-        categoriesToSet = [primaryCategory.id];
-        // Add all secondary categories
-        primaryCategory.children.forEach((secondary) => {
-          categoriesToSet.push(secondary.id);
-        });
+      if (pathnameChanged) {
+        // Set categories based on URL path when navigating to category page
+        const params = new URLSearchParams(searchParams.toString());
+        let categoriesToSet: string[] = [];
+
+        if (secondaryCategory) {
+          // On secondary category page - only check that specific secondary category
+          categoriesToSet = [secondaryCategory.id];
+        } else if (primaryCategory) {
+          // On primary category page - check primary category and all its subcategories
+          categoriesToSet = [primaryCategory.id];
+          primaryCategory.children.forEach((secondary) => {
+            categoriesToSet.push(secondary.id);
+          });
+        }
+
+        if (categoriesToSet.length > 0) {
+          params.set("category", categoriesToSet.join(","));
+          // Preserve other filters (values, priceRange, etc.) when auto-setting categories
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        }
       }
-
-      // Only update if categories need to change
-      const currentCategories = searchParams.get("category")?.split(",") || [];
-      const categoriesMatch = categoriesToSet.length === currentCategories.length &&
-        categoriesToSet.every(cat => currentCategories.includes(cat));
-
-      if (categoriesToSet.length > 0 && !categoriesMatch) {
-        params.set("category", categoriesToSet.join(","));
-        // Don't reset page when auto-setting categories
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-      }
+    } else {
+      // Not on a category page, reset the ref
+      lastPathname.current = null;
     }
-  }, [pathname, searchParams, router]);
+  }, [pathname, router, searchParams]);
 
   // Initialize price range from URL params
   useEffect(() => {
@@ -143,7 +149,7 @@ export function ProductFilters() {
     }
 
     params.set("page", "1"); // Reset to first page when changing filters
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handlePriceChange = (values: number[]) => {
@@ -167,14 +173,14 @@ export function ProductFilters() {
       params.delete("values");
     }
     params.set("page", "1"); // Reset to first page when changing filters
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleSortChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sortBy", value);
     params.set("page", "1"); // Reset to first page when changing sort
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleFollowedSellersChange = (checked: boolean) => {
@@ -185,7 +191,7 @@ export function ProductFilters() {
       params.delete("followedSellers");
     }
     params.set("page", "1"); // Reset to first page when changing filters
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleCategoryToggle = (categoryId: PrimaryCategoryID) => {
@@ -247,7 +253,9 @@ export function ProductFilters() {
       }
     }
 
-    router.push(`${pathname}?${params.toString()}`);
+    params.set("page", "1"); // Reset to first page when changing categories
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const selectedCategories = searchParams.get("category")?.split(",") || [];
