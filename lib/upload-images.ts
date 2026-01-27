@@ -6,10 +6,40 @@ const { uploadFiles } = genUploader<OurFileRouter>();
 
 /**
  * Upload processed images to UploadThing using client SDK
- * Returns array of uploaded file URLs
- * @throws Error with detailed information if upload fails
+ * Returns uploaded URLs + any skipped files (so the UI can warn sellers).
+ *
+ * Why this exists:
+ * - Sellers were reporting "I uploaded 10 photos, later only 2 show".
+ * - One major cause is oversized/invalid images being skipped without user feedback.
+ * - Another cause is server-side cleanup deleting "temporary uploads" that never got finalized.
+ *
+ * This function handles the *client* side: validate, upload what we can, and report what was skipped.
+ *
+ * IMPORTANT:
+ * - We do NOT throw for partially-skipped files (validation/upload response issues),
+ *   because callers may still want to proceed with the successfully uploaded images.
+ * - We DO throw if nothing can be uploaded or nothing was uploaded successfully.
  */
-export async function uploadProcessedImages(files: File[]): Promise<string[]> {
+export type UploadProcessedFileSkip = {
+  fileName: string;
+  size: number;
+  type: string;
+  reason: string;
+};
+
+export type UploadProcessedFileSuccess = {
+  fileName: string;
+  url: string;
+};
+
+export type UploadProcessedImagesResult = {
+  uploaded: UploadProcessedFileSuccess[];
+  skipped: UploadProcessedFileSkip[];
+};
+
+export async function uploadProcessedImages(
+  files: File[]
+): Promise<UploadProcessedImagesResult> {
   // Validate input
   if (!files || !Array.isArray(files) || files.length === 0) {
     console.error("[UPLOAD IMAGES ERROR] Invalid files array:", {
@@ -54,19 +84,13 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
     validFiles.push(file);
   }
 
-  // Log invalid files
-  if (invalidFiles.length > 0) {
-    console.error("[UPLOAD IMAGES ERROR] Invalid files detected:", {
-      invalidFiles: invalidFiles.map(({ file, reason }) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        reason,
-      })),
-      validFilesCount: validFiles.length,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // Convert invalid files into "skipped" entries for the caller UI.
+  const skipped: UploadProcessedFileSkip[] = invalidFiles.map(({ file, reason }) => ({
+    fileName: file?.name || "unknown",
+    size: typeof file?.size === "number" ? file.size : 0,
+    type: file?.type || "unknown",
+    reason,
+  }));
 
   // If no valid files, throw error
   if (validFiles.length === 0) {
@@ -77,18 +101,20 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
     throw new Error(errorMessage);
   }
 
-  // If some files are invalid, log warning but continue with valid ones
-  if (invalidFiles.length > 0) {
-    console.warn(
-      `[UPLOAD IMAGES WARNING] ${invalidFiles.length} file(s) skipped, uploading ${validFiles.length} valid file(s)`
-    );
+  // If some files are invalid, log (and allow caller to show a toast).
+  if (skipped.length > 0) {
+    console.warn("[UPLOAD IMAGES WARNING] Some files were skipped before upload:", {
+      skipped,
+      validFilesCount: validFiles.length,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   try {
     console.log("[UPLOAD IMAGES] Starting upload:", {
       totalFiles: files.length,
       validFiles: validFiles.length,
-      invalidFiles: invalidFiles.length,
+      skippedFiles: skipped.length,
       fileNames: validFiles.map((f) => f.name),
       fileSizes: validFiles.map((f) => `${(f.size / 1024).toFixed(2)}KB`),
       timestamp: new Date().toISOString(),
@@ -113,7 +139,7 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
     }
 
     // Extract URLs from response and validate them
-    const urls: string[] = [];
+    const uploaded: UploadProcessedFileSuccess[] = [];
     const failedUploads: Array<{ file: File; reason: string }> = [];
 
     for (let i = 0; i < response.length; i++) {
@@ -141,7 +167,10 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
         continue;
       }
 
-      urls.push(url);
+      uploaded.push({
+        fileName: file?.name || "unknown",
+        url,
+      });
     }
 
     // Log failed uploads
@@ -152,14 +181,14 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
           size: file.size,
           reason,
         })),
-        successfulUploads: urls.length,
+        successfulUploads: uploaded.length,
         totalFiles: validFiles.length,
         timestamp: new Date().toISOString(),
       });
     }
 
     // If all uploads failed, throw error
-    if (urls.length === 0) {
+    if (uploaded.length === 0) {
       const errorMessage =
         failedUploads.length === 1
           ? `Upload failed: ${failedUploads[0].reason}`
@@ -167,24 +196,31 @@ export async function uploadProcessedImages(files: File[]): Promise<string[]> {
       throw new Error(errorMessage);
     }
 
-    // If some uploads failed, log warning but return successful URLs
+    // If some uploads failed, report them as "skipped" so caller can warn the user.
     if (failedUploads.length > 0) {
-      console.warn(
-        `[UPLOAD IMAGES WARNING] ${failedUploads.length} upload(s) failed, ${urls.length} succeeded`
-      );
-      // Still throw error to let caller know some failed
-      throw new Error(
-        `${failedUploads.length} of ${validFiles.length} image(s) failed to upload. ${urls.length} image(s) uploaded successfully.`
-      );
+      const uploadSkips: UploadProcessedFileSkip[] = failedUploads.map(({ file, reason }) => ({
+        fileName: file?.name || "unknown",
+        size: typeof file?.size === "number" ? file.size : 0,
+        type: file?.type || "unknown",
+        reason,
+      }));
+
+      skipped.push(...uploadSkips);
+
+      console.warn("[UPLOAD IMAGES WARNING] Some files failed during upload:", {
+        failedCount: uploadSkips.length,
+        uploadedCount: uploaded.length,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     console.log("[UPLOAD IMAGES] Upload successful:", {
-      uploadedCount: urls.length,
-      urls: urls.map((url) => url.substring(0, 50) + "..."), // Log partial URLs for privacy
+      uploadedCount: uploaded.length,
+      urls: uploaded.map((u) => u.url.substring(0, 50) + "..."), // Log partial URLs for privacy
       timestamp: new Date().toISOString(),
     });
 
-    return urls;
+    return { uploaded, skipped };
   } catch (error) {
     // Enhanced error logging
     console.error("[UPLOAD IMAGES ERROR] Upload failed:", {

@@ -211,6 +211,39 @@ export async function PATCH(req: Request) {
       return product;
     });
 
+    // Finalize uploads (prevent cron cleanup from deleting real product assets)
+    // This is critical because UploadThing creates `TemporaryUpload` rows on upload.
+    try {
+      const fileUrlsToFinalize = [
+        ...(Array.isArray(updateData.images) ? updateData.images : []),
+        ...(updateData.productFile ? [updateData.productFile] : []),
+      ].filter((u): u is string => typeof u === "string" && u.length > 0);
+
+      if (fileUrlsToFinalize.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            userId: session.user.id,
+            fileUrl: { in: fileUrlsToFinalize },
+          },
+        });
+      }
+    } catch (finalizeError) {
+      // Non-fatal, but track it because it can cause "images disappeared later" reports.
+      logError({
+        code: "PRODUCT_EDIT_TEMP_UPLOAD_FINALIZE_FAILED",
+        userId: session.user.id,
+        route: "/api/products/edit-product",
+        method: "PATCH",
+        error: finalizeError,
+        metadata: {
+          productId: id,
+          imagesCount: Array.isArray(updateData.images) ? updateData.images.length : 0,
+          hasProductFile: !!updateData.productFile,
+          note: "Failed to delete TemporaryUpload rows after product edit",
+        },
+      });
+    }
+
     return new Response(JSON.stringify({ success: true, product: result }), {
       status: 200,
     });

@@ -150,48 +150,47 @@ const SellerAboutForm = () => {
       let finalLogoImage = values.shopLogoImage;
 
       // Collect all new processed images to upload
-      const imagesToUpload: File[] = [];
-      const imageTypes: string[] = [];
+      // Track which file maps to which field so we can assign URLs reliably,
+      // even if the uploader reports skipped files.
+      const uploadItems: Array<{ type: "seller" | "banner" | "logo"; file: File }> = [];
 
       if (processedSellerImage && processedSellerImage.file.size > 0) {
-        imagesToUpload.push(processedSellerImage.file);
-        imageTypes.push("seller");
+        uploadItems.push({ type: "seller", file: processedSellerImage.file });
       }
       if (processedBannerImage && processedBannerImage.file.size > 0) {
-        imagesToUpload.push(processedBannerImage.file);
-        imageTypes.push("banner");
+        uploadItems.push({ type: "banner", file: processedBannerImage.file });
       }
       if (processedLogoImage && processedLogoImage.file.size > 0) {
-        imagesToUpload.push(processedLogoImage.file);
-        imageTypes.push("logo");
+        uploadItems.push({ type: "logo", file: processedLogoImage.file });
       }
 
       // Upload new images if any
-      if (imagesToUpload.length > 0) {
+      if (uploadItems.length > 0) {
         setIsUploading(true);
         toast.loading("Uploading images...");
         try {
-          const uploadedUrls = await uploadProcessedImages(imagesToUpload);
+          const { uploaded, skipped } = await uploadProcessedImages(
+            uploadItems.map((i) => i.file)
+          );
+          const urlByFileName = new Map(uploaded.map((u) => [u.fileName, u.url]));
 
-          // Map uploaded URLs to their respective fields
-          let sellerIndex = -1;
-          let bannerIndex = -1;
-          let logoIndex = -1;
-
-          imageTypes.forEach((type, index) => {
-            if (type === "seller") sellerIndex = index;
-            if (type === "banner") bannerIndex = index;
-            if (type === "logo") logoIndex = index;
-          });
-
-          if (sellerIndex >= 0) {
-            finalSellerImage = uploadedUrls[sellerIndex];
+          // Warn the seller if anything was skipped (size/type/etc.)
+          if (skipped.length > 0) {
+            const names = skipped.map((s) => s.fileName).slice(0, 3).join(", ");
+            const extra = skipped.length > 3 ? ` (+${skipped.length - 3} more)` : "";
+            toast.warning(
+              `Some images were skipped: ${names}${extra}. Check file size/type and try again.`
+            );
           }
-          if (bannerIndex >= 0) {
-            finalBannerImage = uploadedUrls[bannerIndex];
-          }
-          if (logoIndex >= 0) {
-            finalLogoImage = uploadedUrls[logoIndex];
+
+          // Map uploaded URLs to their respective fields by fileName
+          for (const item of uploadItems) {
+            const url = urlByFileName.get(item.file.name);
+            if (!url) continue;
+
+            if (item.type === "seller") finalSellerImage = url;
+            if (item.type === "banner") finalBannerImage = url;
+            if (item.type === "logo") finalLogoImage = url;
           }
 
           toast.dismiss();

@@ -592,6 +592,40 @@ export async function POST(req: NextRequest) {
 
     console.log("[PRODUCT CREATED] Product ID:", product.id);
 
+    // --- Step 4.5: Finalize uploads (prevent cleanup job from deleting real assets) ---
+    // UploadThing writes to `TemporaryUpload` during upload. If we never remove those temp rows,
+    // our cron cleanup will delete the underlying files later (causing utfs.io 404s).
+    try {
+      const fileUrlsToFinalize = [
+        ...(Array.isArray(images) ? images : []),
+        ...(productFile ? [productFile] : []),
+      ].filter((u): u is string => typeof u === "string" && u.length > 0);
+
+      if (fileUrlsToFinalize.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            userId: session.user.id, // IMPORTANT: the uploader (admin or seller)
+            fileUrl: { in: fileUrlsToFinalize },
+          },
+        });
+      }
+    } catch (finalizeError) {
+      // Non-fatal, but important to track: could lead to disappearing images later.
+      logError({
+        code: "PRODUCT_CREATE_TEMP_UPLOAD_FINALIZE_FAILED",
+        userId: session.user.id,
+        route: "/api/products/create-product",
+        method: "POST",
+        error: finalizeError,
+        metadata: {
+          productId: product.id,
+          imagesCount: Array.isArray(images) ? images.length : 0,
+          hasProductFile: !!productFile,
+          note: "Failed to delete TemporaryUpload rows after successful product create (may lead to later 404s)",
+        },
+      });
+    }
+
     // --- Step 5: Generate batch number for physical products ---
     if (!productData.isDigital) {
       try {

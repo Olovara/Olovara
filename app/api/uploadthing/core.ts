@@ -114,7 +114,8 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
-  productFileUpload: f({ "application/pdf": { maxFileCount: 1 } })
+  // Digital product files (PDF). Explicit max size prevents "mystery" failures.
+  productFileUpload: f({ "application/pdf": { maxFileSize: "16MB", maxFileCount: 1 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
       const session = await auth();

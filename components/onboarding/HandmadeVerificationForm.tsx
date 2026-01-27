@@ -105,13 +105,19 @@ export default function HandmadeVerificationForm() {
       );
 
       const imagesToUpload = [productFile, workstationFile];
-      const uploadedUrls = await uploadProcessedImages(imagesToUpload);
+      const { uploaded, skipped } = await uploadProcessedImages(imagesToUpload);
 
-      if (uploadedUrls.length !== 2) {
+      // Handmade verification requires BOTH images; any skipped file is a hard fail.
+      if (skipped.length > 0) {
+        const reason = skipped[0]?.reason || "Unknown reason";
+        throw new Error(`Photo rejected: ${reason}`);
+      }
+
+      if (uploaded.length !== 2) {
         throw new Error("Failed to upload photos");
       }
 
-      const [productPhotoUrl, workstationPhotoUrl] = uploadedUrls;
+      const [productPhotoUrl, workstationPhotoUrl] = uploaded.map((u) => u.url);
 
       // Save the verification photos
       const result = await saveHandmadeVerification({

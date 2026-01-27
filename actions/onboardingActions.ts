@@ -770,6 +770,37 @@ export const createFirstProduct = async (
       productStatus
     );
 
+    // Finalize uploads for onboarding product creation:
+    // UploadThing creates `TemporaryUpload` rows during upload. If we don't remove them,
+    // the cron cleanup can delete the underlying files later (utfs.io 404).
+    try {
+      const urlsToFinalize = (validatedData.images || []).filter(
+        (u): u is string => typeof u === "string" && u.length > 0
+      );
+      if (urlsToFinalize.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            userId: currentUserId,
+            fileUrl: { in: urlsToFinalize },
+          },
+        });
+      }
+    } catch (finalizeError) {
+      // Non-fatal, but important to track.
+      logError({
+        code: "ONBOARDING_FIRST_PRODUCT_TEMP_UPLOAD_FINALIZE_FAILED",
+        userId: currentUserId,
+        route: "actions/onboardingActions",
+        method: "createFirstProduct",
+        error: finalizeError,
+        metadata: {
+          productId: result.id,
+          imagesCount: (validatedData.images || []).length,
+          note: "Failed to delete TemporaryUpload rows after onboarding first product creation",
+        },
+      });
+    }
+
     // Return appropriate message based on status
     const message =
       productStatus === "DRAFT"
@@ -999,6 +1030,38 @@ export const saveHandmadeVerification = async (
         updatedAt: new Date(),
       },
     });
+
+    // Finalize uploads:
+    // UploadThing creates `TemporaryUpload` rows during upload. If we don't remove them,
+    // the cron cleanup can delete the underlying files later (breaking verification images).
+    try {
+      const urlsToFinalize = [
+        validatedData.productPhoto,
+        validatedData.workstationPhoto,
+      ].filter((u): u is string => typeof u === "string" && u.length > 0);
+
+      if (urlsToFinalize.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            userId: session.user.id,
+            fileUrl: { in: urlsToFinalize },
+          },
+        });
+      }
+    } catch (finalizeError) {
+      // Non-fatal, but track it because it can cause later 404s.
+      logError({
+        code: "ONBOARDING_HANDMADE_VERIFICATION_TEMP_UPLOAD_FINALIZE_FAILED",
+        userId: session.user.id,
+        route: "actions/onboardingActions",
+        method: "saveHandmadeVerification",
+        error: finalizeError,
+        metadata: {
+          sellerId: seller.id,
+          note: "Failed to delete TemporaryUpload rows after saving handmade verification photos",
+        },
+      });
+    }
 
     // Mark handmade_verification step as completed
     await updateOnboardingStep(seller.id, "handmade_verification", true);

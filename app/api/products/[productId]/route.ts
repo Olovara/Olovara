@@ -705,6 +705,40 @@ export async function PATCH(
       },
     });
 
+    // Finalize uploads (prevent cron cleanup from deleting real product assets)
+    // UploadThing writes `TemporaryUpload` rows during upload. If those rows remain after save,
+    // the cleanup job may delete the underlying files later (causing utfs.io 404s).
+    try {
+      const fileUrlsToFinalize = [
+        ...(Array.isArray(updateData.images) ? updateData.images : []),
+        ...(updateData.productFile ? [updateData.productFile] : []),
+      ].filter((u): u is string => typeof u === "string" && u.length > 0);
+
+      if (fileUrlsToFinalize.length > 0) {
+        await db.temporaryUpload.deleteMany({
+          where: {
+            userId: session.user.id,
+            fileUrl: { in: fileUrlsToFinalize },
+          },
+        });
+      }
+    } catch (finalizeError) {
+      // Non-fatal, but track it because it can cause "images disappeared later" reports.
+      logError({
+        code: "PRODUCT_UPDATE_TEMP_UPLOAD_FINALIZE_FAILED",
+        userId: session.user.id,
+        route: `/api/products/${productId}`,
+        method: "PATCH",
+        error: finalizeError,
+        metadata: {
+          productId,
+          imagesCount: Array.isArray(updateData.images) ? updateData.images.length : 0,
+          hasProductFile: !!updateData.productFile,
+          note: "Failed to delete TemporaryUpload rows after successful product update",
+        },
+      });
+    }
+
     return new Response(
       JSON.stringify({ success: true, product: updatedProduct }),
       { status: 200 }

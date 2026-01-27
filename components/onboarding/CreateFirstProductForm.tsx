@@ -681,9 +681,19 @@ export default function CreateFirstProductForm() {
             filesToUpload.push(file);
           }
 
-          // Upload images
-          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+          // Upload images (returns uploaded + skipped so we can warn the seller)
+          const { uploaded, skipped } = await uploadProcessedImages(filesToUpload);
+          const uploadedUrls = uploaded.map((u) => u.url);
           finalImageUrls = [...existingImageUrls, ...uploadedUrls];
+
+          // If any images were skipped, tell the seller (no more silent drops)
+          if (skipped.length > 0) {
+            const names = skipped.map((s) => s.fileName).slice(0, 3).join(", ");
+            const extra = skipped.length > 3 ? ` (+${skipped.length - 3} more)` : "";
+            toast.warning(
+              `Some images were skipped: ${names}${extra}. Check file size/type and try again.`
+            );
+          }
 
           toast.dismiss(uploadToastId);
         } catch (uploadError) {

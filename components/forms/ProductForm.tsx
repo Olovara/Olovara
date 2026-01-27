@@ -1579,7 +1579,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
             timestamp: new Date().toISOString(),
           });
 
-          const uploadedUrls = await uploadProcessedImages(filesToUpload);
+          // Upload images (returns uploaded + skipped so we can warn the seller)
+          const { uploaded, skipped } = await uploadProcessedImages(filesToUpload);
+          const uploadedUrls = uploaded.map((u) => u.url);
 
           // Validate uploaded URLs
           const validUploadedUrls = uploadedUrls.filter(
@@ -1632,6 +1634,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
           setImages(finalImageUrls);
 
           toast.dismiss(uploadToastId);
+
+          // Tell the seller if any images were skipped (size/type/upload-response issues)
+          if (skipped.length > 0) {
+            const names = skipped.map((s) => s.fileName).slice(0, 3).join(", ");
+            const extra = skipped.length > 3 ? ` (+${skipped.length - 3} more)` : "";
+            toast.warning(
+              `Some images were skipped: ${names}${extra}. Check file size/type and try again.`
+            );
+          }
 
           if (validUploadedUrls.length < filesToUpload.length) {
             toast.warning(
@@ -1828,7 +1839,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
         const fileUploadToastId = toast.loading("Uploading product file...");
         try {
           // Upload the processed file
-          const uploadedUrls = await uploadProcessedFiles([processedFile.file]);
+          const { uploaded, skipped } = await uploadProcessedFiles([processedFile.file]);
+          const uploadedUrls = uploaded.map((u) => u.url);
+
+          // Tell the seller if the file was skipped (size/type)
+          if (skipped.length > 0) {
+            const reason = skipped[0]?.reason || "Unknown reason";
+            toast.error(`Product file rejected: ${reason}`);
+          }
 
           if (uploadedUrls.length > 0) {
             finalFileUrl = uploadedUrls[0];
