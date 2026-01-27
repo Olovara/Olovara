@@ -20,6 +20,7 @@ import {
   initializeOnboardingSteps,
 } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
+import { ProductInteractionService } from "@/lib/analytics";
 
 interface GetUsersParams {
   role?: string;
@@ -1500,6 +1501,7 @@ export async function getDashboardStats() {
       totalReports,
       pendingReports,
       criticalReports,
+      totalProductViews,
     ] = await Promise.all([
       // Total users
       db.user.count(),
@@ -1558,6 +1560,9 @@ export async function getDashboardStats() {
       db.report.count({
         where: { severity: "CRITICAL" },
       }),
+
+      // Total product views across all products
+      ProductInteractionService.getTotalProductViews(),
     ]);
 
     // Get user growth (users created in last 30 days)
@@ -1603,6 +1608,7 @@ export async function getDashboardStats() {
       products: {
         total: totalProducts,
         newThisMonth: newProductsThisMonth,
+        totalViews: totalProductViews,
       },
       orders: {
         total: totalOrders,

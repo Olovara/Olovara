@@ -1477,6 +1477,25 @@ export class ProductInteractionService {
       throw error;
     }
   }
+
+  /**
+   * Get total view count for all products across the platform (admin function)
+   * @returns Total number of views across all products
+   */
+  static async getTotalProductViews(): Promise<number> {
+    try {
+      // Count all VIEW interactions across all products
+      const count = await db.productInteraction.count({
+        where: {
+          interactionType: 'VIEW'
+        }
+      });
+      return count;
+    } catch (error) {
+      console.error('Error getting total product views:', error);
+      throw error;
+    }
+  }
 }
 
 export class UserSessionService {
