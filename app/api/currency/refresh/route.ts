@@ -31,6 +31,38 @@ class RateLimiter {
 // Create a rate limiter instance (8 requests per minute)
 const rateLimiter = new RateLimiter(8, 60 * 1000);
 
+// Mutex/lock mechanism to prevent concurrent updates for the same base currency
+// This prevents write conflicts when multiple requests try to update rates simultaneously
+class CurrencyUpdateLock {
+  private locks: Map<string, Promise<void>> = new Map();
+
+  // Acquire lock for a base currency - returns a promise that resolves when lock is available
+  async acquire(baseCurrency: string): Promise<() => void> {
+    const key = baseCurrency.toLowerCase();
+    
+    // Wait for any existing lock to complete
+    while (this.locks.has(key)) {
+      await this.locks.get(key);
+    }
+
+    // Create new lock promise
+    let releaseLock: () => void;
+    const lockPromise = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    this.locks.set(key, lockPromise);
+
+    // Return release function
+    return () => {
+      this.locks.delete(key);
+      releaseLock();
+    };
+  }
+}
+
+const currencyUpdateLock = new CurrencyUpdateLock();
+
 // Get exchange rates from FreeCurrencyAPI
 async function getExchangeRatesFromAPI(baseCurrency: string) {
   try {
@@ -101,53 +133,62 @@ async function refreshExchangeRates(baseCurrency: string) {
     // Fetch new rates from API
     const newRates = await getExchangeRatesFromAPI(baseCurrency);
 
-    // Update database with new rates using retry logic
-    await retryOperation(
-      async () => {
-        await db.$transaction(
-          async (tx) => {
-            await Promise.all(
-              Object.entries(newRates)
-                .filter(([currency]) =>
-                  SUPPORTED_CURRENCIES.some(
-                    (c) => c.code === currency.toUpperCase()
+    // Acquire lock for this base currency to prevent concurrent updates
+    // This prevents write conflicts when multiple requests try to update simultaneously
+    const releaseLock = await currencyUpdateLock.acquire(baseCurrency);
+    
+    try {
+      // Update database with new rates using retry logic
+      await retryOperation(
+        async () => {
+          await db.$transaction(
+            async (tx) => {
+              await Promise.all(
+                Object.entries(newRates)
+                  .filter(([currency]) =>
+                    SUPPORTED_CURRENCIES.some(
+                      (c) => c.code === currency.toUpperCase()
+                    )
                   )
-                )
-                .map(([currency, rate]) =>
-                  tx.exchangeRate.upsert({
-                    where: {
-                      baseCurrency_targetCurrency: {
+                  .map(([currency, rate]) =>
+                    tx.exchangeRate.upsert({
+                      where: {
+                        baseCurrency_targetCurrency: {
+                          baseCurrency: baseCurrency.toUpperCase(),
+                          targetCurrency: currency.toUpperCase(),
+                        },
+                      },
+                      update: {
+                        rate,
+                        lastUpdated: new Date(),
+                        isActive: true,
+                      },
+                      create: {
                         baseCurrency: baseCurrency.toUpperCase(),
                         targetCurrency: currency.toUpperCase(),
+                        rate,
+                        lastUpdated: new Date(),
+                        isActive: true,
                       },
-                    },
-                    update: {
-                      rate,
-                      lastUpdated: new Date(),
-                      isActive: true,
-                    },
-                    create: {
-                      baseCurrency: baseCurrency.toUpperCase(),
-                      targetCurrency: currency.toUpperCase(),
-                      rate,
-                      lastUpdated: new Date(),
-                      isActive: true,
-                    },
-                  })
-                )
-            );
-          },
-          {
-            maxWait: 10000,
-            timeout: 15000,
-          }
-        );
-      },
-      5,
-      1000
-    );
+                    })
+                  )
+              );
+            },
+            {
+              maxWait: 10000,
+              timeout: 15000,
+            }
+          );
+        },
+        5,
+        1000
+      );
 
-    return newRates;
+      return newRates;
+    } finally {
+      // Always release the lock, even if there's an error
+      releaseLock();
+    }
   } catch (error) {
     console.error("Error refreshing exchange rates:", error);
     throw error;
