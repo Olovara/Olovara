@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
+import { detectSourceFromHeaders } from "@/lib/bulk-import/mapping";
 import {
   Categories,
   getTertiaryCategories,
@@ -72,6 +73,7 @@ export default function BulkImportPage() {
 
   // Step 2: Mapping
   const [sourcePlatform, setSourcePlatform] = useState<string>("");
+  const [detectedPlatform, setDetectedPlatform] = useState<string | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mappingId, setMappingId] = useState<string | undefined>();
 
@@ -168,8 +170,17 @@ export default function BulkImportPage() {
       setCsvHeaders(headers);
       setPreviewRows(rows.slice(0, 10));
 
-      // Auto-generate mapping
-      await generateMapping(headers);
+      // Auto-detect source from headers (Wix, Etsy, etc.) and pre-select platform
+      const detected = detectSourceFromHeaders(headers);
+      if (detected) {
+        setSourcePlatform(detected);
+        setDetectedPlatform(detected);
+      } else {
+        setDetectedPlatform(null);
+      }
+
+      // Auto-generate mapping (use detected platform so API gets correct mapping before state updates)
+      await generateMapping(headers, detected || undefined);
 
       toast.success("CSV file uploaded successfully");
       setCurrentStep(2); // Go to mapping step
@@ -181,14 +192,19 @@ export default function BulkImportPage() {
     }
   };
 
-  // Generate mapping
-  const generateMapping = async (headers?: string[]) => {
+  // Generate mapping (platformOverride used when we just detected platform on upload)
+  const generateMapping = async (
+    headers?: string[],
+    platformOverride?: string
+  ) => {
     const headersToUse = headers || csvHeaders;
     if (headersToUse.length === 0) return;
 
+    const platform = platformOverride ?? sourcePlatform;
+
     try {
       const response = await fetch(
-        `/api/bulk-import/mapping?headers=${headersToUse.join(",")}&platform=${sourcePlatform || ""}`
+        `/api/bulk-import/mapping?headers=${encodeURIComponent(headersToUse.join(","))}&platform=${encodeURIComponent(platform || "")}`
       );
 
       if (!response.ok) {
@@ -202,9 +218,10 @@ export default function BulkImportPage() {
     }
   };
 
-  // Handle platform change
+  // Handle platform change (user can correct auto-detection)
   const handlePlatformChange = async (platform: string) => {
     setSourcePlatform(platform);
+    setDetectedPlatform(null); // User chose manually, hide "Is this correct?" message
     // Regenerate mapping with new platform - use the new platform value directly
     const headersToUse = csvHeaders;
     if (headersToUse.length === 0) return;
@@ -522,7 +539,14 @@ export default function BulkImportPage() {
                 Select where your CSV is coming from for better auto-mapping
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {detectedPlatform && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  It looks like you&apos;re importing from{" "}
+                  <strong>{detectedPlatform}</strong>. Is this correct? You can
+                  change the selection below if not.
+                </div>
+              )}
               <Select
                 value={sourcePlatform}
                 onValueChange={handlePlatformChange}

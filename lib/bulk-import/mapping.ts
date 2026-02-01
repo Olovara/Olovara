@@ -71,6 +71,79 @@ export const PRODUCT_FIELDS = [
   { field: "howItsMade", label: "How It's Made", required: false },
 ];
 
+/**
+ * Signature headers that uniquely identify a platform's CSV export.
+ * Used to auto-detect source when seller uploads a CSV.
+ */
+const WIX_SIGNATURE_HEADERS = [
+  "handleid",
+  "fieldtype",
+  "productimageurl",
+  "productoptionname1",
+  "productoptiontype1",
+  "productoptiondescription1",
+  "ribbon",
+  "surcharge",
+  "discountmode",
+  "additionalinfotitle1",
+  "customtextfield1",
+  "additionalinfodescription1",
+];
+
+const ETSY_SIGNATURE_HEADERS = [
+  "title",
+  "description",
+  "currency_code",
+  "quantity",
+  "image1",
+  "image2",
+  "tags",
+  "materials",
+  "variation 1 type",
+  "variation 1 name",
+  "variation 1 values",
+  "sku",
+];
+
+/**
+ * Detect source platform from CSV headers (e.g. Wix or Etsy export).
+ * Returns the platform name if detection is confident, otherwise null.
+ */
+export function detectSourceFromHeaders(
+  headers: string[]
+): "Wix" | "Etsy" | null {
+  if (!headers?.length) return null;
+
+  const normalized = headers.map((h) => h.trim().toLowerCase());
+
+  // Wix: must have several distinctive Wix-only headers
+  const wixScore = WIX_SIGNATURE_HEADERS.filter((sig) =>
+    normalized.some((h) => h === sig || h.replace(/\s/g, "") === sig.replace(/\s/g, ""))
+  ).length;
+  const hasWixUniques =
+    normalized.includes("handleid") &&
+    (normalized.includes("fieldtype") || normalized.includes("productimageurl") || normalized.includes("productoptionname1"));
+
+  // Etsy: TITLE + IMAGE1/IMAGE2 style + CURRENCY_CODE or QUANTITY
+  const etsyScore = ETSY_SIGNATURE_HEADERS.filter((sig) =>
+    normalized.some((h) => h === sig || h.replace(/\s/g, "") === sig.replace(/\s/g, ""))
+  ).length;
+  const hasEtsyUniques =
+    normalized.includes("title") &&
+    (normalized.includes("image1") || normalized.includes("image2")) &&
+    (normalized.includes("currency_code") ||
+      normalized.includes("quantity") ||
+      normalized.includes("tags"));
+
+  if (hasWixUniques && wixScore >= 3 && wixScore >= etsyScore) {
+    return "Wix";
+  }
+  if (hasEtsyUniques && etsyScore >= 4 && etsyScore > wixScore) {
+    return "Etsy";
+  }
+  return null;
+}
+
 // Common CSV header patterns for different platforms
 export const PLATFORM_PATTERNS: Record<string, Record<string, string[]>> = {
   Etsy: {
