@@ -22,27 +22,34 @@ export async function GET(request: NextRequest) {
     // Use centralized filtering
     const where = await createProductFilterWhereClause(additionalFilters, filterConfig);
 
-    const [minPrice, maxPrice] = await Promise.all([
+    const [minProduct, maxProduct] = await Promise.all([
       db.product.findFirst({
         where,
         orderBy: { price: "asc" },
-        select: { price: true },
+        select: { price: true, currency: true },
       }),
       db.product.findFirst({
         where,
         orderBy: { price: "desc" },
-        select: { price: true },
+        select: { price: true, currency: true },
       }),
     ]);
 
+    const min = minProduct?.price ?? 0;
+    const max = maxProduct?.price ?? 100000;
+    const minCurrency = minProduct?.currency ?? "USD";
+    const maxCurrency = maxProduct?.currency ?? "USD";
+
     return NextResponse.json({
-      min: minPrice?.price || 0, // Return in cents (component expects cents)
-      max: maxPrice?.price || 100000, // Return in cents (component expects cents)
+      min,
+      max,
+      minCurrency,
+      maxCurrency,
     });
   } catch (error) {
     console.error("Error fetching price range:", error);
     return NextResponse.json(
-      { min: 0, max: 100000 },
+      { min: 0, max: 100000, minCurrency: "USD", maxCurrency: "USD" },
       { status: 500 }
     );
   }

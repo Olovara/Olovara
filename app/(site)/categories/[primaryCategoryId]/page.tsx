@@ -82,7 +82,8 @@ export default async function PrimaryCategoryPage({
   const { primaryCategoryId } = params;
 
   // Parse filters - match the main products page format
-  const priceRange = searchParams.priceRange?.split(",").map(Number) || [0, 1000];
+  // priceRange in URL is in cents (filter component sends cents)
+  const priceRange = searchParams.priceRange?.split(",").map(Number) || [0, 100000];
   const sortBy = searchParams.sortBy || "relevant";
   const currentPage = Number(searchParams.page) || 1;
   const pageSize = Number(searchParams.size) || 24;
@@ -97,8 +98,8 @@ export default async function PrimaryCategoryPage({
       {
         primaryCategory: primaryCategory.id,
         price: {
-          gte: priceRange[0] * 100, // Convert to cents
-          lte: priceRange[1] * 100, // Convert to cents
+          gte: priceRange[0], // already in cents from URL
+          lte: priceRange[1],
         },
       },
       ...(searchParams.q
@@ -156,7 +157,7 @@ export default async function PrimaryCategoryPage({
           followedSellers ||
           searchParams.q ||
           priceRange[0] !== 0 ||
-          priceRange[1] !== 1000;
+          priceRange[1] !== 100000;
         if (hasFilters) {
           return { createdAt: Prisma.SortOrder.desc };
         } else {

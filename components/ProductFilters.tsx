@@ -12,16 +12,26 @@ import { useEffect, useState, useRef } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 // Types are now imported from categories.ts
+// Price range from API returns min/max in each product's currency; we convert for display to user's selected currency.
 
 export function ProductFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
+  const { formatPrice } = useCurrency();
+  const [priceRange, setPriceRange] = useState<{
+    min: number;
+    max: number;
+    minCurrency?: string;
+    maxCurrency?: string;
+  }>({ min: 0, max: 1000 });
   const [currentPriceRange, setCurrentPriceRange] = useState([0, 1000]);
+  const [formattedMinPrice, setFormattedMinPrice] = useState<string>("");
+  const [formattedMaxPrice, setFormattedMaxPrice] = useState<string>("");
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
   const [openSecondaryCategories, setOpenSecondaryCategories] = useState<Set<SecondaryCategoryID>>(new Set());
   const selectedCategory = searchParams.get("category")?.split(",")[0];
@@ -125,11 +135,34 @@ export function ProductFilters() {
       } catch (error) {
         console.error("Error fetching price range:", error);
         // Fallback to default range on error
-        setPriceRange({ min: 0, max: 100000 });
+        setPriceRange({ min: 0, max: 100000, minCurrency: "USD", maxCurrency: "USD" });
       }
     };
     fetchPriceRange();
   }, [selectedCategory, searchParams]);
+
+  // Format price range labels: convert from each bound's currency to user's selected currency
+  const minCurrency = priceRange.minCurrency ?? "USD";
+  const maxCurrency = priceRange.maxCurrency ?? "USD";
+  const currentMinCents = currentPriceRange[0];
+  const currentMaxCents = currentPriceRange[1];
+  useEffect(() => {
+    let cancelled = false;
+    const format = async () => {
+      const [minStr, maxStr] = await Promise.all([
+        formatPrice(currentMinCents, true, minCurrency),
+        formatPrice(currentMaxCents, true, maxCurrency),
+      ]);
+      if (!cancelled) {
+        setFormattedMinPrice(minStr);
+        setFormattedMaxPrice(maxStr);
+      }
+    };
+    format();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMinCents, currentMaxCents, minCurrency, maxCurrency, formatPrice]);
 
   const handleFilterChange = (key: string, value: string | string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -359,8 +392,8 @@ export function ProductFilters() {
             className="my-4"
           />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>${(currentPriceRange[0] / 100).toFixed(2)}</span>
-            <span>${(currentPriceRange[1] / 100).toFixed(2)}</span>
+            <span>{formattedMinPrice || `$${(currentPriceRange[0] / 100).toFixed(2)}`}</span>
+            <span>{formattedMaxPrice || `$${(currentPriceRange[1] / 100).toFixed(2)}`}</span>
           </div>
         </div>
       </div>

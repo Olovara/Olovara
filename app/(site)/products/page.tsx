@@ -29,8 +29,9 @@ export async function generateMetadata({
 }: ProductsPageProps): Promise<Metadata> {
   const categories = searchParams.category?.split(",") || [];
   const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
+  // priceRange in URL is in cents
   const priceRange = searchParams.priceRange?.split(",").map(Number) || [
-    0, 1000,
+    0, 100000,
   ];
   const sortBy = searchParams.sortBy || "relevant";
   const page = searchParams.page || "1";
@@ -43,7 +44,7 @@ export async function generateMetadata({
     canonicalParams.set("category", categories.join(","));
   if (secondaryCategories.length > 0)
     canonicalParams.set("secondaryCategory", secondaryCategories.join(","));
-  if (priceRange[0] !== 0 || priceRange[1] !== 1000)
+  if (priceRange[0] !== 0 || priceRange[1] !== 100000)
     canonicalParams.set("priceRange", priceRange.join(","));
   if (sortBy !== "relevant") canonicalParams.set("sortBy", sortBy);
   if (page !== "1") canonicalParams.set("page", page);
@@ -135,9 +136,10 @@ export default async function ProductsPage({
   // Parse filters
   const categories = searchParams.category?.split(",") || [];
   const secondaryCategories = searchParams.secondaryCategory?.split(",") || [];
+  // priceRange in URL is in cents (filter component sends cents)
   const priceRange = searchParams.priceRange?.split(",").map(Number) || [
-    0, 1000,
-  ];
+    0, 100000,
+  ]; // default $0–$1000 in cents
   const sortBy = searchParams.sortBy || "relevant";
   const currentPage = Number(searchParams.page) || 1;
   const pageSize = Number(searchParams.size) || 24;
@@ -149,8 +151,8 @@ export default async function ProductsPage({
     AND: [
       {
         price: {
-          gte: priceRange[0] * 100, // Convert to cents
-          lte: priceRange[1] * 100, // Convert to cents
+          gte: priceRange[0], // already in cents from URL
+          lte: priceRange[1],
         },
       },
       ...(searchParams.q
@@ -235,7 +237,7 @@ export default async function ProductsPage({
           followedSellers ||
           searchParams.q ||
           priceRange[0] !== 0 ||
-          priceRange[1] !== 1000;
+          priceRange[1] !== 100000;
 
         if (hasFilters) {
           // If filters are applied, sort by newest (most relevant)

@@ -44,8 +44,8 @@ export function PaginationInfoAndSizeSelector({
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("pageSize", size.toString());
-    searchParams.set("pageNumber", "1"); // Reset to first page when changing page size
+    searchParams.set("size", size.toString());
+    searchParams.set("page", "1"); // Reset to first page when changing page size
     router.push(`${pathname}?${searchParams.toString()}`);
   };
 
@@ -91,7 +91,7 @@ export function PaginationControlsAndSizeSelector({
     if (newPage > 0 && newPage <= totalPages) {
       setPage(newPage);
       const searchParams = new URLSearchParams(window.location.search);
-      searchParams.set("pageNumber", newPage.toString());
+      searchParams.set("page", newPage.toString());
       router.push(`${pathname}?${searchParams.toString()}`);
     }
   };
@@ -99,8 +99,8 @@ export function PaginationControlsAndSizeSelector({
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("pageSize", size.toString());
-    searchParams.set("pageNumber", "1");
+    searchParams.set("size", size.toString());
+    searchParams.set("page", "1");
     router.push(`${pathname}?${searchParams.toString()}`);
   };
 
