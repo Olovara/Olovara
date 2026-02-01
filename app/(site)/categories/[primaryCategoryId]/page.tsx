@@ -30,6 +30,7 @@ interface PrimaryCategoryPageProps {
     size?: string;
     values?: string;
     followedSellers?: string;
+    country?: string;
   };
 }
 
@@ -89,6 +90,7 @@ export default async function PrimaryCategoryPage({
   const pageSize = Number(searchParams.size) || 24;
   const values = searchParams.values?.split(",") || [];
   const followedSellers = searchParams.followedSellers === "true";
+  const countries = searchParams.country?.split(",").filter(Boolean) || [];
 
   // Build additional filters - match the main products page structure
   // CRITICAL: Use the actual category ID from the found category object, not the URL parameter
@@ -119,6 +121,15 @@ export default async function PrimaryCategoryPage({
               OR: values.map((value) => ({
                 [value]: true,
               })),
+            },
+          },
+        ]
+        : []),
+      ...(countries.length > 0
+        ? [
+          {
+            seller: {
+              shopCountry: { in: countries },
             },
           },
         ]
@@ -154,6 +165,7 @@ export default async function PrimaryCategoryPage({
       case "relevant":
         const hasFilters =
           values.length > 0 ||
+          countries.length > 0 ||
           followedSellers ||
           searchParams.q ||
           priceRange[0] !== 0 ||

@@ -50,6 +50,8 @@ export async function generateMetadata({
   if (page !== "1") canonicalParams.set("page", page);
   if (values.length > 0) canonicalParams.set("values", values.join(","));
   if (q) canonicalParams.set("q", q);
+  const countryParam = searchParams.country;
+  if (countryParam) canonicalParams.set("country", countryParam);
 
   const canonicalUrl = canonicalParams.toString()
     ? `/products?${canonicalParams.toString()}`
@@ -116,6 +118,7 @@ interface ProductsPageProps {
     values?: string;
     q?: string;
     followedSellers?: string;
+    country?: string;
   };
 }
 
@@ -145,6 +148,7 @@ export default async function ProductsPage({
   const pageSize = Number(searchParams.size) || 24;
   const values = searchParams.values?.split(",") || [];
   const followedSellers = searchParams.followedSellers === "true";
+  const countries = searchParams.country?.split(",").filter(Boolean) || [];
 
   // Build additional filters
   const additionalFilters: Prisma.ProductWhereInput = {
@@ -194,6 +198,15 @@ export default async function ProductsPage({
             },
           ]
         : []),
+      ...(countries.length > 0
+        ? [
+            {
+              seller: {
+                shopCountry: { in: countries },
+              },
+            },
+          ]
+        : []),
     ],
   };
 
@@ -234,6 +247,7 @@ export default async function ProductsPage({
           categories.length > 0 ||
           secondaryCategories.length > 0 ||
           values.length > 0 ||
+          countries.length > 0 ||
           followedSellers ||
           searchParams.q ||
           priceRange[0] !== 0 ||

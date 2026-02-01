@@ -29,6 +29,8 @@ export async function generateMetadata({
   if (values.length > 0) canonicalParams.set("values", values.join(","));
   if (sortBy !== "newest") canonicalParams.set("sortBy", sortBy);
   if (page !== "1") canonicalParams.set("page", page);
+  const countryParam = searchParams.country;
+  if (countryParam) canonicalParams.set("country", countryParam);
 
   const canonicalUrl = canonicalParams.toString()
     ? `/shops?${canonicalParams.toString()}`
@@ -99,6 +101,7 @@ interface ShopsPageProps {
     sortBy?: string;
     page?: string;
     size?: string;
+    country?: string;
   };
 }
 
@@ -115,6 +118,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
   const sortBy = searchParams.sortBy || "newest";
   const currentPage = Number(searchParams.page) || 1;
   const pageSize = Number(searchParams.size) || 24;
+  const countries = searchParams.country?.split(",").filter(Boolean) || [];
 
   // Filter out invalid values
   const validValues = values.filter((value) =>
@@ -141,6 +145,13 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
               shopValues: {
                 hasEvery: validValues, // Seller must have all selected values
               },
+            },
+          ]
+        : []),
+      ...(countries.length > 0
+        ? [
+            {
+              shopCountry: { in: countries },
             },
           ]
         : []),

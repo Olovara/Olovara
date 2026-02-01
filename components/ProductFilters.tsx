@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCurrency } from "@/hooks/useCurrency";
+import { getCountryByCode } from "@/data/countries";
 
 // Types are now imported from categories.ts
 // Price range from API returns min/max in each product's currency; we convert for display to user's selected currency.
@@ -34,6 +35,7 @@ export function ProductFilters() {
   const [formattedMaxPrice, setFormattedMaxPrice] = useState<string>("");
   const [openCategories, setOpenCategories] = useState<Set<PrimaryCategoryID>>(new Set());
   const [openSecondaryCategories, setOpenSecondaryCategories] = useState<Set<SecondaryCategoryID>>(new Set());
+  const [sellerCountries, setSellerCountries] = useState<string[]>([]);
   const selectedCategory = searchParams.get("category")?.split(",")[0];
   // Track the last pathname to detect navigation changes
   const lastPathname = useRef<string | null>(null);
@@ -141,6 +143,16 @@ export function ProductFilters() {
     fetchPriceRange();
   }, [selectedCategory, searchParams]);
 
+  // Fetch countries that have sellers with active products (for seller location filter)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set("category", selectedCategory);
+    fetch(`/api/products/seller-countries?${params.toString()}`)
+      .then((res) => res.ok && res.json())
+      .then((data: { countries?: string[] }) => setSellerCountries(data?.countries ?? []))
+      .catch(() => setSellerCountries([]));
+  }, [selectedCategory]);
+
   // Format price range labels: convert from each bound's currency to user's selected currency
   const minCurrency = priceRange.minCurrency ?? "USD";
   const maxCurrency = priceRange.maxCurrency ?? "USD";
@@ -227,6 +239,21 @@ export function ProductFilters() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const handleCountryChange = (countryCode: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = searchParams.get("country")?.split(",").filter(Boolean) || [];
+    const newCountries = current.includes(countryCode)
+      ? current.filter((c) => c !== countryCode)
+      : [...current, countryCode];
+    if (newCountries.length > 0) {
+      params.set("country", newCountries.join(","));
+    } else {
+      params.delete("country");
+    }
+    params.set("page", "1");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const handleCategoryToggle = (categoryId: PrimaryCategoryID) => {
     const newOpenCategories = new Set(openCategories);
     if (newOpenCategories.has(categoryId)) {
@@ -293,6 +320,7 @@ export function ProductFilters() {
 
   const selectedCategories = searchParams.get("category")?.split(",") || [];
   const selectedValues = searchParams.get("values")?.split(",") || [];
+  const selectedCountries = searchParams.get("country")?.split(",").filter(Boolean) || [];
   const sortBy = searchParams.get("sortBy") || "relevant";
   const followedSellers = searchParams.get("followedSellers") === "true";
 
@@ -399,6 +427,40 @@ export function ProductFilters() {
       </div>
 
       <Separator />
+
+      {/* Seller location (country) filter */}
+      {sellerCountries.length > 0 && (
+        <>
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Seller location</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Show products from sellers in:
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {sellerCountries.map((code) => {
+                const country = getCountryByCode(code);
+                const label = country?.name ?? code;
+                return (
+                  <div key={code} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`country-${code}`}
+                      checked={selectedCountries.includes(code)}
+                      onCheckedChange={() => handleCountryChange(code)}
+                    />
+                    <Label
+                      htmlFor={`country-${code}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
+                    >
+                      {label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
 
       {/* Followed Sellers Filter - Only show if user is logged in */}
       {session?.user && (

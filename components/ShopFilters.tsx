@@ -1,22 +1,33 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { shopValues, validShopValueIds, ShopValueId } from "@/data/shop-values";
+import { getCountryByCode } from "@/data/countries";
 
 export function ShopFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [sellerCountries, setSellerCountries] = useState<string[]>([]);
 
   // Get and sanitize selected values
   const rawSelectedValues = searchParams.get("values")?.split(",") || [];
   const selectedValues = rawSelectedValues.filter((value): value is ShopValueId =>
     validShopValueIds.includes(value as ShopValueId)
   );
+  const selectedCountries = searchParams.get("country")?.split(",").filter(Boolean) || [];
 
   const sortBy = searchParams.get("sortBy") || "newest";
+
+  useEffect(() => {
+    fetch("/api/shops/seller-countries")
+      .then((res) => (res.ok ? res.json() : { countries: [] }))
+      .then((data: { countries?: string[] }) => setSellerCountries(data?.countries ?? []))
+      .catch(() => setSellerCountries([]));
+  }, []);
 
   const handleValueChange = (valueId: ShopValueId) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -40,6 +51,21 @@ export function ShopFilters() {
     router.push(`?${params.toString()}`);
   };
 
+  const handleCountryChange = (countryCode: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = searchParams.get("country")?.split(",").filter(Boolean) || [];
+    const newCountries = current.includes(countryCode)
+      ? current.filter((c) => c !== countryCode)
+      : [...current, countryCode];
+    if (newCountries.length > 0) {
+      params.set("country", newCountries.join(","));
+    } else {
+      params.delete("country");
+    }
+    params.set("page", "1");
+    router.push(`?${params.toString()}`);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -59,6 +85,39 @@ export function ShopFilters() {
       </div>
 
       <Separator />
+
+      {sellerCountries.length > 0 && (
+        <>
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Seller location</h2>
+            <p className="text-sm text-muted-foreground mb-2">
+              Show shops from:
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {sellerCountries.map((code) => {
+                const country = getCountryByCode(code);
+                const label = country?.name ?? code;
+                return (
+                  <div key={code} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`shop-country-${code}`}
+                      checked={selectedCountries.includes(code)}
+                      onCheckedChange={() => handleCountryChange(code)}
+                    />
+                    <Label
+                      htmlFor={`shop-country-${code}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
+                    >
+                      {label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Shop Values</h2>

@@ -31,6 +31,7 @@ interface CategoryPageProps {
     size?: string;
     values?: string;
     followedSellers?: string;
+    country?: string;
   };
 }
 
@@ -96,6 +97,7 @@ export default async function SecondaryCategoryPage({
   const pageSize = Number(searchParams.size) || 24;
   const values = searchParams.values?.split(",") || [];
   const followedSellers = searchParams.followedSellers === "true";
+  const countries = searchParams.country?.split(",").filter(Boolean) || [];
 
   // Build additional filters - match the main products page structure
   // CRITICAL: Use the actual category IDs from the found category objects, not the URL parameters
@@ -131,6 +133,15 @@ export default async function SecondaryCategoryPage({
           },
         ]
         : []),
+      ...(countries.length > 0
+        ? [
+          {
+            seller: {
+              shopCountry: { in: countries },
+            },
+          },
+        ]
+        : []),
     ],
   };
 
@@ -162,6 +173,7 @@ export default async function SecondaryCategoryPage({
       case "relevant":
         const hasFilters =
           values.length > 0 ||
+          countries.length > 0 ||
           followedSellers ||
           searchParams.q ||
           priceRange[0] !== 0 ||
