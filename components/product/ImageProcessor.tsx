@@ -40,6 +40,9 @@ export type ProcessedImage = {
   uploadSessionId?: string; // Unique ID for the upload session to prevent replacing images from different sessions
 };
 
+// Same limit as lib/upload-images.ts and Uploadthing imageUploader (4MB)
+const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+
 type ImageProcessorProps = {
   onImagesProcessed: (images: ProcessedImage[]) => void; // Callback when images are ready
   existingImages?: string[]; // URLs of already uploaded images (for editing)
@@ -261,6 +264,21 @@ export function ImageProcessor({
         return;
       }
 
+      // Enforce upload size limit early so seller sees feedback before crop/watermark
+      const withinSize = imageFiles.filter((file) => file.size <= MAX_IMAGE_FILE_SIZE);
+      const oversized = imageFiles.filter((file) => file.size > MAX_IMAGE_FILE_SIZE);
+      if (oversized.length > 0) {
+        toast.warning(
+          oversized.length === 1
+            ? `${oversized[0].name} is over 4MB and was skipped. Use a smaller image.`
+            : `${oversized.length} image(s) over 4MB were skipped. Max size per image: 4MB.`
+        );
+      }
+      if (withinSize.length === 0) {
+        return;
+      }
+      const filesToConsider = withinSize;
+
       // Calculate how many images we can still add
       const currentTotal =
         processedImages.length + existingProcessedImages.length;
@@ -271,12 +289,12 @@ export function ImageProcessor({
         return;
       }
 
-      // Trim imageFiles to fit within the max limit
-      const filesToProcess = imageFiles.slice(0, remainingSlots);
+      // Trim to fit within the max image count limit
+      const filesToProcess = filesToConsider.slice(0, remainingSlots);
 
-      if (imageFiles.length > remainingSlots) {
+      if (filesToConsider.length > remainingSlots) {
         toast.warning(
-          `Only ${remainingSlots} image${remainingSlots > 1 ? "s" : ""} can be added. ${imageFiles.length - remainingSlots} image${imageFiles.length - remainingSlots > 1 ? "s were" : " was"} ignored.`
+          `Only ${remainingSlots} image${remainingSlots > 1 ? "s" : ""} can be added. ${filesToConsider.length - remainingSlots} image${filesToConsider.length - remainingSlots > 1 ? "s were" : " was"} ignored.`
         );
       }
 
@@ -346,6 +364,20 @@ export function ImageProcessor({
         reader.onload = (e) => {
           const img = new window.Image();
           img.onload = () => {
+            // Defensive: avoid drawing broken images (e.g. large PNGs failing on Android)
+            if (
+              !img.complete ||
+              img.naturalWidth === 0 ||
+              img.naturalHeight === 0
+            ) {
+              reject(
+                new Error(
+                  "Image failed to load or is invalid (try a smaller image)"
+                )
+              );
+              return;
+            }
+
             const canvas = document.createElement("canvas");
             canvas.width = img.width;
             canvas.height = img.height;
@@ -356,8 +388,17 @@ export function ImageProcessor({
               return;
             }
 
-            // Draw original image
-            ctx.drawImage(img, 0, 0);
+            // Draw original image (wrap in try/catch for broken-image edge cases)
+            try {
+              ctx.drawImage(img, 0, 0);
+            } catch (drawError) {
+              reject(
+                new Error(
+                  `Image could not be drawn (file may be too large or unsupported): ${drawError instanceof Error ? drawError.message : String(drawError)}`
+                )
+              );
+              return;
+            }
 
             // Set watermark style - Jost bold font, white text at 10% opacity
             const fontSize = Math.max(img.width / 25, 20);

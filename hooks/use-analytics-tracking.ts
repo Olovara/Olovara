@@ -469,6 +469,27 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
     [trackInteraction]
   );
 
+  // Track shop interaction (queued) - views and buyer actions on shop pages
+  const trackShopInteraction = useCallback(
+    (data: {
+      sellerId: string;
+      interactionType: string;
+      interactionData?: any;
+      timeOnShop?: number;
+      productsViewed?: number;
+      policiesViewed?: boolean;
+      aboutViewed?: boolean;
+      sourceType?: string;
+      sourceId?: string;
+    }) => {
+      trackInteraction({
+        eventType: "SHOP_INTERACTION",
+        interactionData: data,
+      });
+    },
+    [trackInteraction]
+  );
+
   // Track purchase intent (queued, not immediate API call)
   const trackPurchaseIntent = useCallback(
     (data: {
@@ -620,6 +641,7 @@ export function useAnalyticsTracking(options: AnalyticsTrackingOptions = {}) {
     trackPageView,
     trackInteraction,
     trackProductInteraction,
+    trackShopInteraction,
     trackPurchaseIntent,
     trackCustomOrderEvent,
     trackClickThrough,
@@ -671,6 +693,39 @@ export function useProductTracking(
     trackAddToCart,
     trackProductClick,
   };
+}
+
+/** Hook for tracking shop page views and buyer actions (for analytics) */
+export function useShopTracking(
+  sellerId: string,
+  sourceType?: string,
+  sourceId?: string
+) {
+  const { trackShopInteraction } = useAnalyticsTracking();
+
+  const trackShopView = useCallback(() => {
+    trackShopInteraction({
+      sellerId,
+      interactionType: "VIEW",
+      sourceType,
+      sourceId,
+    });
+  }, [sellerId, sourceType, sourceId, trackShopInteraction]);
+
+  const trackShopAction = useCallback(
+    (action: string, interactionData?: any) => {
+      trackShopInteraction({
+        sellerId,
+        interactionType: action,
+        interactionData,
+        sourceType,
+        sourceId,
+      });
+    },
+    [sellerId, sourceType, sourceId, trackShopInteraction]
+  );
+
+  return { trackShopView, trackShopAction, trackShopInteraction };
 }
 
 export function usePurchaseTracking() {

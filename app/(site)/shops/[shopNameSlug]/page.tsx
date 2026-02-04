@@ -23,6 +23,7 @@ import {
 } from "@/lib/product-filtering";
 import { Metadata } from "next";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
+import { ShopViewTracker } from "@/components/analytics/ShopViewTracker";
 import { shopValues } from "@/data/shop-values";
 
 interface ShopPageProps {
@@ -346,6 +347,8 @@ export default async function ShopPage({ params }: ShopPageProps) {
   return (
     <>
       <WebsiteStructuredData pageType="shops" />
+      {/* Track shop view for analytics (which shops are viewed, buyer behavior) */}
+      <ShopViewTracker sellerId={seller.id} />
       <div className="min-h-screen bg-gray-50">
         {/* HEADER SECTION */}
         <div className="bg-white border-b">

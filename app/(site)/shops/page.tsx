@@ -237,16 +237,14 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
 
         {/* Shops Grid */}
         <div className="w-full lg:w-4/5">
-          {/* Pagination Info */}
-          {totalPages > 1 && (
-            <div className="mb-6">
-              <PaginationInfoAndSizeSelector
-                totalCount={totalShops}
-                pageNumber={currentPage}
-                pageSize={pageSize}
-              />
-            </div>
-          )}
+          {/* Pagination Info - always show so user can change page size */}
+          <div className="mb-6">
+            <PaginationInfoAndSizeSelector
+              totalCount={totalShops}
+              pageNumber={currentPage}
+              pageSize={pageSize}
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {shopsWithCount.map((shop) => (
@@ -288,17 +286,15 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
             </div>
           )}
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <PaginationControlsAndSizeSelector
-                totalCount={totalShops}
-                pageNumber={currentPage}
-                pageSize={pageSize}
-                totalPages={totalPages}
-              />
-            </div>
-          )}
+          {/* Pagination Controls - always show so user can change page size */}
+          <div className="mt-8">
+            <PaginationControlsAndSizeSelector
+              totalCount={totalShops}
+              pageNumber={currentPage}
+              pageSize={pageSize}
+              totalPages={totalPages}
+            />
+          </div>
         </div>
       </div>
 

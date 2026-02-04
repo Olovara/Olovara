@@ -392,16 +392,14 @@ export default async function ProductsPage({
 
         {/* Products Grid */}
         <div className="w-full lg:w-4/5">
-          {/* Pagination Info */}
-          {totalPages > 1 && (
-            <div className="mb-6">
-              <PaginationInfoAndSizeSelector
-                totalCount={totalProducts}
-                pageNumber={currentPage}
-                pageSize={pageSize}
-              />
-            </div>
-          )}
+          {/* Pagination Info - always show so user can change page size */}
+          <div className="mb-6">
+            <PaginationInfoAndSizeSelector
+              totalCount={totalProducts}
+              pageNumber={currentPage}
+              pageSize={pageSize}
+            />
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product, index) => (
@@ -459,17 +457,15 @@ export default async function ProductsPage({
             </div>
           )}
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <PaginationControlsAndSizeSelector
-                totalCount={totalProducts}
-                pageNumber={currentPage}
-                pageSize={pageSize}
-                totalPages={totalPages}
-              />
-            </div>
-          )}
+          {/* Pagination Controls - always show so user can change page size */}
+          <div className="mt-8">
+            <PaginationControlsAndSizeSelector
+              totalCount={totalProducts}
+              pageNumber={currentPage}
+              pageSize={pageSize}
+              totalPages={totalPages}
+            />
+          </div>
         </div>
       </div>
 

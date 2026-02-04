@@ -316,15 +316,13 @@ export default async function PrimaryCategoryPage({
         {/* Products Grid */}
         <div className="w-full lg:w-4/5">
           {/* Pagination Info */}
-          {totalPages > 1 && (
-            <div className="mb-6">
-              <PaginationInfoAndSizeSelector
+          <div className="mb-6">
+            <PaginationInfoAndSizeSelector
                 totalCount={totalProducts}
                 pageNumber={currentPage}
                 pageSize={pageSize}
               />
-            </div>
-          )}
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product, index) => (
@@ -366,16 +364,14 @@ export default async function PrimaryCategoryPage({
           )}
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <PaginationControlsAndSizeSelector
+          <div className="mt-8">
+            <PaginationControlsAndSizeSelector
                 totalCount={totalProducts}
                 pageNumber={currentPage}
                 pageSize={pageSize}
                 totalPages={totalPages}
               />
-            </div>
-          )}
+          </div>
         </div>
       </div>
 

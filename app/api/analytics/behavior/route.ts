@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import {
   UserBehaviorService,
   ProductInteractionService,
+  ShopInteractionService,
   EnhancedAnalyticsService,
 } from "@/lib/analytics";
 import { logError } from "@/lib/error-logger";
@@ -85,6 +86,28 @@ export async function POST(req: NextRequest) {
               descriptionRead: interactionData.descriptionRead,
               reviewsViewed: interactionData.reviewsViewed,
               sellerInfoViewed: interactionData.sellerInfoViewed,
+              sourceType: interactionData.sourceType,
+              sourceId: interactionData.sourceId,
+              referrerUrl,
+              deviceId,
+              ipAddress: clientIP,
+              userAgent,
+            });
+          }
+          break;
+
+        case "SHOP_INTERACTION":
+          if (interactionData?.sellerId) {
+            await ShopInteractionService.trackShopInteraction({
+              userId,
+              sellerId: interactionData.sellerId,
+              sessionId: sessionId || "unknown",
+              interactionType: interactionData.interactionType,
+              interactionData: interactionData.interactionData,
+              timeOnShop: interactionData.timeOnShop,
+              productsViewed: interactionData.productsViewed,
+              policiesViewed: interactionData.policiesViewed,
+              aboutViewed: interactionData.aboutViewed,
               sourceType: interactionData.sourceType,
               sourceId: interactionData.sourceId,
               referrerUrl,

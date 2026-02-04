@@ -151,6 +151,7 @@ model User {
   userBehaviorEvents    UserBehaviorEvent[]
   searchAnalytics       SearchAnalytics[]
   productInteractions   ProductInteraction[]
+  shopInteractions      ShopInteraction[]
   userSessions          UserSession[]
   reportsSubmitted      Report[]        @relation("ReportReporter")
   followers             Follow[]        @relation("UserFollowers") // Sellers this user is following
@@ -341,6 +342,9 @@ model Seller {
   // Bulk Import
   bulkImportJobs  BulkImportJob[]
   csvMappings     CSVMapping[]
+
+  // Shop analytics - views and buyer behavior
+  shopInteractions ShopInteraction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1563,6 +1567,45 @@ model ProductInteraction {
 
   @@index([userId])
   @@index([productId])
+  @@index([sessionId])
+  @@index([interactionType])
+  @@index([timestamp])
+  @@index([deviceId])
+}
+
+// Shop view/interaction tracking for analytics (which shops are viewed, buyer behavior)
+model ShopInteraction {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?  // Optional for guest users
+  user              User?    @relation(fields: [userId], references: [id])
+  sellerId          String   @db.ObjectId
+  seller            Seller   @relation(fields: [sellerId], references: [id])
+  sessionId         String   // Session identifier
+
+  // Interaction type: VIEW, CLICK, FOLLOW_CLICK, CONTACT_CLICK, CUSTOM_ORDER_CLICK, PRODUCT_CLICK, POLICIES_VIEWED, etc.
+  interactionType   String
+  interactionData   Json?    // Additional details (e.g. productId for PRODUCT_CLICK)
+
+  // View-specific (optional, for VIEW type)
+  timeOnShop        Int?     // Time spent on shop page in seconds
+  productsViewed    Int?     // Number of product cards viewed
+  policiesViewed    Boolean  @default(false)
+  aboutViewed       Boolean  @default(false)
+
+  // Source tracking
+  sourceType        String?  // SEARCH, CATEGORY, DIRECT, SHOP_LISTING, etc.
+  sourceId          String?
+  referrerUrl       String?
+
+  deviceId          String?
+  ipAddress         String?
+  userAgent         String?
+  location          Json?
+
+  timestamp         DateTime @default(now())
+
+  @@index([userId])
+  @@index([sellerId])
   @@index([sessionId])
   @@index([interactionType])
   @@index([timestamp])

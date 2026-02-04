@@ -1498,6 +1498,146 @@ export class ProductInteractionService {
   }
 }
 
+/** Shop interaction tracking: views and buyer actions on shop pages (for analytics) */
+export class ShopInteractionService {
+  static async trackShopInteraction(data: {
+    userId?: string;
+    sellerId: string;
+    sessionId: string;
+    interactionType: string;
+    interactionData?: any;
+    timeOnShop?: number;
+    productsViewed?: number;
+    policiesViewed?: boolean;
+    aboutViewed?: boolean;
+    sourceType?: string;
+    sourceId?: string;
+    referrerUrl?: string;
+    deviceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    location?: any;
+  }) {
+    try {
+      const interaction = await db.shopInteraction.create({
+        data: {
+          userId: data.userId,
+          sellerId: data.sellerId,
+          sessionId: data.sessionId,
+          interactionType: data.interactionType,
+          interactionData: data.interactionData,
+          timeOnShop: data.timeOnShop,
+          productsViewed: data.productsViewed,
+          policiesViewed: data.policiesViewed ?? false,
+          aboutViewed: data.aboutViewed ?? false,
+          sourceType: data.sourceType,
+          sourceId: data.sourceId,
+          referrerUrl: data.referrerUrl,
+          deviceId: data.deviceId,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          location: data.location,
+        }
+      });
+      return interaction;
+    } catch (error) {
+      console.error('Error tracking shop interaction:', error);
+      throw error;
+    }
+  }
+
+  /** Total VIEW count for a single shop */
+  static async getShopViewCount(sellerId: string): Promise<number> {
+    try {
+      return await db.shopInteraction.count({
+        where: { sellerId, interactionType: 'VIEW' }
+      });
+    } catch (error) {
+      console.error('Error getting shop view count:', error);
+      throw error;
+    }
+  }
+
+  /** View counts for all shops (seller dashboard / admin). Returns sorted by views descending. */
+  static async getAllShopViewCounts(limit?: number): Promise<Array<{ sellerId: string; views: number; shopName: string }>> {
+    try {
+      const viewCounts = await db.shopInteraction.groupBy({
+        by: ['sellerId'],
+        where: { interactionType: 'VIEW' },
+        _count: { sellerId: true },
+        orderBy: { _count: { sellerId: 'desc' } },
+        ...(limit ? { take: limit } : {})
+      });
+      if (viewCounts.length === 0) return [];
+      const sellerIds = viewCounts.map(v => v.sellerId);
+      const sellers = await db.seller.findMany({
+        where: { id: { in: sellerIds } },
+        select: { id: true, shopName: true }
+      });
+      const shopMap = new Map(sellers.map(s => [s.id, s.shopName]));
+      return viewCounts.map(v => ({
+        sellerId: v.sellerId,
+        views: v._count.sellerId,
+        shopName: shopMap.get(v.sellerId) ?? 'Unknown'
+      }));
+    } catch (error) {
+      console.error('Error getting all shop view counts:', error);
+      throw error;
+    }
+  }
+
+  /** Total VIEW count across all shops (platform-wide) */
+  static async getTotalShopViews(): Promise<number> {
+    try {
+      return await db.shopInteraction.count({
+        where: { interactionType: 'VIEW' }
+      });
+    } catch (error) {
+      console.error('Error getting total shop views:', error);
+      throw error;
+    }
+  }
+
+  /** Get interaction breakdown for a shop (for seller analytics) */
+  static async getShopAnalytics(sellerId: string, startDate?: Date, endDate?: Date) {
+    try {
+      const where: any = { sellerId };
+      if (startDate || endDate) {
+        where.timestamp = {};
+        if (startDate) where.timestamp.gte = startDate;
+        if (endDate) where.timestamp.lte = endDate;
+      }
+      const interactions = await db.shopInteraction.findMany({
+        where,
+        include: {
+          seller: { select: { id: true, shopName: true } },
+          user: { select: { id: true, username: true, email: true } }
+        },
+        orderBy: { timestamp: 'desc' }
+      });
+      const metrics = {
+        totalViews: interactions.filter(i => i.interactionType === 'VIEW').length,
+        totalClicks: interactions.filter(i => i.interactionType === 'CLICK').length,
+        followClicks: interactions.filter(i => i.interactionType === 'FOLLOW_CLICK').length,
+        contactClicks: interactions.filter(i => i.interactionType === 'CONTACT_CLICK').length,
+        customOrderClicks: interactions.filter(i => i.interactionType === 'CUSTOM_ORDER_CLICK').length,
+        productClicks: interactions.filter(i => i.interactionType === 'PRODUCT_CLICK').length,
+        policiesViewed: interactions.filter(i => i.policiesViewed).length,
+        aboutViewed: interactions.filter(i => i.aboutViewed).length,
+        sourceBreakdown: interactions.reduce((acc, i) => {
+          const s = i.sourceType ?? 'unknown';
+          acc[s] = (acc[s] ?? 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      };
+      return { interactions, metrics };
+    } catch (error) {
+      console.error('Error getting shop analytics:', error);
+      throw error;
+    }
+  }
+}
+
 export class UserSessionService {
   static async createSession(data: {
     userId?: string;
