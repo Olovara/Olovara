@@ -44,19 +44,23 @@ export function getBulkImportWorker(): Worker {
       
       const [, protocol, username, password, hostname, port] = urlMatch;
       const isTLS = protocol === "rediss";
-      
+      const dbMatch = redisUrlString.match(/\/(\d+)$/);
+      const db = dbMatch ? parseInt(dbMatch[1], 10) : 0;
+
       redisInstance = new Redis({
         host: hostname,
         port: port ? parseInt(port, 10) : 6379,
         username: username || undefined,
         password: password || undefined,
+        db,
         ...(isTLS ? { tls: {} } : {}),
         maxRetriesPerRequest: null, // Required by BullMQ for blocking operations
         enableReadyCheck: true,
         lazyConnect: true,
       });
-      
-      // BullMQ accepts a Redis instance directly as connection
+
+      console.log(`[BULK IMPORT WORKER] Redis: ${hostname}:${port ?? 6379} db=${db} (queue: bulk-import)`);
+
       bulkImportWorker = new Worker(
         "bulk-import",
         async (job: Job) => {

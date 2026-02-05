@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 import { autoMapHeaders, validateMapping } from "@/lib/bulk-import/mapping";
+import { normalizeCsvHeaders } from "@/lib/bulk-import/normalize-header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const csvHeaders = searchParams.get("headers")?.split(",") || [];
+    const rawHeaders = searchParams.get("headers")?.split(",") || [];
+    const decoded = rawHeaders.map((h) => {
+      try {
+        return decodeURIComponent(h);
+      } catch {
+        return h;
+      }
+    });
+    const csvHeaders = normalizeCsvHeaders(decoded);
     const platformParam = searchParams.get("platform");
     // Handle empty string, "undefined" string, or actual undefined/null
     const sourcePlatform =

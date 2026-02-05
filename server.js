@@ -103,32 +103,36 @@ async function startBulkImportWorker() {
       }
       
       if (useTsx) {
-        // Fallback: Use tsx to run TypeScript directly
         const { spawn } = require("child_process");
-        // On Windows, try yarn first (since user is using yarn), then npx
-        const isWindows = process.platform === "win32";
-        const command = isWindows ? "yarn" : "npx";
-        const args = isWindows ? ["tsx", "scripts/bulk-import-worker.ts"] : ["tsx", "scripts/bulk-import-worker.ts"];
-        
-        const workerProcess = spawn(command, args, {
+        const path = require("path");
+        const fs = require("fs");
+        const cwd = path.resolve(__dirname);
+        // Run node + tsx CLI (no .cmd) so spawn works on Windows with shell: false
+        const tsxCli = path.join(cwd, "node_modules", "tsx", "dist", "cli.mjs");
+        const workerScript = path.join(cwd, "scripts", "bulk-import-worker.ts");
+        if (!fs.existsSync(tsxCli)) {
+          console.warn("[BULK IMPORT WORKER] tsx not found at " + tsxCli + ". Run: yarn add -D tsx. Jobs will queue but not process.");
+          return null;
+        }
+        const workerProcess = spawn(process.execPath, [tsxCli, workerScript], {
           stdio: "inherit",
-          shell: isWindows, // On Windows, shell: true may be needed to find yarn/npx in PATH
+          shell: false,
           env: { ...process.env },
+          cwd,
         });
-        
+
         workerProcess.on("error", (error) => {
           console.error("[BULK IMPORT WORKER] Worker process error:", error.message);
-          console.warn("[BULK IMPORT WORKER] Make sure tsx is installed: yarn add -D tsx");
+          console.warn("[BULK IMPORT WORKER] Ensure tsx is available: yarn add -D tsx");
         });
-      
+
         workerProcess.on("exit", (code) => {
           if (code !== 0 && code !== null) {
-            console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}`);
-            // Don't restart automatically in development - let user restart manually
+            console.error(`[BULK IMPORT WORKER] Worker exited with code ${code}. Jobs will queue but not process until you run 'yarn worker' in another terminal.`);
           }
         });
-        
-        console.log("[BULK IMPORT WORKER] Worker started in separate process (development mode with tsx)");
+
+        console.log("[BULK IMPORT WORKER] Worker started in separate process (development). If jobs stay 'Waiting to start', run 'yarn worker' in another terminal.");
         return workerProcess;
       } else if (workerModule && workerModule.getBulkImportWorker) {
         // Successfully imported module, start worker in-process

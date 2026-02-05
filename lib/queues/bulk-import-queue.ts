@@ -60,12 +60,15 @@ export function getBulkImportQueue(): Queue | null {
         
         const [, protocol, username, password, hostname, port] = urlMatch;
         const isTLS = protocol === "rediss";
-        
+        const dbMatch = redisUrlString.match(/\/(\d+)$/);
+        const db = dbMatch ? parseInt(dbMatch[1], 10) : 0;
+
         redisInstance = new Redis({
           host: hostname,
           port: port ? parseInt(port, 10) : 6379,
           username: username || undefined,
           password: password || undefined,
+          db,
           ...(isTLS ? { tls: {} } : {}),
           maxRetriesPerRequest: 3,
           enableReadyCheck: true,
@@ -209,8 +212,10 @@ export async function addBulkImportJob(data: {
       jobId: data.jobId, // Use custom job ID for tracking
       priority: 1, // Normal priority
     });
-    // Clear error on successful job addition (indicates connection is working)
     queueError = null;
+    console.log(
+      `[BULK IMPORT QUEUE] Job ${data.jobId} added to queue "bulk-import". Worker should pick it up shortly.`
+    );
   } catch (error) {
     // If connection fails, throw a more helpful error
     if (error instanceof Error && error.message.includes("ECONNREFUSED")) {

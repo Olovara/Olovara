@@ -112,6 +112,15 @@ export function HeaderMapping({
   const mappedHeaders = headersToShow.filter((h) => mapping[h] && mapping[h] !== "SKIP");
   const unmappedHeaders = headersToShow.filter((h) => !mapping[h]);
 
+  // For a given CSV header, which product fields can still be chosen (not yet mapped, or mapped by this header)
+  const getAvailableProductFields = (currentCsvHeader: string) =>
+    PRODUCT_FIELDS.filter((field) => {
+      const mappedByHeader = Object.entries(mapping).find(
+        ([h, f]) => f === field.field && h !== currentCsvHeader
+      );
+      return !mappedByHeader;
+    });
+
   return (
     <div className="space-y-6">
       {/* Platform Selection */}
@@ -214,7 +223,7 @@ export function HeaderMapping({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="UNMAP">-- Unmap --</SelectItem>
-                          {PRODUCT_FIELDS.map((field) => (
+                          {getAvailableProductFields(header).map((field) => (
                             <SelectItem key={field.field} value={field.field}>
                               {field.label}
                               {field.required && " *"}
@@ -276,7 +285,7 @@ export function HeaderMapping({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="SKIP">-- Skip --</SelectItem>
-                        {PRODUCT_FIELDS.map((field) => (
+                        {getAvailableProductFields(header).map((field) => (
                           <SelectItem key={field.field} value={field.field}>
                             {field.label}
                             {field.required && " *"}

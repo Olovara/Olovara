@@ -15,6 +15,7 @@ import {
 } from "@/data/categories";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { generateUniqueSKU } from "@/lib/sku-generator";
+import { getRowValueByHeader } from "@/lib/bulk-import/normalize-header";
 
 const BATCH_SIZE = 50; // Process 50 rows at a time
 const MAX_ROWS = 500; // Maximum rows per job
@@ -92,7 +93,7 @@ function normalizeRow(
       }
     }
 
-    const csvValue = csvRow[csvHeader];
+    const csvValue = getRowValueByHeader(csvRow, csvHeader);
 
     if (csvValue === undefined || csvValue === null || csvValue === "") {
       continue; // Skip empty values
@@ -155,7 +156,7 @@ function normalizeRow(
   // First, check if images[] is already mapped and has values
   for (const [csvHeader, productField] of Object.entries(mapping)) {
     if (productField === "images[]") {
-      const value = csvRow[csvHeader];
+      const value = getRowValueByHeader(csvRow, csvHeader);
       if (value) {
         if (Array.isArray(value)) {
           imageFields.push(...value.filter((v) => v && String(v).trim()));
@@ -172,10 +173,10 @@ function normalizeRow(
     }
   }
 
-  // Also check for IMAGE1, IMAGE2, etc. columns
+  // Also check for IMAGE1, IMAGE2, etc. columns (use normalized header lookup)
   for (const csvHeader of Object.keys(csvRow)) {
     if (csvHeader.match(/^IMAGE\d+$/i) && !mapping[csvHeader]) {
-      const value = csvRow[csvHeader];
+      const value = getRowValueByHeader(csvRow, csvHeader);
       if (value && typeof value === "string" && value.trim()) {
         imageFields.push(value.trim());
       }
@@ -183,47 +184,52 @@ function normalizeRow(
   }
 
   // Handle Wix image filenames - construct full URLs if needed
-  // Wix CSVs may contain just filenames like "c557f8_065b65d1859d482ba8dcefbc07f1ba2c~mv2.jpg"
+  // Wix CSVs may contain just filenames like "c557f8_c69dd061b8384d6b8ba172202a8ed2dd~mv2.jpg"
   // Full URL format: https://static.wixstatic.com/media/<MEDIA_ID>
-  if (sourcePlatform === "Wix" && imageFields.length > 0) {
+  // If value looks like Wix filename, convert even when source is "Other" or empty (minimize image failures)
+  const looksLikeWixImageFilename = (value: string): boolean =>
+    /^[a-zA-Z0-9]+_[a-f0-9]+~mv2\.(jpg|jpeg|png|gif|webp)$/i.test(
+      value.replace(/^\/+|\/+$/g, "").trim()
+    );
+
+  if (imageFields.length > 0) {
     imageFields.forEach((imageValue, index) => {
-      // Trim whitespace and check if it's already a URL
       const trimmedValue = imageValue.trim();
       if (!trimmedValue) {
-        // Empty value after trimming - remove it
         imageFields[index] = "";
         return;
       }
 
-      // Check if it's already a URL (starts with http/https)
-      if (
-        !trimmedValue.startsWith("http://") &&
-        !trimmedValue.startsWith("https://")
-      ) {
-        // It's a filename, construct the full Wix URL
-        // Ensure no leading/trailing slashes in the filename
+      const isUrl =
+        trimmedValue.startsWith("http://") ||
+        trimmedValue.startsWith("https://");
+      if (isUrl) return;
+
+      // Not a URL: convert to Wix URL if platform is Wix or value looks like Wix filename
+      const shouldUseWixUrl =
+        sourcePlatform === "Wix" || looksLikeWixImageFilename(trimmedValue);
+      if (shouldUseWixUrl) {
         const cleanFilename = trimmedValue.replace(/^\/+|\/+$/g, "");
         const wixImageUrl = `https://static.wixstatic.com/media/${cleanFilename}`;
         imageFields[index] = wixImageUrl;
-        console.log(
-          `[BULK IMPORT] Row ${rowNumber}: Constructed Wix image URL from filename "${cleanFilename}" -> ${wixImageUrl}`
-        );
-      } else {
-        // Already a URL - log for debugging
-        console.log(
-          `[BULK IMPORT] Row ${rowNumber}: Image already has full URL: ${trimmedValue}`
-        );
+        if (sourcePlatform !== "Wix") {
+          console.log(
+            `[BULK IMPORT] Row ${rowNumber}: Wix-style filename detected (platform=${sourcePlatform ?? "none"}), constructed URL: "${cleanFilename}" -> ${wixImageUrl}`
+          );
+        } else {
+          console.log(
+            `[BULK IMPORT] Row ${rowNumber}: Constructed Wix image URL from filename "${cleanFilename}" -> ${wixImageUrl}`
+          );
+        }
       }
     });
 
-    // Filter out any empty values that were created
     const filteredImages = imageFields.filter((img) => img && img.trim());
     if (filteredImages.length !== imageFields.length) {
       console.warn(
         `[BULK IMPORT] Row ${rowNumber}: Filtered out ${imageFields.length - filteredImages.length} empty image(s)`
       );
     }
-    // Update imageFields array in place
     imageFields.length = 0;
     imageFields.push(...filteredImages);
   }
@@ -435,13 +441,13 @@ function normalizeRow(
     );
 
     const variationType = typeKey
-      ? csvRow[typeKey]?.toString().trim()
+      ? getRowValueByHeader(csvRow, typeKey)?.toString().trim()
       : undefined;
     const variationName = nameKey
-      ? csvRow[nameKey]?.toString().trim()
+      ? getRowValueByHeader(csvRow, nameKey)?.toString().trim()
       : undefined;
     const variationValues = valuesKey
-      ? csvRow[valuesKey]?.toString().trim()
+      ? getRowValueByHeader(csvRow, valuesKey)?.toString().trim()
       : undefined;
 
     // If we have all three fields, we have a valid variation
@@ -1122,41 +1128,50 @@ export async function processBulkImportBatch(
 
   // Pre-process Wix CSV: group product rows with their variant rows
   // Wix has separate rows for products and variants - we need to group them by handleId
+  // Wix export headers can be "handleid"/"fieldtype" (lowercase) - resolve keys case-insensitively
+  const getRowValue = (row: any, possibleKeys: string[]): string | undefined => {
+    const keys = Object.keys(row);
+    for (const pk of possibleKeys) {
+      const found = keys.find((k) => k.trim().toLowerCase() === pk.toLowerCase());
+      if (found) {
+        const v = row[found];
+        if (v != null && String(v).trim() !== "") return String(v).trim();
+      }
+    }
+    return undefined;
+  };
+
   let rowsToProcess: any[] = csvData.slice(0, MAX_ROWS);
   let groupedRows: Array<{ productRow: any; variantRows: any[]; originalRowNumbers: number[] }> = [];
-  
+
   if (sourcePlatform === "Wix") {
     // Group rows by handleId - product row followed by variant rows
     const rowsByHandleId = new Map<string, { productRow: any; variantRows: any[]; originalRowNumbers: number[] }>();
-    
+
     rowsToProcess.forEach((row, index) => {
-      const handleId = row.handleId || row["handleId"];
-      const fieldType = row.fieldType || row["fieldType"];
-      
+      const handleId = getRowValue(row, ["handleId", "handleid", "Handle ID"]);
+      const fieldTypeRaw = getRowValue(row, ["fieldType", "fieldtype", "Field Type"]);
+      const fieldType = fieldTypeRaw?.toLowerCase();
+
       if (!handleId) {
-        // Skip rows without handleId
         return;
       }
-      
-      if (fieldType === "Product") {
-        // This is a product row - create new group or update existing
+
+      if (fieldType === "product") {
         if (!rowsByHandleId.has(handleId)) {
           rowsByHandleId.set(handleId, {
             productRow: row,
             variantRows: [],
-            originalRowNumbers: [index + 1], // Row numbers start at 1
+            originalRowNumbers: [index + 1],
           });
         } else {
-          // Product row already exists - this shouldn't happen, but update it
           const group = rowsByHandleId.get(handleId)!;
           group.productRow = row;
           group.originalRowNumbers.push(index + 1);
         }
-      } else if (fieldType === "Variant") {
-        // This is a variant row - add to the product group
+      } else if (fieldType === "variant") {
         if (!rowsByHandleId.has(handleId)) {
-          // Variant without product - create a placeholder (shouldn't happen in valid CSV)
-          console.warn(`[BULK IMPORT] Variant row found without product row for handleId: ${handleId}`);
+          console.warn(`[BULK IMPORT] Variant row without product row for handleId: ${handleId}`);
           rowsByHandleId.set(handleId, {
             productRow: null,
             variantRows: [row],
@@ -1169,17 +1184,26 @@ export async function processBulkImportBatch(
         }
       }
     });
-    
-    // Convert map to array, filtering out groups without product rows
+
     groupedRows = Array.from(rowsByHandleId.values()).filter(
       (group) => group.productRow !== null
     );
-    
+
     console.log(
       `[BULK IMPORT] Grouped Wix CSV: ${rowsToProcess.length} total rows, ${groupedRows.length} product groups`
     );
-    
-    // For non-Wix platforms, create single-row groups
+
+    // Fallback: if no groups (e.g. flat Wix CSV without handleId/fieldType or different column names), treat each row as one product
+    if (groupedRows.length === 0) {
+      console.warn(
+        `[BULK IMPORT] Wix grouping produced 0 groups (check handleId/fieldType columns). Falling back to one row = one product.`
+      );
+      groupedRows = rowsToProcess.map((row, index) => ({
+        productRow: row,
+        variantRows: [],
+        originalRowNumbers: [index + 1],
+      }));
+    }
   } else {
     groupedRows = rowsToProcess.map((row, index) => ({
       productRow: row,

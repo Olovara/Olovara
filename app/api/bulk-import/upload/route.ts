@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 import Papa from "papaparse";
+import { normalizeCsvHeader } from "@/lib/bulk-import/normalize-header";
 
 export const dynamic = "force-dynamic";
 
@@ -64,11 +65,11 @@ export async function POST(request: NextRequest) {
     // Read file content
     const fileContent = await file.text();
 
-    // Parse CSV
+    // Parse CSV with normalized headers (BOM, trim, collapse spaces)
     const parseResult = Papa.parse(fileContent, {
-      header: true, // Use first row as headers
+      header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => header.trim(), // Trim whitespace from headers
+      transformHeader: (header) => normalizeCsvHeader(header),
     });
 
     if (parseResult.errors.length > 0) {

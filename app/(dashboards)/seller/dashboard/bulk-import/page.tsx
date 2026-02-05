@@ -41,6 +41,7 @@ import {
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { detectSourceFromHeaders } from "@/lib/bulk-import/mapping";
+import { normalizeCsvHeader } from "@/lib/bulk-import/normalize-header";
 import {
   Categories,
   getTertiaryCategories,
@@ -82,6 +83,7 @@ export default function BulkImportPage() {
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState(0);
   const [failedRowsCount, setFailedRowsCount] = useState(0);
+  const [workerHint, setWorkerHint] = useState<string | null>(null);
 
   // Step 2.5: Category Selection
   const [primaryCategory, setPrimaryCategory] = useState<string>("");
@@ -142,7 +144,7 @@ export default function BulkImportPage() {
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header) => header.trim(),
+        transformHeader: (header) => normalizeCsvHeader(header),
       });
 
       if (parseResult.errors.length > 0) {
@@ -228,7 +230,7 @@ export default function BulkImportPage() {
 
     try {
       const response = await fetch(
-        `/api/bulk-import/mapping?headers=${headersToUse.join(",")}&platform=${platform}`
+        `/api/bulk-import/mapping?headers=${encodeURIComponent(headersToUse.join(","))}&platform=${encodeURIComponent(platform)}`
       );
 
       if (!response.ok) {
@@ -356,6 +358,7 @@ export default function BulkImportPage() {
         const job = data.job;
 
         setJobStatus(job.status);
+        setWorkerHint(data.workerHint ?? null);
         setJobProgress(
           job.totalRows > 0
             ? Math.round((job.processed / job.totalRows) * 100)
@@ -825,6 +828,11 @@ export default function BulkImportPage() {
                           ? "Processing..."
                           : "Unknown status"}
                     </span>
+                    {jobStatus === "QUEUED" && workerHint && (
+                      <p className="text-sm text-amber-600 mt-2 max-w-xl">
+                        {workerHint}
+                      </p>
+                    )}
                   </>
                 )}
               </div>

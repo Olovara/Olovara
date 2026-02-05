@@ -9,7 +9,6 @@ import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
 import { addBulkImportJob } from "@/lib/queues/bulk-import-queue";
 import { v4 as uuidv4 } from "uuid";
-import Papa from "papaparse";
 import { BulkImportJobStatus } from "@prisma/client";
 import { sanitizeRedisUrl } from "@/lib/utils/sanitize-redis-url";
 
@@ -40,6 +39,8 @@ export async function POST(request: NextRequest) {
     } = body;
     csvData = data;
     sourcePlatform = platform;
+    // Log so we can verify platform is passed correctly (e.g. Wix vs Other)
+    console.log(`[BULK IMPORT START] sourcePlatform received: "${sourcePlatform ?? "(undefined)"}"`);
 
     if (!csvData || !Array.isArray(csvData) || csvData.length === 0) {
       return NextResponse.json(
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Add job to queue
+    // Add job to queue (same path for dev and production)
     try {
       await addBulkImportJob({
         jobId,
