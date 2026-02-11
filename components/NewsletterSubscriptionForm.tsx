@@ -77,7 +77,11 @@ export default function NewsletterSubscriptionForm({
         </div>
         
         <form onSubmit={handleSubmit} className="flex gap-2">
+          <label htmlFor="newsletter-email-compact" className="sr-only">
+            Email address for newsletter
+          </label>
           <Input
+            id="newsletter-email-compact"
             type="email"
             placeholder="Enter your email"
             value={email}
@@ -111,7 +115,11 @@ export default function NewsletterSubscriptionForm({
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-3">
+        <label htmlFor="newsletter-email" className="sr-only">
+          Email address for newsletter
+        </label>
         <Input
+          id="newsletter-email"
           type="email"
           placeholder="Enter your email address"
           value={email}

@@ -250,9 +250,13 @@ export default function CheckoutPage() {
   const validate = () => {
     if (!product) return false;
     
-    if (!quantity || quantity < 1 || quantity > product.stock) {
+    // Digital products have no stock limit; physical products must not exceed stock
+    const quantityValid = product.isDigital
+      ? quantity >= 1
+      : quantity >= 1 && quantity <= product.stock;
+    if (!quantity || !quantityValid) {
       trackFormError('quantity', 'Invalid quantity');
-      toast.error("Invalid quantity");
+      toast.error(product.isDigital ? "Please enter a valid quantity" : "Invalid quantity");
       return false;
     }
     
@@ -543,7 +547,7 @@ export default function CheckoutPage() {
                 </label>
                 <QuantitySelector
                   name="quantity"
-                  maxQuantity={product.stock}
+                  maxQuantity={product.isDigital ? 999 : product.stock}
                   quantity={quantity}
                   setQuantity={setQuantity}
                 />

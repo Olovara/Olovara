@@ -318,18 +318,19 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
     >
       <div className="flex flex-col w-full">
         <div className="relative aspect-square w-full overflow-hidden rounded-lg">
-          <ImageSlider urls={imageUrlsToUse} />
+          <ImageSlider urls={imageUrlsToUse} alt={product.name} />
           {isLoading && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
 
-          {/* Wishlist Button */}
+          {/* Wishlist Button - aria-label so screen readers get a name (icon-only) */}
           <Button
             variant="ghost"
             size="sm"
             onClick={handleAddToWishlist}
             disabled={isWishlistLoading}
             className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-sm opacity-0 group-hover/main:opacity-100 transition-opacity duration-200 z-10"
+            aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart
               className={`h-4 w-4 transition-colors ${

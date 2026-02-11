@@ -133,7 +133,8 @@ export default function ProductActions({
     }
   };
 
-  const isOutOfStock = maxStock === 0;
+  // Digital products are never out of stock (infinite supply)
+  const isOutOfStock = !isDigital && maxStock === 0;
   const isDropProduct = dropDate && dropTime;
   const canBuy = !isOutOfStock && (!isDropProduct || isDropActive);
 
@@ -159,13 +160,14 @@ export default function ProductActions({
               />
             </div>
             
-            {/* Wishlist Button */}
+            {/* Wishlist Button - aria-label so screen readers get a name (icon-only button) */}
             <Button
               variant="outline"
               size="icon"
               onClick={handleWishlistToggle}
               disabled={isWishlistLoading}
               className="h-12 w-12 rounded-full border-2 hover:border-purple-500 transition-colors"
+              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart 
                 className={`h-5 w-5 transition-colors ${

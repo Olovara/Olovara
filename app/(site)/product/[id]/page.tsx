@@ -487,7 +487,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
     other: {
       "product:price:amount": (currentPrice / 100).toString(),
       "product:price:currency": product.currency,
-      "product:availability": product.stock > 0 ? "in stock" : "out of stock",
+      "product:availability": product.isDigital || product.stock > 0 ? "in stock" : "out of stock",
     },
   };
 }
@@ -502,6 +502,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   if (product.status.toUpperCase() !== "ACTIVE") {
     notFound();
+  }
+
+  // Only show download link to users who have purchased this digital product
+  let hasPurchasedDigitalProduct = false;
+  if (product.isDigital && product.productFile) {
+    const session = await auth();
+    if (session?.user?.id) {
+      const order = await db.order.findFirst({
+        where: {
+          userId: session.user.id,
+          productId: product.id,
+          isDigital: true,
+          status: "COMPLETED",
+          paymentStatus: "PAID",
+          NOT: { status: "REFUNDED" },
+        },
+        select: { id: true },
+      });
+      hasPurchasedDigitalProduct = !!order;
+    }
   }
 
   if (!product.images || product.images.length === 0) {
@@ -522,7 +542,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   return (
     <>
       <WebsiteStructuredData pageType="products" />
-      <ProductDetails data={product} />
+      <ProductDetails data={product} hasPurchasedDigitalProduct={hasPurchasedDigitalProduct} />
     </>
   );
 }

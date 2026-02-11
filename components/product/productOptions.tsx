@@ -90,9 +90,9 @@ export function ProductOptionsSection({
   return (
     <div className="space-y-4 pb-2">
       <div>
-        <Label className="text-sm font-medium">
+        <span className="text-sm font-medium" role="heading" aria-level={2}>
           Product Options / Variations
-        </Label>
+        </span>
         <p className="text-xs text-muted-foreground mt-1">
           Create different variations of your product (e.g., sizes, colors) with
           individual pricing and stock levels.
@@ -108,13 +108,14 @@ export function ProductOptionsSection({
           key={index}
           className="space-y-4 mt-4 p-4 border rounded-lg bg-white"
         >
-          {/* Dropdown Label */}
+          {/* Dropdown Label - htmlFor + id so label is associated with control */}
           <div className="flex items-center gap-x-4">
             <div className="flex-1">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label htmlFor={`option-group-name-${index}`} className="text-sm font-medium text-gray-700">
                 Option Group Name
               </Label>
               <Input
+                id={`option-group-name-${index}`}
                 placeholder="e.g., Size, Color, Material"
                 value={option.label}
                 onChange={(e) =>
@@ -159,8 +160,9 @@ export function ProductOptionsSection({
               <div className="space-y-3 pr-16">
                 {/* Option Name */}
                 <div>
-                  <Label className="text-xs text-gray-600">Option Value</Label>
+                  <Label htmlFor={`option-value-${index}-${valueIndex}`} className="text-xs text-gray-600">Option Value</Label>
                   <Input
+                    id={`option-value-${index}-${valueIndex}`}
                     placeholder="e.g., Small, Medium, Large"
                     value={value.name}
                     onChange={(e) => {
@@ -174,7 +176,7 @@ export function ProductOptionsSection({
 
                 {/* Price */}
                 <div>
-                  <Label className="text-xs text-gray-600">
+                  <Label htmlFor={`option-price-${index}-${valueIndex}`} className="text-xs text-gray-600">
                     Additional Price (Optional)
                   </Label>
                   <div className="relative">
@@ -182,6 +184,7 @@ export function ProductOptionsSection({
                       {currencyInfo.symbol}
                     </span>
                     <Input
+                      id={`option-price-${index}-${valueIndex}`}
                       type="number"
                       step={1 / Math.pow(10, currencyInfo.decimals)}
                       min={0}
@@ -214,8 +217,9 @@ export function ProductOptionsSection({
 
                 {/* Stock */}
                 <div>
-                  <Label className="text-xs text-gray-600">Stock</Label>
+                  <Label htmlFor={`option-stock-${index}-${valueIndex}`} className="text-xs text-gray-600">Stock</Label>
                   <Input
+                    id={`option-stock-${index}-${valueIndex}`}
                     type="number"
                     min="0"
                     placeholder="0"
@@ -240,13 +244,14 @@ export function ProductOptionsSection({
 
                 {/* Value Description */}
                 <div>
-                  <Label className="text-xs text-gray-600">
+                  <Label htmlFor={`option-desc-${index}-${valueIndex}`} className="text-xs text-gray-600">
                     Description (Optional)
                   </Label>
                   <p className="text-xs text-gray-500 mt-1 mb-1">
                     Explain what makes this value special
                   </p>
                   <Textarea
+                    id={`option-desc-${index}-${valueIndex}`}
                     placeholder="e.g., This size includes extra fabric for a looser fit..."
                     value={value.description || ""}
                     onChange={(e) => {

@@ -12,11 +12,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageSliderProps {
   urls: string[];
+  /** Descriptive alt text for accessibility (e.g. product name). Avoid generic "Product image". */
+  alt: string;
 }
 
-const ImageSlider = ({ urls }: ImageSliderProps) => {
+// Keep alt under ~125 chars to avoid "long alternative text" accessibility warnings
+const MAX_ALT_LENGTH = 100;
+
+const ImageSlider = ({ urls, alt }: ImageSliderProps) => {
   const [swiper, setSwiper] = useState<null | SwiperType>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const shortAlt = alt.length > MAX_ALT_LENGTH ? `${alt.slice(0, MAX_ALT_LENGTH - 3)}...` : alt;
 
   const [slideConfig, setSlideConfig] = useState({
     isBeginning: true,
@@ -92,7 +98,7 @@ const ImageSlider = ({ urls }: ImageSliderProps) => {
                 loading='eager'
                 className='-z-10 h-full w-full object-cover object-center'
                 src={url}
-                alt='Product image'
+                alt={urls.length > 1 ? `${shortAlt} (${i + 1}/${urls.length})` : shortAlt}
                 unoptimized={url.includes('.ufs.sh')} // Unoptimized for UploadThing UFS URLs with dynamic subdomains
               />
             </SwiperSlide>

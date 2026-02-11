@@ -129,13 +129,18 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Search Bar */}
-            <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex items-center w-full">
+            <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex items-center w-full" role="search" aria-label="Site search">
+              <label htmlFor="mobile-search" className="sr-only">
+                Search products
+              </label>
               <input
-                type="text"
+                id="mobile-search"
+                type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products..."
                 className="flex-grow px-4 py-2 text-sm border rounded-l-md focus:outline-none focus:ring focus:ring-muted"
+                aria-label="Search products"
               />
               <button
                 type="submit"

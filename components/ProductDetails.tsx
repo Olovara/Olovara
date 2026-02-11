@@ -24,6 +24,8 @@ const ProtectedProductDescription = dynamic(
 );
 
 interface ProductDetailsProps {
+  /** True if the current user has a completed, paid order for this digital product (so we can show download link) */
+  hasPurchasedDigitalProduct?: boolean;
   data: {
     id: string;
     name: string;
@@ -126,7 +128,7 @@ interface ProductDetailsProps {
   };
 }
 
-export default function ProductDetails({ data }: ProductDetailsProps) {
+export default function ProductDetails({ data, hasPurchasedDigitalProduct = false }: ProductDetailsProps) {
   const [convertedPrice, setConvertedPrice] = useState<string>("");
   const [convertedFinalPrice, setConvertedFinalPrice] = useState<string>("");
   const [convertedShippingCost, setConvertedShippingCost] =
@@ -261,7 +263,7 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="col-span-1 lg:col-span-2">
           <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
-            <ImageSlider urls={data.images} />
+            <ImageSlider urls={data.images} alt={data.name} />
           </div>
 
           {/* Product Description Section */}
@@ -495,11 +497,11 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
             />
           )}
 
-          {/* Quantity Selector & Buy Now Button */}
+          {/* Quantity Selector & Buy Now Button - digital products always "in stock" for UI */}
           <ProductActions
             productId={data.id}
             productName={data.name}
-            maxStock={data.stock}
+            maxStock={data.isDigital ? 999 : data.stock}
             dropDate={data.dropDate}
             dropTime={data.dropTime}
             isDigital={data.isDigital}
@@ -546,14 +548,11 @@ export default function ProductDetails({ data }: ProductDetailsProps) {
         </div>
       )}
 
-      {/* Digital Product Download */}
-      {data.isDigital && data.productFile && (
+      {/* Digital Product Download - only show to users who have purchased this product */}
+      {data.isDigital && data.productFile && hasPurchasedDigitalProduct && (
         <div className="mt-8 bg-green-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Digital Download</h3>
-          {/*
-            Use the secure download API route to prevent unauthorized access.
-            The API will check if the user has a completed, paid order before redirecting to the file.
-          */}
+          <p className="text-sm text-gray-600 mb-2">You own this product. Download your file below.</p>
           <a
             href={`/api/download/${data.id}`}
             target="_blank"

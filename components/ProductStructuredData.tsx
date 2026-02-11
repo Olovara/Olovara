@@ -78,8 +78,8 @@ export function ProductStructuredData({ product }: ProductStructuredDataProps) {
       "@type": "Offer",
       "price": (currentPrice / 100).toFixed(2),
       "priceCurrency": product.currency,
-      "availability": product.stock > 0 
-        ? "https://schema.org/InStock" 
+      "availability": product.isDigital || product.stock > 0
+        ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
       ...(product.seller && {
         "seller": {
