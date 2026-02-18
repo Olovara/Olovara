@@ -291,9 +291,9 @@ export default async function PrimaryCategoryPage({
           </Sheet>
         </div>
 
-        {/* Desktop Filters Sidebar */}
+        {/* Desktop Filters Sidebar - own scroll so filters don't push page scroll */}
         <div className="hidden lg:block w-1/5">
-          <div className="sticky top-4">
+          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-4">Subcategories</h2>
               <ul className="space-y-2">

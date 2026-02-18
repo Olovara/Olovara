@@ -21,6 +21,7 @@ import {
   useWishlistLoading,
   useWishlistSync,
 } from "@/hooks/useWishlistSync";
+import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
 
 interface SimplifiedProduct {
   name: string;
@@ -69,6 +70,7 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
   const isWishlistLoading = useWishlistLoading(product?.id || "");
   const { addToWishlist, removeFromWishlist, setLoadingState } =
     useWishlistSync();
+  const { trackProductInteraction } = useAnalyticsTracking();
 
   // Check if sale is currently active
   const isOnSale = (() => {
@@ -213,6 +215,12 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       });
 
       if (result.success) {
+        if (result.action === "added") {
+          trackProductInteraction({
+            productId: product.id,
+            interactionType: "ADD_TO_WISHLIST",
+          });
+        }
         toast.success(
           result.action === "added"
             ? "Added to wishlist!"

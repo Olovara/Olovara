@@ -312,9 +312,9 @@ export default async function SecondaryCategoryPage({
           </Sheet>
         </div>
 
-        {/* Desktop Filters Sidebar */}
+        {/* Desktop Filters Sidebar - own scroll so filters don't push page scroll */}
         <div className="hidden lg:block w-1/5">
-          <div className="sticky top-4">
+          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
             <ProductFilters />
           </div>
         </div>

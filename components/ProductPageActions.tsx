@@ -12,6 +12,7 @@ import { Heart } from "lucide-react";
 import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
 import { toast } from "sonner";
 import { useIsInWishlist, useWishlistLoading, useWishlistSync } from "@/hooks/useWishlistSync";
+import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
 
 interface ProductActionsProps {
   productId: string;
@@ -50,6 +51,7 @@ export default function ProductActions({
   const isInWishlist = useIsInWishlist(productId);
   const isWishlistLoading = useWishlistLoading(productId);
   const { addToWishlist, removeFromWishlist, setLoadingState } = useWishlistSync();
+  const { trackProductInteraction } = useAnalyticsTracking();
 
   // Check if drop is active
   useEffect(() => {
@@ -110,6 +112,12 @@ export default function ProductActions({
       });
       
       if (result.success) {
+        if (result.action === "added") {
+          trackProductInteraction({
+            productId,
+            interactionType: "ADD_TO_WISHLIST",
+          });
+        }
         toast.success(result.action === "added" ? "Added to wishlist!" : "Removed from wishlist!");
       } else {
         // Revert optimistic update on error

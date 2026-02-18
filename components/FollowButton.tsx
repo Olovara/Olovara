@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Heart } from "lucide-react";
 import { followSeller, unfollowSeller, isFollowingSeller } from "@/actions/followActions";
 import { toast } from "sonner";
+import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
 
 interface FollowButtonProps {
   sellerId: string;
@@ -29,6 +30,7 @@ export default function FollowButton({
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { trackShopInteraction } = useAnalyticsTracking();
 
   // Check initial follow status
   useEffect(() => {
@@ -66,6 +68,10 @@ export default function FollowButton({
         // Follow
         const result = await followSeller(sellerId);
         if (result.success) {
+          trackShopInteraction({
+            sellerId,
+            interactionType: "FOLLOW",
+          });
           setIsFollowing(true);
           setFollowerCount(result.followerCount || followerCount + 1);
           toast.success(result.message);

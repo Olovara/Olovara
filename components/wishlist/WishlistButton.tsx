@@ -12,6 +12,7 @@ import {
 import { addToWishlist, getUserWishlists } from "@/actions/wishlistActions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
 
 interface WishlistButtonProps {
   productId: string;
@@ -29,6 +30,7 @@ export function WishlistButton({
   const [wishlists, setWishlists] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const { trackProductInteraction } = useAnalyticsTracking();
 
   // Load wishlists when dropdown opens
   const handleOpenChange = async (open: boolean) => {
@@ -51,6 +53,10 @@ export function WishlistButton({
       });
 
       if (result.success) {
+        trackProductInteraction({
+          productId,
+          interactionType: "ADD_TO_WISHLIST",
+        });
         toast.success("Added to wishlist!");
         setIsOpen(false);
       } else {
@@ -69,6 +75,10 @@ export function WishlistButton({
     try {
       const result = await addToWishlist({ productId });
       if (result.success) {
+        trackProductInteraction({
+          productId,
+          interactionType: "ADD_TO_WISHLIST",
+        });
         toast.success("Added to wishlist!");
       } else {
         toast.error(result.error || "Failed to add to wishlist");

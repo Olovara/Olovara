@@ -1542,7 +1542,7 @@ model ProductInteraction {
   sessionId         String   // Session identifier
   
   // Interaction details
-  interactionType   String   // "VIEW", "CLICK", "ADD_TO_CART", "REMOVE_FROM_CART", "FAVORITE", "SHARE", "REVIEW_VIEW"
+  interactionType   String   // "VIEW", "CLICK", "ADD_TO_CART", "REMOVE_FROM_CART", "FAVORITE", "ADD_TO_WISHLIST", "SHARE", "REVIEW_VIEW"
   interactionData   Json?    // Additional interaction details
   
   // View-specific data
@@ -1582,7 +1582,7 @@ model ShopInteraction {
   seller            Seller   @relation(fields: [sellerId], references: [id])
   sessionId         String   // Session identifier
 
-  // Interaction type: VIEW, CLICK, FOLLOW_CLICK, CONTACT_CLICK, CUSTOM_ORDER_CLICK, PRODUCT_CLICK, POLICIES_VIEWED, etc.
+  // Interaction type: VIEW, CLICK, FOLLOW, FOLLOW_CLICK, CONTACT_CLICK, CUSTOM_ORDER_CLICK, PRODUCT_CLICK, POLICIES_VIEWED, etc.
   interactionType   String
   interactionData   Json?    // Additional details (e.g. productId for PRODUCT_CLICK)
 

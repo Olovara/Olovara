@@ -688,10 +688,21 @@ export function useProductTracking(
     });
   }, [productId, sourceType, sourceId, trackProductInteraction]);
 
+  // Track add-to-wishlist (same pipeline as product views → ProductInteraction table)
+  const trackAddToWishlist = useCallback(() => {
+    trackProductInteraction({
+      productId,
+      interactionType: "ADD_TO_WISHLIST",
+      sourceType,
+      sourceId,
+    });
+  }, [productId, sourceType, sourceId, trackProductInteraction]);
+
   return {
     trackProductView,
     trackAddToCart,
     trackProductClick,
+    trackAddToWishlist,
   };
 }
 
