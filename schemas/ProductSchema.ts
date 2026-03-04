@@ -378,10 +378,12 @@ const baseProductSchema = z.object({
   ),
   inStockProcessingTime: z.number().optional(),
   outStockLeadTime: z.number().optional(),
+  // Rich text (HTML from Quill)
   howItsMade: z.preprocess(
     (val) => (val === null ? undefined : val), // Convert null to undefined before validation
     z
       .string()
+      .max(5000, "How it's made is too long")
       .optional()
       .transform((val) =>
         val && typeof val === "string" && val.trim() !== "" ? val : undefined

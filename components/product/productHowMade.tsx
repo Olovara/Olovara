@@ -1,21 +1,31 @@
 "use client";
 
-import { Textarea } from "@/components/ui/textarea";
 import {
   FormField,
   FormItem,
-  FormLabel,
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+
+// Rich text editor (SSR disabled like other Quill usage)
+const QuillEditor = dynamic(
+  () => import("@/components/QuillEditor").then((mod) => mod.QuillEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[200px] animate-pulse rounded border bg-muted" />
+    ),
+  }
+);
 
 type ProductHowItsMadeProps = {
   form: UseFormReturn<any>;
@@ -31,18 +41,41 @@ export function ProductHowItsMadeSection({ form }: ProductHowItsMadeProps) {
           <FormField
             control={form.control}
             name="howItsMade"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    rows={5}
-                    placeholder="Describe how this product is made. Mention materials, techniques, and special care details."
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              // Character count: plain text length (strip HTML) like product description
+              const html = typeof field.value === "string" ? field.value : "";
+              const plainTextLength = html ? html.replace(/<[^>]*>/g, "").length : 0;
+              const maxLength = 5000;
+              const isNearLimit = plainTextLength > maxLength * 0.9;
+              const isOverLimit = plainTextLength > maxLength;
+              return (
+                <FormItem>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <QuillEditor
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="Describe how this product is made. Mention materials, techniques, and special care details."
+                      />
+                      <div className="flex justify-end">
+                        <span
+                          className={`text-xs ${
+                            isOverLimit
+                              ? "text-red-500 font-medium"
+                              : isNearLimit
+                                ? "text-amber-500"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {plainTextLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                        </span>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         </CollapsibleContent>
 

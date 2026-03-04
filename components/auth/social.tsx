@@ -1,7 +1,6 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { GrGoogle } from "react-icons/gr";
 
 import { Button } from "../ui/button";
@@ -13,11 +12,10 @@ interface SocialProps {
 
 const Social = ({ mode = "signin" }: SocialProps) => {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl");
-
-  const onClick = (provider: "google") => {
-    signIn(provider, { callbackUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT });
-  };
+  const callbackUrl = searchParams.get("callbackUrl") ?? DEFAULT_LOGIN_REDIRECT;
+  // Direct link to OAuth endpoint so the server does the redirect to Google.
+  // Avoids reliance on client-side signIn() which can fail silently (no redirect, user stays on login).
+  const googleSignInHref = `/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
   const buttonText = mode === "signup" ? "Sign up with Google" : "Sign in with Google";
 
@@ -27,10 +25,12 @@ const Social = ({ mode = "signin" }: SocialProps) => {
         size="lg"
         className="w-full text-xl hover:bg-purple-400 hover:text-background"
         variant="outline"
-        onClick={() => onClick("google")}
+        asChild
       >
-        <GrGoogle className="mr-2" />
-        {buttonText}
+        <a href={googleSignInHref}>
+          <GrGoogle className="mr-2" />
+          {buttonText}
+        </a>
       </Button>
     </div>
   );

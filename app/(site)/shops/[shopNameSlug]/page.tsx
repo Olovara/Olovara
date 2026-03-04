@@ -689,15 +689,18 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   </div>
                 )}
 
-                {/* Behind the Hands */}
+                {/* Behind the Hands - rich text (HTML from Quill) */}
                 {(seller as any).behindTheHands && (
                   <div className="bg-white rounded-lg shadow-sm border p-6">
                     <h3 className="text-lg font-semibold mb-4">
                       Behind the Hands
                     </h3>
-                    <p className="text-gray-600 leading-relaxed">
-                      {(seller as any).behindTheHands}
-                    </p>
+                    <div
+                      className="prose prose-sm max-w-none text-gray-600 leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: (seller as any).behindTheHands,
+                      }}
+                    />
                   </div>
                 )}
 

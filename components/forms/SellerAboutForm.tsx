@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Submitbutton } from "@/components/SubmitButtons";
 import { useState, useEffect, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useIsClient } from "@/hooks/use-is-client";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +31,12 @@ import {
 import { uploadProcessedImages } from "@/lib/upload-images";
 import { useSession } from "next-auth/react";
 import { cleanupTempUploads } from "@/actions/cleanup-temp-uploads";
+
+// Rich text editor for Behind the Hands (SSR disabled like other Quill usage)
+const QuillEditor = dynamic(
+  () => import("@/components/QuillEditor").then((mod) => mod.QuillEditor),
+  { ssr: false, loading: () => <div className="min-h-[200px] animate-pulse rounded border bg-muted" /> }
+);
 
 const SellerAboutForm = () => {
   const isClient = useIsClient();
@@ -377,17 +384,35 @@ const SellerAboutForm = () => {
           </p>
         </div>
 
-        {/* Behind the Hands */}
+        {/* Behind the Hands - rich text via Quill (stores HTML) */}
         <div className="flex flex-col gap-y-2">
           <Label>Behind the Hands</Label>
-          <Textarea
+          <QuillEditor
+            value={form.watch("behindTheHands") ?? ""}
+            onChange={(html) => form.setValue("behindTheHands", html, { shouldDirty: true })}
             placeholder="Share your personal story - how you got started, what you love about crafting, your journey, and what makes your work special"
-            {...form.register("behindTheHands")}
-            disabled={isPending}
-            rows={4}
           />
+          {/* Character counter: plain text length (strip HTML tags) like product description */}
+          {(() => {
+            const html = form.watch("behindTheHands") ?? "";
+            const plainTextLength = html ? html.replace(/<[^>]*>/g, "").length : 0;
+            const maxLength = 5000;
+            const isNearLimit = plainTextLength > maxLength * 0.9;
+            const isOverLimit = plainTextLength > maxLength;
+            return (
+              <div className="flex justify-end">
+                <span
+                  className={`text-xs ${
+                    isOverLimit ? "text-red-500 font-medium" : isNearLimit ? "text-amber-500" : "text-muted-foreground"
+                  }`}
+                >
+                  {plainTextLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                </span>
+              </div>
+            );
+          })()}
           <p className="text-xs text-muted-foreground">
-            This personal touch helps customers connect with you and your story
+            This personal touch helps customers connect with you and your story. You can use bold, lists, and links.
           </p>
         </div>
 

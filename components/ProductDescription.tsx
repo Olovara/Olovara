@@ -54,9 +54,16 @@ export function ProductDescriptionComponent({ content }: ProductDescriptionProps
     }
   }, [content]);
 
+  // Override Quill bubble CSS so description uses site font (Jost). Quill sets
+  // .ql-container to Helvetica/Arial — we force both container and editor to font-jost.
   return (
     <div className="space-y-4">
-      <div className="prose prose-sm sm:prose-base [&_.ql-editor]:font-['Jost',sans-serif] [&_.ql-editor]:text-gray-800">
+      <div
+        className={
+          "prose prose-sm sm:prose-base text-gray-800 " +
+          "[&_.ql-container]:font-jost [&_.ql-container]:text-base [&_.ql-editor]:font-jost [&_.ql-editor]:text-gray-800"
+        }
+      >
         <div ref={editorRef} />
       </div>
     </div>

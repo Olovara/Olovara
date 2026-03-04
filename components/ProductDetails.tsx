@@ -790,7 +790,13 @@ function CollapsibleHowItsMade({
 
       {isOpen && (
         <div className="mt-4 text-sm">
-          <div className="text-gray-800 leading-relaxed">{data.howItsMade}</div>
+          {/* Rich text (HTML from Quill); plain text also safe in div */}
+          <div
+            className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+            dangerouslySetInnerHTML={{
+              __html: data.howItsMade ?? "",
+            }}
+          />
         </div>
       )}
     </div>
@@ -822,9 +828,13 @@ function CollapsibleBehindTheHands({
 
       {isOpen && (
         <div className="mt-4 text-sm">
-          <div className="text-gray-800 leading-relaxed">
-            {data.seller?.behindTheHands}
-          </div>
+          {/* Rich text (HTML from Quill); plain text also safe in div */}
+          <div
+            className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+            dangerouslySetInnerHTML={{
+              __html: data.seller?.behindTheHands ?? "",
+            }}
+          />
         </div>
       )}
     </div>

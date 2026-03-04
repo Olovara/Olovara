@@ -197,10 +197,11 @@ const FirstProductSchema = z.object({
     ), // Match ProductSchema - max length and transform
   howItsMade: z
     .string()
+    .max(5000, "How it's made is too long")
     .optional()
     .transform((val) =>
       val && typeof val === "string" && val.trim() !== "" ? val : undefined
-    ), // Match ProductSchema - transform empty strings to undefined
+    ), // Match ProductSchema - rich text (HTML from Quill)
   story: z.string().optional(),
   materials: z.string().optional(),
   techniques: z.string().optional(),

@@ -5,7 +5,8 @@ export const SellerAboutSchema = z.object({
   shopTagLine: z.string().max(100, "Shop tagline must be less than 100 characters").optional(),
   shopDescription: z.string().min(10, "Shop description must be at least 10 characters").max(1000, "Shop description must be less than 1000 characters"),
   shopAnnouncement: z.string().max(500, "Shop announcement must be less than 500 characters").optional(),
-  behindTheHands: z.string().max(1000, "Behind the Hands story must be less than 1000 characters").optional(),
+  // Rich text (HTML from Quill)
+  behindTheHands: z.string().max(5000, "Behind the Hands story is too long").optional(),
   sellerImage: z.string().url("Must be a valid URL").optional(),
   shopBannerImage: z.string().url("Must be a valid URL").optional(),
   shopLogoImage: z.string().url("Must be a valid URL").optional(),
