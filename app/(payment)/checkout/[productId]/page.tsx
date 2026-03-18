@@ -456,31 +456,31 @@ export default function CheckoutPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-brand-light-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your order...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary-700 mx-auto mb-4"></div>
+          <p className="text-brand-dark-neutral-600">Loading your order...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brand-light-neutral-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-brand-light-neutral-50 border-b border-brand-dark-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.back()}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center text-brand-dark-neutral-600 hover:text-brand-primary-700 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to product
               </button>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-brand-dark-neutral-600">
               <Lock className="h-4 w-4" />
               <span>Secure checkout</span>
             </div>
@@ -492,9 +492,9 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Checkout Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200">
               {/* Product Summary Header */}
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-brand-dark-neutral-200">
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <Image 
@@ -505,15 +505,15 @@ export default function CheckoutPage() {
                       className="rounded-lg object-cover"
                     />
                     {quantity > 1 && (
-                      <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                      <div className="absolute -top-2 -right-2 bg-brand-primary-700 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
                         {quantity}
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <h1 className="text-xl font-semibold text-gray-900">{product.name}</h1>
-                    <p className="text-sm text-gray-600">Sold by {product.seller.shopName}</p>
-                    <div className="flex items-center mt-2 space-x-4 text-sm text-gray-500">
+                    <h1 className="text-xl font-semibold text-brand-dark-neutral-900">{product.name}</h1>
+                    <p className="text-sm text-brand-dark-neutral-600">Sold by {product.seller.shopName}</p>
+                    <div className="flex items-center mt-2 space-x-4 text-sm text-brand-dark-neutral-500">
                       {product.isDigital ? (
                         <div className="flex items-center">
                           <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
@@ -528,11 +528,11 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-lg font-semibold text-brand-dark-neutral-900">
                       ${((product.price * quantity) / 100).toFixed(2)}
                     </p>
                     {quantity > 1 && (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-brand-dark-neutral-600">
                         ${(product.price / 100).toFixed(2)} each
                       </p>
                     )}
@@ -541,8 +541,8 @@ export default function CheckoutPage() {
               </div>
 
               {/* Quantity Selector */}
-              <div className="p-6 border-b border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="p-6 border-b border-brand-dark-neutral-200">
+                <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-3">
                   Quantity
                 </label>
                 <QuantitySelector
@@ -554,11 +554,11 @@ export default function CheckoutPage() {
               </div>
 
               {/* Email Address - Required for order confirmation */}
-              <div className="p-6 border-b border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="p-6 border-b border-brand-dark-neutral-200">
+                <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                   Email address <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-gray-500 mb-3">
+                <p className="text-xs text-brand-dark-neutral-600 mb-3">
                   We&apos;ll send your order confirmation to this email
                 </p>
                 <Input 
@@ -577,7 +577,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* Discount Code */}
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-brand-dark-neutral-200">
                 <DiscountCodeInput
                   sellerId={product.seller.userId}
                   productId={product.id}
@@ -592,11 +592,11 @@ export default function CheckoutPage() {
 
               {/* Shipping Address */}
               {!product.isDigital && (
-                <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Shipping address</h2>
+                <div className="p-6 border-b border-brand-dark-neutral-200">
+                  <h2 className="text-lg font-semibold text-brand-dark-neutral-900 mb-4">Shipping address</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         Full name
                       </label>
                       <Input 
@@ -609,7 +609,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         Address
                       </label>
                       <Input 
@@ -622,7 +622,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         City
                       </label>
                       <Input 
@@ -635,7 +635,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         State/Province
                       </label>
                       <Input 
@@ -648,7 +648,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         Postal code
                       </label>
                       <Input 
@@ -661,7 +661,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                         Country
                       </label>
                       <Select onValueChange={(value) => {
@@ -686,17 +686,17 @@ export default function CheckoutPage() {
 
               {/* Billing Address */}
               {!product.isDigital && (
-                <div className="p-6 border-b border-gray-200">
+                <div className="p-6 border-b border-brand-dark-neutral-200">
                   <div className="flex items-center space-x-2 mb-4">
                     <Checkbox
                       id="same-as-shipping"
                       checked={sameAsShipping}
                       onCheckedChange={handleSameAsShippingChange}
-                      className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                      className="data-[state=checked]:bg-brand-primary-700 data-[state=checked]:border-brand-primary-700"
                     />
                     <label 
                       htmlFor="same-as-shipping" 
-                      className="text-lg font-semibold text-gray-900 cursor-pointer"
+                      className="text-lg font-semibold text-brand-dark-neutral-900 cursor-pointer"
                     >
                       Billing address same as shipping
                     </label>
@@ -705,7 +705,7 @@ export default function CheckoutPage() {
                   {!sameAsShipping && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           Billing name
                         </label>
                         <Input 
@@ -718,7 +718,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           Billing address
                         </label>
                         <Input 
@@ -731,7 +731,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           City
                         </label>
                         <Input 
@@ -744,7 +744,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           State/Province
                         </label>
                         <Input 
@@ -757,7 +757,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           Postal code
                         </label>
                         <Input 
@@ -770,7 +770,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-brand-dark-neutral-900 mb-2">
                           Country
                         </label>
                         <Select onValueChange={(value) => {
@@ -805,8 +805,8 @@ export default function CheckoutPage() {
               </div>
 
               {/* Order Instructions Section */}
-              <div className="p-6 border-b border-gray-200">
-                <Label htmlFor="checkout-order-instructions" className="text-lg font-semibold text-gray-900 mb-2 block">
+              <div className="p-6 border-b border-brand-dark-neutral-200">
+                <Label htmlFor="checkout-order-instructions" className="text-lg font-semibold text-brand-dark-neutral-900 mb-2 block">
                   Order Instructions / Personalization (Optional)
                 </Label>
                 <Textarea
@@ -817,10 +817,10 @@ export default function CheckoutPage() {
                   className="min-h-[100px] resize-none"
                   maxLength={1000}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-brand-dark-neutral-600 mt-1">
                   {orderInstructions.length}/1000 characters
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-brand-dark-neutral-500 mt-1">
                   These instructions will be visible to the seller when processing your order.
                 </p>
               </div>
@@ -831,7 +831,7 @@ export default function CheckoutPage() {
                   <Button 
                     onClick={handleContinue} 
                     disabled={loading || shouldTriggerRecaptcha} 
-                    className="w-full h-12 text-lg font-semibold bg-purple-600 hover:bg-purple-700"
+                    className="w-full h-12 text-lg font-semibold bg-brand-primary-700 hover:bg-brand-primary-600 text-brand-light-neutral-50"
                   >
                     {loading || shouldTriggerRecaptcha ? (
                       <div className="flex items-center">
@@ -848,15 +848,15 @@ export default function CheckoutPage() {
                   
                   {/* Trust Indicators */}
                   <div className="mt-4 text-center">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-brand-dark-neutral-600">
                       Secure payment processing powered by Stripe
                     </p>
                     <div className="flex items-center justify-center mt-2 space-x-4">
-                      <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center text-xs text-brand-dark-neutral-600">
                         <Shield className="h-3 w-3 mr-1" />
                         <span>SSL secured</span>
                       </div>
-                      <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center text-xs text-brand-dark-neutral-600">
                         <Lock className="h-3 w-3 mr-1" />
                         <span>256-bit encryption</span>
                       </div>
@@ -884,17 +884,17 @@ export default function CheckoutPage() {
 
           {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-8">
+            <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 sticky top-8">
               <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Order summary</h2>
+                <h2 className="text-lg font-semibold text-brand-dark-neutral-900 mb-4">Order summary</h2>
                 
                 {/* Product Line */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-500">Qty {quantity}</p>
+                    <p className="text-sm font-medium text-brand-dark-neutral-900">{product.name}</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Qty {quantity}</p>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-brand-dark-neutral-900">
                     ${(subtotal / 100).toFixed(2)}
                   </p>
                 </div>
@@ -902,8 +902,8 @@ export default function CheckoutPage() {
                 {/* Sale Discount */}
                 {saleDiscount > 0 && (
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm text-gray-600">Sale discount</p>
-                    <p className="text-sm text-green-600 font-medium">
+                    <p className="text-sm text-brand-dark-neutral-600">Sale discount</p>
+                    <p className="text-sm text-brand-success-600 font-medium">
                       - ${(saleDiscount / 100).toFixed(2)}
                     </p>
                   </div>
@@ -912,8 +912,8 @@ export default function CheckoutPage() {
                 {/* Discount Code */}
                 {appliedDiscountAmount > 0 && (
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm text-gray-600">Discount code</p>
-                    <p className="text-sm text-green-600 font-medium">
+                    <p className="text-sm text-brand-dark-neutral-600">Discount code</p>
+                    <p className="text-sm text-brand-success-600 font-medium">
                       - ${(appliedDiscountAmount / 100).toFixed(2)}
                     </p>
                   </div>
@@ -921,35 +921,35 @@ export default function CheckoutPage() {
 
                 {/* Shipping */}
                 {shipping > 0 && (
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm text-gray-600">Shipping & handling</p>
-                    <p className="text-sm font-medium text-gray-900">
+                  <div className="flex justifybetween items-center mb-2">
+                    <p className="text-sm text-brand-dark-neutral-600">Shipping & handling</p>
+                    <p className="text-sm font-medium text-brand-dark-neutral-900">
                       ${(shipping / 100).toFixed(2)}
                     </p>
                   </div>
                 )}
 
                 {/* Tax Estimate */}
-                <div className="flex justify-between items-center mb-4 text-sm text-gray-500">
+                <div className="flex justify-between items-center mb-4 text-sm text-brand-dark-neutral-600">
                   <span>Tax</span>
                   <span>Calculated at checkout</span>
                 </div>
 
                 {/* Total */}
-                <div className="border-t border-gray-200 pt-4">
+                <div className="border-t border-brand-dark-neutral-200 pt-4">
                   <div className="flex justify-between items-center">
-                    <p className="text-lg font-semibold text-gray-900">Total</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-lg font-semibold text-brand-dark-neutral-900">Total</p>
+                    <p className="text-lg font-semibold text-brand-dark-neutral-900">
                       ${(total / 100).toFixed(2)}
                     </p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-brand-dark-neutral-600 mt-1">
                     {product.currency} {/* • Includes applicable taxes TODO: Add back when actually handling taxes */}
                   </p>
                 </div>
 
                 {/* Additional Info */}
-                <div className="mt-6 space-y-3 text-xs text-gray-500">
+                <div className="mt-6 space-y-3 text-xs text-brand-dark-neutral-600">
                   <div className="flex items-start space-x-2">
                     <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <span>Your payment information is secure and encrypted</span>

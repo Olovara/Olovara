@@ -174,14 +174,14 @@ export default function ProductActions({
               size="icon"
               onClick={handleWishlistToggle}
               disabled={isWishlistLoading}
-              className="h-12 w-12 rounded-full border-2 hover:border-purple-500 transition-colors"
+              className="h-12 w-12 rounded-full border-2 border-brand-dark-neutral-200 hover:border-brand-primary-600 hover:bg-brand-primary-50 transition-colors"
               aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart 
                 className={`h-5 w-5 transition-colors ${
                   isInWishlist 
-                    ? "fill-purple-600 text-purple-600" 
-                    : "text-gray-600 hover:text-purple-600"
+                    ? "fill-brand-primary-700 text-brand-primary-700" 
+                    : "text-brand-dark-neutral-600 group-hover:text-brand-primary-700"
                 }`} 
               />
             </Button>
@@ -236,7 +236,7 @@ export default function ProductActions({
           targetName={productName}
           variant="ghost"
           size="sm"
-          className="w-full justify-center text-gray-500 hover:text-red-600"
+          className="w-full justify-center text-brand-dark-neutral-600 hover:text-brand-error-500"
         >
           Report Product
         </ReportButton>

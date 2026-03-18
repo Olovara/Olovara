@@ -86,9 +86,9 @@ const GPSRComplianceDisplay = ({
     <div className="space-y-4">
       {/* Prominent Safety Warnings */}
       {hasSafetyWarnings && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-sm">
+        <Alert className="border-brand-warn-200 bg-brand-warn-50">
+          <AlertTriangle className="h-4 w-4 text-brand-warn-600" />
+          <AlertDescription className="text-sm text-brand-dark-neutral-800">
             <div className="space-y-2">
               {safetyWarnings && (
                 <div>
@@ -97,7 +97,10 @@ const GPSRComplianceDisplay = ({
               )}
               {chokingHazard && (
                 <div className="flex items-center gap-2">
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge
+                    variant="default"
+                    className="text-xs bg-brand-error-500 text-white hover:bg-brand-error-500"
+                  >
                     Choking Hazard
                   </Badge>
                   <span>Contains small parts that may pose choking hazard</span>
@@ -105,7 +108,10 @@ const GPSRComplianceDisplay = ({
               )}
               {smallPartsWarning && (
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-brand-dark-neutral-300 text-brand-dark-neutral-800"
+                  >
                     Small Parts
                   </Badge>
                   <span>
@@ -115,7 +121,7 @@ const GPSRComplianceDisplay = ({
               )}
               {ageRestriction && (
                 <div className="flex items-center gap-2">
-                  <Baby className="h-4 w-4 text-black-600" />
+                  <Baby className="h-4 w-4 text-brand-dark-neutral-800" />
                   <span>
                     <strong>Age Restriction:</strong> {ageRestriction}
                   </span>
@@ -123,7 +129,7 @@ const GPSRComplianceDisplay = ({
               )}
               {chemicalWarnings && (
                 <div className="flex items-center gap-2">
-                  <Droplets className="h-4 w-4 text-black-600" />
+                  <Droplets className="h-4 w-4 text-brand-dark-neutral-800" />
                   <span>
                     <strong>Chemical Warnings:</strong> {chemicalWarnings}
                   </span>
@@ -136,15 +142,15 @@ const GPSRComplianceDisplay = ({
 
       {/* Detailed GPSR Information Card */}
       {showAll && (
-        <Card>
+        <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-50">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-black-600" />
-              <CardTitle className="text-lg">
+              <Shield className="h-5 w-5 text-brand-dark-neutral-800" />
+              <CardTitle className="text-lg text-brand-dark-neutral-900">
                 Product Safety Information
               </CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="text-brand-dark-neutral-600">
               Safety and compliance information for this product
             </CardDescription>
           </CardHeader>
@@ -155,7 +161,9 @@ const GPSRComplianceDisplay = ({
                 <h4 className="font-medium text-sm mb-1">
                   Materials & Composition
                 </h4>
-                <p className="text-sm text-gray-700">{materialsComposition}</p>
+                <p className="text-sm text-brand-dark-neutral-800">
+                  {materialsComposition}
+                </p>
               </div>
             )}
 
@@ -165,7 +173,9 @@ const GPSRComplianceDisplay = ({
                 <h4 className="font-medium text-sm mb-1">
                   Safe Use Instructions
                 </h4>
-                <p className="text-sm text-gray-700">{safeUseInstructions}</p>
+                <p className="text-sm text-brand-dark-neutral-800">
+                  {safeUseInstructions}
+                </p>
               </div>
             )}
 
@@ -173,16 +183,20 @@ const GPSRComplianceDisplay = ({
             {careInstructions && (
               <div>
                 <h4 className="font-medium text-sm mb-1">Care & Maintenance</h4>
-                <p className="text-sm text-gray-700">{careInstructions}</p>
+                <p className="text-sm text-brand-dark-neutral-800">
+                  {careInstructions}
+                </p>
               </div>
             )}
 
             {/* Responsible Person Information */}
             <div className="pt-2 border-t">
               <div className="space-y-2">
-                <h4 className="font-medium text-sm">Responsible Person Information</h4>
+                <h4 className="font-medium text-sm text-brand-dark-neutral-900">
+                  Responsible Person Information
+                </h4>
                 {responsiblePerson ? (
-                  <div className="space-y-1 text-xs text-gray-700">
+                  <div className="space-y-1 text-xs text-brand-dark-neutral-800">
                     <div><strong>Name:</strong> {responsiblePerson.name}</div>
                     <div><strong>Company:</strong> {responsiblePerson.companyName}</div>
                     <div><strong>Email:</strong> {responsiblePerson.email}</div>
@@ -207,7 +221,7 @@ const GPSRComplianceDisplay = ({
                     </div>
                   </div>
                 ) : businessAddress ? (
-                  <div className="space-y-1 text-xs text-gray-700">
+                  <div className="space-y-1 text-xs text-brand-dark-neutral-800">
                     <div><strong>Business Address:</strong></div>
                     <div className="ml-2">
                       {businessAddress.street}
@@ -224,7 +238,7 @@ const GPSRComplianceDisplay = ({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                    <div className="text-xs text-brand-warn-700 bg-brand-warn-50 p-2 rounded border border-brand-warn-200">
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600">⚠️</span>
                         <div>
@@ -233,7 +247,7 @@ const GPSRComplianceDisplay = ({
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-brand-dark-neutral-600">
                       For current responsible person or business address information, 
                       please contact the seller directly through their shop page.
                     </p>
@@ -245,8 +259,8 @@ const GPSRComplianceDisplay = ({
             {/* Safety Compliance Badge */}
             <div className="pt-2 border-t">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-black-600" />
-                <span className="text-xs text-gray-600">
+                <Shield className="h-4 w-4 text-brand-dark-neutral-800" />
+                <span className="text-xs text-brand-dark-neutral-600">
                   This product includes safety information compliant with EU
                   General Product Safety Regulation (GPSR)
                 </span>

@@ -235,24 +235,7 @@ export async function POST(req: Request) {
       (productPriceInDollars + shippingCostInDollars + handlingFeeInDollars) *
       parseInt(quantity.toString());
 
-    // Check if authentication is required
-    const requiresAuth = totalOrderValue >= 100 || product.isDigital;
-
-    if (requiresAuth && !session?.user) {
-      return NextResponse.json(
-        {
-          error: "Authentication required",
-          details:
-            totalOrderValue >= 100
-              ? "Orders over $100 require a signed-in account for fraud prevention."
-              : "Digital items require a signed-in account for fraud prevention.",
-          requiresAuth: true,
-          orderValue: totalOrderValue,
-          isDigital: product.isDigital,
-        },
-        { status: 401 }
-      );
-    }
+    // Guest checkout: no $100 / digital sign-in gate (Stripe + email still identify the buyer)
 
     if (!product.seller?.connectedAccountId) {
       return NextResponse.json(
@@ -556,7 +539,7 @@ export async function POST(req: Request) {
         taxExempt: product.taxExempt.toString(),
         isDigital: product.isDigital.toString(),
         abandonedCartSessionId: abandonedCartSessionId || "", // Store abandoned cart session ID
-        requiresAuth: requiresAuth.toString(),
+        requiresAuth: "false",
         orderValue: totalOrderValue.toString(),
         sellerOriginCountry: sellerOriginCountry,
         userCountry:

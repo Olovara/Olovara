@@ -207,15 +207,15 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-10 w-10 rounded-full hover:bg-purple-50 hover:text-purple-600 transition-colors"
+          className="relative h-10 w-10 rounded-full hover:bg-brand-primary-50 hover:text-brand-primary-700 transition-colors"
           aria-label="View wishlist"
         >
           <Heart className="h-5 w-5" />
 
-          {/* Badge showing total items */}
+          {/* Badge showing total items — uses primary (brand purple) */}
           {!isLoading && totalItems > 0 && (
             <Badge
-              variant="destructive"
+              variant="default"
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center min-w-0"
             >
               {totalItems > 99 ? "99+" : totalItems}
@@ -224,12 +224,12 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
 
           {/* Loading indicator */}
           {isLoading && (
-            <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gray-200 animate-pulse" />
+            <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-brand-dark-neutral-200 animate-pulse" />
           )}
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 bg-brand-light-neutral-50 border-brand-dark-neutral-200" align="end">
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -263,13 +263,13 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
             </Select>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons — hover uses brand primary, not accent/tertiary */}
           <div className="flex gap-2 mb-4">
             <Button
               variant="outline"
               size="sm"
               onClick={handleManageWishlists}
-              className="flex-1"
+              className="flex-1 border-brand-dark-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 hover:border-brand-primary-200"
             >
               <Settings className="h-4 w-4 mr-2" />
               Manage
@@ -277,7 +277,11 @@ export function WishlistFlyout({ userRole }: WishlistFlyoutProps) {
             <CreateWishlistModal
               onWishlistCreated={handleWishlistCreated}
               trigger={
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-brand-dark-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 hover:border-brand-primary-200"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   New
                 </Button>

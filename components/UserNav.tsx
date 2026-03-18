@@ -59,10 +59,17 @@ export function UserNav({ userInfo }: iAppProps) {
     settingsRoute = "/member/dashboard/settings";
   }
 
+  // Menu item hover/focus: light brand purple (not accent/tertiary), no outline ring
+  const menuItemClass =
+    "focus:bg-brand-primary-50 focus:text-brand-primary-900 data-[highlighted]:bg-brand-primary-50 data-[highlighted]:text-brand-primary-900 focus-visible:outline-none focus-visible:ring-0";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 rounded-full bg-brand-primary-50 text-brand-primary-800 hover:bg-brand-primary-700 hover:text-white focus-visible:ring-0 focus-visible:ring-offset-0"
+        >
           <Avatar className="h-10 w-10">
             <AvatarImage src={userInfo?.image || undefined} alt="User Image" />
             <AvatarFallback>{userInfo?.username?.[0] || "U"}</AvatarFallback>
@@ -70,61 +77,67 @@ export function UserNav({ userInfo }: iAppProps) {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent
+        className="w-56 bg-brand-light-neutral-50 border-brand-dark-neutral-200"
+        align="end"
+        forceMount
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{userInfo?.username || "Guest"}</p>
-            <p className="text-xs text-muted-foreground">{userInfo?.email || "No email provided"}</p>
+            <p className="text-sm font-medium text-brand-dark-neutral-900">{userInfo?.username || "Guest"}</p>
+            <p className="text-xs text-brand-dark-neutral-600">{userInfo?.email || "No email provided"}</p>
           </div>
         </DropdownMenuLabel>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-brand-dark-neutral-200" />
 
         <DropdownMenuGroup>
           {dashboardRoute && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href={dashboardRoute} className="w-full">Account</ProtectedLink>
             </DropdownMenuItem>
           )}
           {settingsRoute && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href={settingsRoute} className="w-full">Settings</ProtectedLink>
             </DropdownMenuItem>
           )}
           
           {/* Admin-specific menu items */}
           {isAdmin && canManageProducts && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href="/admin/dashboard/products" className="w-full">All Products</ProtectedLink>
             </DropdownMenuItem>
           )}
           {isAdmin && canManageOrders && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href="/admin/dashboard/orders" className="w-full">All Orders</ProtectedLink>
             </DropdownMenuItem>
           )}
           
           {/* Seller-specific menu items (only show for sellers, not admins) */}
           {isSeller && !isAdmin && canManageProducts && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href="/seller/dashboard/products" className="w-full">My Products</ProtectedLink>
             </DropdownMenuItem>
           )}
           {isSeller && !isAdmin && canViewOrders && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href="/seller/dashboard/my-orders" className="w-full">My Orders</ProtectedLink>
             </DropdownMenuItem>
           )}
           {isSeller && !isAdmin && (
-            <DropdownMenuItem>
+            <DropdownMenuItem className={menuItemClass}>
               <ProtectedLink href="/seller/dashboard/billing" className="w-full">Billing</ProtectedLink>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-brand-dark-neutral-200" />
 
-        <DropdownMenuItem onClick={() => logout()}>Log Out</DropdownMenuItem>
+        <DropdownMenuItem className={menuItemClass} onClick={() => logout()}>
+          Log Out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

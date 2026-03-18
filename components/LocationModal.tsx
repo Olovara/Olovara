@@ -77,7 +77,10 @@ export function LocationModal() {
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4" />
           <span>{currentCountry.name}</span>
-          <Badge variant="secondary" className="text-xs">
+          <Badge
+            variant="default"
+            className="text-xs bg-brand-primary-700 text-white hover:bg-brand-primary-700"
+          >
             {currentCurrency}
           </Badge>
         </div>
@@ -97,16 +100,16 @@ export function LocationModal() {
       <DialogTrigger asChild>
         <Button 
           variant="ghost" 
-          className="flex items-center gap-2 h-auto p-2 hover:bg-gray-100"
+          className="flex items-center gap-2 h-auto p-2 hover:bg-brand-primary-50 hover:text-brand-primary-800 focus-visible:ring-0 focus-visible:ring-offset-0"
           onClick={handleOpen}
         >
           {getDisplayText()}
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-brand-light-neutral-50 border-brand-dark-neutral-200">
         <DialogHeader>
-          <DialogTitle>Location & Currency</DialogTitle>
+          <DialogTitle className="text-brand-dark-neutral-900">Location & Currency</DialogTitle>
           <DialogDescription>
             Choose your location to see prices in your local currency and get relevant shipping options.
           </DialogDescription>
@@ -115,16 +118,19 @@ export function LocationModal() {
         <div className="space-y-6">
           {/* Current Location Display */}
           {locationPreferences && currentCountry && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-sm mb-2">Current Location</h4>
+            <div className="p-4 bg-brand-light-neutral-100 rounded-lg border border-brand-dark-neutral-200">
+              <h4 className="font-medium text-sm mb-2 text-brand-dark-neutral-900">Current Location</h4>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-green-600" />
-                <span className="text-sm">{currentCountry.name}</span>
-                <Badge variant="secondary" className="text-xs">
+                <MapPin className="h-4 w-4 text-brand-primary-700" />
+                <span className="text-sm text-brand-dark-neutral-900">{currentCountry.name}</span>
+                <Badge
+                  variant="default"
+                  className="text-xs bg-brand-primary-700 text-white hover:bg-brand-primary-700"
+                >
                   {currentCurrency}
                 </Badge>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-brand-dark-neutral-600 mt-1">
                 Detected automatically from your IP address
               </p>
             </div>
@@ -132,17 +138,21 @@ export function LocationModal() {
 
           {/* Country Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Country</label>
+            <label className="text-sm font-medium text-brand-dark-neutral-900">Country</label>
             <Select
               value={currentCountry?.code || ''}
               onValueChange={handleCountryChange}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-brand-light-neutral-50 border-brand-dark-neutral-200 focus:ring-brand-primary-500">
                 <SelectValue placeholder="Select your country" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-brand-light-neutral-50 border-brand-dark-neutral-200">
                 {supportedCountries.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
+                  <SelectItem
+                    key={country.code}
+                    value={country.code}
+                    className="focus:bg-brand-primary-50 focus:text-brand-dark-neutral-900"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{country.currencySymbol}</span>
                       <span>{country.name}</span>
@@ -155,17 +165,21 @@ export function LocationModal() {
 
           {/* Currency Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Currency</label>
+            <label className="text-sm font-medium text-brand-dark-neutral-900">Currency</label>
             <Select
               value={currency}
               onValueChange={handleCurrencyChange}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-brand-light-neutral-50 border-brand-dark-neutral-200 focus:ring-brand-primary-500">
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-brand-light-neutral-50 border-brand-dark-neutral-200">
                 {SUPPORTED_CURRENCIES.map((curr) => (
-                  <SelectItem key={curr.code} value={curr.code}>
+                  <SelectItem
+                    key={curr.code}
+                    value={curr.code}
+                    className="focus:bg-brand-primary-50 focus:text-brand-dark-neutral-900"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{curr.symbol}</span>
                       <span>{curr.name}</span>
@@ -177,7 +191,7 @@ export function LocationModal() {
           </div>
 
           {/* Info Text */}
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-brand-dark-neutral-600">
             <p>• Prices will be displayed in your selected currency</p>
             <p>• Shipping options and costs may vary by location</p>
             <p>• You can change this anytime from the footer</p>

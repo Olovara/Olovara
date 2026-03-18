@@ -18,7 +18,7 @@ export default function QuantitySelector({
         {/* Decrease Button */}
         <button
           type="button"
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 text-gray-900 hover:bg-gray-300 text-4xl leading-none relative"
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-brand-light-neutral-50 text-brand-dark-neutral-900 border border-brand-dark-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 text-4xl leading-none relative disabled:opacity-50 disabled:hover:bg-brand-light-neutral-50 disabled:hover:text-brand-dark-neutral-900"
           onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
           disabled={quantity <= 1}
         >
@@ -32,7 +32,7 @@ export default function QuantitySelector({
         {/* Increase Button */}
         <button
           type="button"
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 text-gray-900 hover:bg-gray-300 text-3xl leading-none"
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-brand-light-neutral-50 text-brand-dark-neutral-900 border border-brand-dark-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 text-3xl leading-none disabled:opacity-50 disabled:hover:bg-brand-light-neutral-50 disabled:hover:text-brand-dark-neutral-900"
           onClick={() => setQuantity((prev) => Math.min(maxQuantity, prev + 1))}
           disabled={quantity >= maxQuantity}
         >

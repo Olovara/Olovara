@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Flag } from "lucide-react";
 import ReportModal from "./ReportModal";
+import { cn } from "@/lib/utils";
 
 interface ReportButtonProps {
   reportType: "SELLER" | "PRODUCT";
@@ -32,7 +33,13 @@ export default function ReportButton({
         variant={variant}
         size={size}
         onClick={() => setIsModalOpen(true)}
-        className={`text-red-600 hover:text-red-700 ${className}`}
+        className={cn(
+          "text-red-600 hover:text-red-700",
+          // Ghost/outline hover uses accent bg by default — keep bg flat; only text changes on hover
+          variant === "ghost" &&
+            "bg-transparent hover:bg-transparent focus-visible:bg-transparent active:bg-transparent",
+          className
+        )}
       >
         <Flag className="h-4 w-4 mr-2" />
         {children || `Report ${reportType === "SELLER" ? "Seller" : "Product"}`}

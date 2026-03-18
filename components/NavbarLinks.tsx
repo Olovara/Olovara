@@ -149,7 +149,7 @@ export function NavbarLinks() {
             exit={{ opacity: 0, y: -40 }}
             transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
             className={cn(
-              "fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-xl z-50",
+              "fixed top-0 left-0 right-0 bg-brand-light-neutral-50/95 backdrop-blur-sm border-t border-brand-dark-neutral-200 shadow-xl z-50",
               FONTS.NAVBAR
             )}
             style={{
@@ -184,11 +184,11 @@ export function NavbarLinks() {
               })()}
 
               {/* View All Link */}
-              <div className="mt-8 pt-6 border-t border-gray-100">
+              <div className="mt-8 pt-6 border-t border-brand-dark-neutral-200">
                 <Link
                   href={`/categories/${activeCategory.toLowerCase()}`}
                   onClick={handleCategoryClick}
-                  className="inline-flex items-center text-primary hover:underline font-medium"
+                  className="inline-flex items-center text-brand-dark-neutral-900 hover:text-brand-primary-700 hover:underline font-medium"
                 >
                   View all{" "}
                   {Categories.find(

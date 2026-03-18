@@ -13,25 +13,135 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ============================================
+       SINGLE SOURCE OF TRUTH: brand color scales
+       Tailwind theme references these variables.
+       Change a color here only — no edits in tailwind.config.
+       ============================================ */
+    /* Brand Primary (purple) - RGB space-separated for rgb(var(...)) */
+    --brand-primary-50: 245 234 251;
+    --brand-primary-100: 235 212 247;
+    --brand-primary-200: 214 169 239;
+    --brand-primary-300: 194 126 231;
+    --brand-primary-400: 174 84 222;
+    --brand-primary-500: 154 41 214;
+    --brand-primary-600: 123 33 171;
+    --brand-primary-700: 92 24 129;
+    --brand-primary-800: 61 16 86;
+    --brand-primary-900: 31 8 43;
+    --brand-primary-950: 21 6 30;
+
+    --brand-secondary-50: 240 245 239;
+    --brand-secondary-100: 225 236 223;
+    --brand-secondary-200: 195 217 191;
+    --brand-secondary-300: 165 198 159;
+    --brand-secondary-400: 135 179 128;
+    --brand-secondary-500: 105 159 96;
+    --brand-secondary-600: 84 128 77;
+    --brand-secondary-700: 63 96 57;
+    --brand-secondary-800: 42 64 38;
+    --brand-secondary-900: 21 32 19;
+    --brand-secondary-950: 15 22 13;
+
+    --brand-tertiary-50: 250 237 235;
+    --brand-tertiary-100: 244 219 215;
+    --brand-tertiary-200: 233 184 175;
+    --brand-tertiary-300: 222 148 135;
+    --brand-tertiary-400: 211 112 95;
+    --brand-tertiary-500: 200 77 55;
+    --brand-tertiary-600: 160 61 44;
+    --brand-tertiary-700: 120 46 33;
+    --brand-tertiary-800: 80 31 22;
+    --brand-tertiary-900: 40 15 11;
+    --brand-tertiary-950: 28 11 8;
+
+    --brand-success-50: 242 246 238;
+    --brand-success-100: 229 238 221;
+    --brand-success-200: 202 220 188;
+    --brand-success-300: 176 203 154;
+    --brand-success-400: 150 186 120;
+    --brand-success-500: 123 168 87;
+    --brand-success-600: 99 135 69;
+    --brand-success-700: 74 101 52;
+    --brand-success-800: 49 67 35;
+    --brand-success-900: 25 34 17;
+    --brand-success-950: 17 24 12;
+
+    --brand-warn-50: 251 247 233;
+    --brand-warn-100: 247 238 212;
+    --brand-warn-200: 240 222 168;
+    --brand-warn-300: 232 205 125;
+    --brand-warn-400: 224 189 82;
+    --brand-warn-500: 217 172 38;
+    --brand-warn-600: 173 138 31;
+    --brand-warn-700: 130 103 23;
+    --brand-warn-800: 87 69 15;
+    --brand-warn-900: 43 34 8;
+    --brand-warn-950: 30 24 5;
+
+    --brand-error-50: 254 230 234;
+    --brand-error-100: 254 205 213;
+    --brand-error-200: 253 155 171;
+    --brand-error-300: 252 105 130;
+    --brand-error-400: 251 55 88;
+    --brand-error-500: 250 5 46;
+    --brand-error-600: 200 4 37;
+    --brand-error-700: 150 3 28;
+    --brand-error-800: 100 2 18;
+    --brand-error-900: 50 1 9;
+    --brand-error-950: 35 1 6;
+
+    --brand-light-neutral-50: 246 244 238;
+    --brand-light-neutral-100: 237 232 222;
+    --brand-light-neutral-200: 219 209 189;
+    --brand-light-neutral-300: 201 186 156;
+    --brand-light-neutral-400: 184 163 122;
+    --brand-light-neutral-500: 166 140 89;
+    --brand-light-neutral-600: 133 112 71;
+    --brand-light-neutral-700: 99 84 54;
+    --brand-light-neutral-800: 66 56 36;
+    --brand-light-neutral-900: 33 28 18;
+    --brand-light-neutral-950: 23 20 12;
+
+    --brand-dark-neutral-50: 243 242 242;
+    --brand-dark-neutral-100: 231 230 228;
+    --brand-dark-neutral-200: 207 205 201;
+    --brand-dark-neutral-300: 182 180 175;
+    --brand-dark-neutral-400: 158 155 148;
+    --brand-dark-neutral-500: 134 130 121;
+    --brand-dark-neutral-600: 107 104 97;
+    --brand-dark-neutral-700: 80 78 73;
+    --brand-dark-neutral-800: 54 52 48;
+    --brand-dark-neutral-900: 27 26 24;
+    --brand-dark-neutral-950: 19 18 17;
+
+    /* Semantic tokens — point to brand scale (one source of truth) */
+    --primary: var(--brand-primary-700);
+    --primary-foreground: 255 255 255;
+    --secondary: var(--brand-secondary-700);
+    --secondary-foreground: 255 255 255;
+    --accent: var(--brand-tertiary-500);
+    --accent-foreground: 255 255 255;
+
+    /* Base surfaces */
+    --background: 40 30% 96%;
+    --foreground: 40 5% 12%;
+
+    /* System */
+    --muted: 36 20% 85%;
+    --muted-foreground: 24 8% 30%;
+
+    --destructive: 350 96% 33%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 36 18% 80%;
+    --input: 36 18% 80%;
+    --ring: 283 63% 38%;
+
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -41,24 +151,32 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --background: 40 5% 12%;
+    --foreground: 40 30% 96%;
+
+    --card: 24 6% 8%;
+    --card-foreground: 36 18% 96%;
+
+    /* Semantic tokens use same brand refs; only foregrounds change for contrast */
+    --primary: var(--brand-primary-700);
+    --primary-foreground: 243 242 242; /* brand-dark-neutral-50 for text on purple */
+
+    --secondary: var(--brand-secondary-700);
+    --secondary-foreground: 243 242 242;
+
+    --accent: var(--brand-tertiary-500);
+    --accent-foreground: 255 255 255;
+
+    --muted: 24 5% 20%;
+    --muted-foreground: 36 10% 75%;
+
+    --border: 24 5% 20%;
+    --input: 24 5% 20%;
+
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;

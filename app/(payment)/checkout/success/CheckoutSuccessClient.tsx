@@ -52,8 +52,10 @@ export default function CheckoutSuccessClient({ isAuthenticated = false }: Check
     return (
       <div className="container max-w-3xl py-10">
         <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-sm text-muted-foreground">Loading your order details...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-brand-primary-700 border-x-transparent border-t-transparent" />
+          <p className="text-sm text-brand-dark-neutral-600">
+            Loading your order details...
+          </p>
         </div>
       </div>
     );
@@ -61,26 +63,33 @@ export default function CheckoutSuccessClient({ isAuthenticated = false }: Check
 
   return (
     <div className="container max-w-3xl py-10">
-      <Card className="mx-auto">
+      <Card className="mx-auto bg-brand-light-neutral-50">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle className="h-6 w-6 text-green-600" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-success-50">
+            <CheckCircle className="h-6 w-6 text-brand-success-600" />
           </div>
-          <CardTitle className="text-2xl">Thank you for your purchase!</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl text-brand-dark-neutral-900">
+            Thank you for your purchase!
+          </CardTitle>
+          <CardDescription className="text-brand-dark-neutral-600">
             Your order has been successfully processed.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
-          <p className="mb-2 text-sm text-muted-foreground">
+          <p className="mb-2 text-sm text-brand-dark-neutral-600">
             We&apos;ve sent a confirmation email with your order details.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-brand-dark-neutral-500">
             Order ID: {sessionId}
           </p>
         </CardContent>
         <CardFooter className="flex justify-center space-x-4">
-          <Button asChild variant="outline">
+          {/* Outline defaults to accent (tertiary) on hover — force primary fill + contrast text */}
+          <Button
+            asChild
+            variant="outline"
+            className="border-brand-primary-700 text-brand-primary-700 hover:bg-brand-primary-700 hover:text-white hover:border-brand-primary-700"
+          >
             <Link href="/">Continue Shopping</Link>
           </Button>
           {/* Only show "View Purchases" button if user is authenticated */}
@@ -93,4 +102,4 @@ export default function CheckoutSuccessClient({ isAuthenticated = false }: Check
       </Card>
     </div>
   );
-} 
+}

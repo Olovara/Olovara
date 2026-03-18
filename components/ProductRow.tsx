@@ -248,7 +248,7 @@ export async function LoadRows({ category }: iAppProps) {
         </h2>
         <Link
           href={data.link}
-          className="text-sm hidden font-medium text-primary hover:text-primary/90 md:block"
+          className="text-sm hidden font-medium text-brand-dark-neutral-900 hover:text-brand-primary-700 md:block"
         >
           All Products <span>&rarr;</span>
         </Link>

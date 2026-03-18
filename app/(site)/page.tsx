@@ -5,6 +5,7 @@ import Link from "next/link";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { FONTS } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import { BadgeCheck, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Metadata } from "next";
 
@@ -49,13 +50,13 @@ export default function Home() {
     <section className="max-w-7xl mx-auto px-4 md:px-8 mb-24">
       <div className="py-20 mx-auto text-center flex flex-col items-center max-w-3xl">
         <h1
-          className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
+          className="text-4xl font-bold tracking-tight text-brand-dark-neutral-900 sm:text-6xl"
           style={{ fontFamily: "Noto Serif Display, ui-serif, serif" }}
         >
           Your marketplace for high-quality{" "}
-          <span className="text-purple-600">handcrafted goods</span>.
+          <span className="text-brand-primary-700">handcrafted goods</span>.
         </h1>
-        <p className="mt-6 text-lg max-w-prose text-muted-foreground">
+        <p className="mt-6 text-lg max-w-prose text-brand-dark-neutral-600">
           Welcome to Yarnnu. Every shop on our platform is verified by our team
           to ensure the highest quality standards.
         </p>
@@ -68,7 +69,59 @@ export default function Home() {
       <ProductRow category="followed" />
       <ProductRow category="newest" />
       <ProductRow category="random" />
-      <ShopByValues />
+      <div className="mt-16">
+        <ShopByValues />
+      </div>
+
+      {/* Mini landing section */}
+      <section className="mt-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold text-brand-dark-neutral-900">
+            Why Yarnnu
+          </h2>
+          <p className="mt-3 text-brand-dark-neutral-600 max-w-2xl mx-auto">
+            Calm, curated shopping built for handmade.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="rounded-xl border border-brand-dark-neutral-200 bg-brand-light-neutral-50 p-6">
+            <div className="h-11 w-11 rounded-full bg-brand-primary-50 flex items-center justify-center mb-4">
+              <BadgeCheck className="h-5 w-5 text-brand-primary-700" />
+            </div>
+            <h3 className="text-lg font-semibold text-brand-dark-neutral-900">
+              Verified makers
+            </h3>
+            <p className="mt-2 text-sm text-brand-dark-neutral-600">
+              Every shop is reviewed so you can trust the work behind the product.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-brand-dark-neutral-200 bg-brand-light-neutral-50 p-6">
+            <div className="h-11 w-11 rounded-full bg-brand-primary-50 flex items-center justify-center mb-4">
+              <Sparkles className="h-5 w-5 text-brand-primary-700" />
+            </div>
+            <h3 className="text-lg font-semibold text-brand-dark-neutral-900">
+              Uncluttered experience
+            </h3>
+            <p className="mt-2 text-sm text-brand-dark-neutral-600">
+              Designed to feel like a gallery: clear hierarchy, space, and focus on imagery.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-brand-dark-neutral-200 bg-brand-light-neutral-50 p-6">
+            <div className="h-11 w-11 rounded-full bg-brand-primary-50 flex items-center justify-center mb-4">
+              <ShieldCheck className="h-5 w-5 text-brand-primary-700" />
+            </div>
+            <h3 className="text-lg font-semibold text-brand-dark-neutral-900">
+              Secure checkout & support
+            </h3>
+            <p className="mt-2 text-sm text-brand-dark-neutral-600">
+              Safe payments, clear policies, and a platform built to protect buyers and sellers.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Add structured data for SEO */}
       <WebsiteStructuredData pageType="home" />

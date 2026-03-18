@@ -130,11 +130,11 @@ export default function ProductOptionSelector({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-900">Product Options</h3>
+      <h3 className="text-lg font-medium text-brand-dark-neutral-900">Product Options</h3>
       
       {options.map((option) => (
         <div key={option.label} className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">
+          <Label className="text-sm font-medium text-brand-dark-neutral-900">
             {option.label}
           </Label>
           <div className="flex flex-wrap gap-2">
@@ -146,8 +146,8 @@ export default function ProductOptionSelector({
               onClick={() => handleOptionChange(option.label, "Standard")}
               className={`min-w-[80px] ${
                 selectedOptions[option.label] === "Standard"
-                  ? "bg-purple-600 hover:bg-purple-700"
-                  : "hover:bg-gray-50"
+                  ? "bg-brand-primary-700 text-brand-light-neutral-50 hover:bg-brand-primary-600"
+                  : "bg-brand-light-neutral-50 text-brand-dark-neutral-900 hover:bg-brand-primary-50 hover:text-brand-primary-700 border border-brand-dark-neutral-200"
               }`}
             >
               <div className="text-center">
@@ -166,8 +166,8 @@ export default function ProductOptionSelector({
                 disabled={!isOptionInStock(value)}
                 className={`min-w-[80px] ${
                   selectedOptions[option.label] === value.name
-                    ? "bg-purple-600 hover:bg-purple-700"
-                    : "hover:bg-gray-50"
+                    ? "bg-brand-primary-700 text-brand-light-neutral-50 hover:bg-brand-primary-600"
+                    : "bg-brand-light-neutral-50 text-brand-dark-neutral-900 hover:bg-brand-primary-50 hover:text-brand-primary-700 border border-brand-dark-neutral-200"
                 } ${
                   !isOptionInStock(value) ? "opacity-50 cursor-not-allowed" : ""
                 }`}
@@ -200,11 +200,11 @@ export default function ProductOptionSelector({
             if (!optionValue?.description) return null;
             
             return (
-              <div key={option.label} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <div className="text-sm font-medium text-purple-900 mb-1">
+              <div key={option.label} className="bg-brand-primary-50 border border-brand-primary-200 rounded-lg p-3">
+                <div className="text-sm font-medium text-brand-primary-800 mb-1">
                   {option.label}: {optionValue.name}
                 </div>
-                <div className="text-sm text-purple-700">
+                <div className="text-sm text-brand-primary-700">
                   {optionValue.description}
                 </div>
               </div>
@@ -215,15 +215,15 @@ export default function ProductOptionSelector({
 
       {/* Display total price if options are selected */}
       {Object.keys(selectedOptions).length > 0 && (
-        <div className="pt-4 border-t">
+        <div className="pt-4 border-t border-brand-dark-neutral-200">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Total Price:</span>
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-sm font-medium text-brand-dark-neutral-900">Total Price:</span>
+            <span className="text-lg font-semibold text-brand-dark-neutral-900">
               {formattedTotalPrice || `$${(totalPrice / 100).toFixed(2)}`}
             </span>
           </div>
           {getAvailableStock() !== null && (
-            <div className="text-sm text-gray-600 mt-1">
+            <div className="text-sm text-brand-dark-neutral-600 mt-1">
               Stock: {getAvailableStock()} available
             </div>
           )}

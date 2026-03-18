@@ -358,15 +358,15 @@ export default function ProductDetails({ data, hasPurchasedDigitalProduct = fals
         </div>
 
         <div className="col-span-1 flex flex-col space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl uppercase">
+          <h1 className="text-2xl font-bold tracking-tight text-brand-dark-neutral-900 sm:text-3xl uppercase">
             {data.name}
           </h1>
           {data.seller?.shopName && (
-            <p className="text-gray-700 text-sm -mt-1">
+            <p className="text-brand-dark-neutral-700 text-sm -mt-1">
               Handmade by:&nbsp;
               <Link
                 href={`/shops/${data.seller.shopNameSlug}`}
-                className="font-medium text-purple-600 hover:underline"
+                className="font-medium text-brand-primary-700 hover:text-brand-primary-600 hover:underline"
               >
                 {data.seller.shopName}
               </Link>
@@ -583,7 +583,7 @@ function CollapsibleProductDetails({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+        className="w-full justify-between p-0 h-auto font-medium text-brand-dark-neutral-700 hover:bg-transparent hover:text-brand-primary-700"
       >
         <span>PRODUCT DETAILS</span>
         {isOpen ? (
@@ -594,22 +594,22 @@ function CollapsibleProductDetails({
       </Button>
 
       {isOpen && (
-        <div className="mt-4 text-sm">
+        <div className="mt-4 text-sm text-brand-dark-neutral-800">
           <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             {/* Product Information */}
             <span className="font-bold text-gray-600">Product ID</span>
-            <span className="text-gray-800">{data.id}</span>
+            <span className="text-brand-dark-neutral-800">{data.id}</span>
 
             {data.sku && (
               <>
-                <span className="font-bold text-gray-600">SKU</span>
-                <span className="text-gray-800">{data.sku}</span>
+                <span className="font-bold text-brand-dark-neutral-700">SKU</span>
+                <span className="text-brand-dark-neutral-800">{data.sku}</span>
               </>
             )}
 
             {/* Categories */}
-            <span className="font-bold text-gray-600">Categories</span>
-            <span className="text-gray-800">
+            <span className="font-bold text-brand-dark-neutral-700">Categories</span>
+            <span className="text-brand-dark-neutral-800">
               {data.primaryCategory}{" "}
               {data.secondaryCategory && `> ${data.secondaryCategory}`}{" "}
               {data.tertiaryCategory && `> ${data.tertiaryCategory}`}
@@ -623,8 +623,8 @@ function CollapsibleProductDetails({
                 data.itemWeight > 0 &&
                 data.itemWeightUnit ? (
                   <>
-                    <span className="font-bold text-gray-600">Weight</span>
-                    <span className="text-gray-800">
+                    <span className="font-bold text-brand-dark-neutral-700">Weight</span>
+                    <span className="text-brand-dark-neutral-800">
                       {data.itemWeight.toFixed(2)} {data.itemWeightUnit}
                     </span>
                   </>
@@ -663,8 +663,8 @@ function CollapsibleProductDetails({
                   return dimensions.length > 0;
                 })() && (
                   <>
-                    <span className="font-bold text-gray-600">Dimensions</span>
-                    <span className="text-gray-800">
+                    <span className="font-bold text-brand-dark-neutral-700">Dimensions</span>
+                    <span className="text-brand-dark-neutral-800">
                       {(() => {
                         const dimensions = [];
                         if (
@@ -701,16 +701,16 @@ function CollapsibleProductDetails({
                 )}
 
                 {/* Stock */}
-                <span className="font-bold text-gray-600">Stock</span>
-                <span className="text-gray-800">{data.stock} available</span>
+                <span className="font-bold text-brand-dark-neutral-700">Stock</span>
+                <span className="text-brand-dark-neutral-800">{data.stock} available</span>
               </>
             )}
 
             {/* Digital Product Details */}
             {data.isDigital && (
               <>
-                <span className="font-bold text-gray-600">Type</span>
-                <span className="text-gray-800">Digital Download</span>
+                <span className="font-bold text-brand-dark-neutral-700">Type</span>
+                <span className="text-brand-dark-neutral-800">Digital Download</span>
               </>
             )}
 
@@ -718,8 +718,8 @@ function CollapsibleProductDetails({
             {data.inStockProcessingTime != null &&
             data.inStockProcessingTime > 0 ? (
               <>
-                <span className="font-bold text-gray-600">Processing Time</span>
-                <span className="text-gray-800">
+                <span className="font-bold text-brand-dark-neutral-700">Processing Time</span>
+                <span className="text-brand-dark-neutral-800">
                   {data.inStockProcessingTime} days
                 </span>
               </>
@@ -744,7 +744,7 @@ function CollapsibleShippingNotes({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+        className="w-full justify-between p-0 h-auto font-medium text-brand-dark-neutral-700 hover:bg-transparent hover:text-brand-primary-700"
       >
         <span>SHIPPING NOTES</span>
         {isOpen ? (
@@ -756,7 +756,7 @@ function CollapsibleShippingNotes({
 
       {isOpen && (
         <div className="mt-4 text-sm">
-          <div className="text-gray-800 leading-relaxed">
+          <div className="text-brand-dark-neutral-800 leading-relaxed">
             {data.shippingNotes}
           </div>
         </div>
@@ -778,7 +778,7 @@ function CollapsibleHowItsMade({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+        className="w-full justify-between p-0 h-auto font-medium text-brand-dark-neutral-700 hover:bg-transparent hover:text-brand-primary-700"
       >
         <span>HOW IT&apos;S MADE</span>
         {isOpen ? (
@@ -792,7 +792,7 @@ function CollapsibleHowItsMade({
         <div className="mt-4 text-sm">
           {/* Rich text (HTML from Quill); plain text also safe in div */}
           <div
-            className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+            className="prose prose-sm max-w-none text-brand-dark-neutral-800 leading-relaxed"
             dangerouslySetInnerHTML={{
               __html: data.howItsMade ?? "",
             }}
@@ -816,7 +816,7 @@ function CollapsibleBehindTheHands({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between p-0 h-auto font-medium text-gray-700 hover:bg-transparent"
+        className="w-full justify-between p-0 h-auto font-medium text-brand-dark-neutral-700 hover:bg-transparent hover:text-brand-primary-700"
       >
         <span>BEHIND THE HANDS</span>
         {isOpen ? (
@@ -830,7 +830,7 @@ function CollapsibleBehindTheHands({
         <div className="mt-4 text-sm">
           {/* Rich text (HTML from Quill); plain text also safe in div */}
           <div
-            className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+            className="prose prose-sm max-w-none text-brand-dark-neutral-800 leading-relaxed"
             dangerouslySetInnerHTML={{
               __html: data.seller?.behindTheHands ?? "",
             }}

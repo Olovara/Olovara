@@ -2,8 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Menu as MenuIcon, Search as SearchIcon, ChevronRight, ArrowLeft, Heart, Bookmark } from "lucide-react";
+import { Menu as MenuIcon, ChevronRight, ArrowLeft, Bookmark, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
@@ -110,14 +109,19 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Open mobile menu">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Open mobile menu"
+          className="border-brand-dark-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 hover:border-brand-primary-200"
+        >
           <MenuIcon className="w-4 h-4" />
         </Button>
       </SheetTrigger>
       <SheetContent side="top" className="w-full h-full p-0">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-6 border-b border-gray-200 bg-purple-100">
+          <div className="p-6 border-b border-brand-dark-neutral-200 bg-brand-primary-50">
             <SheetTitle className="text-xl font-semibold text-left">
               Yarnnu
             </SheetTitle>
@@ -128,23 +132,35 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Search Bar */}
+            {/* Search Bar — matches desktop: plain black X clear, lighter focus ring */}
             <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex items-center w-full" role="search" aria-label="Site search">
               <label htmlFor="mobile-search" className="sr-only">
                 Search products
               </label>
-              <input
-                id="mobile-search"
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="flex-grow px-4 py-2 text-sm border rounded-l-md focus:outline-none focus:ring focus:ring-muted"
-                aria-label="Search products"
-              />
+              <div className="relative flex flex-grow">
+                <input
+                  id="mobile-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full px-4 py-2 pr-9 text-sm border border-brand-dark-neutral-200 rounded-l-md bg-brand-light-neutral-50 text-brand-dark-neutral-900 placeholder:text-brand-dark-neutral-500 focus:outline-none focus:ring focus:ring-brand-primary-100"
+                  aria-label="Search products"
+                />
+                {searchQuery.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-black hover:opacity-70 focus:outline-none focus:ring-0"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                )}
+              </div>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm text-white bg-black rounded-r-md hover:bg-gray-800"
+                className="px-4 py-2 text-sm text-brand-light-neutral-50 bg-brand-primary-700 rounded-r-md hover:bg-brand-primary-600"
               >
                 Search
               </button>
@@ -166,8 +182,8 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
                   href="/dashboard/wishlists"
                   className={cn(
                     location === "/dashboard/wishlists"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-gray-100 hover:bg-gray-200",
+                      ? "bg-brand-primary-700 text-white"
+                      : "bg-brand-light-neutral-50 hover:bg-brand-light-neutral-100 border border-brand-dark-neutral-200",
                     "flex items-center gap-3 px-4 py-3 font-medium rounded-lg transition-colors"
                   )}
                 >
