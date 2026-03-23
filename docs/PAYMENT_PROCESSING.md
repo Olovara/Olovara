@@ -96,6 +96,28 @@ The system creates a Stripe Checkout session with:
 5. Creates scheduled transfer to seller
 6. Sends confirmation emails
 
+### Payment Element / `create-payment-intent` (Separate charges and transfers)
+
+**Duplicate protection**
+
+- **Stripe**: Send a stable `Idempotency-Key` header (or `idempotencyKey` in the JSON body) on `POST /api/stripe/create-payment-intent`. The API forwards it to `paymentIntents.create`, so repeated requests return the same PaymentIntent instead of creating extra intents.
+- **Database**: `Order.stripeSessionId` is **unique** (`cs_*` for Checkout Session, `pi_*` for Payment Element). Webhooks treat `P2002` as “another worker won the race” and load the existing row. **Before applying the unique index**, remove any duplicate `stripeSessionId` rows in MongoDB or `prisma db push` will fail.
+
+Marketplace checkout via the Payment Element uses **separate charges and transfers**:
+
+- Customer pays the platform (PaymentIntent on platform)
+- Webhook waits for the finalized Stripe processing fee (`balance_transaction.fee`)
+- Platform creates a `transfer` of \(amount − platformFee − stripeFee\) so the **seller pays Stripe fees**
+
+This avoids estimating fees and prevents overpaying sellers when Stripe’s fee isn’t immediately available.
+
+**Checkout performance & Stripe limits**
+
+- **Currency**: Server routes call `convertCurrencyAmount` from `lib/currency-convert.ts` (same logic as `POST /api/currency/convert`) — no HTTP self-calls to your own origin.
+- **Metadata**: Full shipping + buyer instructions are stored in **`CheckoutDraft`** (encrypted) before `paymentIntents.create`; metadata only carries `checkoutDraftId` (UUID). Legacy PIs may still have `shippingAddress` JSON in metadata.
+- **Platform fee**: Computed as a percentage of **final charged amount after discounts** (not pre-discount subtotal).
+- **Connect capabilities**: `Seller.stripeTransfersCapability` is updated on **`account.updated`**; checkout skips `accounts.retrieve` when the cached value is `active`.
+
 ## Seller Payout Hold Periods
 
 ### Hold Period Calculation

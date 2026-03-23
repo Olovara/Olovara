@@ -298,6 +298,10 @@ model Seller {
   commissionDiscountExpiresAt DateTime? // When the commission discount expires
   commissionDiscountMonths Int @default(0) // Total months of discount earned (for tracking)
 
+  // Cached from Stripe (account.updated) to avoid accounts.retrieve on every checkout
+  stripeTransfersCapability  String? // e.g. "active" | "inactive" | "pending" — Account.capabilities.transfers
+  stripeCapabilitiesSyncedAt DateTime?
+
   // Location fields
   shopCountry                          String
   shopState                            String?
@@ -687,6 +691,9 @@ model Order {
   
   // Order instructions/personalization from buyer
   orderInstructions        String? // Optional instructions or personalization notes from the buyer
+
+  // One DB order per Stripe checkout: `cs_*` (Checkout Session) or `pi_*` (Payment Element intent id).
+  @@unique([stripeSessionId])
 }
 
 model HandmadeGuidelines {
@@ -1269,6 +1276,19 @@ model OrderInstructions {
   expiresAt         DateTime // Auto-cleanup after 24 hours
 
   @@index([expiresAt]) // Index for cleanup queries
+}
+
+// Pre–Payment Intent payload: shipping, optional instructions (encrypted). Metadata carries only draftToken (≤500 chars).
+model CheckoutDraft {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  draftToken       String   @unique
+  encryptedPayload String
+  payloadIV        String
+  payloadSalt      String
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  @@index([expiresAt])
 }
 
 // Newsletter Subscription Model

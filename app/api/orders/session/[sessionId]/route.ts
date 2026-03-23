@@ -5,11 +5,11 @@ import { decryptData } from "@/lib/encryption";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: Request,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: { sessionId: string } },
 ) {
   // Declare variables outside try block so they're accessible in catch
   // Extract sessionId from params immediately to avoid scope issues
@@ -21,7 +21,7 @@ export async function GET(
       sessionId,
       {
         expand: ["payment_intent"],
-      }
+      },
     );
 
     if (!session) {
@@ -29,7 +29,7 @@ export async function GET(
     }
 
     // Find the order in our database
-    const order = await db.order.findFirst({
+    const order = await db.order.findUnique({
       where: {
         stripeSessionId: sessionId,
       },
@@ -63,20 +63,20 @@ export async function GET(
     const buyerEmail = decryptData(
       order.encryptedBuyerEmail,
       order.buyerEmailIV,
-      order.buyerEmailSalt
+      order.buyerEmailSalt,
     );
     const buyerName = decryptData(
       order.encryptedBuyerName,
       order.buyerNameIV,
-      order.buyerNameSalt
+      order.buyerNameSalt,
     );
     const shippingAddress = order.encryptedShippingAddress
       ? JSON.parse(
           decryptData(
             order.encryptedShippingAddress,
             order.shippingAddressIV,
-            order.shippingAddressSalt
-          )
+            order.shippingAddressSalt,
+          ),
         )
       : null;
 

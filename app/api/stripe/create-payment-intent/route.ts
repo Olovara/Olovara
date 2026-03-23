@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeSecret } from "@/lib/stripe";
-import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
+import { calculateCommissionRate } from "@/lib/feeConfig";
 import { calculateShippingCost } from "@/lib/shipping-calculator";
-import { decryptOrderData } from "@/lib/encryption";
+import { decryptOrderData, encryptOrderData } from "@/lib/encryption";
+import { convertCurrencyAmount } from "@/lib/currency-convert";
 import { getCountryByCode } from "@/data/countries";
 import {
   validateDiscountCode,
@@ -13,9 +15,10 @@ import {
 } from "@/lib/discount-calculator";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 import { logError } from "@/lib/error-logger";
+import type Stripe from "stripe";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   // Declare variables outside try block so they're accessible in catch
@@ -36,12 +39,19 @@ export async function POST(req: Request) {
       recaptchaToken,
       abandonedCartSessionId,
       orderInstructions, // Optional order instructions from buyer
+      idempotencyKey: bodyIdempotencyKey, // Optional: same key = same PI (prevents double-submit duplicate intents)
     } = body;
+
+    // Prefer explicit body key, then standard header (Stripe-compatible).
+    const stripeIdempotencyKey =
+      (typeof bodyIdempotencyKey === "string" && bodyIdempotencyKey.trim()) ||
+      req.headers.get("Idempotency-Key")?.trim() ||
+      undefined;
 
     if (!productId || !quantity) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -49,7 +59,7 @@ export async function POST(req: Request) {
     const recaptchaResult = await verifyRecaptcha(
       recaptchaToken,
       "checkout",
-      0.5
+      0.5,
     );
     if (!recaptchaResult.success) {
       console.error("reCAPTCHA verification failed:", recaptchaResult.error);
@@ -59,7 +69,7 @@ export async function POST(req: Request) {
           details: "reCAPTCHA verification failed",
           recaptchaError: recaptchaResult.error,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -75,6 +85,7 @@ export async function POST(req: Request) {
         shippingCost: true,
         shippingOptionId: true,
         handlingFee: true,
+        stock: true,
         isDigital: true,
         onSale: true,
         discount: true,
@@ -87,6 +98,8 @@ export async function POST(req: Request) {
             id: true,
             connectedAccountId: true,
             userId: true,
+            stripeTransfersCapability: true,
+            stripeCapabilitiesSyncedAt: true,
             excludedCountries: true,
             isFoundingSeller: true,
             hasCommissionDiscount: true,
@@ -130,6 +143,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Destination charges require a connected Stripe account on the seller
+    if (!product.seller?.connectedAccountId) {
+      return NextResponse.json(
+        {
+          error:
+            "This seller cannot accept payments yet. Their payout account is not connected.",
+        },
+        { status: 400 },
+      );
+    }
+
     // Calculate shipping cost dynamically if seller has shipping profiles
     let finalShippingCost = product.shippingCost || 0;
     let sellerOriginCountry = "";
@@ -143,7 +167,7 @@ export async function POST(req: Request) {
         sellerOriginCountry = decryptOrderData(
           sellerAddress.encryptedCountry,
           sellerAddress.countryIV,
-          sellerAddress.countrySalt
+          sellerAddress.countrySalt,
         );
       } else if (
         product.seller?.shippingOptions &&
@@ -157,7 +181,7 @@ export async function POST(req: Request) {
       // If still no country found, we can't calculate dynamic shipping
       if (!sellerOriginCountry) {
         console.warn(
-          `No seller country found for product ${productId}, using static shipping cost`
+          `No seller country found for product ${productId}, using static shipping cost`,
         );
       } else if (
         product.seller?.shippingOptions &&
@@ -169,7 +193,7 @@ export async function POST(req: Request) {
 
         // Use the product's selected shipping option, or fall back to default
         let selectedOption = product.seller.shippingOptions.find(
-          (option) => option.id === product.shippingOptionId
+          (option) => option.id === product.shippingOptionId,
         );
 
         // If product doesn't have a selected shipping option, use default
@@ -202,18 +226,18 @@ export async function POST(req: Request) {
           userCountry,
           parseInt(quantity.toString()),
           selectedOption.defaultShipping ?? null,
-          selectedOption.defaultShippingCurrency || "USD"
+          selectedOption.defaultShippingCurrency || "USD",
         );
 
         if (shippingCalculation) {
           finalShippingCost = shippingCalculation.price;
           console.log(
-            `Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry} using shipping option ${selectedOption.id}`
+            `Dynamic shipping calculated: ${finalShippingCost} cents for ${userCountry} from ${sellerOriginCountry} using shipping option ${selectedOption.id}`,
           );
         } else {
           // Fallback to static shipping cost if calculation fails
           console.warn(
-            `Shipping calculation failed for product ${productId}, using static shipping cost`
+            `Shipping calculation failed for product ${productId}, using static shipping cost`,
           );
         }
       }
@@ -240,27 +264,42 @@ export async function POST(req: Request) {
     if (!product.seller?.connectedAccountId) {
       return NextResponse.json(
         { error: "Seller's Stripe account not connected" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Verify seller's Stripe account has required capabilities
-    const account = await stripeSecret.instance.accounts.retrieve(
-      product.seller.connectedAccountId
-    );
-    if (
-      !account.capabilities?.transfers ||
-      account.capabilities.transfers !== "active"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Seller's Stripe account is not fully set up. Please complete the onboarding process.",
-          details:
-            "The seller needs to complete their Stripe account setup to receive payments.",
-        },
-        { status: 400 }
+    // Prefer cached transfers capability (updated by account.updated webhook); refresh from Stripe if unknown/stale.
+    const sellerTransfersCached = product.seller.stripeTransfersCapability;
+    if (sellerTransfersCached !== "active") {
+      const account = await stripeSecret.instance.accounts.retrieve(
+        product.seller.connectedAccountId,
       );
+      if (
+        !account.capabilities?.transfers ||
+        account.capabilities.transfers !== "active"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Seller's Stripe account is not fully set up. Please complete the onboarding process.",
+            details:
+              "The seller needs to complete their Stripe account setup to receive payments.",
+          },
+          { status: 400 },
+        );
+      }
+      // Heal DB cache (non-blocking for checkout latency)
+      void db.seller
+        .update({
+          where: { id: product.seller.id },
+          data: {
+            stripeTransfersCapability: account.capabilities?.transfers ?? null,
+            stripeCapabilitiesSyncedAt: new Date(),
+          },
+        })
+        .catch((e) =>
+          console.warn("[create-payment-intent] seller capability cache update failed", e),
+        );
     }
 
     // Calculate amounts in cents
@@ -268,6 +307,17 @@ export async function POST(req: Request) {
     const shippingCostInCents = finalShippingCost;
     const handlingFeeInCents = product.handlingFee || 0;
     const parsedQuantity = parseInt(quantity.toString());
+
+    // Prevent checkout for sold-out physical products
+    if (!product.isDigital && product.stock < parsedQuantity) {
+      return NextResponse.json(
+        {
+          error: "This item is out of stock for the requested quantity.",
+          details: `Only ${product.stock} item(s) available.`,
+        },
+        { status: 400 },
+      );
+    }
 
     // Convert prices to preferred currency if different from product currency
     let finalProductPriceInCents = productPriceInCents;
@@ -280,36 +330,18 @@ export async function POST(req: Request) {
       preferredCurrency.toLowerCase() !== product.currency.toLowerCase()
     ) {
       try {
-        console.log("Converting currency:", {
+        console.log("Converting currency (in-process, no HTTP):", {
           from: product.currency,
           to: preferredCurrency,
           amount: productPriceInCents,
         });
 
-        // Convert product price
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: productPriceInCents,
-              fromCurrency: product.currency,
-              toCurrency: preferredCurrency,
-              isCents: true,
-            }),
-          }
+        const convertedAmount = await convertCurrencyAmount(
+          productPriceInCents,
+          product.currency,
+          preferredCurrency,
+          true,
         );
-
-        if (!response.ok) {
-          const error = await response.json();
-          console.error("Currency conversion failed:", error);
-          throw new Error(
-            `Currency conversion failed: ${error.error || "Unknown error"}`
-          );
-        }
-
-        const { convertedAmount } = await response.json();
         console.log("Currency conversion result:", {
           original: productPriceInCents,
           converted: convertedAmount,
@@ -322,31 +354,12 @@ export async function POST(req: Request) {
 
         finalProductPriceInCents = convertedAmount;
 
-        // Convert shipping and handling
-        const shippingResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: shippingCostInCents + handlingFeeInCents,
-              fromCurrency: product.currency,
-              toCurrency: preferredCurrency,
-              isCents: true,
-            }),
-          }
+        const convertedShipping = await convertCurrencyAmount(
+          shippingCostInCents + handlingFeeInCents,
+          product.currency,
+          preferredCurrency,
+          true,
         );
-
-        if (!shippingResponse.ok) {
-          const error = await shippingResponse.json();
-          console.error("Shipping cost conversion failed:", error);
-          throw new Error(
-            `Shipping cost conversion failed: ${error.error || "Unknown error"}`
-          );
-        }
-
-        const { convertedAmount: convertedShipping } =
-          await shippingResponse.json();
 
         if (!convertedShipping || isNaN(convertedShipping)) {
           throw new Error("Invalid shipping cost conversion result");
@@ -375,7 +388,7 @@ export async function POST(req: Request) {
         product.seller.userId,
         productId,
         totalOrderAmountInCents,
-        session?.user?.id
+        session?.user?.id,
       );
 
       if (!validationResult.isValid) {
@@ -384,7 +397,7 @@ export async function POST(req: Request) {
             error: validationResult.error,
             details: "Discount code validation failed",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -400,7 +413,7 @@ export async function POST(req: Request) {
             details:
               "The discount code does not allow stacking with product sales",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -414,30 +427,28 @@ export async function POST(req: Request) {
     // Calculate final amount after discount
     const finalOrderAmountInCents = Math.max(
       0,
-      totalOrderAmountInCents - discountAmount
+      totalOrderAmountInCents - discountAmount,
     );
 
     // Calculate dynamic commission rate based on seller status and discount eligibility
     const commissionRate = calculateCommissionRate(
       product.seller?.isFoundingSeller || false,
       product.seller?.hasCommissionDiscount || false,
-      product.seller?.commissionDiscountExpiresAt || null
+      product.seller?.commissionDiscountExpiresAt || null,
     );
 
-    // Calculate platform fee on the total order amount (product + shipping + handling, before discounts)
-    const totalOrderAmountBeforeDiscount =
-      totalProductPriceInCents + finalShippingAndHandlingInCents;
+    // Platform fee on the amount actually charged (after discounts) — aligns with typical marketplace economics
     const platformFeeInCents = Math.round(
-      totalOrderAmountBeforeDiscount * (commissionRate / 100)
+      finalOrderAmountInCents * (commissionRate / 100),
     );
 
     console.log(`💰 Platform fee calculation:`);
     console.log(
-      `- Total order amount (before discount): ${totalOrderAmountBeforeDiscount} cents (${(totalOrderAmountBeforeDiscount / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`
+      `- Final charged amount (after discount): ${finalOrderAmountInCents} cents (${(finalOrderAmountInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`,
     );
     console.log(`- Commission rate: ${commissionRate}%`);
     console.log(
-      `- Platform fee: ${platformFeeInCents} cents (${(platformFeeInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`
+      `- Platform fee: ${platformFeeInCents} cents (${(platformFeeInCents / 100).toFixed(2)} ${checkoutCurrency.toUpperCase()})`,
     );
 
     // Create or get customer with address information if provided
@@ -477,7 +488,7 @@ export async function POST(req: Request) {
                   country: shippingAddress.country,
                 },
               },
-            }
+            },
           );
           customerId = customer.id;
         } else {
@@ -513,18 +524,62 @@ export async function POST(req: Request) {
       }
     }
 
-    // Create payment intent with application fee
+    // Store shipping + order instructions in DB before the PI (Stripe metadata max 500 chars/value).
+    let checkoutDraftId = "";
+    const draftPayload: {
+      shipping?: {
+        name: string;
+        street: string;
+        city: string;
+        state: string;
+        postal: string;
+        country: string;
+      };
+      instructions?: string;
+    } = {};
+    if (shippingAddress && !product.isDigital) {
+      draftPayload.shipping = {
+        name: shippingAddress.name,
+        street: shippingAddress.street,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        postal: shippingAddress.postal,
+        country: shippingAddress.country,
+      };
+    }
+    if (orderInstructions && orderInstructions.trim()) {
+      draftPayload.instructions = orderInstructions.trim();
+    }
+    if (Object.keys(draftPayload).length > 0) {
+      const draftToken = randomUUID();
+      const enc = encryptOrderData(JSON.stringify(draftPayload));
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      await db.checkoutDraft.create({
+        data: {
+          draftToken,
+          encryptedPayload: enc.encrypted,
+          payloadIV: enc.iv,
+          payloadSalt: enc.salt,
+          expiresAt,
+        },
+      });
+      checkoutDraftId = draftToken;
+    }
+
     console.log(
-      `💳 Creating payment intent: amount=${finalOrderAmountInCents}, currency=${checkoutCurrency}, productId=${productId}`
+      `💳 Creating payment intent: amount=${finalOrderAmountInCents}, currency=${checkoutCurrency}, productId=${productId}`,
     );
-    const paymentIntent = await stripeSecret.instance.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: finalOrderAmountInCents,
       currency: checkoutCurrency,
       customer: customerId,
       automatic_payment_methods: {
         enabled: true,
       },
-      // Note: We handle fees and transfers manually in the webhook for better control
+      // NOTE: We intentionally do NOT use destination charges here.
+      // Business rule: seller pays Stripe processing fee.
+      // We create a manual transfer in the webhook after we can read the finalized Stripe fee.
       metadata: {
         productId,
         quantity: parsedQuantity.toString(),
@@ -563,18 +618,10 @@ export async function POST(req: Request) {
         discountAmount: discountAmount.toString(),
         saleDiscount: saleDiscount.toString(),
         finalOrderAmount: finalOrderAmountInCents.toString(),
-        // Shipping address information
+        // Short id only — full shipping + instructions live in CheckoutDraft (see webhook).
+        checkoutDraftId: checkoutDraftId || "",
+        // Shipping / billing flags only (Stripe metadata 500-char limit per value)
         shippingAddressProvided: shippingAddress ? "true" : "false",
-        shippingAddress: shippingAddress
-          ? JSON.stringify({
-              name: shippingAddress.name,
-              street: shippingAddress.street,
-              city: shippingAddress.city,
-              state: shippingAddress.state,
-              postal: shippingAddress.postal,
-              country: shippingAddress.country,
-            })
-          : "",
         // Billing address information
         billingAddressProvided: billingAddress ? "true" : "false",
         billingAddressSameAsShipping:
@@ -584,32 +631,18 @@ export async function POST(req: Request) {
             ? "true"
             : "false",
       },
-    });
-
-    console.log(
-      `✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`
+    };
+    // Idempotency: duplicate POSTs with the same key return the original PaymentIntent (no extra charge path).
+    const paymentIntent = await stripeSecret.instance.paymentIntents.create(
+      paymentIntentParams,
+      stripeIdempotencyKey
+        ? { idempotencyKey: stripeIdempotencyKey }
+        : undefined,
     );
 
-    // Store order instructions in database (if provided)
-    // This is separate from Stripe since it's not needed for payment processing
-    if (orderInstructions && orderInstructions.trim()) {
-      try {
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24); // Expire after 24 hours
-        
-        await db.orderInstructions.create({
-          data: {
-            paymentIntentId: paymentIntent.id,
-            instructions: orderInstructions.trim(),
-            expiresAt,
-          },
-        });
-        console.log(`✅ Order instructions stored for payment intent: ${paymentIntent.id}`);
-      } catch (instructionsError) {
-        // Log error but don't fail the payment intent creation
-        console.error("❌ Error storing order instructions:", instructionsError);
-      }
-    }
+    console.log(
+      `✅ Payment intent created: id=${paymentIntent.id}, status=${paymentIntent.status}, amount=${paymentIntent.amount}`,
+    );
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
@@ -643,7 +676,7 @@ export async function POST(req: Request) {
         details:
           process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

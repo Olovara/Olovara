@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { stripeCheckout, stripeSecret } from "@/lib/stripe";
-import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
+import { calculateCommissionRate } from "@/lib/feeConfig";
+import { convertCurrencyAmount } from "@/lib/currency-convert";
 import type { Stripe } from "stripe";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   // Declare variables outside try block so they're accessible in catch
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     if (!submissionId || !paymentType) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
                 isFoundingSeller: true,
                 hasCommissionDiscount: true,
                 commissionDiscountExpiresAt: true,
+                stripeTransfersCapability: true,
               },
             },
           },
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     if (!submission) {
       return NextResponse.json(
         { error: "Submission not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -85,26 +87,42 @@ export async function POST(req: Request) {
     if (!submission.form.seller?.connectedAccountId) {
       return NextResponse.json(
         { error: "Seller's Stripe account not connected" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Verify seller's Stripe account has required capabilities
-    const account = await stripeSecret.instance.accounts.retrieve(
-      submission.form.seller.connectedAccountId
-    );
-    if (
-      !account.capabilities?.transfers ||
-      account.capabilities.transfers !== "active"
-    ) {
-      return NextResponse.json(
-        {
-          error: "Seller's Stripe account is not fully set up.",
-          details:
-            "The seller needs to complete their Stripe account setup to receive payments.",
-        },
-        { status: 400 }
+    const sellerRow = submission.form.seller;
+    if (sellerRow.stripeTransfersCapability !== "active") {
+      const account = await stripeSecret.instance.accounts.retrieve(
+        sellerRow.connectedAccountId!,
       );
+      if (
+        !account.capabilities?.transfers ||
+        account.capabilities.transfers !== "active"
+      ) {
+        return NextResponse.json(
+          {
+            error: "Seller's Stripe account is not fully set up.",
+            details:
+              "The seller needs to complete their Stripe account setup to receive payments.",
+          },
+          { status: 400 },
+        );
+      }
+      void db.seller
+        .update({
+          where: { id: sellerRow.id },
+          data: {
+            stripeTransfersCapability: account.capabilities?.transfers ?? null,
+            stripeCapabilitiesSyncedAt: new Date(),
+          },
+        })
+        .catch((e) =>
+          console.warn(
+            "[custom-order-payment] capability cache update failed",
+            e,
+          ),
+        );
     }
 
     // Determine payment amount based on type
@@ -117,14 +135,14 @@ export async function POST(req: Request) {
       if (submission.materialsDepositPaid) {
         return NextResponse.json(
           { error: "Materials deposit already paid" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!submission.materialsDepositAmount) {
         return NextResponse.json(
           { error: "Materials deposit amount not set by seller" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -136,21 +154,21 @@ export async function POST(req: Request) {
       if (!submission.materialsDepositPaid) {
         return NextResponse.json(
           { error: "Materials deposit must be paid first" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (submission.finalPaymentPaid) {
         return NextResponse.json(
           { error: "Final payment already paid" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!submission.finalPaymentAmount) {
         return NextResponse.json(
           { error: "Final payment amount not set by seller" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -161,7 +179,7 @@ export async function POST(req: Request) {
     } else {
       return NextResponse.json(
         { error: "Invalid payment type" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -174,26 +192,12 @@ export async function POST(req: Request) {
       preferredCurrency.toLowerCase() !== submission.currency.toLowerCase()
     ) {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/currency/convert`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: paymentAmount,
-              fromCurrency: submission.currency,
-              toCurrency: preferredCurrency,
-              isCents: true,
-            }),
-          }
+        finalPaymentAmount = await convertCurrencyAmount(
+          paymentAmount,
+          submission.currency,
+          preferredCurrency,
+          true,
         );
-
-        if (!response.ok) {
-          throw new Error("Currency conversion failed");
-        }
-
-        const { convertedAmount } = await response.json();
-        finalPaymentAmount = convertedAmount;
         checkoutCurrency = preferredCurrency.toLowerCase();
       } catch (error) {
         console.error("Currency conversion failed:", error);
@@ -205,12 +209,12 @@ export async function POST(req: Request) {
     const commissionRate = calculateCommissionRate(
       submission.form.seller?.isFoundingSeller || false,
       submission.form.seller?.hasCommissionDiscount || false,
-      submission.form.seller?.commissionDiscountExpiresAt || null
+      submission.form.seller?.commissionDiscountExpiresAt || null,
     );
 
     // Calculate platform fee
     const platformFeeInCents = Math.round(
-      finalPaymentAmount * (commissionRate / 100)
+      finalPaymentAmount * (commissionRate / 100),
     );
     const sellerAmountInCents = finalPaymentAmount - platformFeeInCents;
 
@@ -331,7 +335,7 @@ export async function POST(req: Request) {
       {
         error: userMessage,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
