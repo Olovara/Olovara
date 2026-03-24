@@ -10,6 +10,9 @@ import { SearchBar } from "./SearchBar";
 import { ProtectedLink } from "./shared/ProtectedLink";
 import { WishlistFlyout } from "./wishlist/WishlistFlyout";
 
+const navOutlineCtaClass =
+  "text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary";
+
 export async function Navbar() {
   const session = await auth();
   const userInfo = session?.user && (await getUserInfoForNav());
@@ -41,7 +44,7 @@ export async function Navbar() {
           {userInfo?.role !== "SELLER" && (
             <div className="hidden md:block">
               <ProtectedLink href="/seller-application">
-                <Button variant="outline" className="text-black">
+                <Button variant="outline" className={navOutlineCtaClass}>
                   Start Selling
                 </Button>
               </ProtectedLink>
@@ -54,12 +57,12 @@ export async function Navbar() {
           ) : (
             <>
               <LoginButton mode="redirect">
-                <Button variant="outline" className="text-black">
+                <Button variant="outline" className={navOutlineCtaClass}>
                   Login
                 </Button>
               </LoginButton>
               <Link href="/register" passHref>
-                <Button variant="outline" className="text-black">
+                <Button variant="outline" className={navOutlineCtaClass}>
                   Register
                 </Button>
               </Link>

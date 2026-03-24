@@ -13,14 +13,23 @@ import {
   Heart,
   Bookmark,
 } from "lucide-react";
+import {
+  DashboardNavSearchBar,
+  useDashboardNavSearchFilter,
+} from "@/components/dashboard/dashboard-nav-search";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 
 export default function MemberDashboardSideNavbar() {
   const pathname = usePathname();
   const { hasPermission } = useCurrentPermissions();
   const hasBlogPermission = hasPermission("WRITE_BLOG");
+
+  const [navSearchQuery, setNavSearchQuery] = useState("");
+  const navRef = useRef<HTMLElement>(null);
+  useDashboardNavSearchFilter(navRef, navSearchQuery);
 
   return (
     <div className="lg:block border-r hidden h-full">
@@ -31,8 +40,19 @@ export default function MemberDashboardSideNavbar() {
           </Link>
         </div>
         <div className="flex-1 overflow-auto py-2 ">
-          <nav className="grid items-start px-4 text-sm font-medium">
+          <DashboardNavSearchBar
+            value={navSearchQuery}
+            onChange={setNavSearchQuery}
+          />
+          <div className="px-4">
+            <Separator className="my-3" />
+          </div>
+          <nav
+            ref={navRef}
+            className="grid items-start px-4 text-sm font-medium"
+          >
             <Link
+              data-nav-label="Dashboard"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -48,6 +68,7 @@ export default function MemberDashboardSideNavbar() {
               Dashboard
             </Link>
             <Link
+              data-nav-label="My Purchases"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -63,6 +84,7 @@ export default function MemberDashboardSideNavbar() {
               My Purchases
             </Link>
             <Link
+              data-nav-label="Reviews"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -78,6 +100,7 @@ export default function MemberDashboardSideNavbar() {
               Reviews
             </Link>
             <Link
+              data-nav-label="Messages"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -93,6 +116,7 @@ export default function MemberDashboardSideNavbar() {
               Messages
             </Link>
             <Link
+              data-nav-label="Followed Sellers"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -108,6 +132,7 @@ export default function MemberDashboardSideNavbar() {
               Followed Sellers
             </Link>
             <Link
+              data-nav-label="My Wishlists"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -125,6 +150,7 @@ export default function MemberDashboardSideNavbar() {
 
             {hasBlogPermission && (
               <Link
+                data-nav-label="Blog"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -142,6 +168,7 @@ export default function MemberDashboardSideNavbar() {
             )}
 
             <Link
+              data-nav-label="Profile"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -157,8 +184,9 @@ export default function MemberDashboardSideNavbar() {
               Profile
             </Link>
 
-            <Separator className="my-3" />
+            <Separator className="my-3" data-nav-separator="" />
             <Link
+              data-nav-label="Settings"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {

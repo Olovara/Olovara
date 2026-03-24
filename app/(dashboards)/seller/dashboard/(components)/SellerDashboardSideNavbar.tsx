@@ -20,9 +20,16 @@ import {
   Globe,
   Truck,
   Upload,
+  ChevronRight,
 } from "lucide-react";
+import {
+  DashboardNavSearchBar,
+  useDashboardNavSearchFilter,
+} from "@/components/dashboard/dashboard-nav-search";
+import { SELLER_SETTINGS_TAB_SEARCH } from "@/components/dashboard/seller-settings-tab-search";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 import { useHasFollowedSellers } from "@/hooks/use-has-followed-sellers";
 import { useStudioPlanAccess } from "@/hooks/use-studio-plan-access";
@@ -34,6 +41,21 @@ export default function SellerDashboardSideNavbar() {
   const { hasFollowedSellers } = useHasFollowedSellers();
   const { hasWebsiteBuilderAccess } = useStudioPlanAccess();
 
+  const [navSearchQuery, setNavSearchQuery] = useState("");
+  const navRef = useRef<HTMLElement>(null);
+  useDashboardNavSearchFilter(navRef, navSearchQuery);
+
+  const [settingsHash, setSettingsHash] = useState("");
+  useEffect(() => {
+    const readHash = () =>
+      setSettingsHash(
+        typeof window !== "undefined" ? window.location.hash.slice(1) : ""
+      );
+    readHash();
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
+  }, [pathname]);
+
   return (
     <div className="lg:block border-r hidden h-full">
       <div className="flex h-full max-h-screen flex-col gap-2 ">
@@ -43,8 +65,20 @@ export default function SellerDashboardSideNavbar() {
           </Link>
         </div>
         <div className="flex-1 overflow-auto py-2 ">
-          <nav className="grid items-start px-4 text-sm font-medium">
+          <DashboardNavSearchBar
+            value={navSearchQuery}
+            onChange={setNavSearchQuery}
+          />
+          <div className="px-4">
+            <Separator className="my-3" />
+          </div>
+          <nav
+            ref={navRef}
+            className="grid items-start px-4 text-sm font-medium"
+          >
             <Link
+              data-nav-label="Dashboard"
+              data-nav-search-keywords="home"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -60,6 +94,7 @@ export default function SellerDashboardSideNavbar() {
               Dashboard
             </Link>
             <Link
+              data-nav-label="Billing"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -75,6 +110,7 @@ export default function SellerDashboardSideNavbar() {
               Billing
             </Link>
             <Link
+              data-nav-label="Plans"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -91,6 +127,7 @@ export default function SellerDashboardSideNavbar() {
             </Link>
             {hasWebsiteBuilderAccess && (
               <Link
+                data-nav-label="Website Builder"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -107,6 +144,7 @@ export default function SellerDashboardSideNavbar() {
               </Link>
             )}
             <Link
+              data-nav-label="Products"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -122,6 +160,7 @@ export default function SellerDashboardSideNavbar() {
               Products
             </Link>
             <Link
+              data-nav-label="Bulk Import"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -137,6 +176,7 @@ export default function SellerDashboardSideNavbar() {
               Bulk Import
             </Link>
             <Link
+              data-nav-label="Shipping"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -152,6 +192,7 @@ export default function SellerDashboardSideNavbar() {
               Shipping
             </Link>
             <Link
+              data-nav-label="My Orders"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -167,6 +208,7 @@ export default function SellerDashboardSideNavbar() {
               My Orders
             </Link>
             <Link
+              data-nav-label="My Purchases"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -182,6 +224,7 @@ export default function SellerDashboardSideNavbar() {
               My Purchases
             </Link>
             <Link
+              data-nav-label="Reviews"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -197,6 +240,8 @@ export default function SellerDashboardSideNavbar() {
               Reviews
             </Link>
             <Link
+              data-nav-label="Sales & Promotions"
+              data-nav-search-keywords="discount"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -212,6 +257,7 @@ export default function SellerDashboardSideNavbar() {
               Sales & Promotions
             </Link>
             <Link
+              data-nav-label="Messages"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -228,6 +274,7 @@ export default function SellerDashboardSideNavbar() {
             </Link>
             {hasFollowedSellers && (
               <Link
+                data-nav-label="Followed Sellers"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -244,6 +291,7 @@ export default function SellerDashboardSideNavbar() {
               </Link>
             )}
             <Link
+              data-nav-label="My Wishlists"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -259,6 +307,7 @@ export default function SellerDashboardSideNavbar() {
               My Wishlists
             </Link>
             <Link
+              data-nav-label="Referrals"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -276,6 +325,7 @@ export default function SellerDashboardSideNavbar() {
 
             {hasBlogPermission && (
               <Link
+                data-nav-label="Blog"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -293,6 +343,7 @@ export default function SellerDashboardSideNavbar() {
             )}
 
             <Link
+              data-nav-label="Profile"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -308,6 +359,7 @@ export default function SellerDashboardSideNavbar() {
               Profile
             </Link>
             <Link
+              data-nav-label="Custom Orders"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -322,8 +374,38 @@ export default function SellerDashboardSideNavbar() {
               </div>
               Custom Orders
             </Link>
-            <Separator className="my-3" />
+            {navSearchQuery.trim() !== "" &&
+              SELLER_SETTINGS_TAB_SEARCH.map((tab) => (
+                <Link
+                  key={tab.id}
+                  data-nav-label={`Settings › ${tab.label}`}
+                  data-nav-search-keywords={tab.keywords}
+                  href={`/seller/dashboard/settings#${tab.id}`}
+                  className={clsx(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                    {
+                      "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                        pathname === "/seller/dashboard/settings" &&
+                        settingsHash === tab.id,
+                    }
+                  )}
+                >
+                  <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                    <Settings className="h-3 w-3" />
+                  </div>
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span className="truncate">Settings</span>
+                    <ChevronRight
+                      className="h-3 w-3 shrink-0 opacity-60"
+                      aria-hidden
+                    />
+                    <span className="truncate">{tab.label}</span>
+                  </span>
+                </Link>
+              ))}
+            <Separator className="my-3" data-nav-separator="" />
             <Link
+              data-nav-label="Settings"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {

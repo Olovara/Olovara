@@ -21,9 +21,9 @@ export async function getSellerOrders(userId: string) {
       return [];
     }
 
-    // Then find the orders using the seller's id
+    // Order.sellerId references Seller.userId (the auth user's id), not Seller.id (Mongo _id).
     const orders = await db.order.findMany({
-      where: { sellerId: seller.id },
+      where: { sellerId: userId },
       select: {
         id: true,
         userId: true,

@@ -3,8 +3,6 @@ import { ShopByValues } from "@/components/ShopByValues";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
-import { FONTS } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
 import { BadgeCheck, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Metadata } from "next";
@@ -47,39 +45,42 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <section className="max-w-7xl mx-auto px-4 md:px-8 mb-24">
-      <div className="py-20 mx-auto text-center flex flex-col items-center max-w-3xl">
-        <h1
-          className="text-4xl font-bold tracking-tight text-brand-dark-neutral-900 sm:text-6xl"
-          style={{ fontFamily: "Noto Serif Display, ui-serif, serif" }}
-        >
-          Your marketplace for high-quality{" "}
-          <span className="text-brand-primary-700">handcrafted goods</span>.
-        </h1>
-        <p className="mt-6 text-lg max-w-prose text-brand-dark-neutral-600">
-          Welcome to Yarnnu. Every shop on our platform is verified by our team
-          to ensure the highest quality standards.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 mt-6">
-          <Link href="/products" className={buttonVariants()}>
-            SHOP NOW
-          </Link>
+    <>
+      <section className="mx-auto mb-24 max-w-7xl px-4 md:px-8">
+        <div className="mx-auto flex max-w-3xl flex-col items-center py-20 text-center">
+          <h1
+            className="text-4xl font-bold tracking-tight text-brand-dark-neutral-900 sm:text-6xl"
+            style={{ fontFamily: "Noto Serif Display, ui-serif, serif" }}
+          >
+            Your marketplace for high-quality{" "}
+            <span className="text-brand-primary-700">handcrafted goods</span>.
+          </h1>
+          <p className="mt-6 max-w-prose text-lg text-brand-dark-neutral-600">
+            Welcome to Yarnnu. Every shop on our platform is verified by our team
+            to ensure the highest quality standards.
+          </p>
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row">
+            <Link href="/products" className={buttonVariants()}>
+              SHOP NOW
+            </Link>
+          </div>
         </div>
-      </div>
-      <ProductRow category="followed" />
-      <ProductRow category="newest" />
-      <ProductRow category="random" />
-      <div className="mt-16">
+        <ProductRow category="followed" />
+        <ProductRow category="newest" />
+        <ProductRow category="random" />
+      </section>
+
+      <div className="mt-16 min-w-0">
         <ShopByValues />
       </div>
 
-      {/* Mini landing section */}
-      <section className="mt-16">
-        <div className="text-center mb-10">
+      <section className="mx-auto mb-24 mt-16 max-w-7xl px-4 md:px-8">
+        {/* Mini landing section */}
+        <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold text-brand-dark-neutral-900">
             Why Yarnnu
           </h2>
-          <p className="mt-3 text-brand-dark-neutral-600 max-w-2xl mx-auto">
+          <p className="mx-auto mt-3 max-w-2xl text-brand-dark-neutral-600">
             Calm, curated shopping built for handmade.
           </p>
         </div>
@@ -121,10 +122,9 @@ export default function Home() {
             </p>
           </div>
         </div>
-      </section>
 
-      {/* Add structured data for SEO */}
-      <WebsiteStructuredData pageType="home" />
-    </section>
+        <WebsiteStructuredData pageType="home" />
+      </section>
+    </>
   );
 }

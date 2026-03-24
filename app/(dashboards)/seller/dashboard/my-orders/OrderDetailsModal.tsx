@@ -154,10 +154,12 @@ export function OrderDetailsModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl border-brand-dark-neutral-200">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Order Details</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl font-bold text-brand-primary-900">
+              Order Details
+            </DialogTitle>
+            <DialogDescription className="font-mono text-xs text-brand-dark-neutral-600 sm:text-sm">
               Order ID: {order.id}
             </DialogDescription>
           </DialogHeader>
@@ -166,7 +168,7 @@ export function OrderDetailsModal({
             <div className="space-y-6">
               {/* Order Status Section */}
               <div className="flex flex-col space-y-2">
-                <h3 className="text-lg font-medium">Order Status</h3>
+                <h3 className="text-lg font-semibold text-brand-primary-800">Order Status</h3>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={order.status === "PENDING" ? "outline" : "default"}>
                     {order.status}
@@ -184,14 +186,14 @@ export function OrderDetailsModal({
               
               {/* Customer Information */}
               <div className="space-y-2">
-                <h3 className="text-lg font-medium">Customer Information</h3>
+                <h3 className="text-lg font-semibold text-brand-primary-800">Customer Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Email</p>
                     <p className="font-medium">{order.buyerEmail}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Name</p>
                     <p className="font-medium">{order.buyerName || "N/A"}</p>
                   </div>
                 </div>
@@ -201,25 +203,25 @@ export function OrderDetailsModal({
               
               {/* Product Information */}
               <div className="space-y-2">
-                <h3 className="text-lg font-medium">Product Information</h3>
+                <h3 className="text-lg font-semibold text-brand-primary-800">Product Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Shop Name</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Shop Name</p>
                     <p className="font-medium">{order.shopName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Product Name</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Product Name</p>
                     <p className="font-medium">{order.productName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Quantity</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Quantity</p>
                     <p className="font-medium">{order.quantity}</p>
                   </div>
                   {!order.isDigital && order.batchNumber && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Batch Number</p>
+                      <p className="text-sm text-brand-dark-neutral-600">Batch Number</p>
                       <p className="font-medium font-mono text-sm">{order.batchNumber}</p>
-                      <p className="text-xs text-amber-600 mt-1">
+                      <p className="mt-1 text-xs text-brand-warn-700">
                         Include this batch number on a card or tag with the product to fulfill GPSR requirements
                       </p>
                     </div>
@@ -233,9 +235,9 @@ export function OrderDetailsModal({
               {!order.isDigital && (
                 <>
                   <div className="space-y-2">
-                    <h3 className="text-lg font-medium">Shipping Information</h3>
+                    <h3 className="text-lg font-semibold text-brand-primary-800">Shipping Information</h3>
                     <div>
-                      <p className="text-sm text-muted-foreground">Shipping Address</p>
+                      <p className="text-sm text-brand-dark-neutral-600">Shipping Address</p>
                       <p className="font-medium">{formatShippingAddress(order.shippingAddress)}</p>
                     </div>
                   </div>
@@ -247,9 +249,9 @@ export function OrderDetailsModal({
               {order.orderInstructions && order.orderInstructions.trim() && (
                 <>
                   <div className="space-y-2">
-                    <h3 className="text-lg font-medium">Order Instructions / Personalization</h3>
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                      <p className="text-sm text-purple-900 whitespace-pre-wrap">
+                    <h3 className="text-lg font-semibold text-brand-primary-800">Order Instructions / Personalization</h3>
+                    <div className="rounded-lg border border-brand-primary-200 bg-brand-primary-50 p-4">
+                      <p className="whitespace-pre-wrap text-sm text-brand-primary-950">
                         {order.orderInstructions}
                       </p>
                     </div>
@@ -260,26 +262,26 @@ export function OrderDetailsModal({
               
               {/* Payment Information */}
               <div className="space-y-2">
-                <h3 className="text-lg font-medium">Payment Information</h3>
+                <h3 className="text-lg font-semibold text-brand-primary-800">Payment Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Subtotal</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Subtotal</p>
                     <p className="font-medium">${((order.totalAmount - (order.shippingCost || 0)) / 100).toFixed(2)}</p>
                   </div>
                   {!order.isDigital && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Shipping Cost</p>
+                      <p className="text-sm text-brand-dark-neutral-600">Shipping Cost</p>
                       <p className="font-medium">${((order.shippingCost || 0) / 100).toFixed(2)}</p>
                     </div>
                   )}
                   {order.discount && order.discount > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Discount</p>
+                      <p className="text-sm text-brand-dark-neutral-600">Discount</p>
                       <p className="font-medium">-${(order.discount / 100).toFixed(2)}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Amount</p>
+                    <p className="text-sm text-brand-dark-neutral-600">Total Amount</p>
                     <p className="font-medium">${(order.totalAmount / 100).toFixed(2)}</p>
                   </div>
                 </div>
@@ -289,7 +291,7 @@ export function OrderDetailsModal({
               
               {/* Order Date */}
               <div className="space-y-2">
-                <h3 className="text-lg font-medium">Order Date</h3>
+                <h3 className="text-lg font-semibold text-brand-primary-800">Order Date</h3>
                 <p>{format(new Date(order.createdAt), "PPP 'at' p")}</p>
               </div>
             </div>
@@ -300,7 +302,7 @@ export function OrderDetailsModal({
               <Button 
                 variant="outline" 
                 onClick={handleCancelOrder}
-                className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+                className="border-brand-warn-500 text-brand-warn-800 hover:bg-brand-warn-50"
               >
                 Cancel Order
               </Button>
@@ -309,12 +311,17 @@ export function OrderDetailsModal({
               <Button 
                 variant="outline" 
                 onClick={handleRefundOrder}
-                className="text-red-600 border-red-600 hover:bg-red-50"
+                className="border-brand-error-500 text-brand-error-700 hover:bg-brand-error-50"
               >
                 Refund Order
               </Button>
             )}
-            <Button onClick={onClose}>Close</Button>
+            <Button
+              onClick={onClose}
+              className="bg-brand-primary-700 text-white hover:bg-brand-primary-600"
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -324,7 +331,7 @@ export function OrderDetailsModal({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-brand-warn-600" />
               Cancel Order
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -336,7 +343,7 @@ export function OrderDetailsModal({
             <AlertDialogAction 
               onClick={confirmCancelOrder} 
               disabled={loading}
-              className="bg-yellow-500 hover:bg-yellow-600"
+              className="bg-brand-warn-500 text-brand-warn-950 hover:bg-brand-warn-600"
             >
               {loading ? "Processing..." : "Yes, Cancel Order"}
             </AlertDialogAction>
@@ -349,7 +356,7 @@ export function OrderDetailsModal({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-brand-error-600" />
               Refund Order
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -361,7 +368,7 @@ export function OrderDetailsModal({
             <AlertDialogAction 
               onClick={confirmRefundOrder} 
               disabled={loading}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-brand-error-600 text-white hover:bg-brand-error-700"
             >
               {loading ? "Processing..." : "Yes, Refund Order"}
             </AlertDialogAction>

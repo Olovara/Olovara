@@ -1,4 +1,6 @@
+import { AuthBackLink } from "@/components/auth/auth-back-link";
 import LoginForm from "@/components/auth/login-form";
+import Spinner from "@/components/spinner";
 import { Suspense } from "react";
 
 export const metadata = {
@@ -7,9 +9,15 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="text-center"></div>
-      <Suspense fallback={<div>Loading...</div>}>
+    <div className="flex w-full min-w-0 flex-col items-stretch justify-center">
+      <AuthBackLink />
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-12" aria-busy="true">
+            <Spinner />
+          </div>
+        }
+      >
         <LoginForm />
       </Suspense>
     </div>

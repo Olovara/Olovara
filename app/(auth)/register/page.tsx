@@ -1,4 +1,6 @@
+import { AuthBackLink } from "@/components/auth/auth-back-link";
 import RegisterForm from "@/components/auth/register-form";
+import Spinner from "@/components/spinner";
 import { Suspense } from "react";
 import { Metadata } from "next";
 
@@ -45,9 +47,15 @@ export async function generateMetadata({ searchParams }: RegisterPageProps): Pro
 
 export default function RegisterPage({ searchParams }: RegisterPageProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="text-center"></div>
-      <Suspense fallback={<div>Loading...</div>}>
+    <div className="flex w-full min-w-0 flex-col items-stretch justify-center">
+      <AuthBackLink />
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-12" aria-busy="true">
+            <Spinner />
+          </div>
+        }
+      >
         <RegisterForm redirectTo={searchParams.callbackUrl} />
       </Suspense>
     </div>

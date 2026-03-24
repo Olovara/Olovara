@@ -198,8 +198,11 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
       title="Create an account"
       subtitle="Join our community today"
     >
+      {({ headingId }) => (
       <Form {...form}>
         <form
+          aria-labelledby={headingId}
+          noValidate
           onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-6"
         >
@@ -213,6 +216,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                   <FormControl>
                     <Input
                       {...field}
+                      autoComplete="username"
                       disabled={isPending}
                       type="text"
                       placeholder="Your Username"
@@ -234,7 +238,8 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                       type="text"
                       autoComplete="off"
                       tabIndex={-1}
-                      style={{ display: 'none' }}
+                      aria-label="If using a screen reader leave this field empty"
+                      className="hidden"
                     />
                   </FormControl>
                   <FormMessage />
@@ -251,6 +256,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                   <FormControl>
                     <Input
                       {...field}
+                      autoComplete="email"
                       disabled={isPending}
                       type="email"
                       placeholder="your.email@example.com"
@@ -270,6 +276,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                   <FormControl>
                     <PasswordInput
                       {...field}
+                      autoComplete="new-password"
                       disabled={isPending}
                       type="password"
                       placeholder="******"
@@ -289,6 +296,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                   <FormControl>
                     <PasswordInput
                       {...field}
+                      autoComplete="new-password"
                       disabled={isPending}
                       type="password"
                       placeholder="******"
@@ -299,7 +307,7 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
                     size="sm"
                     variant="link"
                     asChild
-                    className="px-0 text-muted-foreground"
+                    className="px-0 text-brand-primary-700 hover:text-brand-primary-600"
                   >
                     <Link href="/reset-password">Forgot your password?</Link>
                   </Button>
@@ -318,12 +326,14 @@ const RegisterForm = ({ onSuccess, redirectTo }: RegisterFormProps) => {
           <Button
             type="submit"
             disabled={isPending || shouldTriggerRecaptcha}
-            className="w-full hover:bg-purple-400"
+            aria-busy={isPending || shouldTriggerRecaptcha}
+            className="w-full"
           >
             {isPending || shouldTriggerRecaptcha ? "Processing..." : "Register"}
           </Button>
         </form>
       </Form>
+      )}
     </CardWrapper>
   );
 };

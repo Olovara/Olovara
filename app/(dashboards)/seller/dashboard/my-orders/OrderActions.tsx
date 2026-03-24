@@ -155,7 +155,11 @@ export function OrderActions({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="icon" variant="ghost">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-brand-dark-neutral-700 hover:bg-brand-primary-50 hover:text-brand-primary-800"
+          >
             <Ellipsis className="h-5 w-5" />
           </Button>
         </DropdownMenuTrigger>
@@ -205,7 +209,7 @@ export function OrderActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-brand-warn-600" />
               Cancel Order
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -217,7 +221,7 @@ export function OrderActions({
             <AlertDialogAction 
               onClick={confirmCancelOrder} 
               disabled={loading}
-              className="bg-yellow-500 hover:bg-yellow-600"
+              className="bg-brand-warn-500 text-brand-warn-950 hover:bg-brand-warn-600"
             >
               {loading ? "Processing..." : "Yes, Cancel Order"}
             </AlertDialogAction>
@@ -230,7 +234,7 @@ export function OrderActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-brand-error-600" />
               Refund Order
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -242,7 +246,7 @@ export function OrderActions({
             <AlertDialogAction 
               onClick={confirmRefundOrder} 
               disabled={loading}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-brand-error-600 text-white hover:bg-brand-error-700"
             >
               {loading ? "Processing..." : "Yes, Refund Order"}
             </AlertDialogAction>

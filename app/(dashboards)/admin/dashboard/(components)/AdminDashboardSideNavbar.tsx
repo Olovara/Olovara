@@ -22,8 +22,13 @@ import {
   AlertCircle,
   Share2,
 } from "lucide-react";
+import {
+  DashboardNavSearchBar,
+  useDashboardNavSearchFilter,
+} from "@/components/dashboard/dashboard-nav-search";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 
 export default function AdminDashboardSideNavbar() {
@@ -34,6 +39,10 @@ export default function AdminDashboardSideNavbar() {
   const hasFraudPermission = hasPermission("VIEW_FRAUD_DETECTION");
   const hasAnalyticsPermission = hasPermission("VIEW_ANALYTICS");
 
+  const [navSearchQuery, setNavSearchQuery] = useState("");
+  const navRef = useRef<HTMLElement>(null);
+  useDashboardNavSearchFilter(navRef, navSearchQuery);
+
   return (
     <div className="lg:block border-r hidden h-full">
       <div className="flex h-full max-h-screen flex-col gap-2 ">
@@ -43,8 +52,19 @@ export default function AdminDashboardSideNavbar() {
           </Link>
         </div>
         <div className="flex-1 overflow-auto py-2 ">
-          <nav className="grid items-start px-4 text-sm font-medium">
+          <DashboardNavSearchBar
+            value={navSearchQuery}
+            onChange={setNavSearchQuery}
+          />
+          <div className="px-4">
+            <Separator className="my-3" />
+          </div>
+          <nav
+            ref={navRef}
+            className="grid items-start px-4 text-sm font-medium"
+          >
             <Link
+              data-nav-label="Dashboard"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -60,6 +80,7 @@ export default function AdminDashboardSideNavbar() {
               Dashboard
             </Link>
             <Link
+              data-nav-label="Seller Applications"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -75,6 +96,7 @@ export default function AdminDashboardSideNavbar() {
               Seller Applications
             </Link>
             <Link
+              data-nav-label="Users"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -90,6 +112,7 @@ export default function AdminDashboardSideNavbar() {
               Users
             </Link>
             <Link
+              data-nav-label="All Orders"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -105,6 +128,7 @@ export default function AdminDashboardSideNavbar() {
               All Orders
             </Link>
             <Link
+              data-nav-label="All Products"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -120,6 +144,7 @@ export default function AdminDashboardSideNavbar() {
               All Products
             </Link>
             <Link
+              data-nav-label="Social Media Posts"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -135,6 +160,7 @@ export default function AdminDashboardSideNavbar() {
               Social Media Posts
             </Link>
             <Link
+              data-nav-label="Messages"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -150,6 +176,7 @@ export default function AdminDashboardSideNavbar() {
               Messages
             </Link>
             <Link
+              data-nav-label="Contact Submissions"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -165,6 +192,7 @@ export default function AdminDashboardSideNavbar() {
               Contact Submissions
             </Link>
             <Link
+              data-nav-label="Reports"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -180,6 +208,7 @@ export default function AdminDashboardSideNavbar() {
               Reports
             </Link>
             <Link
+              data-nav-label="Newsletter"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -195,6 +224,7 @@ export default function AdminDashboardSideNavbar() {
               Newsletter
             </Link>
             <Link
+              data-nav-label="Onboarding Surveys"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -212,6 +242,7 @@ export default function AdminDashboardSideNavbar() {
 
             {hasFraudPermission && (
               <Link
+                data-nav-label="Fraud Detection"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -230,6 +261,7 @@ export default function AdminDashboardSideNavbar() {
 
             {hasAnalyticsPermission && (
               <Link
+                data-nav-label="Analytics"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -247,6 +279,7 @@ export default function AdminDashboardSideNavbar() {
             )}
 
             <Link
+              data-nav-label="QA Management"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -263,6 +296,7 @@ export default function AdminDashboardSideNavbar() {
             </Link>
 
             <Link
+              data-nav-label="Error Logs"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -280,6 +314,7 @@ export default function AdminDashboardSideNavbar() {
 
             {hasBlogPermission && (
               <Link
+                data-nav-label="Blog"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -298,6 +333,7 @@ export default function AdminDashboardSideNavbar() {
 
             {hasHelpPermission && (
               <Link
+                data-nav-label="Help Center"
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                   {
@@ -315,6 +351,7 @@ export default function AdminDashboardSideNavbar() {
             )}
 
             <Link
+              data-nav-label="Profile"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {
@@ -330,8 +367,9 @@ export default function AdminDashboardSideNavbar() {
               Profile
             </Link>
 
-            <Separator className="my-3" />
+            <Separator className="my-3" data-nav-separator="" />
             <Link
+              data-nav-label="Settings"
               className={clsx(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
                 {

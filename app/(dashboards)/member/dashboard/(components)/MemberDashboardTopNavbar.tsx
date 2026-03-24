@@ -35,7 +35,10 @@ export default function MemberDashboardTopNavbar({
             <HamburgerMenuIcon />
             <span className="sr-only">Menu</span>
           </SheetTrigger>
-          <SheetContent side="left">
+          <SheetContent
+            side="left"
+            className="flex max-h-[100dvh] flex-col overflow-y-auto overscroll-contain"
+          >
             <SheetHeader>
               <Link href="/">
                 <SheetTitle>Yarnnu</SheetTitle>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +32,6 @@ interface LoginFormProps {
 
 const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl");
   const urlError =
     searchParams.get("error") === "OAuthAccountNotLinked"
@@ -125,8 +124,14 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           : "Sign in to your account"
       }
     >
+      {({ headingId }) => (
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          aria-labelledby={headingId}
+          noValidate
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           <div className="space-y-4">
             {showTwoFactor && (
               <FormField
@@ -138,6 +143,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                     <FormControl>
                       <Input
                         {...field}
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
                         disabled={isPending}
                         placeholder="123456"
                         type="text"
@@ -159,6 +166,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                       <FormControl>
                         <Input
                           {...field}
+                          autoComplete="email"
                           disabled={isPending}
                           type="email"
                           placeholder="your.email@example.com"
@@ -178,6 +186,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                       <FormControl>
                         <PasswordInput
                           {...field}
+                          autoComplete="current-password"
                           disabled={isPending}
                           type="password"
                           placeholder="******"
@@ -188,7 +197,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
                         size="sm"
                         variant="link"
                         asChild
-                        className="px-0 text-muted-foreground"
+                        className="px-0 text-brand-primary-700 hover:text-brand-primary-600"
                       >
                         <Link href="/reset-password">
                           Forgot your password?
@@ -205,12 +214,14 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           <Button
             type="submit"
             disabled={isPending}
-            className="w-full hover:bg-purple-400"
+            aria-busy={isPending}
+            className="w-full"
           >
             {showTwoFactor ? "Confirm" : "Login"}
           </Button>
         </form>
       </Form>
+      )}
     </CardWrapper>
   );
 };

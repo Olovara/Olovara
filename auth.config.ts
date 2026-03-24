@@ -13,36 +13,45 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const authSecret = process.env.AUTH_SECRET;
 
-// Only validate in non-production or if explicitly enabled
-// In production, we want the app to fail fast if config is missing
-if (process.env.NODE_ENV !== "production" || process.env.VALIDATE_AUTH_ENV === "true") {
-  if (!googleClientId || !googleClientSecret) {
-    console.error(
-      "[AUTH CONFIG] ⚠️  Missing Google OAuth credentials!",
-      {
-        GOOGLE_CLIENT_ID: googleClientId ? "SET" : "MISSING",
-        GOOGLE_CLIENT_SECRET: googleClientSecret ? "SET" : "MISSING",
-      }
-    );
-    console.error(
-      "[AUTH CONFIG] This will cause 'Configuration' errors when users try to sign in with Google."
-    );
-  }
-  
-  if (!authSecret) {
-    console.error("[AUTH CONFIG] ⚠️  Missing AUTH_SECRET! This is required for session encryption.");
+const hasGoogleOAuth = Boolean(googleClientId && googleClientSecret);
+
+// Env vars are not available in the browser bundle (only NEXT_PUBLIC_* are inlined).
+// Logging here on the client always looked like "MISSING" even when .env.local is correct.
+if (typeof window === "undefined") {
+  const shouldValidate =
+    process.env.NODE_ENV !== "production" ||
+    process.env.VALIDATE_AUTH_ENV === "true";
+
+  if (shouldValidate) {
+    if (!hasGoogleOAuth) {
+      console.error(
+        "[AUTH CONFIG] ⚠️  Missing Google OAuth credentials (server).",
+        "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local to enable Google sign-in.",
+        { GOOGLE_CLIENT_ID: googleClientId ? "SET" : "MISSING", GOOGLE_CLIENT_SECRET: googleClientSecret ? "SET" : "MISSING" }
+      );
+    }
+
+    if (!authSecret) {
+      console.error(
+        "[AUTH CONFIG] ⚠️  Missing AUTH_SECRET (server). Add it to .env.local — required for session encryption."
+      );
+    }
   }
 }
 
 export const authConfig = {
   providers: [
-    Google({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-      // Note: allowDangerousEmailAccountLinking is false by default (secure)
-      // This prevents account takeover if someone signs up with OAuth using an email
-      // that already has a password account. Users must use their original login method.
-    }),
+    ...(hasGoogleOAuth
+      ? [
+          Google({
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+            // Note: allowDangerousEmailAccountLinking is false by default (secure)
+            // This prevents account takeover if someone signs up with OAuth using an email
+            // that already has a password account. Users must use their original login method.
+          }),
+        ]
+      : []),
     Credentials({
       async authorize(credentials) {
         try {

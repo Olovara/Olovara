@@ -23,12 +23,12 @@ const Social = ({ mode = "signin" }: SocialProps) => {
     <div className="flex items-center w-full gap-x-2">
       <Button
         size="lg"
-        className="w-full text-xl hover:bg-purple-400 hover:text-background"
         variant="outline"
+        className="h-auto min-h-11 w-full min-w-0 flex-wrap gap-2 whitespace-normal px-3 text-center text-sm leading-snug text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary sm:px-8 sm:text-lg"
         asChild
       >
         <a href={googleSignInHref}>
-          <GrGoogle className="mr-2" />
+          <GrGoogle className="mr-2" aria-hidden />
           {buttonText}
         </a>
       </Button>

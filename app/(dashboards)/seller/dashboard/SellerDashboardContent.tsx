@@ -9,12 +9,105 @@ import { SessionRefreshButton } from "@/components/SessionRefreshButton";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { OptionalOnboardingTasks } from "@/components/seller/OptionalOnboardingTasks";
 import { BASE_ONBOARDING_STEPS } from "@/lib/onboarding";
-import { useEffect } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { startOfQuarter, startOfYear, subDays } from "date-fns";
+import { useCallback, useEffect, useState } from "react";
 
-export function SellerDashboardContent() {
+const dashboardPeriodSelectItemClass =
+  "cursor-pointer rounded-sm focus:bg-brand-primary-100 focus:text-brand-primary-900 data-[highlighted]:bg-brand-primary-100 data-[highlighted]:text-brand-primary-900 hover:bg-brand-primary-100 hover:text-brand-primary-900";
+
+type DashboardPeriodPreset =
+  | "all"
+  | "24h"
+  | "7d"
+  | "30d"
+  | "quarter"
+  | "ytd"
+  | "custom";
+
+type SellerDashboardContentProps = {
+  /** Decrypted profile first name from the server */
+  welcomeFirstName?: string | null;
+  /** Display username from DB when first name is unset */
+  usernameFallback?: string | null;
+  /** ISO date: seller profile `createdAt`, or user `createdAt` as fallback — used for "All time" range */
+  sellerJoinedAt: string;
+};
+
+export function SellerDashboardContent({
+  welcomeFirstName = null,
+  usernameFallback = null,
+  sellerJoinedAt,
+}: SellerDashboardContentProps) {
   const { data: session } = useSession();
   const { role, loading: permissionsLoading, error: permissionsError, refreshPermissions } = usePermissions();
   const { steps, isFullyActivated, isLoading: onboardingLoading } = useOnboarding();
+
+  const [startDate, setStartDate] = useState<Date | undefined>(() =>
+    subDays(new Date(), 7)
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(() => new Date());
+  const [periodPreset, setPeriodPreset] =
+    useState<DashboardPeriodPreset>("7d");
+
+  const applyPeriodPreset = useCallback(
+    (value: DashboardPeriodPreset) => {
+      setPeriodPreset(value);
+      const end = new Date();
+      switch (value) {
+        case "all": {
+          const joined = new Date(sellerJoinedAt);
+          setStartDate(joined);
+          setEndDate(end);
+          break;
+        }
+      case "24h":
+        setStartDate(subDays(end, 1));
+        setEndDate(end);
+        break;
+      case "7d":
+        setStartDate(subDays(end, 7));
+        setEndDate(end);
+        break;
+      case "30d":
+        setStartDate(subDays(end, 30));
+        setEndDate(end);
+        break;
+      case "quarter":
+        setStartDate(startOfQuarter(end));
+        setEndDate(end);
+        break;
+      case "ytd":
+        setStartDate(startOfYear(end));
+        setEndDate(end);
+        break;
+      case "custom":
+        setStartDate((s) => s ?? subDays(new Date(), 30));
+        setEndDate((e) => e ?? new Date());
+        break;
+      default:
+        break;
+    }
+  },
+  [sellerJoinedAt]
+);
+
+  const handleStartDateChange = useCallback((d?: Date) => {
+    setPeriodPreset("custom");
+    setStartDate(d);
+  }, []);
+
+  const handleEndDateChange = useCallback((d?: Date) => {
+    setPeriodPreset("custom");
+    setEndDate(d);
+  }, []);
 
   // Refresh permissions on mount to ensure we have the latest role
   // This helps when user just completed onboarding
@@ -36,18 +129,6 @@ export function SellerDashboardContent() {
       }
     }
   }, [session?.user?.id, permissionsLoading, refreshPermissions]);
-
-  // Debug logging
-  console.log("SellerDashboardContent - Debug:", {
-    sessionUserId: session?.user?.id,
-    role,
-    permissionsLoading,
-    permissionsError,
-    steps,
-    stepsLength: steps?.length,
-    isFullyActivated,
-    onboardingLoading
-  });
 
   // Show loading state
   if (permissionsLoading || onboardingLoading) {
@@ -144,13 +225,72 @@ export function SellerDashboardContent() {
     baseStepKeys.includes(step.stepKey)
   ).every(step => step.completed) ?? false;
 
+  const welcomeName =
+    welcomeFirstName?.trim() ||
+    usernameFallback?.trim() ||
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0]?.trim() ||
+    "";
+
   return (
     <OnboardingSurveyProvider>
       <div>
         {baseStepsComplete ? (
           <>
-            <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
-            <SellerDashboardInfo />
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <h1 className="text-3xl font-bold shrink-0">
+                {welcomeName ? `Welcome, ${welcomeName}` : "Welcome"}
+              </h1>
+              <Select
+                value={periodPreset}
+                onValueChange={(v) =>
+                  applyPeriodPreset(v as DashboardPeriodPreset)
+                }
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-11 w-full sm:h-10 sm:w-[min(100%,260px)] sm:shrink-0",
+                    "border-brand-dark-neutral-200 bg-background",
+                    "hover:border-brand-primary-300 focus:ring-brand-primary-500 data-[state=open]:border-brand-primary-400"
+                  )}
+                  aria-label="Dashboard time period"
+                >
+                  <SelectValue placeholder="Time period" />
+                </SelectTrigger>
+                <SelectContent
+                  align="end"
+                  className="border-brand-primary-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900"
+                >
+                  <SelectItem value="24h" className={dashboardPeriodSelectItemClass}>
+                    Past 24 hours
+                  </SelectItem>
+                  <SelectItem value="7d" className={dashboardPeriodSelectItemClass}>
+                    Past 7 days
+                  </SelectItem>
+                  <SelectItem value="30d" className={dashboardPeriodSelectItemClass}>
+                    Past 30 days
+                  </SelectItem>
+                  <SelectItem value="quarter" className={dashboardPeriodSelectItemClass}>
+                    This quarter
+                  </SelectItem>
+                  <SelectItem value="ytd" className={dashboardPeriodSelectItemClass}>
+                    Year to date
+                  </SelectItem>
+                  <SelectItem value="all" className={dashboardPeriodSelectItemClass}>
+                    All time
+                  </SelectItem>
+                  <SelectItem value="custom" className={dashboardPeriodSelectItemClass}>
+                    Custom range
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <SellerDashboardInfo
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={handleStartDateChange}
+              onEndDateChange={handleEndDateChange}
+            />
             {/* Show optional onboarding tasks at the bottom */}
             <OptionalOnboardingTasks steps={steps} />
           </>

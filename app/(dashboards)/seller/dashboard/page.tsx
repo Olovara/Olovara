@@ -4,6 +4,7 @@ import { SellerDashboardContent } from "./SellerDashboardContent";
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { decryptData } from "@/lib/encryption";
 
 export const dynamic = 'force-dynamic';
 
@@ -39,15 +40,21 @@ export default async function SellerDashboardHome() {
   // This prevents redirect loops by checking role server-side
   const dbUser = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { 
+    select: {
       role: true,
+      username: true,
+      createdAt: true,
+      encryptedFirstName: true,
+      firstNameIV: true,
+      firstNameSalt: true,
       seller: {
         select: {
           id: true,
-          applicationAccepted: true
-        }
-      }
-    }
+          applicationAccepted: true,
+          createdAt: true,
+        },
+      },
+    },
   });
 
   // If user is not a seller or doesn't have a seller profile, redirect appropriately
@@ -63,9 +70,32 @@ export default async function SellerDashboardHome() {
     redirect("/seller-application");
   }
 
+  let welcomeFirstName: string | null = null;
+  if (
+    dbUser.encryptedFirstName &&
+    dbUser.firstNameIV &&
+    dbUser.firstNameSalt
+  ) {
+    try {
+      welcomeFirstName = decryptData(
+        dbUser.encryptedFirstName,
+        dbUser.firstNameIV,
+        dbUser.firstNameSalt
+      );
+    } catch {
+      welcomeFirstName = null;
+    }
+  }
+
   return (
     <PermissionProvider>
-      <SellerDashboardContent />
+      <SellerDashboardContent
+        welcomeFirstName={welcomeFirstName?.trim() || null}
+        usernameFallback={dbUser.username?.trim() || null}
+        sellerJoinedAt={(
+          dbUser.seller?.createdAt ?? dbUser.createdAt
+        ).toISOString()}
+      />
     </PermissionProvider>
   );
 }

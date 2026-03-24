@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ShopQRCode from "@/components/ShopQRCode";
@@ -11,6 +11,7 @@ import SellerInfoForm from "@/components/forms/SellerInfoForm";
 import SellerPreferencesForm from "@/components/forms/SellerPreferencesForm";
 import ShopSEOForm from "@/components/forms/ShopSEOForm";
 import { updateShopSEO } from "@/actions/updateShopSEO";
+import { SELLER_SETTINGS_VALID_TAB_IDS } from "@/components/dashboard/seller-settings-tab-search";
 
 interface SettingsTabsWrapperProps {
   seller: any;
@@ -21,25 +22,19 @@ export default function SettingsTabsWrapper({
 }: SettingsTabsWrapperProps) {
   const [activeTab, setActiveTab] = useState("about");
 
-  useEffect(() => {
-    // Check if there's a hash in the URL and set the active tab accordingly
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.replace("#", "");
-      if (
-        hash &&
-        [
-          "about",
-          "info",
-          "preferences",
-          "policies",
-          "exclusions",
-          "qr",
-        ].includes(hash)
-      ) {
-        setActiveTab(hash);
-      }
+  const syncTabFromHash = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace("#", "");
+    if (hash && SELLER_SETTINGS_VALID_TAB_IDS.includes(hash)) {
+      setActiveTab(hash);
     }
   }, []);
+
+  useEffect(() => {
+    syncTabFromHash();
+    window.addEventListener("hashchange", syncTabFromHash);
+    return () => window.removeEventListener("hashchange", syncTabFromHash);
+  }, [syncTabFromHash]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
