@@ -11,7 +11,8 @@ interface FollowButtonProps {
   sellerId: string;
   sellerName: string;
   initialFollowerCount?: number;
-  variant?: "default" | "outline" | "ghost";
+  /** Use `outlinePrimary` on shop pages for brand primary hover instead of accent. */
+  variant?: "default" | "outline" | "outlinePrimary" | "ghost";
   size?: "default" | "sm" | "lg";
   showCount?: boolean;
   className?: string;
@@ -109,8 +110,8 @@ export default function FollowButton({
       onClick={handleFollowToggle}
       disabled={isLoading}
       className={`transition-all duration-200 ${
-        isFollowing 
-          ? "bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100" 
+        isFollowing
+          ? "border-brand-primary-200 bg-brand-primary-50 text-brand-primary-700 hover:!bg-brand-primary-100 hover:!text-brand-primary-800 hover:!border-brand-primary-200"
           : ""
       } ${className}`}
     >

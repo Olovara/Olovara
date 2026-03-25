@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, FileText, LogIn } from "lucide-react";
+import { FileText, LogIn } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { getPublicCustomOrderForm, submitCustomOrderForm } from "@/actions/customOrderFormActions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -21,7 +20,14 @@ interface CustomOrderButtonProps {
   sellerId: string;
   sellerName: string;
   acceptsCustom: boolean;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "outlinePrimary"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
@@ -172,9 +178,6 @@ export default function CustomOrderButton({
       >
         <FileText className="h-4 w-4" />
         Custom Order
-        <Badge variant="secondary" className="ml-1">
-          New
-        </Badge>
       </Button>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

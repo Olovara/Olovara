@@ -11,7 +11,14 @@ import { toast } from "sonner";
 interface ContactSellerButtonProps {
   sellerId: string;
   sellerName: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "outlinePrimary"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }

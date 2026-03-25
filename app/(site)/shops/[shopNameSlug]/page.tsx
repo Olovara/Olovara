@@ -349,9 +349,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
       <WebsiteStructuredData pageType="shops" />
       {/* Track shop view for analytics (which shops are viewed, buyer behavior) */}
       <ShopViewTracker sellerId={seller.id} />
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-brand-light-neutral-100">
         {/* HEADER SECTION */}
-        <div className="bg-white border-b">
+        <div className="bg-brand-light-neutral-50 border-b border-brand-dark-neutral-200">
           {/* Shop Banner */}
           {seller.shopBannerImage && (
             <div className="relative w-full h-48 md:h-64 lg:h-80">
@@ -371,7 +371,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
             <div className="flex flex-col md:flex-row gap-6 items-start">
               {/* Shop Logo */}
               <div className="flex-shrink-0">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden bg-brand-light-neutral-100 flex items-center justify-center">
                   {seller.shopLogoImage ? (
                     <Image
                       src={seller.shopLogoImage}
@@ -411,7 +411,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-brand-light-neutral-100 hover:bg-brand-light-neutral-200 rounded-lg transition-colors"
                       >
                         <Icon className="h-4 w-4" />
                         <span className="hidden sm:inline">{label}</span>
@@ -457,27 +457,27 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   sellerName={seller.shopName}
                   showCount={true}
                   initialFollowerCount={seller.followerCount}
-                  variant="outline"
+                  variant="outlinePrimary"
                   size="sm"
                 />
                 <ContactSellerButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
-                  variant="outline"
+                  variant="outlinePrimary"
                   size="sm"
                 />
                 <CustomOrderButton
                   sellerId={seller.id}
                   sellerName={seller.shopName}
                   acceptsCustom={seller.acceptsCustom}
-                  variant="outline"
+                  variant="outlinePrimary"
                   size="sm"
                 />
                 <ReportButton
                   reportType="SELLER"
                   targetId={seller.id}
                   targetName={seller.shopName}
-                  variant="outline"
+                  variant="outlinePrimary"
                   size="sm"
                 />
               </div>
@@ -492,7 +492,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
             {/* Mobile Layout */}
             <div className="block lg:hidden">
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                 <h3 className="text-lg font-semibold mb-4">
                   Products ({seller.products.length})
                 </h3>
@@ -520,7 +520,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
               <aside className="col-span-3">
                 <div className="sticky top-6 space-y-6">
                   {/* Shop Stats */}
-                  <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                     <h3 className="text-lg font-semibold mb-4">
                       Shop Information
                     </h3>
@@ -560,7 +560,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
               {/* Product Grid */}
               <div className="col-span-9">
-                <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                   {seller.products.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">
                       No products available.
@@ -584,7 +584,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
           {/* REVIEWS SECTION */}
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6">Reviews</h2>
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
               {seller.reviews.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">
                   No reviews yet.
@@ -598,7 +598,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                     >
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-brand-light-neutral-200 flex items-center justify-center">
                             {review.reviewer.image ? (
                               <Image
                                 src={review.reviewer.image}
@@ -666,7 +666,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
               <div className="lg:col-span-2 space-y-6">
                 {/* Shop Description */}
                 {seller.shopDescription && (
-                  <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                     <h3 className="text-lg font-semibold mb-4">
                       About the Maker
                     </h3>
@@ -691,7 +691,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
                 {/* Behind the Hands - rich text (HTML from Quill) */}
                 {(seller as any).behindTheHands && (
-                  <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                     <h3 className="text-lg font-semibold mb-4">
                       Behind the Hands
                     </h3>
@@ -705,7 +705,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                 )}
 
                 {/* FAQ Section - Placeholder for now */}
-                <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
                   <h3 className="text-lg font-semibold mb-4">
                     Frequently Asked Questions
                   </h3>

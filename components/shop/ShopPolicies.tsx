@@ -37,14 +37,14 @@ const ShopPolicies = ({
   ].filter(Boolean).length > 1;
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-brand-light-neutral-50 border-brand-dark-neutral-200">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Shop Policies</CardTitle>
           {hasMultiplePolicies && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="lg:hidden p-1 hover:bg-gray-100 rounded"
+              className="lg:hidden p-1 hover:bg-brand-light-neutral-100 rounded"
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />

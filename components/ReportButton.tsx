@@ -10,7 +10,14 @@ interface ReportButtonProps {
   reportType: "SELLER" | "PRODUCT";
   targetId: string;
   targetName: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "outlinePrimary"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   children?: React.ReactNode;
@@ -34,8 +41,10 @@ export default function ReportButton({
         size={size}
         onClick={() => setIsModalOpen(true)}
         className={cn(
-          "text-red-600 hover:text-red-700",
-          // Ghost/outline hover uses accent bg by default — keep bg flat; only text changes on hover
+          // Red label by default; with outlinePrimary, hover matches Search button (primary fill + light text)
+          variant === "outlinePrimary"
+            ? "!text-red-600 hover:!bg-brand-primary-700 hover:!text-brand-light-neutral-50 hover:!border-brand-primary-700"
+            : "!text-red-600 hover:!text-red-700",
           variant === "ghost" &&
             "bg-transparent hover:bg-transparent focus-visible:bg-transparent active:bg-transparent",
           className

@@ -71,7 +71,7 @@ export function ShopFilters() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Sort By</h2>
         <select
-          className="w-full p-2 border rounded-md"
+          className="w-full p-2 text-sm rounded-md border border-brand-dark-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-primary-100 focus:ring-offset-1"
           value={sortBy}
           onChange={(e) => handleSortChange(e.target.value)}
         >

@@ -193,6 +193,7 @@ export default async function ShopsPage({ searchParams }: ShopsPageProps) {
       shopTagLine: true,
       totalSales: true,
       totalProducts: true,
+      followerCount: true,
       acceptsCustom: true,
       // Social media links
       facebookUrl: true,
