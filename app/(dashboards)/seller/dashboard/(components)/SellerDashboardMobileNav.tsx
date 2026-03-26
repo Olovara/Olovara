@@ -20,6 +20,7 @@ import {
   CreditCard,
   Star,
   TrendingUp,
+  BarChart3,
   FileText,
   Share2,
   Heart,
@@ -99,6 +100,19 @@ export default function SellerDashboardMobileNav() {
               <Button variant="outline" className={mobileNavButtonClass}>
                 <HomeIcon className="mr-2 h-4 w-4 shrink-0" />
                 Dashboard
+              </Button>
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link
+              className="block w-full"
+              data-nav-label="Analytics"
+              data-nav-search-keywords="stats traffic views revenue"
+              href="/seller/dashboard/analytics"
+            >
+              <Button variant="outline" className={mobileNavButtonClass}>
+                <BarChart3 className="mr-2 h-4 w-4 shrink-0" />
+                Analytics
               </Button>
             </Link>
           </SheetClose>
