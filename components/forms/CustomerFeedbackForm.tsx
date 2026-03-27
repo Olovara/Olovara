@@ -20,10 +20,27 @@ import { FormProvider, useForm } from "react-hook-form";
 import Spinner from "@/components/spinner";
 import { submitCustomerFeedback } from "@/actions/customer-feedback";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { FormControl, FormField, FormItem, FormLabel } from "../ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { ReCaptcha } from "@/components/ui/recaptcha";
 import { validateHoneypot } from "@/lib/recaptcha";
+import { motion } from "framer-motion";
+
+// Match Input/Textarea: brand border + ring-offset-2 + ring-brand-primary-400 (same as other fields)
+const feedbackSelectTriggerClassName =
+  "min-h-[3.5rem] h-auto w-full text-lg rounded-lg border border-brand-light-neutral-200 bg-brand-light-neutral-50 px-4 py-3 text-brand-dark-neutral-900 shadow-none ring-offset-background focus:outline-none focus:border-brand-primary-400 focus:ring-2 focus:ring-brand-primary-400 focus:ring-offset-2 focus-visible:border-brand-primary-400 focus-visible:ring-2 focus-visible:ring-brand-primary-400 focus-visible:ring-offset-2 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:text-brand-dark-neutral-600";
+
+const feedbackSelectContentClassName =
+  "bg-brand-light-neutral-50 border-brand-light-neutral-200 text-brand-dark-neutral-900";
+
+const feedbackSelectItemClassName =
+  "cursor-pointer text-lg focus:bg-brand-primary-50 focus:text-brand-dark-neutral-900";
 
 const CustomerFeedbackFormContent = () => {
   const isClient = useIsClient();
@@ -101,19 +118,25 @@ const CustomerFeedbackFormContent = () => {
   if (!isClient) return <Spinner />;
 
   return (
-    <div className="w-full flex justify-center pt-10 pb-10">
+    <div className="w-full flex justify-center py-16 px-1 sm:px-4">
       <FormProvider {...form}>
-        <Card className="max-w-2xl w-full mx-auto shadow-lg p-8 rounded-lg bg-purple-50">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">
+        <motion.form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6 w-full max-w-2xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="w-full mx-auto shadow-xl p-2 sm:p-8 rounded-xl bg-brand-light-neutral-100 border-brand-light-neutral-200">
+            <CardHeader className="space-y-4">
+              <CardTitle className="text-3xl font-bold text-brand-dark-neutral-900">
                 Customer Feedback
               </CardTitle>
-              <CardDescription className="text-gray-500">
-                We value your feedback to help us improve
+              <CardDescription className="text-lg text-brand-dark-neutral-600">
+                We value your feedback to help us improve.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {/* Honeypot field - hidden from real users */}
               <div className="hidden">
                 <FormItem>
@@ -129,21 +152,32 @@ const CustomerFeedbackFormContent = () => {
                 name="heardFrom"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>How did you hear about Yarnnu?</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      How did you hear about Yarnnu?
+                    </FormLabel>
+                    <Select
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                      disabled={isPending}
+                    >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an option" />
+                        <SelectTrigger className={feedbackSelectTriggerClassName}>
+                          <SelectValue placeholder="Choose an option" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className={feedbackSelectContentClassName}>
                         {heardFromOptions.map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
+                          <SelectItem
+                            key={option.id}
+                            value={option.id}
+                            className={feedbackSelectItemClassName}
+                          >
                             {option.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -153,9 +187,12 @@ const CustomerFeedbackFormContent = () => {
                 name="overallExperience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Overall Experience (1-5 stars)</FormLabel>
-                    <FormControl>
-                      <div className="flex space-x-2">
+                    {/* fieldset/legend: correct semantics for a group of buttons (avoids label→div orphaned-label warnings) */}
+                    <fieldset className="space-y-3 border-0 p-0 m-0 min-w-0">
+                      <legend className="text-lg font-semibold text-brand-dark-neutral-900 w-full">
+                        Overall Experience (1-5 stars)
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Button
                             key={star}
@@ -163,13 +200,19 @@ const CustomerFeedbackFormContent = () => {
                             variant={field.value >= star ? "default" : "outline"}
                             size="sm"
                             onClick={() => field.onChange(star)}
-                            className="w-10 h-10 p-0"
+                            className={
+                              field.value >= star
+                                ? "w-10 h-10 p-0 bg-brand-primary-700 text-white hover:bg-brand-primary-700 border-brand-primary-700"
+                                : "w-10 h-10 p-0 border-brand-light-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 hover:border-brand-primary-200"
+                            }
+                            aria-label={`Rate ${star} out of 5 stars`}
                           >
                             ★
                           </Button>
                         ))}
                       </div>
-                    </FormControl>
+                    </fieldset>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -179,19 +222,32 @@ const CustomerFeedbackFormContent = () => {
                 name="placedOrder"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Have you placed an order?</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Have you placed an order?
+                    </FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isPending}
+                    >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an option" />
+                        <SelectTrigger className={feedbackSelectTriggerClassName}>
+                          <SelectValue placeholder="Choose an option" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="YES">Yes</SelectItem>
-                        <SelectItem value="PLANNING">Planning to</SelectItem>
-                        <SelectItem value="NO">No</SelectItem>
+                      <SelectContent className={feedbackSelectContentClassName}>
+                        <SelectItem value="YES" className={feedbackSelectItemClassName}>
+                          Yes
+                        </SelectItem>
+                        <SelectItem value="PLANNING" className={feedbackSelectItemClassName}>
+                          Planning to
+                        </SelectItem>
+                        <SelectItem value="NO" className={feedbackSelectItemClassName}>
+                          No
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -201,10 +257,17 @@ const CustomerFeedbackFormContent = () => {
                 name="orderNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Order Number (if applicable)</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Order Number (if applicable)
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter order number" {...field} />
+                      <Input
+                        placeholder="Enter order number"
+                        {...field}
+                        className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
+                      />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -214,13 +277,17 @@ const CustomerFeedbackFormContent = () => {
                 name="experience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tell us about your experience</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Tell us about your experience
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Share your experience with Yarnnu..."
                         {...field}
+                        className="min-h-[120px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -230,13 +297,17 @@ const CustomerFeedbackFormContent = () => {
                 name="improvements"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Suggestions for improvement (optional)</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Suggestions for improvement (optional)
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="What could we do better?"
                         {...field}
+                        className="min-h-[100px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -246,9 +317,11 @@ const CustomerFeedbackFormContent = () => {
                 name="returnLikelihood"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>How likely are you to return? (1-5)</FormLabel>
-                    <FormControl>
-                      <div className="flex space-x-2">
+                    <fieldset className="space-y-3 border-0 p-0 m-0 min-w-0">
+                      <legend className="text-lg font-semibold text-brand-dark-neutral-900 w-full">
+                        How likely are you to return? (1-5)
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
                         {[1, 2, 3, 4, 5].map((rating) => (
                           <Button
                             key={rating}
@@ -256,13 +329,19 @@ const CustomerFeedbackFormContent = () => {
                             variant={field.value >= rating ? "default" : "outline"}
                             size="sm"
                             onClick={() => field.onChange(rating)}
-                            className="w-10 h-10 p-0"
+                            className={
+                              field.value >= rating
+                                ? "w-10 h-10 p-0 bg-brand-primary-700 text-white hover:bg-brand-primary-700 border-brand-primary-700"
+                                : "w-10 h-10 p-0 border-brand-light-neutral-200 hover:bg-brand-primary-50 hover:text-brand-primary-700 hover:border-brand-primary-200"
+                            }
+                            aria-label={`Likelihood ${rating} out of 5`}
                           >
                             {rating}
                           </Button>
                         ))}
                       </div>
-                    </FormControl>
+                    </fieldset>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -272,10 +351,18 @@ const CustomerFeedbackFormContent = () => {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email (Optional - for follow-up)</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Email (Optional - for follow-up)
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="your@email.com" {...field} />
+                      <Input
+                        placeholder="your@email.com"
+                        type="email"
+                        {...field}
+                        className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
+                      />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -290,14 +377,14 @@ const CustomerFeedbackFormContent = () => {
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end">
+            <CardFooter className="pt-6 flex justify-end">
               <Submitbutton 
                 title={isPending ? "Submitting..." : "Submit Feedback"} 
                 isPending={isPending || shouldTriggerRecaptcha} 
               />
             </CardFooter>
-          </form>
-        </Card>
+          </Card>
+        </motion.form>
       </FormProvider>
     </div>
   );

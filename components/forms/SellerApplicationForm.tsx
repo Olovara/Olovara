@@ -111,7 +111,7 @@ const SellerApplicationForm = () => {
 
   return (
     <>
-      <div className="w-full flex justify-center py-16 px-4">
+      <div className="w-full flex justify-center py-16 px-1 sm:px-4">
         <motion.form 
           onSubmit={form.handleSubmit(onSubmit)} 
           className="space-y-6 w-full max-w-3xl"
@@ -119,10 +119,10 @@ const SellerApplicationForm = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Card className="w-full mx-auto shadow-xl p-8 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+          <Card className="w-full mx-auto shadow-xl p-2 sm:p-8 rounded-xl bg-brand-light-neutral-100 border-brand-light-neutral-200">
             <CardHeader className="space-y-4">
-              <CardTitle className="text-3xl font-bold">Seller Application</CardTitle>
-              <CardDescription className="text-lg">
+              <CardTitle className="text-3xl font-bold text-brand-dark-neutral-900">Seller Application</CardTitle>
+              <CardDescription className="text-lg text-brand-dark-neutral-600">
               We&apos;re proud to showcase only authentic handmade products. Your application helps us understand your work, your story, and how we can help your brand grow. Whether you&apos;re just starting or already selling worldwide, Yarnnu is your platform to shine.
               </CardDescription>
             </CardHeader>
@@ -134,49 +134,61 @@ const SellerApplicationForm = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                <h3 className="text-xl font-semibold text-purple-800">About Your Crafting</h3>
+                <h3 className="text-xl font-semibold text-brand-primary-800">About Your Crafting</h3>
                 
                 <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Crafting Process *</Label>
+                  <Label htmlFor="seller-application-craftingProcess" className="text-lg font-semibold text-brand-dark-neutral-900">
+                    Crafting Process *
+                  </Label>
                   <Textarea
+                    id="seller-application-craftingProcess"
                     placeholder="Tell us about your crafting process and what you make. This helps us understand your unique style and products."
                     {...form.register("craftingProcess")}
                     disabled={isPending}
-                    className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    className="min-h-[120px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
                   {form.formState.errors.craftingProcess && (
-                    <p className="text-sm text-red-500">{form.formState.errors.craftingProcess.message}</p>
+                    <p className="text-sm text-brand-error-500">{form.formState.errors.craftingProcess.message}</p>
                   )}
                 </div>
 
                 <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Product Types *</Label>
+                  <Label htmlFor="seller-application-productTypes" className="text-lg font-semibold text-brand-dark-neutral-900">
+                    Product Types *
+                  </Label>
                   <Textarea
+                    id="seller-application-productTypes"
                     placeholder="Describe the types of products you make (e.g., hand-knitted scarves, ceramic mugs, wooden jewelry boxes)"
                     {...form.register("productTypes")}
                     disabled={isPending}
-                    className="min-h-[100px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    className="min-h-[100px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
                   {form.formState.errors.productTypes && (
-                    <p className="text-sm text-red-500">{form.formState.errors.productTypes.message}</p>
+                    <p className="text-sm text-brand-error-500">{form.formState.errors.productTypes.message}</p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-y-3">
-                    <Label className="text-lg font-semibold">Years of Experience (Optional)</Label>
+                    <Label htmlFor="seller-application-yearsOfExperience" className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Years of Experience (Optional)
+                    </Label>
                     <Input
+                      id="seller-application-yearsOfExperience"
                       placeholder="e.g., 3 years, 5+ years, just starting"
                       {...form.register("yearsOfExperience")}
                       disabled={isPending}
                       type="text"
-                      className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                     />
                   </div>
 
                   <div className="flex flex-col gap-y-3">
-                    <Label className="text-lg font-semibold">Date of Birth *</Label>
+                    <Label htmlFor="seller-application-birthdate" className="text-lg font-semibold text-brand-dark-neutral-900">
+                      Date of Birth *
+                    </Label>
                     <DatePicker
+                      id="seller-application-birthdate"
                       date={selectedDate}
                       onDateChange={(date) => {
                         setSelectedDate(date);
@@ -185,7 +197,8 @@ const SellerApplicationForm = () => {
                       }}
                       placeholder="Select your date of birth"
                       disabled={isPending}
-                      className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      brandPrimary
+                      className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                     />
                     {/* Hidden input for form validation */}
                     <input
@@ -193,7 +206,7 @@ const SellerApplicationForm = () => {
                       {...form.register("birthdate")}
                     />
                     {form.formState.errors.birthdate && (
-                      <p className="text-sm text-red-500">{form.formState.errors.birthdate.message}</p>
+                      <p className="text-sm text-brand-error-500">{form.formState.errors.birthdate.message}</p>
                     )}
                   </div>
                 </div>
@@ -208,18 +221,21 @@ const SellerApplicationForm = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <h3 className="text-xl font-semibold text-purple-800">Why Join Yarnnu?</h3>
+                <h3 className="text-xl font-semibold text-brand-primary-800">Why Join Yarnnu?</h3>
                 
                 <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">What is your interest in joining Yarnnu? *</Label>
+                  <Label htmlFor="seller-application-interestInJoining" className="text-lg font-semibold text-brand-dark-neutral-900">
+                    What is your interest in joining Yarnnu? *
+                  </Label>
                   <Textarea
+                    id="seller-application-interestInJoining"
                     placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
                     {...form.register("interestInJoining")}
                     disabled={isPending}
-                    className="min-h-[120px] text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    className="min-h-[120px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
                   {form.formState.errors.interestInJoining && (
-                    <p className="text-sm text-red-500">{form.formState.errors.interestInJoining.message}</p>
+                    <p className="text-sm text-brand-error-500">{form.formState.errors.interestInJoining.message}</p>
                   )}
                 </div>
               </motion.div>
@@ -233,36 +249,42 @@ const SellerApplicationForm = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                <h3 className="text-xl font-semibold text-purple-800">Online Presence (Optional)</h3>
+                <h3 className="text-xl font-semibold text-brand-primary-800">Online Presence (Optional)</h3>
                 
                 <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Portfolio, Website, or Social Media</Label>
+                  <Label htmlFor="seller-application-onlinePresence" className="text-lg font-semibold text-brand-dark-neutral-900">
+                    Portfolio, Website, or Social Media
+                  </Label>
                   <Input
+                    id="seller-application-onlinePresence"
                     placeholder="Share any links to your portfolio, Etsy shop, website, Instagram, etc. (optional)"
                     {...form.register("onlinePresence")}
                     disabled={isPending}
                     type="text"
-                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-brand-dark-neutral-600">
                     Don&apos;t worry if you don&apos;t have these yet! Many successful sellers start without an online presence.
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-y-3">
-                  <Label className="text-lg font-semibold">Referral Code (Optional)</Label>
+                  <Label htmlFor="seller-application-referralCode" className="text-lg font-semibold text-brand-dark-neutral-900">
+                    Referral Code (Optional)
+                  </Label>
                   <Input
+                    id="seller-application-referralCode"
                     placeholder="Enter a referral code if you have one (e.g., YARNNU-ABCD-1234)"
                     {...form.register("referralCode")}
                     disabled={isPending}
                     type="text"
-                    className="text-lg p-4 rounded-lg border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-brand-dark-neutral-600">
                     If someone referred you to Yarnnu, enter their referral code here. You get a 2% reduction on commission fees for a month!
                   </p>
                   {form.formState.errors.referralCode && (
-                    <p className="text-sm text-red-500">{form.formState.errors.referralCode.message}</p>
+                    <p className="text-sm text-brand-error-500">{form.formState.errors.referralCode.message}</p>
                   )}
                 </div>
               </motion.div>
@@ -276,65 +298,80 @@ const SellerApplicationForm = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <h3 className="text-xl font-semibold text-purple-800">Legal Agreements</h3>
+                <h3 className="text-xl font-semibold text-brand-primary-800">Legal Agreements</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-start space-x-3">
+                  <label
+                    id="certifyOver18-label"
+                    className="flex items-start space-x-3"
+                  >
                     <Checkbox
                       id="certifyOver18"
+                      aria-labelledby="certifyOver18-label"
+                      aria-label="I certify that I am 18 years of age or older"
                       checked={form.watch("certifyOver18")}
                       onCheckedChange={(checked) => form.setValue("certifyOver18", checked as boolean)}
                       disabled={isPending}
                       className="mt-1"
                     />
                     <div className="space-y-1">
-                      <Label htmlFor="certifyOver18" className="text-base font-medium">
+                      <span className="text-base font-medium text-brand-dark-neutral-900">
                         I certify that I am 18 years of age or older *
-                      </Label>
+                      </span>
                       {form.formState.errors.certifyOver18 && (
-                        <p className="text-sm text-red-500">{form.formState.errors.certifyOver18.message}</p>
+                        <p className="text-sm text-brand-error-500">{form.formState.errors.certifyOver18.message}</p>
                       )}
                     </div>
-                  </div>
+                  </label>
 
-                  <div className="flex items-start space-x-3">
+                  <label
+                    id="agreeToHandmadePolicy-label"
+                    className="flex items-start space-x-3"
+                  >
                     <Checkbox
                       id="agreeToHandmadePolicy"
+                      aria-labelledby="agreeToHandmadePolicy-label"
+                      aria-label="I agree to the Handmade Policy"
                       checked={form.watch("agreeToHandmadePolicy")}
                       onCheckedChange={(checked) => form.setValue("agreeToHandmadePolicy", checked as boolean)}
                       disabled={isPending}
                       className="mt-1"
                     />
                     <div className="space-y-1">
-                      <Label htmlFor="agreeToHandmadePolicy" className="text-base font-medium">
+                      <span className="text-base font-medium text-brand-dark-neutral-900">
                         I agree to the Handmade Policy *
-                      </Label>
-                      <p className="text-sm text-gray-600">
+                      </span>
+                      <p className="text-sm text-brand-dark-neutral-600">
                         I confirm that I exclusively sell handmade products created by myself. Reselling, dropshipping, or print-on-demand products are strictly prohibited.
                       </p>
                       {form.formState.errors.agreeToHandmadePolicy && (
-                        <p className="text-sm text-red-500">{form.formState.errors.agreeToHandmadePolicy.message}</p>
+                        <p className="text-sm text-brand-error-500">{form.formState.errors.agreeToHandmadePolicy.message}</p>
                       )}
                     </div>
-                  </div>
+                  </label>
 
-                  <div className="flex items-start space-x-3">
+                  <label
+                    id="agreeToTerms-label"
+                    className="flex items-start space-x-3"
+                  >
                     <Checkbox
                       id="agreeToTerms"
+                      aria-labelledby="agreeToTerms-label"
+                      aria-label="I agree to the Terms and Conditions"
                       checked={form.watch("agreeToTerms")}
                       onCheckedChange={(checked) => form.setValue("agreeToTerms", checked as boolean)}
                       disabled={isPending}
                       className="mt-1"
                     />
                     <div className="space-y-1">
-                      <Label htmlFor="agreeToTerms" className="text-base font-medium">
+                      <span className="text-base font-medium text-brand-dark-neutral-900">
                         I agree to the Terms and Conditions *
-                      </Label>
+                      </span>
                       {form.formState.errors.agreeToTerms && (
-                        <p className="text-sm text-red-500">{form.formState.errors.agreeToTerms.message}</p>
+                        <p className="text-sm text-brand-error-500">{form.formState.errors.agreeToTerms.message}</p>
                       )}
                     </div>
-                  </div>
+                  </label>
                 </div>
               </motion.div>
             </CardContent>

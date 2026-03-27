@@ -47,23 +47,22 @@ export default function PricingCalculatorPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      {/* Main content with semantic HTML structure */}
-      <article className="max-w-7xl mx-auto">
-        {/* Hero section with clear value proposition */}
-        <header className="text-center py-8 px-4 bg-gradient-to-r from-purple-50 to-blue-50">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+      {/* Hero section with clear value proposition */}
+      <header className="w-full min-w-0 bg-brand-primary-50">
+        <div className="mx-auto max-w-7xl text-center py-10 px-4 md:px-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-brand-dark-neutral-900 mb-4">
             Pricing Calculator for Handmade Products
           </h1>
-          <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-brand-dark-neutral-700 max-w-3xl mx-auto leading-relaxed">
             Take the guesswork out of pricing your handmade products and spend
             more time making. Our comprehensive calculator helps you account for
             materials, labor, packaging, and marketplace fees to ensure
             you&apos;re pricing for profit.
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm text-gray-600">
+          <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm text-brand-dark-neutral-600">
             <span className="flex items-center">
               <svg
-                className="w-4 h-4 mr-2 text-purple-500"
+                className="w-4 h-4 mr-2 text-brand-primary-700"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -77,7 +76,7 @@ export default function PricingCalculatorPage() {
             </span>
             <span className="flex items-center">
               <svg
-                className="w-4 h-4 mr-2 text-purple-500"
+                className="w-4 h-4 mr-2 text-brand-primary-700"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -91,7 +90,7 @@ export default function PricingCalculatorPage() {
             </span>
             <span className="flex items-center">
               <svg
-                className="w-4 h-4 mr-2 text-purple-500"
+                className="w-4 h-4 mr-2 text-brand-primary-700"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -104,36 +103,41 @@ export default function PricingCalculatorPage() {
               Real-time calculations
             </span>
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Main content with semantic HTML structure */}
+      <article className="max-w-7xl mx-auto min-w-0 px-4 md:px-8">
         {/* Calculator tool */}
         <section aria-label="Pricing Calculator Tool">
           <PricingCalculatorClient />
         </section>
+      </article>
 
-        {/* Additional information and tips */}
-        <section className="px-4 py-8 bg-gray-50">
+      {/* Additional information and tips (full width) */}
+      <section className="w-full min-w-0 bg-brand-light-neutral-100">
+        <div className="mx-auto max-w-7xl px-4 py-10 md:px-8">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+            <h2 className="text-3xl font-bold text-brand-dark-neutral-900 mb-6 text-center">
               Pricing Tips for Handmade Products
             </h2>
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <div className="bg-brand-light-neutral-50 p-6 rounded-lg shadow-sm">
+                <h3 className="text-xl font-semibold text-brand-dark-neutral-900 mb-3">
                   Understanding Your Costs
                 </h3>
-                <ul className="space-y-2 text-gray-700">
+                <ul className="space-y-2 text-brand-dark-neutral-700">
                   <li>• Track all material costs, including waste</li>
                   <li>• Calculate your time at a fair hourly rate</li>
                   <li>• Include packaging and shipping materials</li>
                   <li>• Account for marketplace and transaction fees</li>
                 </ul>
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <div className="bg-brand-light-neutral-50 p-6 rounded-lg shadow-sm">
+                <h3 className="text-xl font-semibold text-brand-dark-neutral-900 mb-3">
                   Pricing Strategies
                 </h3>
-                <ul className="space-y-2 text-gray-700">
+                <ul className="space-y-2 text-brand-dark-neutral-700">
                   <li>• Research competitor pricing in your niche</li>
                   <li>
                     • Consider your target market&apos;s price sensitivity
@@ -144,10 +148,12 @@ export default function PricingCalculatorPage() {
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* FAQ section for SEO */}
-        <section className="px-4 py-8">
+      {/* FAQ section for SEO */}
+      <article className="max-w-7xl mx-auto min-w-0 px-4 md:px-8">
+        <section className="py-8">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
               Frequently Asked Questions

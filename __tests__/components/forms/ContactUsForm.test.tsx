@@ -3,6 +3,9 @@ import { render, screen, fireEvent, waitFor } from '../../utils/test-utils'
 import ContactUsForm from '@/components/forms/ContactUsForm'
 import { contactUs } from '@/actions/contact-us'
 
+/** Resolved value of the `contactUs` server action (use when typing `mockImplementation` bodies) */
+type ContactUsResult = Awaited<ReturnType<typeof contactUs>>
+
 // Mock the contact-us action
 jest.mock('@/actions/contact-us', () => ({
   contactUs: jest.fn(),
@@ -12,7 +15,7 @@ jest.mock('@/actions/contact-us', () => ({
 jest.mock('react-google-recaptcha-v3', () => ({
   GoogleReCaptchaProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useGoogleReCaptcha: () => ({
-    executeRecaptcha: jest.fn(() => Promise.resolve('mock-token')),
+    executeRecaptcha: jest.fn().mockResolvedValue('mock-token'),
   }),
 }))
 
@@ -31,7 +34,9 @@ describe('ContactUsForm', () => {
   const mockContactUs = contactUs as jest.MockedFunction<typeof contactUs>
 
   beforeEach(() => {
-    mockContactUs.mockResolvedValue({ success: 'Message sent successfully!' })
+    mockContactUs.mockImplementation(async (): Promise<ContactUsResult> => ({
+      success: 'Message sent successfully!',
+    }))
   })
 
   it('renders the contact form with all fields', () => {
@@ -47,10 +52,10 @@ describe('ContactUsForm', () => {
 
   it('displays all reason options in the select dropdown', () => {
     render(<ContactUsForm />)
-    
+
     const reasonSelect = screen.getByLabelText(/reason/i)
     fireEvent.click(reasonSelect)
-    
+
     expect(screen.getByText('Billing Questions')).toBeInTheDocument()
     expect(screen.getByText('General Inquiry')).toBeInTheDocument()
     expect(screen.getByText('Listing Issue')).toBeInTheDocument()
@@ -73,7 +78,6 @@ describe('ContactUsForm', () => {
       target: { value: 'john@example.com' },
     })
     
-    // Select a reason
     const reasonSelect = screen.getByLabelText(/reason/i)
     fireEvent.click(reasonSelect)
     fireEvent.click(screen.getByText('General Inquiry'))
@@ -128,8 +132,11 @@ describe('ContactUsForm', () => {
   })
 
   it('handles form submission errors', async () => {
-    mockContactUs.mockResolvedValue({ error: 'Failed to send message' })
-    
+    mockContactUs.mockImplementation(async (): Promise<ContactUsResult> => ({
+      error: 'Failed to send message',
+      retryable: true,
+    }))
+
     render(<ContactUsForm />)
     
     // Fill out the form
@@ -194,7 +201,12 @@ describe('ContactUsForm', () => {
 
   it('disables form fields during submission', async () => {
     // Mock a slow response
-    mockContactUs.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ success: 'Success' }), 100)))
+    mockContactUs.mockImplementation(
+      () =>
+        new Promise<ContactUsResult>((resolve) =>
+          setTimeout(() => resolve({ success: 'Success' }), 100)
+        )
+    )
     
     render(<ContactUsForm />)
     
@@ -221,6 +233,7 @@ describe('ContactUsForm', () => {
     // Check that fields are disabled during submission
     expect(screen.getByLabelText(/name/i)).toBeDisabled()
     expect(screen.getByLabelText(/email/i)).toBeDisabled()
+    expect(reasonSelect).toBeDisabled()
     expect(screen.getByLabelText(/how can we help you/i)).toBeDisabled()
   })
 

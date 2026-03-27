@@ -20,12 +20,12 @@ export default function PricingOverviewSection({
   setSalesTax,
 }: PricingOverviewProps) {
   return (
-    <Card className="p-4">
-      <h2 className="text-lg font-semibold">Pricing Overview</h2>
+    <Card className="p-4 bg-brand-light-neutral-50">
+      <h2 className="text-lg font-semibold text-brand-dark-neutral-900">Pricing Overview</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
         {/* Markup Field */}
         <div>
-          <Label className="block text-sm font-medium mb-2">Markup %</Label>
+          <Label className="block text-sm font-medium mb-2 text-brand-dark-neutral-700">Markup %</Label>
           <Input
             type="number"
             value={markup}
@@ -36,7 +36,7 @@ export default function PricingOverviewSection({
 
         {/* Discount Field */}
         <div>
-          <Label className="block text-sm font-medium mb-2">Discount %</Label>
+          <Label className="block text-sm font-medium mb-2 text-brand-dark-neutral-700">Discount %</Label>
           <Input
             type="number"
             value={discount}
@@ -47,7 +47,7 @@ export default function PricingOverviewSection({
 
         {/* Sales Tax Field */}
         <div>
-          <Label className="block text-sm font-medium mb-2">Sales Tax %</Label>
+          <Label className="block text-sm font-medium mb-2 text-brand-dark-neutral-700">Sales Tax %</Label>
           <Input
             type="number"
             value={salesTax}

@@ -56,8 +56,8 @@ export default function Home() {
             <span className="text-brand-primary-700">handcrafted goods</span>.
           </h1>
           <p className="mt-6 max-w-prose text-lg text-brand-dark-neutral-600">
-            Welcome to Yarnnu. Every shop on our platform is verified by our team
-            to ensure the highest quality standards.
+            Welcome to Yarnnu. Every shop on our platform is verified by our
+            team to ensure the highest quality standards.
           </p>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row">
             <Link href="/products" className={buttonVariants()}>
@@ -94,7 +94,8 @@ export default function Home() {
               Verified makers
             </h3>
             <p className="mt-2 text-sm text-brand-dark-neutral-600">
-              Every shop is reviewed so you can trust the work behind the product.
+              Every shop is reviewed so you can trust the work behind the
+              product.
             </p>
           </div>
 
@@ -106,7 +107,8 @@ export default function Home() {
               Uncluttered experience
             </h3>
             <p className="mt-2 text-sm text-brand-dark-neutral-600">
-              Designed to feel like a gallery: clear hierarchy, space, and focus on imagery.
+              Designed to feel like a gallery: clear hierarchy, space, and focus
+              on imagery.
             </p>
           </div>
 
@@ -118,7 +120,8 @@ export default function Home() {
               Secure checkout & support
             </h3>
             <p className="mt-2 text-sm text-brand-dark-neutral-600">
-              Safe payments, clear policies, and a platform built to protect buyers and sellers.
+              Safe payments, clear policies, and a platform built to protect
+              buyers and sellers.
             </p>
           </div>
         </div>

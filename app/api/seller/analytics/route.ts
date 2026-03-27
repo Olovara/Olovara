@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const topProductsBySales = [...revenueByProduct.entries()]
+    const topProductsBySales = Array.from(revenueByProduct.entries())
       .map(([productId, v]) => ({
         productId,
         productName: v.productName,

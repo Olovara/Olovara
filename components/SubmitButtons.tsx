@@ -15,7 +15,7 @@ export function Submitbutton({
     <Button 
       type="submit" 
       disabled={isPending}
-      className="w-full sm:w-auto px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 h-12"
+      className="w-full sm:w-auto px-6 py-3 bg-brand-primary-700 hover:bg-brand-primary-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 h-12"
     >
       {isPending ? (
         <>

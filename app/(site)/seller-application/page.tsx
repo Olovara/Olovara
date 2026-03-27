@@ -10,8 +10,10 @@ export default async function SellerApplication() {
   }
 
   return (
-    <div className="flex items-center justify-center vertical-center">
+    <div className="min-h-[calc(100vh-4rem)] w-full bg-brand-light-neutral-25">
+      <div className="flex items-center justify-center px-2 sm:px-4 py-16">
       <SellerApplicationForm />
+      </div>
     </div>
   );
 }

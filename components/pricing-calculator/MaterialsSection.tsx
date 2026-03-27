@@ -58,8 +58,8 @@ export default function MaterialsSection({ materials, setMaterials, onTotalChang
   }, [totalMaterialsCost, onTotalChange]);
 
   return (
-    <div className="p-4 border rounded-lg">
-      <h2 className="text-lg font-semibold mb-4">Materials Cost</h2>
+    <div className="p-4 border border-brand-light-neutral-200 bg-brand-light-neutral-50 rounded-lg">
+      <h2 className="text-lg font-semibold mb-4 text-brand-dark-neutral-900">Materials Cost</h2>
 
       {/* Desktop Table View - Hidden on mobile */}
       <div className="hidden md:block overflow-x-auto">
@@ -125,8 +125,9 @@ export default function MaterialsSection({ materials, setMaterials, onTotalChang
                       setMaterials(materials.filter((_, i) => i !== index))
                     }
                     variant="ghost"
+                    className="group hover:bg-brand-primary-700"
                   >
-                    <Trash2 size={16} className="text-red-500" />
+                    <Trash2 size={16} className="text-brand-error-500 group-hover:text-white" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -140,15 +141,16 @@ export default function MaterialsSection({ materials, setMaterials, onTotalChang
         {materials.map((material, index) => (
           <div key={index} className="border rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium">Material {index + 1}</h4>
+              <h4 className="font-medium text-brand-dark-neutral-900">Material {index + 1}</h4>
               <Button
                 onClick={() =>
                   setMaterials(materials.filter((_, i) => i !== index))
                 }
                 variant="ghost"
                 size="sm"
+                className="group hover:bg-brand-primary-700"
               >
-                <Trash2 size={16} className="text-red-500" />
+                <Trash2 size={16} className="text-brand-error-500 group-hover:text-white" />
               </Button>
             </div>
             
@@ -220,8 +222,9 @@ export default function MaterialsSection({ materials, setMaterials, onTotalChang
               { name: "", cost: "", size: "", quantity: "", total: 0 },
             ])
           }
+          className="gap-2 hover:bg-brand-primary-700"
         >
-          <Plus size={16} /> Add Material
+          <Plus size={16} className="text-white" /> Add Material
         </Button>
       </div>
 

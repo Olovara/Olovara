@@ -167,13 +167,13 @@ export default function PricingCalculatorClient() {
       />
 
       {/* Toggle between Website and Craft Show Costs */}
-      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+      <div className="flex items-center space-x-2 p-4 border border-brand-light-neutral-200 bg-brand-light-neutral-50 rounded-lg">
         <Switch
           id="cost-mode"
           checked={isWebsiteMode}
           onCheckedChange={setIsWebsiteMode}
         />
-        <Label htmlFor="cost-mode" className="text-lg font-semibold">
+        <Label htmlFor="cost-mode" className="text-lg font-semibold text-brand-dark-neutral-900">
           {isWebsiteMode ? "Website Mode" : "Craft Show Mode"}
         </Label>
       </div>
@@ -217,23 +217,23 @@ export default function PricingCalculatorClient() {
       />
 
       {/* Toggle between Calculate Price and Calculate Profit modes */}
-      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+      <div className="flex items-center space-x-2 p-4 border border-brand-light-neutral-200 bg-brand-light-neutral-50 rounded-lg">
         <Switch
           id="calculation-mode"
           checked={isReverseMode}
           onCheckedChange={setIsReverseMode}
         />
-        <Label htmlFor="calculation-mode" className="text-lg font-semibold">
+        <Label htmlFor="calculation-mode" className="text-lg font-semibold text-brand-dark-neutral-900">
           {isReverseMode ? "Reverse Calculation" : "Forward Calculation"}
         </Label>
       </div>
 
       {/* Explanation of calculation modes */}
-      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-        <h3 className="font-semibold text-purple-900 mb-2">
+      <div className="p-4 bg-brand-primary-50 border border-brand-primary-200 rounded-lg">
+        <h3 className="font-semibold text-brand-primary-900 mb-2">
           {isReverseMode ? "Reverse Calculation Mode" : "Forward Calculation Mode"}
         </h3>
-        <p className="text-purple-800 text-sm">
+        <p className="text-brand-primary-800 text-sm">
           {isReverseMode 
             ? "Enter your desired selling price to see what profit you would make. Perfect for checking if a specific price point is profitable or comparing different price options."
             : "Calculate the selling price based on your costs and markup percentage. This is the traditional approach to pricing your products."
@@ -243,10 +243,10 @@ export default function PricingCalculatorClient() {
 
       {/* Desired Selling Price Input (only show in reverse mode) */}
       {isReverseMode && (
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-4">Desired Selling Price</h2>
+        <Card className="p-4 bg-brand-light-neutral-50">
+          <h2 className="text-lg font-semibold mb-4 text-brand-dark-neutral-900">Desired Selling Price</h2>
           <div className="flex items-center space-x-2">
-            <Label htmlFor="desired-price" className="text-sm font-medium">
+            <Label htmlFor="desired-price" className="text-sm font-medium text-brand-dark-neutral-700">
               What price do you want to sell for?
             </Label>
             <Input
@@ -258,7 +258,7 @@ export default function PricingCalculatorClient() {
               className="w-32"
             />
           </div>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-brand-dark-neutral-600 mt-2">
             Enter your desired selling price to see what profit you would make
           </p>
         </Card>

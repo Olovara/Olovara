@@ -136,7 +136,7 @@ export default async function RootLayout({
                   <AnalyticsProvider>
                     <SocketProvider>
                       <ModalProvider>
-                        <main className="relative flex min-h-screen flex-col">
+                        <main className="relative flex min-h-full flex-col">
                           {children}
                         </main>
                         <PostHogPageview />

@@ -4,7 +4,7 @@ import * as React from "react"
 import { ChevronDownIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Select,
@@ -26,6 +26,9 @@ interface DatePickerProps {
   disabled?: boolean
   className?: string
   disablePastDates?: boolean // New prop to disable past dates
+  id?: string
+  /** Use brand primary tokens for trigger, popover, and calendar (not theme accent / tertiary) */
+  brandPrimary?: boolean
 }
 
 export function DatePicker({
@@ -35,6 +38,8 @@ export function DatePicker({
   disabled = false,
   className,
   disablePastDates = false, // Default to false to maintain backward compatibility
+  id,
+  brandPrimary = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [currentMonth, setCurrentMonth] = React.useState<Date>(date || new Date())
@@ -61,13 +66,37 @@ export function DatePicker({
   // Function to disable past dates if disablePastDates is true
   const disabledDays = disablePastDates ? { before: new Date() } : undefined
 
+  const brandCalendarClassNames = brandPrimary
+    ? {
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 border-brand-light-neutral-200 bg-brand-light-neutral-50 p-0 opacity-80 hover:bg-brand-primary-700 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-primary-400 focus-visible:ring-offset-2"
+        ),
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-brand-primary-100/40 [&:has([aria-selected])]:bg-brand-primary-100/60 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        day: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal text-brand-dark-neutral-900 aria-selected:opacity-100 hover:bg-brand-primary-100 hover:text-brand-dark-neutral-900"
+        ),
+        day_selected:
+          "bg-brand-primary-700 text-white hover:bg-brand-primary-700 hover:text-white focus:bg-brand-primary-700 focus:text-white",
+        day_today: "bg-brand-primary-200 text-brand-dark-neutral-900 font-medium",
+        day_outside:
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-brand-primary-100/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+        day_range_middle:
+          "aria-selected:bg-brand-primary-100 aria-selected:text-brand-dark-neutral-900",
+      }
+    : undefined
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           className={cn(
             "w-full justify-between font-normal",
+            brandPrimary &&
+              "border-brand-light-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900 shadow-none ring-offset-background hover:bg-brand-primary-50 hover:text-brand-dark-neutral-900 hover:border-brand-primary-300 focus-visible:border-brand-primary-400 focus-visible:ring-2 focus-visible:ring-brand-primary-400 focus-visible:ring-offset-2 [&>svg]:text-brand-dark-neutral-600",
             !date && "text-muted-foreground",
             className
           )}
@@ -77,7 +106,13 @@ export function DatePicker({
           <ChevronDownIcon className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-4" align="start">
+      <PopoverContent
+        className={cn(
+          "w-auto p-4",
+          brandPrimary && "border-brand-light-neutral-200 bg-brand-light-neutral-50"
+        )}
+        align="start"
+      >
         <div className="space-y-4">
           {/* Month and Year Selectors */}
           <div className="flex gap-2 justify-center">
@@ -85,12 +120,30 @@ export function DatePicker({
               value={currentMonth.getMonth().toString()}
               onValueChange={handleMonthChange}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger
+                className={cn(
+                  "w-[140px]",
+                  brandPrimary &&
+                    "border-brand-light-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900 focus:ring-brand-primary-400 data-[state=open]:border-brand-primary-400"
+                )}
+              >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                className={cn(
+                  brandPrimary &&
+                    "border-brand-light-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900"
+                )}
+              >
                 {months.map((month, index) => (
-                  <SelectItem key={month} value={index.toString()}>
+                  <SelectItem
+                    key={month}
+                    value={index.toString()}
+                    className={cn(
+                      brandPrimary &&
+                        "cursor-pointer focus:bg-brand-primary-50 focus:text-brand-dark-neutral-900"
+                    )}
+                  >
                     {month}
                   </SelectItem>
                 ))}
@@ -101,12 +154,30 @@ export function DatePicker({
               value={currentMonth.getFullYear().toString()}
               onValueChange={handleYearChange}
             >
-              <SelectTrigger className="w-[100px]">
+              <SelectTrigger
+                className={cn(
+                  "w-[100px]",
+                  brandPrimary &&
+                    "border-brand-light-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900 focus:ring-brand-primary-400 data-[state=open]:border-brand-primary-400"
+                )}
+              >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                className={cn(
+                  brandPrimary &&
+                    "border-brand-light-neutral-200 bg-brand-light-neutral-50 text-brand-dark-neutral-900"
+                )}
+              >
                 {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
+                  <SelectItem
+                    key={year}
+                    value={year.toString()}
+                    className={cn(
+                      brandPrimary &&
+                        "cursor-pointer focus:bg-brand-primary-50 focus:text-brand-dark-neutral-900"
+                    )}
+                  >
                     {year}
                   </SelectItem>
                 ))}
@@ -126,6 +197,7 @@ export function DatePicker({
             }}
             disabled={disabledDays} // Pass disabled days to calendar
             className="rounded-md border-0"
+            classNames={brandCalendarClassNames}
           />
         </div>
       </PopoverContent>
