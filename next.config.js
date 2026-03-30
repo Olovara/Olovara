@@ -147,6 +147,12 @@ const nextConfig = {
             key: "X-DNS-Prefetch-Control",
             value: "on",
           },
+          // Google's documented opt-out tokens for AI training / generative use (honor-based).
+          // Keeps normal index/follow behavior when combined with page-level meta; child routes can still set noindex.
+          {
+            key: "X-Robots-Tag",
+            value: "noai, noimageai",
+          },
         ],
       },
     ];

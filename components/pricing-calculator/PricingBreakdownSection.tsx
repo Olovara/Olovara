@@ -152,7 +152,7 @@ export default function PricingBreakdownSection({
               <span>Total Cost:</span>
               <span>${totalCost.toFixed(2)}</span>
             </p>
-            <p className="flex justify-between text-lg font-bold text-brand-secondary-700">
+            <p className="flex justify-between text-lg font-bold text-brand-tertiary-700">
               <span>Selling Price:</span>
               <span>${sellingPrice.toFixed(2)}</span>
             </p>

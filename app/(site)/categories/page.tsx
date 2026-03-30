@@ -28,7 +28,7 @@ export default function CategoriesPage() {
           {Categories.map((category) => (
             <div
               key={category.id}
-              className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
+              className="bg-brand-light-neutral-100 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6 hover:shadow-md transition-shadow"
             >
               <h2 className="text-2xl font-semibold mb-4">{category.name}</h2>
               

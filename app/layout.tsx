@@ -78,17 +78,10 @@ export const metadata: Metadata = {
       "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: ["/og-image.jpg"],
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
+  // Single robots string so we can include Google's noai / noimageai tokens (not in Next's RobotsInfo typings yet).
+  // Child layouts/pages that set their own `robots` still override this for HTML meta.
+  robots:
+    "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1, noai, noimageai",
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
     yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
@@ -136,7 +129,7 @@ export default async function RootLayout({
                   <AnalyticsProvider>
                     <SocketProvider>
                       <ModalProvider>
-                        <main className="relative flex min-h-full flex-col">
+                        <main className="relative flex min-h-full w-full min-w-0 flex-col">
                           {children}
                         </main>
                         <PostHogPageview />

@@ -48,7 +48,7 @@ export default function SiteLayout({
   return (
     <div className={`relative flex flex-col min-h-full ${jost.className}`}>
       <Navbar />
-      <main className="flex-grow">{children}</main>
+      <main className="flex-grow w-full min-w-0">{children}</main>
       <Footer />
       <Toaster position="top-center" richColors />
     </div>

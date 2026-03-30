@@ -4,15 +4,13 @@ import { cn } from "@/lib/utils";
 
 const jost = Jost({ subsets: ["latin"] });
 
-export default function PaymentLayout({
+export default function LandingPagesLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn("h-full flex items-center justify-center", jost.className)}
-    >
+    <div className={cn("w-full min-h-full flex flex-col", jost.className)}>
       {children}
     </div>
   );
