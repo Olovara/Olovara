@@ -65,6 +65,13 @@ export default auth(async (req) => {
   const { nextUrl } = req;
   const isAuthorized = !!req.auth;
 
+  // CRITICAL: Never run app middleware logic on Auth.js routes (`/api/auth/*`).
+  // Auth.js has its own route handlers there, and wrapping/interfering with them can cause
+  // `UnknownAction` / `Configuration` failures in production (especially behind proxies).
+  if (nextUrl.pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
   // Check route types before rate limiting
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) =>
@@ -242,13 +249,5 @@ export default auth(async (req) => {
 
 // Optionally, don't invoke Middleware on some paths
 export const config = {
-  // IMPORTANT: Never run this middleware on Auth.js routes (`/api/auth/*`).
-  // Auth.js has its own route handlers there, and wrapping them can cause
-  // `UnknownAction` / `Configuration` failures in production (especially behind proxies).
-  matcher: [
-    "/((?!.+\\.[\\w]+$|_next).*)",
-    "/",
-    "/api/(?!auth)(.*)",
-    "/trpc(.*)",
-  ],
+  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
 };
