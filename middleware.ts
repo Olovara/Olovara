@@ -242,5 +242,13 @@ export default auth(async (req) => {
 
 // Optionally, don't invoke Middleware on some paths
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  // IMPORTANT: Never run this middleware on Auth.js routes (`/api/auth/*`).
+  // Auth.js has its own route handlers there, and wrapping them can cause
+  // `UnknownAction` / `Configuration` failures in production (especially behind proxies).
+  matcher: [
+    "/((?!.+\\.[\\w]+$|_next).*)",
+    "/",
+    "/api/(?!auth)(.*)",
+    "/trpc(.*)",
+  ],
 };

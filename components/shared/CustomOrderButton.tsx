@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, LogIn } from "lucide-react";
 import {
@@ -51,6 +51,14 @@ export default function CustomOrderButton({
   });
   const router = useRouter();
 
+  useEffect(() => {
+    setSubmissionData((prev) => ({
+      ...prev,
+      customerEmail: session?.user?.email || prev.customerEmail,
+      customerName: session?.user?.name || prev.customerName,
+    }));
+  }, [session?.user?.email, session?.user?.name]);
+
   const handleCustomOrderClick = async () => {
     if (!acceptsCustom) {
       toast.error("This seller doesn't accept custom orders");
@@ -88,8 +96,8 @@ export default function CustomOrderButton({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!session?.user?.email) {
-      toast.error("Please sign in to submit a custom order request");
+    if (!submissionData.customerEmail.trim()) {
+      toast.error("Email is required to submit a custom order request");
       return;
     }
 
@@ -107,8 +115,8 @@ export default function CustomOrderButton({
     try {
       const result = await submitCustomOrderForm({
         formId: formData.id,
-        customerEmail: session.user.email,
-        customerName: session.user.name || "",
+        customerEmail: submissionData.customerEmail.trim(),
+        customerName: submissionData.customerName.trim(),
         responses: submissionData.responses,
       });
 
@@ -198,11 +206,34 @@ export default function CustomOrderButton({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-600">Name</label>
-                      <p className="text-sm font-medium">{session?.user?.name || "Not provided"}</p>
+                      <input
+                        type="text"
+                        value={submissionData.customerName}
+                        onChange={(e) =>
+                          setSubmissionData((prev) => ({
+                            ...prev,
+                            customerName: e.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Your name"
+                      />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Email</label>
-                      <p className="text-sm font-medium">{session?.user?.email}</p>
+                      <input
+                        type="email"
+                        value={submissionData.customerEmail}
+                        onChange={(e) =>
+                          setSubmissionData((prev) => ({
+                            ...prev,
+                            customerEmail: e.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="you@example.com"
+                        required
+                      />
                     </div>
                   </div>
                 </div>

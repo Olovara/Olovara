@@ -52,6 +52,7 @@ async function getShopData(
     where: { shopNameSlug: normalizedSlug }, // Fetch using the normalized slug
     select: {
       id: true,
+      userId: true,
       shopName: true,
       shopNameSlug: true,
       shopTagLine: true,
@@ -467,7 +468,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   size="sm"
                 />
                 <CustomOrderButton
-                  sellerId={seller.id}
+                  sellerId={seller.userId}
                   sellerName={seller.shopName}
                   acceptsCustom={seller.acceptsCustom}
                   variant="outlinePrimary"

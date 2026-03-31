@@ -133,8 +133,17 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
         toast.error(`Field ${i + 1} label is required`);
         return;
       }
-      if ((field.type === "select" || field.type === "multiselect") && field.options.length === 0) {
-        toast.error(`Field "${field.label}" needs at least one option`);
+      if (field.type === "select" || field.type === "multiselect") {
+        const normalizedOptions = (field.options || [])
+          .map((opt) => opt.trim())
+          .filter(Boolean);
+        if (normalizedOptions.length === 0) {
+          toast.error(`Field "${field.label}" needs at least one option`);
+          return;
+        }
+      }
+      if ((field.type === "select" || field.type === "multiselect") && field.options.some((opt) => !opt.trim())) {
+        toast.error(`Field "${field.label}" has empty options — fill them in or remove them`);
         return;
       }
     }
@@ -150,6 +159,10 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
         fields: fields.map((field, index) => ({
           ...field,
           order: index,
+          options:
+            field.type === "select" || field.type === "multiselect"
+              ? (field.options || []).map((opt) => opt.trim()).filter(Boolean)
+              : [],
         })),
       });
 
@@ -415,7 +428,10 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                       </SelectTrigger>
                       <SelectContent>
                         {field.options.map((option, optionIndex) => (
-                          <SelectItem key={optionIndex} value={option}>
+                          <SelectItem
+                            key={optionIndex}
+                            value={option.trim() ? option : `option-${optionIndex}`}
+                          >
                             {option || `Option ${optionIndex + 1}`}
                           </SelectItem>
                         ))}

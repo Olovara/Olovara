@@ -36,12 +36,15 @@ export default function HelpCategoryForm({
   onSubmit,
   onCancel,
 }: HelpCategoryFormProps) {
+  const NO_PARENT_VALUE = "__no_parent__";
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [img, setImg] = useState(initialData?.img || "");
   const [order, setOrder] = useState(initialData?.order || 0);
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
-  const [parentSlug, setParentSlug] = useState(initialData?.parentSlug || "");
+  const [parentSlug, setParentSlug] = useState(
+    initialData?.parentSlug || NO_PARENT_VALUE
+  );
   const [categories, setCategories] = useState<HelpCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -83,7 +86,7 @@ export default function HelpCategoryForm({
         img: img.trim() || null,
         order: order,
         isActive,
-        parentSlug: parentSlug || null,
+        parentSlug: parentSlug === NO_PARENT_VALUE ? null : parentSlug,
       };
 
       await onSubmit(formData);
@@ -140,7 +143,7 @@ export default function HelpCategoryForm({
                 <SelectValue placeholder="Select a parent category (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No parent category</SelectItem>
+                <SelectItem value={NO_PARENT_VALUE}>No parent category</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.slug} value={category.slug}>
                     {category.title}

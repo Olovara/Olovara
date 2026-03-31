@@ -104,8 +104,17 @@ export default function CustomOrderFormBuilder() {
         toast.error(`Field ${i + 1} label is required`);
         return;
       }
-      if ((field.type === "select" || field.type === "multiselect") && field.options.length === 0) {
-        toast.error(`Field "${field.label}" needs at least one option`);
+      if (field.type === "select" || field.type === "multiselect") {
+        const normalizedOptions = (field.options || [])
+          .map((opt) => opt.trim())
+          .filter(Boolean);
+        if (normalizedOptions.length === 0) {
+          toast.error(`Field "${field.label}" needs at least one option`);
+          return;
+        }
+      }
+      if ((field.type === "select" || field.type === "multiselect") && field.options.some((opt) => !opt.trim())) {
+        toast.error(`Field "${field.label}" has empty options — fill them in or remove them`);
         return;
       }
     }
@@ -120,6 +129,10 @@ export default function CustomOrderFormBuilder() {
         fields: fields.map((field, index) => ({
           ...field,
           order: index,
+          options:
+            field.type === "select" || field.type === "multiselect"
+              ? (field.options || []).map((opt) => opt.trim()).filter(Boolean)
+              : [],
         })),
       });
 
