@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import MessagesDashboard from "@/components/shared/MessagesDashboard";
 import { redirect } from "next/navigation";
@@ -31,6 +32,10 @@ export default async function MessagesPage() {
 
   console.log("Safe session being passed to client:", safeSession);
 
-  return <MessagesDashboard session={safeSession} userType="seller" />;
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading messages…</div>}>
+      <MessagesDashboard session={safeSession} userType="seller" />
+    </Suspense>
+  );
 }
   

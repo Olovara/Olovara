@@ -1,9 +1,16 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { CustomOrderFormSchema, CustomOrderSubmissionSchema, CustomOrderSubmissionStatusSchema } from "@/schemas/CustomOrderFormSchema";
 import { revalidatePath } from "next/cache";
+import {
+  buildEncryptedCustomerContactPayload,
+  withDecryptedCustomerContact,
+} from "@/lib/custom-order-submission-contact";
+import { formatCustomOrderFieldValue } from "@/lib/custom-order-response-display";
+import { sendCustomOrderRejectionEmail } from "@/lib/mail";
 
 // Get all custom order forms for a seller
 export async function getCustomOrderForms() {
@@ -195,10 +202,39 @@ export async function saveCustomOrderForm(values: any) {
     });
 
     revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
     return { success: "Form saved successfully", data: result };
   } catch (error) {
     console.error("Error saving custom order form:", error);
     return { error: "Failed to save form" };
+  }
+}
+
+// Toggle whether a form accepts new public submissions (seller dashboard list)
+export async function toggleCustomOrderFormActive(formId: string, isActive: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const result = await db.customOrderForm.updateMany({
+      where: {
+        id: formId,
+        sellerId: session.user.id,
+      },
+      data: { isActive },
+    });
+
+    if (result.count === 0) {
+      return { error: "Form not found" };
+    }
+
+    revalidatePath("/seller/dashboard/custom-orders");
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling custom order form:", error);
+    return { error: "Failed to update form" };
   }
 }
 
@@ -218,6 +254,7 @@ export async function deleteCustomOrderForm(formId: string) {
     });
 
     revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
     return { success: "Form deleted successfully" };
   } catch (error) {
     console.error("Error deleting custom order form:", error);
@@ -233,13 +270,16 @@ export async function getCustomOrderSubmissions(formId: string) {
   }
 
   try {
+    const ownedForm = await db.customOrderForm.findFirst({
+      where: { id: formId, sellerId: session.user.id },
+      select: { id: true },
+    });
+    if (!ownedForm) {
+      return { error: "Form not found" };
+    }
+
     const submissions = await db.customOrderSubmission.findMany({
-      where: {
-        formId,
-        form: {
-          sellerId: session.user.id,
-        },
-      },
+      where: { formId },
       include: {
         responses: {
           include: {
@@ -256,15 +296,117 @@ export async function getCustomOrderSubmissions(formId: string) {
       orderBy: { createdAt: "desc" },
     });
 
-    return { data: submissions };
+    const data = submissions.map((s) => withDecryptedCustomerContact(s));
+    return { data };
   } catch (error) {
     console.error("Error fetching submissions:", error);
     return { error: "Failed to fetch submissions" };
   }
 }
 
-// Update submission status
-export async function updateSubmissionStatus(values: any) {
+/** One row in the submission detail panel (customer answers). */
+export type CustomOrderSubmissionDetailAnswer = {
+  fieldId: string;
+  label: string;
+  type: string;
+  displayValue: string;
+};
+
+/** Full submission for seller review (form answers + contact). */
+export type CustomOrderSubmissionDetail = {
+  id: string;
+  formId: string;
+  formTitle: string;
+  status: string;
+  notes: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  customerEmail: string;
+  customerName: string | null;
+  buyerUsername: string | null;
+  buyerEmail: string | null;
+  answers: CustomOrderSubmissionDetailAnswer[];
+};
+
+// Single submission with decrypted contact and ordered field responses (seller-owned only)
+export async function getCustomOrderSubmissionDetail(
+  submissionId: string,
+): Promise<
+  | { error: string; data?: undefined }
+  | { data: CustomOrderSubmissionDetail; error?: undefined }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const row = await db.customOrderSubmission.findFirst({
+      where: { id: submissionId },
+      include: {
+        form: {
+          select: { id: true, title: true, sellerId: true },
+        },
+        responses: {
+          include: {
+            field: {
+              select: {
+                id: true,
+                label: true,
+                type: true,
+                order: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: { username: true, email: true },
+        },
+      },
+    });
+
+    if (!row || row.form.sellerId !== session.user.id) {
+      return { error: "Submission not found or unauthorized" };
+    }
+
+    const decrypted = withDecryptedCustomerContact(row);
+    const rejectionReason =
+      (decrypted as { rejectionReason?: string | null }).rejectionReason ??
+      null;
+    const answers: CustomOrderSubmissionDetailAnswer[] = decrypted.responses
+      .slice()
+      .sort((a, b) => a.field.order - b.field.order)
+      .map((r) => ({
+        fieldId: r.fieldId,
+        label: r.field.label,
+        type: r.field.type,
+        displayValue: formatCustomOrderFieldValue(r.value, r.field.type),
+      }));
+
+    return {
+      data: {
+        id: decrypted.id,
+        formId: decrypted.formId,
+        formTitle: decrypted.form.title,
+        status: decrypted.status,
+        notes: decrypted.notes,
+        rejectionReason,
+        createdAt: decrypted.createdAt.toISOString(),
+        customerEmail: decrypted.customerEmail,
+        customerName: decrypted.customerName,
+        buyerUsername: decrypted.user?.username ?? null,
+        buyerEmail: decrypted.user?.email ?? null,
+        answers,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching submission detail:", error);
+    return { error: "Failed to load submission" };
+  }
+}
+
+// Update submission status (rejection requires rejectionReason — emailed to the buyer)
+export async function updateSubmissionStatus(values: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Not authenticated" };
@@ -273,20 +415,52 @@ export async function updateSubmissionStatus(values: any) {
   try {
     const validatedData = CustomOrderSubmissionStatusSchema.parse(values);
 
+    const existing = await db.customOrderSubmission.findFirst({
+      where: { id: validatedData.submissionId },
+      select: { id: true, form: { select: { sellerId: true } } },
+    });
+    if (!existing || existing.form.sellerId !== session.user.id) {
+      return { error: "Submission not found" };
+    }
+
     const submission = await db.customOrderSubmission.update({
-      where: {
-        id: validatedData.submissionId,
-        form: {
-          sellerId: session.user.id,
-        },
-      },
+      where: { id: validatedData.submissionId },
       data: {
         status: validatedData.status,
-        notes: validatedData.notes,
-      },
+        rejectionReason:
+          validatedData.status === "REJECTED"
+            ? validatedData.rejectionReason!.trim()
+            : null,
+        ...(validatedData.notes !== undefined ? { notes: validatedData.notes } : {}),
+      } as Prisma.CustomOrderSubmissionUpdateInput,
     });
 
+    if (validatedData.status === "REJECTED") {
+      const forEmail = await db.customOrderSubmission.findFirst({
+        where: { id: validatedData.submissionId },
+        include: {
+          form: {
+            select: {
+              title: true,
+              seller: { select: { shopName: true } },
+            },
+          },
+        },
+      });
+      if (forEmail) {
+        const dec = withDecryptedCustomerContact(forEmail);
+        await sendCustomOrderRejectionEmail({
+          to: dec.customerEmail,
+          buyerName: dec.customerName?.trim() || "there",
+          shopName: forEmail.form.seller.shopName || "The seller",
+          formTitle: forEmail.form.title,
+          rejectionReason: validatedData.rejectionReason!.trim(),
+        });
+      }
+    }
+
     revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
     return { success: "Status updated successfully", data: submission };
   } catch (error) {
     console.error("Error updating submission status:", error);
@@ -381,15 +555,18 @@ export async function submitCustomOrderForm(values: any) {
       }
     }
 
+    const contactPayload = buildEncryptedCustomerContactPayload(
+      validatedData.customerEmail,
+      validatedData.customerName ?? null
+    );
+
     const result = await db.$transaction(async (tx) => {
-      // Create submission
       const submission = await tx.customOrderSubmission.create({
         data: {
           formId: validatedData.formId,
           userId: userId,
-          customerEmail: validatedData.customerEmail,
-          customerName: validatedData.customerName,
-        },
+          ...contactPayload,
+        } as unknown as Prisma.CustomOrderSubmissionUncheckedCreateInput,
       });
 
       // Create responses
@@ -406,6 +583,8 @@ export async function submitCustomOrderForm(values: any) {
       return submission;
     });
 
+    revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
     return { success: "Form submitted successfully", data: result };
   } catch (error) {
     console.error("Error submitting form:", error);

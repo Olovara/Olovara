@@ -109,7 +109,8 @@ export function DatePicker({
       <PopoverContent
         className={cn(
           "w-auto p-4",
-          brandPrimary && "border-brand-light-neutral-200 bg-brand-light-neutral-50"
+          brandPrimary &&
+            "border-brand-light-neutral-200 bg-brand-light-neutral-50 font-jost"
         )}
         align="start"
       >

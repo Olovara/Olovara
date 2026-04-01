@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,7 +55,9 @@ export default async function AdminMessages() {
               <CardTitle>All Conversations</CardTitle>
             </CardHeader>
             <CardContent>
-              <MessagesDashboard userType="member" />
+              <Suspense fallback={<div className="p-4 text-muted-foreground">Loading…</div>}>
+                <MessagesDashboard userType="member" />
+              </Suspense>
             </CardContent>
           </Card>
         </main>

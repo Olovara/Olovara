@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ interface MessagesDashboardProps {
 }
 
 export default function MessagesDashboard({ userType, session: serverSession }: MessagesDashboardProps) {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -158,6 +160,15 @@ export default function MessagesDashboard({ userType, session: serverSession }: 
 
     fetchConversations();
   }, [session?.user?.id]);
+
+  // Deep-link from ?conversationId= (e.g. custom orders → message buyer)
+  useEffect(() => {
+    const id = searchParams.get("conversationId");
+    if (!id || conversations.length === 0) return;
+    if (conversations.some((c) => c.id === id)) {
+      setSelectedConversation(id);
+    }
+  }, [searchParams, conversations]);
 
   // Fetch messages when conversation is selected
   useEffect(() => {

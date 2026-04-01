@@ -7,6 +7,7 @@ import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplic
 import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
 import { SellerApplicationInformationRequestEmail } from "@/components/emails/SellerApplicationInformationRequestEmail";
 import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
+import { CustomOrderRejectionEmail } from "@/components/emails/CustomOrderRejectionEmail";
 import { logError } from "@/lib/error-logger";
 
 const apiKey = process.env.RESEND_API_KEY;
@@ -521,5 +522,49 @@ export const sendContactResponseEmail = async (
       },
     });
     throw new Error(userMessage);
+  }
+};
+
+/** Email the buyer when a seller rejects a custom order (non-throwing — logs on failure). */
+export const sendCustomOrderRejectionEmail = async (params: {
+  to: string;
+  buyerName: string;
+  shopName: string;
+  formTitle: string;
+  rejectionReason: string;
+}) => {
+  const { to, buyerName, shopName, formTitle, rejectionReason } = params;
+  if (!apiKey) {
+    console.warn("[CUSTOM_ORDER_REJECTION_EMAIL] RESEND_API_KEY missing, skip send");
+    return;
+  }
+  if (!to?.includes("@")) {
+    console.warn("[CUSTOM_ORDER_REJECTION_EMAIL] Invalid recipient:", to);
+    return;
+  }
+  try {
+    const response = await resend.emails.send({
+      from: "Yarnnu <noreply@yarnnu.com>",
+      to,
+      subject: `Update on your custom order request — ${shopName}`,
+      react: CustomOrderRejectionEmail({
+        buyerName,
+        shopName,
+        formTitle,
+        rejectionReason,
+      }),
+    });
+    if (response?.error) {
+      throw new Error(JSON.stringify(response.error));
+    }
+  } catch (error) {
+    logError({
+      code: "CUSTOM_ORDER_REJECTION_EMAIL_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendCustomOrderRejectionEmail",
+      error,
+      metadata: { to, shopName, note: "Rejection saved; email failed" },
+    });
   }
 };

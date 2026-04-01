@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 import { getCustomOrderForms } from "@/actions/customOrderFormActions";
 import { toast } from "sonner";
@@ -44,12 +44,20 @@ export default function CustomOrderHeader() {
           </p>
         )}
       </div>
-      <Button asChild disabled={!canCreate}>
-        <Link href="/seller/dashboard/custom-orders/create">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Form
-        </Link>
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button variant="outlinePrimary" asChild>
+          <Link href="/seller/dashboard/custom-orders/submissions">
+            <Inbox className="mr-2 h-4 w-4" />
+            Submissions
+          </Link>
+        </Button>
+        <Button asChild disabled={!canCreate}>
+          <Link href="/seller/dashboard/custom-orders/create">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Form
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 } 

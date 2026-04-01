@@ -37,13 +37,31 @@ export const CustomOrderSubmissionSchema = z.object({
 });
 
 // Schema for updating submission status
-export const CustomOrderSubmissionStatusSchema = z.object({
-  submissionId: z.string().min(1, "Submission ID is required"),
-  status: z.enum(["PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED"], {
-    required_error: "Please select a valid status",
-  }),
-  notes: z.string().max(1000, "Notes must be less than 1000 characters").optional(),
-});
+export const CustomOrderSubmissionStatusSchema = z
+  .object({
+    submissionId: z.string().min(1, "Submission ID is required"),
+    status: z.enum(["PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED"], {
+      required_error: "Please select a valid status",
+    }),
+    notes: z.string().max(1000, "Notes must be less than 1000 characters").optional(),
+    rejectionReason: z
+      .string()
+      .max(2000, "Reason must be less than 2000 characters")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "REJECTED") {
+      const r = data.rejectionReason?.trim() ?? "";
+      if (r.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Please explain why you are rejecting this request - the buyer will see this message",
+          path: ["rejectionReason"],
+        });
+      }
+    }
+  });
 
 export type CustomOrderFormData = z.infer<typeof CustomOrderFormSchema>;
 export type CustomOrderFormFieldData = z.infer<typeof CustomOrderFormFieldSchema>;

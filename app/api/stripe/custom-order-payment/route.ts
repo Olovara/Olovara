@@ -6,6 +6,7 @@ import { calculateCommissionRate } from "@/lib/feeConfig";
 import { convertCurrencyAmount } from "@/lib/currency-convert";
 import type { Stripe } from "stripe";
 import { logError } from "@/lib/error-logger";
+import { getDecryptedCustomerContact } from "@/lib/custom-order-submission-contact";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -43,6 +44,12 @@ export async function POST(req: Request) {
         userId: true,
         customerEmail: true,
         customerName: true,
+        encryptedCustomerEmail: true,
+        customerEmailIV: true,
+        customerEmailSalt: true,
+        encryptedCustomerName: true,
+        customerNameIV: true,
+        customerNameSalt: true,
         status: true,
         materialsDepositAmount: true,
         finalPaymentAmount: true,
@@ -218,6 +225,15 @@ export async function POST(req: Request) {
     );
     const sellerAmountInCents = finalPaymentAmount - platformFeeInCents;
 
+    const { email: checkoutCustomerEmail } =
+      getDecryptedCustomerContact(submission);
+    if (!checkoutCustomerEmail?.includes("@")) {
+      return NextResponse.json(
+        { error: "Customer email is missing or invalid for checkout" },
+        { status: 400 },
+      );
+    }
+
     // Create Stripe checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ["card"],
@@ -235,7 +251,7 @@ export async function POST(req: Request) {
         },
       ],
       mode: "payment",
-      customer_email: submission.customerEmail,
+      customer_email: checkoutCustomerEmail,
       tax_id_collection: {
         enabled: true,
       },

@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Edit, Eye, Trash2, Copy, Users, Calendar, FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { getCustomOrderForms, deleteCustomOrderForm } from "@/actions/customOrderFormActions";
+import {
+  getCustomOrderForms,
+  deleteCustomOrderForm,
+  toggleCustomOrderFormActive,
+} from "@/actions/customOrderFormActions";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -33,10 +39,12 @@ interface CustomOrderForm {
 }
 
 export default function CustomOrderFormsList() {
+  const router = useRouter();
   const [forms, setForms] = useState<CustomOrderForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -82,9 +90,31 @@ export default function CustomOrderFormsList() {
     toast.success("Form link copied to clipboard");
   };
 
+  const handleToggleActive = async (formId: string, nextActive: boolean) => {
+    setTogglingId(formId);
+    try {
+      const result = await toggleCustomOrderFormActive(formId, nextActive);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        nextActive
+          ? "Form is active - customers can submit requests"
+          : "Form is inactive - hidden from new submissions"
+      );
+      await fetchForms();
+      router.refresh();
+    } catch {
+      toast.error("Failed to update form");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   if (loading) {
     return (
-      <Card>
+      <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-50">
         <CardContent className="p-6">
           <div className="text-center">Loading forms...</div>
         </CardContent>
@@ -94,7 +124,7 @@ export default function CustomOrderFormsList() {
 
   if (forms.length === 0) {
     return (
-      <Card>
+      <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-50">
         <CardContent className="p-6">
           <div className="text-center space-y-4">
             <div className="text-muted-foreground">
@@ -135,7 +165,7 @@ export default function CustomOrderFormsList() {
         </Card>
       )}
 
-      <Card>
+      <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-50">
         <CardHeader>
           <CardTitle>Your Custom Order Forms ({forms.length}/{formLimit})</CardTitle>
         </CardHeader>
@@ -144,59 +174,78 @@ export default function CustomOrderFormsList() {
             {forms.map((form) => (
               <div
                 key={form.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className="flex flex-col gap-4 rounded-lg border border-brand-dark-neutral-200 bg-brand-light-neutral-100 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2">
                     <h3 className="font-medium">{form.title}</h3>
-                    <Badge variant={form.isActive ? "default" : "secondary"}>
-                      {form.isActive ? "Active" : "Inactive"}
-                    </Badge>
                   </div>
                   {form.description && (
                     <p className="text-sm text-muted-foreground mb-2">
                       {form.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {form._count.submissions} submissions
+                      <Users className="h-4 w-4 shrink-0" />
+                      <span>{form._count.submissions} submissions</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Created {format(new Date(form.createdAt), "MMM d, yyyy")}
+                      <Calendar className="h-4 w-4 shrink-0" />
+                      <span>
+                        Created {format(new Date(form.createdAt), "MMM d, yyyy")}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyFormLink(form.id)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/seller/dashboard/custom-orders/${form.id}/submissions`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/seller/dashboard/custom-orders/${form.id}/edit`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setFormToDelete(form.id);
-                      setDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 border-brand-dark-neutral-200 sm:border-r sm:pr-3">
+                    <Switch
+                      id={`form-active-${form.id}`}
+                      checked={form.isActive}
+                      disabled={togglingId === form.id}
+                      onCheckedChange={(checked) =>
+                        void handleToggleActive(form.id, checked)
+                      }
+                    />
+                    <Label
+                      htmlFor={`form-active-${form.id}`}
+                      className="cursor-pointer whitespace-nowrap text-sm font-normal leading-none"
+                    >
+                      {form.isActive ? "Active" : "Inactive"}
+                    </Label>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outlinePrimary"
+                      size="sm"
+                      onClick={() => copyFormLink(form.id)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outlinePrimary" size="sm" asChild>
+                      <Link
+                        href={`/seller/dashboard/custom-orders/submissions?formId=${form.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button variant="outlinePrimary" size="sm" asChild>
+                      <Link href={`/seller/dashboard/custom-orders/edit/${form.id}`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outlinePrimary"
+                      size="sm"
+                      onClick={() => {
+                        setFormToDelete(form.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

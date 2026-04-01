@@ -20,6 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+/** Radix Select highlights options with data-highlighted on hover / keyboard. */
+const FIELD_TYPE_SELECT_ITEM_CLASS =
+  "cursor-pointer data-[highlighted]:bg-brand-primary-100 data-[highlighted]:text-brand-dark-neutral-900 focus:bg-brand-primary-100 focus:text-brand-dark-neutral-900";
+
 interface FormField {
   id?: string;
   label: string;
@@ -183,7 +187,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Form Builder */}
       <div className="space-y-6">
-        <Card>
+        <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-100">
           <CardHeader>
             <CardTitle>{mode === "create" ? "Create New Form" : "Edit Form"}</CardTitle>
           </CardHeader>
@@ -222,7 +226,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-100">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Form Fields</CardTitle>
@@ -241,7 +245,10 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
             ) : (
               <div className="space-y-4">
                 {fields.map((field, index) => (
-                  <Card key={index} className="border-2">
+                  <Card
+                    key={index}
+                    className="border-2 border-brand-dark-neutral-200 bg-brand-light-neutral-50"
+                  >
                     <CardContent className="pt-4">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
@@ -252,10 +259,11 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                           </Badge>
                         </div>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => removeField(index)}
-                          className="text-destructive"
+                          className="shrink-0 text-muted-foreground hover:bg-brand-primary-700 hover:text-brand-light-neutral-50"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -280,13 +288,27 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="text">Text</SelectItem>
-                              <SelectItem value="textarea">Long Text</SelectItem>
-                              <SelectItem value="number">Number</SelectItem>
-                              <SelectItem value="select">Dropdown</SelectItem>
-                              <SelectItem value="multiselect">Multi-select</SelectItem>
-                              <SelectItem value="date">Date</SelectItem>
-                              <SelectItem value="boolean">Yes/No</SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="text">
+                                Text
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="textarea">
+                                Long Text
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="number">
+                                Number
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="select">
+                                Dropdown
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="multiselect">
+                                Multi-select
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="date">
+                                Date
+                              </SelectItem>
+                              <SelectItem className={FIELD_TYPE_SELECT_ITEM_CLASS} value="boolean">
+                                Yes/No
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -327,7 +349,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                             <Label>Options *</Label>
                             <Button
                               type="button"
-                              variant="outline"
+                              variant="outlinePrimary"
                               size="sm"
                               onClick={() => addOption(index)}
                             >
@@ -348,7 +370,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => removeOption(index, optionIndex)}
-                                  className="text-destructive"
+                                  className="shrink-0 text-muted-foreground hover:bg-brand-primary-700 hover:text-brand-light-neutral-50"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -386,7 +408,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
 
       {/* Live Preview */}
       <div className="space-y-6">
-        <Card>
+        <Card className="border-brand-dark-neutral-200 bg-brand-light-neutral-100">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Live Preview</CardTitle>

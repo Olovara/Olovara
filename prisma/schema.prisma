@@ -1189,11 +1189,20 @@ model CustomOrderSubmission {
   form      CustomOrderForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   userId    String // Required - customer must be logged in
   user      User   @relation(fields: [userId], references: [id])
-  customerEmail String
+  // Legacy plaintext (older rows). New submissions use encrypted* only and leave these null.
+  customerEmail String?
   customerName  String?
+  encryptedCustomerEmail String?
+  customerEmailIV        String?
+  customerEmailSalt      String?
+  encryptedCustomerName  String?
+  customerNameIV         String?
+  customerNameSalt       String?
   status    String  @default("PENDING") // "PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED", "READY_FOR_FINAL_PAYMENT"
   responses CustomOrderSubmissionResponse[]
   notes     String? // Seller's notes on the submission
+  /// Shown to the buyer (and emailed) when status is REJECTED
+  rejectionReason String?
   
   // Payment fields
   materialsDepositAmount Int? // Amount in cents for materials deposit
@@ -1222,7 +1231,6 @@ model CustomOrderSubmission {
   @@index([formId])
   @@index([userId])
   @@index([status])
-  @@index([customerEmail])
 }
 
 model CustomOrderSubmissionResponse {
