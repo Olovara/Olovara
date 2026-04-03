@@ -1543,8 +1543,8 @@ model SearchAnalytics {
   deviceId          String   // UUID cookie + fallback to localStorage (must have)
   deviceType        String?  // "desktop", "mobile", "tablet"
   ipAddress         String?  // IP address (truncate to /24 if privacy-respectful)
-  location          Json?    // { country, region/state } - NOTHING more detailed
-  
+  location          Json?    // { country, region } via extractLocationData — shared shape with ProductInteraction.location
+
   // Context and metadata (minimum tracking)
   timestamp         DateTime @default(now())
   searchContext     String?  // What page they searched from: "homepage", "category-page", "seller-shop", "global search bar"
@@ -1601,8 +1601,9 @@ model ProductInteraction {
   deviceId          String?  // Device fingerprint ID
   ipAddress         String?
   userAgent         String?
-  location          Json?    // Geographic location data
-  
+  // Same minimal shape as SearchAnalytics.location: { country, region } from IP geolocation (see extractLocationData)
+  location          Json?
+
   timestamp         DateTime @default(now())
 
   @@index([userId])
@@ -1640,6 +1641,7 @@ model ShopInteraction {
   deviceId          String?
   ipAddress         String?
   userAgent         String?
+  // Same minimal shape as SearchAnalytics.location: { country, region } from IP geolocation
   location          Json?
 
   timestamp         DateTime @default(now())

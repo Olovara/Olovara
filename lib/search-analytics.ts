@@ -77,8 +77,9 @@ export function getDeviceType(userAgent: string | null | undefined): string | nu
 }
 
 /**
- * Extract location data (country and region/state only)
- * @param locationData - Full location data object
+ * Extract location data (country and region/state only).
+ * Used by SearchAnalytics and (via /api/analytics/behavior) ProductInteraction + ShopInteraction.
+ * @param locationData - e.g. return value of getUserAnalytics(ip)
  * @returns Simplified location object with only country and region
  */
 export function extractLocationData(locationData: any): { country?: string; region?: string } | null {

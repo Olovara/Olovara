@@ -1140,6 +1140,7 @@ export class SearchAnalyticsService {
 }
 
 export class ProductInteractionService {
+  /** Persists product analytics; `location` should match SearchAnalytics: { country, region } from extractLocationData. */
   static async trackProductInteraction(data: {
     userId?: string;
     productId: string;
@@ -1157,7 +1158,8 @@ export class ProductInteractionService {
     deviceId?: string;
     ipAddress?: string;
     userAgent?: string;
-    location?: any;
+    /** Minimal geo: { country, region } — same shape as search analytics (IP-derived). */
+    location?: { country?: string | null; region?: string | null } | null;
   }) {
     try {
       const interaction = await db.productInteraction.create({
@@ -1500,6 +1502,7 @@ export class ProductInteractionService {
 
 /** Shop interaction tracking: views and buyer actions on shop pages (for analytics) */
 export class ShopInteractionService {
+  /** `location`: same minimal { country, region } as SearchAnalytics / ProductInteraction. */
   static async trackShopInteraction(data: {
     userId?: string;
     sellerId: string;
@@ -1516,7 +1519,7 @@ export class ShopInteractionService {
     deviceId?: string;
     ipAddress?: string;
     userAgent?: string;
-    location?: any;
+    location?: { country?: string | null; region?: string | null } | null;
   }) {
     try {
       const interaction = await db.shopInteraction.create({
