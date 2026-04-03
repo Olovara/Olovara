@@ -8,6 +8,7 @@ import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplic
 import { SellerApplicationInformationRequestEmail } from "@/components/emails/SellerApplicationInformationRequestEmail";
 import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
 import { CustomOrderRejectionEmail } from "@/components/emails/CustomOrderRejectionEmail";
+import { CustomOrderQuoteEmail } from "@/components/emails/CustomOrderQuoteEmail";
 import { logError } from "@/lib/error-logger";
 
 const apiKey = process.env.RESEND_API_KEY;
@@ -565,6 +566,77 @@ export const sendCustomOrderRejectionEmail = async (params: {
       method: "sendCustomOrderRejectionEmail",
       error,
       metadata: { to, shopName, note: "Rejection saved; email failed" },
+    });
+  }
+};
+
+/** Email the buyer when a seller sends a pre-approval quote (non-throwing — logs on failure). */
+export const sendCustomOrderQuoteEmail = async (params: {
+  to: string;
+  buyerName: string;
+  shopName: string;
+  formTitle: string;
+  currency: string;
+  quotePriceType: "FIXED" | "RANGE";
+  quotePriceFixedMinor: number | null;
+  quotePriceMinMinor: number | null;
+  quotePriceMaxMinor: number | null;
+  quoteDepositMinor: number;
+  quoteTimeline: string;
+  quoteNotes: string | null;
+}) => {
+  const {
+    to,
+    buyerName,
+    shopName,
+    formTitle,
+    currency,
+    quotePriceType,
+    quotePriceFixedMinor,
+    quotePriceMinMinor,
+    quotePriceMaxMinor,
+    quoteDepositMinor,
+    quoteTimeline,
+    quoteNotes,
+  } = params;
+  if (!apiKey) {
+    console.warn("[CUSTOM_ORDER_QUOTE_EMAIL] RESEND_API_KEY missing, skip send");
+    return;
+  }
+  if (!to?.includes("@")) {
+    console.warn("[CUSTOM_ORDER_QUOTE_EMAIL] Invalid recipient:", to);
+    return;
+  }
+  try {
+    const response = await resend.emails.send({
+      from: "Yarnnu <noreply@yarnnu.com>",
+      to,
+      subject: `Quote for your custom order — ${shopName}`,
+      react: CustomOrderQuoteEmail({
+        buyerName,
+        shopName,
+        formTitle,
+        currency,
+        quotePriceType,
+        quotePriceFixedMinor,
+        quotePriceMinMinor,
+        quotePriceMaxMinor,
+        quoteDepositMinor,
+        quoteTimeline,
+        quoteNotes,
+      }),
+    });
+    if (response?.error) {
+      throw new Error(JSON.stringify(response.error));
+    }
+  } catch (error) {
+    logError({
+      code: "CUSTOM_ORDER_QUOTE_EMAIL_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendCustomOrderQuoteEmail",
+      error,
+      metadata: { to, shopName, note: "Quote saved; email failed" },
     });
   }
 };

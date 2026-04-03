@@ -29,6 +29,13 @@ import {
 } from "@/components/ui/select";
 import { getOnboardingCountriesByZone } from "@/data/countries";
 import { StateSelect } from "@/components/ui/state-select";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  getCurrencyName,
+  isZeroDecimalCurrency,
+  majorToMinorAmount,
+} from "@/data/units";
+import Link from "next/link";
 
 const SellerInfoForm = () => {
   const isClient = useIsClient();
@@ -42,6 +49,8 @@ const SellerInfoForm = () => {
     defaultValues: {
       isVacationMode: false,
       acceptsCustom: false,
+      preferredCurrency: "USD",
+      customOrderMinBudgetInput: "",
       shopCountry: "US",
       shopState: "",
       shopCity: "",
@@ -61,7 +70,7 @@ const SellerInfoForm = () => {
         } else if (result.data) {
           // Convert nulls to empty strings for form compatibility
           const safeData = Object.fromEntries(
-            Object.entries(result.data).map(([k, v]) => [k, v ?? ""])
+            Object.entries(result.data).map(([k, v]) => [k, v ?? ""]),
           );
           form.reset(safeData);
         }
@@ -82,11 +91,19 @@ const SellerInfoForm = () => {
       setSuccess("");
 
       // Send data to the action
+      const cur = values.preferredCurrency || "USD";
+      const budgetRaw = values.customOrderMinBudgetInput?.trim() ?? "";
+      const customOrderMinBudgetMinor =
+        values.acceptsCustom && budgetRaw !== ""
+          ? majorToMinorAmount(parseFloat(budgetRaw.replace(",", ".")), cur)
+          : null;
+
       const result = await updateSellerInfo({
         shopCountry: values.shopCountry,
         shopState: values.shopState,
         shopCity: values.shopCity,
         acceptsCustom: values.acceptsCustom,
+        customOrderMinBudgetMinor,
       });
 
       if (result.error) {
@@ -95,7 +112,7 @@ const SellerInfoForm = () => {
       }
 
       toast.success(
-        result.message || "Successfully saved your location information."
+        result.message || "Successfully saved your location information.",
       );
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -163,6 +180,76 @@ const SellerInfoForm = () => {
             />
           </div>
 
+          <AnimatePresence initial={false}>
+            {form.watch("acceptsCustom") && (
+              <motion.div
+                key="custom-order-min-budget"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="overflow-hidden rounded-lg border border-border bg-muted/40"
+              >
+                <div className="space-y-3 p-4">
+                  <div>
+                    <Label
+                      htmlFor="customOrderMinBudgetInput"
+                      className="text-base"
+                    >
+                      Minimum budget (optional)
+                    </Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Only requests at or above this amount match what you want
+                      to take on. Amounts use your shop&apos;s preferred
+                      currency (
+                      <span className="font-medium">
+                        {getCurrencyName(form.watch("preferredCurrency"))} (
+                        {form.watch("preferredCurrency")})
+                      </span>
+                      ). Change currency in{" "}
+                      <Link
+                        href="/seller/dashboard/settings#preferences"
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Settings → Preferences
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-y-2 sm:max-w-xs">
+                    <Input
+                      id="customOrderMinBudgetInput"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={
+                        isZeroDecimalCurrency(
+                          form.watch("preferredCurrency")
+                        )
+                          ? 1
+                          : "0.01"
+                      }
+                      placeholder="e.g. 50"
+                      disabled={isPending}
+                      {...form.register("customOrderMinBudgetInput")}
+                    />
+                    {form.formState.errors.customOrderMinBudgetInput && (
+                      <p className="text-sm text-destructive">
+                        {
+                          form.formState.errors.customOrderMinBudgetInput
+                            .message
+                        }
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty if you don&apos;t want a minimum.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {form.watch("acceptsCustom") && (
             <div className="bg-purple-50 border-l-4 border-purple-400 p-4">
               <div className="flex">
@@ -214,7 +301,6 @@ const SellerInfoForm = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
             <div className="flex flex-col gap-y-2">
               <Label>Country *</Label>
               <Select

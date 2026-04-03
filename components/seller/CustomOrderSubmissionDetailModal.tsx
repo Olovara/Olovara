@@ -21,7 +21,8 @@ import {
 import type { CustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatPriceInCurrency } from "@/lib/utils";
+import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
 
 function detailStatusVariant(
   status: string,
@@ -29,6 +30,7 @@ function detailStatusVariant(
   switch (status) {
     case "PENDING":
       return "secondary";
+    case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
     case "READY_FOR_FINAL_PAYMENT":
@@ -43,10 +45,22 @@ function detailStatusVariant(
 }
 
 function acceptDisabled(status: string) {
+  // Approve only after a quote was sent (status QUOTED)
   return (
     status === "APPROVED" ||
     status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED"
+    status === "COMPLETED" ||
+    status !== "QUOTED"
+  );
+}
+
+function quoteActionDisabled(status: string) {
+  return (
+    status === "APPROVED" ||
+    status === "REVIEWED" ||
+    status === "READY_FOR_FINAL_PAYMENT" ||
+    status === "COMPLETED" ||
+    status === "REJECTED"
   );
 }
 
@@ -74,6 +88,7 @@ export default function CustomOrderSubmissionDetailModal({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusAction, setStatusAction] = useState<"accept" | null>(null);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -131,6 +146,7 @@ export default function CustomOrderSubmissionDetailModal({
   const statusBusy = statusAction !== null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
@@ -177,6 +193,81 @@ export default function CustomOrderSubmissionDetailModal({
                   </span>
                 </div>
               </div>
+
+              {detail.quoteSentAt &&
+                (detail.quotePriceType === "FIXED" ||
+                  detail.quotePriceType === "RANGE") && (
+                  <>
+                    <Separator />
+                    <div className="rounded-md border border-brand-dark-neutral-200 bg-brand-light-neutral-100/80 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Quote sent to buyer
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {format(
+                          new Date(detail.quoteSentAt),
+                          "MMM d, yyyy h:mm a",
+                        )}
+                      </p>
+                      <dl className="mt-3 space-y-2 text-sm">
+                        <div>
+                          <dt className="text-muted-foreground">Estimate</dt>
+                          <dd className="font-medium">
+                            {detail.quotePriceType === "FIXED" &&
+                            detail.quotePriceFixedMinor != null
+                              ? formatPriceInCurrency(
+                                  detail.quotePriceFixedMinor,
+                                  detail.currency,
+                                  true,
+                                )
+                              : detail.quotePriceMinMinor != null &&
+                                  detail.quotePriceMaxMinor != null
+                                ? `${formatPriceInCurrency(
+                                    detail.quotePriceMinMinor,
+                                    detail.currency,
+                                    true,
+                                  )} – ${formatPriceInCurrency(
+                                    detail.quotePriceMaxMinor,
+                                    detail.currency,
+                                    true,
+                                  )}`
+                                : "—"}
+                          </dd>
+                        </div>
+                        {detail.quoteDepositMinor != null && (
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Required deposit
+                            </dt>
+                            <dd className="font-medium">
+                              {formatPriceInCurrency(
+                                detail.quoteDepositMinor,
+                                detail.currency,
+                                true,
+                              )}
+                            </dd>
+                          </div>
+                        )}
+                        {detail.quoteTimeline && (
+                          <div>
+                            <dt className="text-muted-foreground">Timeline</dt>
+                            <dd className="font-medium whitespace-pre-wrap">
+                              {detail.quoteTimeline}
+                            </dd>
+                          </div>
+                        )}
+                        {detail.quoteNotes && (
+                          <div>
+                            <dt className="text-muted-foreground">Notes</dt>
+                            <dd className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                              {detail.quoteNotes}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                  </>
+                )}
 
               {detail.status === "REJECTED" && detail.rejectionReason && (
                 <>
@@ -267,6 +358,18 @@ export default function CustomOrderSubmissionDetailModal({
             <>
               <Button
                 type="button"
+                variant="outlinePrimary"
+                disabled={
+                  statusBusy ||
+                  loading ||
+                  quoteActionDisabled(detail.status)
+                }
+                onClick={() => setQuoteDialogOpen(true)}
+              >
+                {detail.status === "QUOTED" ? "Update quote" : "Send quote"}
+              </Button>
+              <Button
+                type="button"
                 variant="default"
                 disabled={
                   statusBusy ||
@@ -305,5 +408,17 @@ export default function CustomOrderSubmissionDetailModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <SendCustomOrderQuoteDialog
+      open={quoteDialogOpen}
+      onOpenChange={setQuoteDialogOpen}
+      submissionId={submissionId}
+      currency={detail?.currency ?? "USD"}
+      onSent={() => {
+        if (submissionId) void load(submissionId);
+        router.refresh();
+      }}
+    />
+  </>
   );
 }

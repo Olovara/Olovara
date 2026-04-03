@@ -3,14 +3,24 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { CustomOrderFormSchema, CustomOrderSubmissionSchema, CustomOrderSubmissionStatusSchema } from "@/schemas/CustomOrderFormSchema";
+import {
+  CustomOrderFormSchema,
+  CustomOrderSubmissionSchema,
+  CustomOrderSubmissionStatusSchema,
+} from "@/schemas/CustomOrderFormSchema";
+import { SendCustomOrderQuoteSchema } from "@/schemas/CustomOrderQuoteSchema";
 import { revalidatePath } from "next/cache";
 import {
   buildEncryptedCustomerContactPayload,
+  getDecryptedCustomerContact,
   withDecryptedCustomerContact,
 } from "@/lib/custom-order-submission-contact";
+import { majorToMinorAmount } from "@/data/units";
 import { formatCustomOrderFieldValue } from "@/lib/custom-order-response-display";
-import { sendCustomOrderRejectionEmail } from "@/lib/mail";
+import {
+  sendCustomOrderQuoteEmail,
+  sendCustomOrderRejectionEmail,
+} from "@/lib/mail";
 
 // Get all custom order forms for a seller
 export async function getCustomOrderForms() {
@@ -84,19 +94,22 @@ export async function saveCustomOrderForm(values: any) {
 
   try {
     const validatedData = CustomOrderFormSchema.parse(values);
-    
+
     // Check form limits (max 5 forms per seller)
     if (!validatedData.id) {
       // Creating new form - check limit
       const existingFormsCount = await db.customOrderForm.count({
         where: { sellerId: session.user.id },
       });
-      
+
       if (existingFormsCount >= 5) {
-        return { error: "You can only create up to 5 custom order forms. Please delete an existing form first." };
+        return {
+          error:
+            "You can only create up to 5 custom order forms. Please delete an existing form first.",
+        };
       }
     }
-    
+
     const result = await db.$transaction(async (tx) => {
       if (validatedData.id) {
         // Update existing form
@@ -117,7 +130,7 @@ export async function saveCustomOrderForm(values: any) {
           where: { formId: validatedData.id },
           select: { id: true },
         });
-        const existingFieldIds = existingFields.map(f => f.id);
+        const existingFieldIds = existingFields.map((f) => f.id);
         const updatedFieldIds: string[] = [];
 
         // Update or create fields
@@ -160,7 +173,9 @@ export async function saveCustomOrderForm(values: any) {
         }
 
         // Remove fields that are no longer in the form
-        const fieldsToRemove = existingFieldIds.filter(id => !updatedFieldIds.includes(id));
+        const fieldsToRemove = existingFieldIds.filter(
+          (id) => !updatedFieldIds.includes(id),
+        );
         if (fieldsToRemove.length > 0) {
           await tx.customOrderFormField.deleteMany({
             where: { id: { in: fieldsToRemove } },
@@ -211,7 +226,10 @@ export async function saveCustomOrderForm(values: any) {
 }
 
 // Toggle whether a form accepts new public submissions (seller dashboard list)
-export async function toggleCustomOrderFormActive(formId: string, isActive: boolean) {
+export async function toggleCustomOrderFormActive(
+  formId: string,
+  isActive: boolean,
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Not authenticated" };
@@ -326,6 +344,15 @@ export type CustomOrderSubmissionDetail = {
   buyerUsername: string | null;
   buyerEmail: string | null;
   answers: CustomOrderSubmissionDetailAnswer[];
+  currency: string;
+  quotePriceType: string | null;
+  quotePriceFixedMinor: number | null;
+  quotePriceMinMinor: number | null;
+  quotePriceMaxMinor: number | null;
+  quoteDepositMinor: number | null;
+  quoteTimeline: string | null;
+  quoteNotes: string | null;
+  quoteSentAt: string | null;
 };
 
 // Single submission with decrypted contact and ordered field responses (seller-owned only)
@@ -397,11 +424,129 @@ export async function getCustomOrderSubmissionDetail(
         buyerUsername: decrypted.user?.username ?? null,
         buyerEmail: decrypted.user?.email ?? null,
         answers,
+        currency: decrypted.currency || "USD",
+        quotePriceType: decrypted.quotePriceType ?? null,
+        quotePriceFixedMinor: decrypted.quotePriceFixedMinor ?? null,
+        quotePriceMinMinor: decrypted.quotePriceMinMinor ?? null,
+        quotePriceMaxMinor: decrypted.quotePriceMaxMinor ?? null,
+        quoteDepositMinor: decrypted.quoteDepositMinor ?? null,
+        quoteTimeline: decrypted.quoteTimeline ?? null,
+        quoteNotes: decrypted.quoteNotes ?? null,
+        quoteSentAt: decrypted.quoteSentAt?.toISOString() ?? null,
       },
     };
   } catch (error) {
     console.error("Error fetching submission detail:", error);
     return { error: "Failed to load submission" };
+  }
+}
+
+/** Seller sends a pre-approval quote; sets status to QUOTED and emails the buyer. */
+export async function sendCustomOrderQuote(values: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const data = SendCustomOrderQuoteSchema.parse(values);
+
+    const row = await db.customOrderSubmission.findFirst({
+      where: { id: data.submissionId },
+      select: {
+        id: true,
+        status: true,
+        currency: true,
+        customerEmail: true,
+        customerName: true,
+        encryptedCustomerEmail: true,
+        customerEmailIV: true,
+        customerEmailSalt: true,
+        encryptedCustomerName: true,
+        customerNameIV: true,
+        customerNameSalt: true,
+        form: {
+          select: {
+            sellerId: true,
+            title: true,
+            seller: { select: { shopName: true } },
+          },
+        },
+      },
+    });
+
+    if (!row || row.form.sellerId !== session.user.id) {
+      return { error: "Submission not found" };
+    }
+
+    const blocked = new Set([
+      "APPROVED",
+      "REVIEWED",
+      "READY_FOR_FINAL_PAYMENT",
+      "COMPLETED",
+      "REJECTED",
+    ]);
+    if (blocked.has(row.status)) {
+      return {
+        error:
+          "You cannot send a quote for this submission in its current state.",
+      };
+    }
+
+    const cur = row.currency || "USD";
+    const quotePriceFixedMinor =
+      data.quotePriceType === "FIXED"
+        ? majorToMinorAmount(data.quotePriceFixedMajor!, cur)
+        : null;
+    const quotePriceMinMinor =
+      data.quotePriceType === "RANGE"
+        ? majorToMinorAmount(data.quotePriceMinMajor!, cur)
+        : null;
+    const quotePriceMaxMinor =
+      data.quotePriceType === "RANGE"
+        ? majorToMinorAmount(data.quotePriceMaxMajor!, cur)
+        : null;
+    const quoteDepositMinor = majorToMinorAmount(data.quoteDepositMajor, cur);
+
+    await db.customOrderSubmission.update({
+      where: { id: data.submissionId },
+      data: {
+        quotePriceType: data.quotePriceType,
+        quotePriceFixedMinor,
+        quotePriceMinMinor,
+        quotePriceMaxMinor,
+        quoteDepositMinor,
+        quoteTimeline: data.quoteTimeline.trim(),
+        quoteNotes: data.quoteNotes?.trim() || null,
+        quoteSentAt: new Date(),
+        status: "QUOTED",
+      },
+    });
+
+    const { email, name } = getDecryptedCustomerContact(row);
+    if (email?.includes("@")) {
+      await sendCustomOrderQuoteEmail({
+        to: email,
+        buyerName: name?.trim() || "there",
+        shopName: row.form.seller.shopName || "The seller",
+        formTitle: row.form.title,
+        currency: cur,
+        quotePriceType: data.quotePriceType,
+        quotePriceFixedMinor,
+        quotePriceMinMinor,
+        quotePriceMaxMinor,
+        quoteDepositMinor,
+        quoteTimeline: data.quoteTimeline.trim(),
+        quoteNotes: data.quoteNotes?.trim() || null,
+      });
+    }
+
+    revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
+    return { success: "Quote sent to the buyer" };
+  } catch (error) {
+    console.error("sendCustomOrderQuote:", error);
+    return { error: "Failed to send quote" };
   }
 }
 
@@ -417,10 +562,18 @@ export async function updateSubmissionStatus(values: unknown) {
 
     const existing = await db.customOrderSubmission.findFirst({
       where: { id: validatedData.submissionId },
-      select: { id: true, form: { select: { sellerId: true } } },
+      select: { id: true, status: true, form: { select: { sellerId: true } } },
     });
     if (!existing || existing.form.sellerId !== session.user.id) {
       return { error: "Submission not found" };
+    }
+
+    if (validatedData.status === "APPROVED") {
+      if (existing.status !== "QUOTED" && existing.status !== "APPROVED") {
+        return {
+          error: "Send a quote to the buyer before you accept this request.",
+        };
+      }
     }
 
     const submission = await db.customOrderSubmission.update({
@@ -431,7 +584,9 @@ export async function updateSubmissionStatus(values: unknown) {
           validatedData.status === "REJECTED"
             ? validatedData.rejectionReason!.trim()
             : null,
-        ...(validatedData.notes !== undefined ? { notes: validatedData.notes } : {}),
+        ...(validatedData.notes !== undefined
+          ? { notes: validatedData.notes }
+          : {}),
       } as Prisma.CustomOrderSubmissionUpdateInput,
     });
 
@@ -532,9 +687,9 @@ export async function submitCustomOrderForm(values: any) {
     }
 
     // Validate that all required fields are provided
-    const requiredFields = form.fields.filter(field => field.required);
-    const providedFieldIds = validatedData.responses.map(r => r.fieldId);
-    
+    const requiredFields = form.fields.filter((field) => field.required);
+    const providedFieldIds = validatedData.responses.map((r) => r.fieldId);
+
     for (const requiredField of requiredFields) {
       if (!providedFieldIds.includes(requiredField.id)) {
         return { error: `Required field "${requiredField.label}" is missing` };
@@ -543,7 +698,7 @@ export async function submitCustomOrderForm(values: any) {
 
     // Validate field values based on type and custom validation rules
     for (const response of validatedData.responses) {
-      const field = form.fields.find(f => f.id === response.fieldId);
+      const field = form.fields.find((f) => f.id === response.fieldId);
       if (!field) {
         return { error: "Invalid field ID provided" };
       }
@@ -557,7 +712,7 @@ export async function submitCustomOrderForm(values: any) {
 
     const contactPayload = buildEncryptedCustomerContactPayload(
       validatedData.customerEmail,
-      validatedData.customerName ?? null
+      validatedData.customerName ?? null,
     );
 
     const result = await db.$transaction(async (tx) => {
@@ -623,7 +778,7 @@ function validateFieldValue(field: any, value: string): string | null {
     case "multiselect":
       if (field.options && field.options.length > 0) {
         if (field.type === "multiselect") {
-          const selectedValues = value.split(",").map(v => v.trim());
+          const selectedValues = value.split(",").map((v) => v.trim());
           for (const selected of selectedValues) {
             if (!field.options.includes(selected)) {
               return `Field "${field.label}" contains invalid option: ${selected}`;
@@ -663,4 +818,4 @@ function validateFieldValue(field: any, value: string): string | null {
   }
 
   return null;
-} 
+}

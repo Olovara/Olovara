@@ -69,9 +69,29 @@ export const SUPPORTED_DISTANCE_UNITS = [
 ] as const;
 
 // Helper functions
-export const getCurrencyDecimals = (currency: string) => {
-  return SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.decimals || 2;
+/** Minor decimal places Stripe uses for the currency (0 for JPY, 2 for USD, …). */
+export const getCurrencyDecimals = (currency: string): number => {
+  // Use ?? not || — zero-decimal currencies (JPY, HUF, …) must stay 0
+  return SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.decimals ?? 2;
 };
+
+/** True for JPY, HUF, IDR, XOF — use for input `step` / whole-unit majors. */
+export function isZeroDecimalCurrency(currency: string): boolean {
+  const d = SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.decimals;
+  return d === 0;
+}
+
+/** Major display amount (e.g. dollars) → minor units for storage (e.g. cents), per currency decimals. */
+export function majorToMinorAmount(major: number, currencyCode: string): number {
+  const decimals = getCurrencyDecimals(currencyCode);
+  return Math.round(major * 10 ** decimals);
+}
+
+/** Minor units from storage → major amount for forms and display. */
+export function minorToMajorAmount(minor: number, currencyCode: string): number {
+  const decimals = getCurrencyDecimals(currencyCode);
+  return minor / 10 ** decimals;
+}
 
 export const getCurrencySymbol = (currency: string) => {
   return SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.symbol || "$";

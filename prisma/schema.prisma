@@ -268,6 +268,8 @@ model Seller {
   totalSales             Int               @default(0)
   totalProducts          Int               @default(0)
   acceptsCustom          Boolean           @default(false)
+  /// Minimum custom-order budget in minor units (cents, yen, etc.) of `preferredCurrency`; null = no minimum
+  customOrderMinBudgetMinor Int?
   shopValues             String[]          @default([]) // Array of shop value IDs from shop-values.ts
   valuesPreferNotToSay   Boolean           @default(false)
   // Social media links
@@ -1198,9 +1200,19 @@ model CustomOrderSubmission {
   encryptedCustomerName  String?
   customerNameIV         String?
   customerNameSalt       String?
-  status    String  @default("PENDING") // "PENDING", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED", "READY_FOR_FINAL_PAYMENT"
+  status    String  @default("PENDING") // "PENDING", "QUOTED", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED", "READY_FOR_FINAL_PAYMENT"
   responses CustomOrderSubmissionResponse[]
   notes     String? // Seller's notes on the submission
+
+  // Pre-approval quote (seller → buyer)
+  quotePriceType      String?   // "FIXED" | "RANGE"
+  quotePriceFixedMinor Int?
+  quotePriceMinMinor   Int?
+  quotePriceMaxMinor   Int?
+  quoteDepositMinor    Int?
+  quoteTimeline       String?
+  quoteNotes          String?
+  quoteSentAt         DateTime?
   /// Shown to the buyer (and emailed) when status is REJECTED
   rejectionReason String?
   

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptLocationInfo, decryptLocationInfo } from "@/lib/encryption";
 import { updateOnboardingStep } from "@/lib/onboarding";
+import { getCurrencyDecimals, minorToMajorAmount } from "@/data/units";
 
 // Helper function to check if shop preferences step should be completed
 async function checkAndMarkShopPreferencesComplete(userId: string) {
@@ -17,22 +18,28 @@ async function checkAndMarkShopPreferencesComplete(userId: string) {
         preferredWeightUnit: true,
         preferredDimensionUnit: true,
         preferredDistanceUnit: true,
-      }
+      },
     });
 
     if (!seller) return false;
 
     // Check if Info form is completed (shop country is required)
     const infoComplete = seller.shopCountry && seller.shopCountry.trim() !== "";
-    
+
     // Check if Preferences form is completed (all unit preferences are set)
-    const preferencesComplete = seller.preferredCurrency && seller.preferredWeightUnit && seller.preferredDimensionUnit && seller.preferredDistanceUnit;
+    const preferencesComplete =
+      seller.preferredCurrency &&
+      seller.preferredWeightUnit &&
+      seller.preferredDimensionUnit &&
+      seller.preferredDistanceUnit;
 
     // If both info and preferences are complete
     if (infoComplete && preferencesComplete) {
       // Mark the shop_preferences step as complete
       await updateOnboardingStep(seller.id, "shop_preferences", true);
-      console.log(`Shop preferences step marked as complete for user: ${userId}`);
+      console.log(
+        `Shop preferences step marked as complete for user: ${userId}`,
+      );
       return true;
     }
 
@@ -50,10 +57,12 @@ export async function updateSellerInfo(data: {
   shopCity?: string;
   // Shop settings
   acceptsCustom?: boolean;
+  /** Minor units in preferredCurrency; omit or null when no minimum or custom orders off */
+  customOrderMinBudgetMinor?: number | null;
 }) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       throw new Error("Not authenticated");
     }
@@ -78,24 +87,36 @@ export async function updateSellerInfo(data: {
         shopCitySalt: encryptedLocation.citySalt,
         // Update shop settings
         acceptsCustom: data.acceptsCustom,
-      }
+        customOrderMinBudgetMinor:
+          data.acceptsCustom === true
+            ? (data.customOrderMinBudgetMinor ?? null)
+            : null,
+      },
     });
 
     // Check if profile should be marked as complete
-    const profileCompleted = await checkAndMarkShopPreferencesComplete(session.user.id);
+    const profileCompleted = await checkAndMarkShopPreferencesComplete(
+      session.user.id,
+    );
 
     // Note: Session refresh is now handled by the client-side page reload
     // The user's tax information has been updated in the database
-    console.log("Seller location information updated for user:", session.user.id);
+    console.log(
+      "Seller location information updated for user:",
+      session.user.id,
+    );
 
-    const message = profileCompleted 
-      ? "Location information updated successfully! Your shop profile is now complete." 
+    const message = profileCompleted
+      ? "Location information updated successfully! Your shop profile is now complete."
       : "Location information updated successfully!";
 
     return { success: true, message, profileCompleted };
   } catch (error) {
     console.error("Error updating seller location information:", error);
-    return { success: false, error: "Failed to update seller location information" };
+    return {
+      success: false,
+      error: "Failed to update seller location information",
+    };
   }
 }
 
@@ -110,6 +131,8 @@ export const getSellerInfo = async () => {
       where: { userId: session.user.id },
       select: {
         acceptsCustom: true,
+        preferredCurrency: true,
+        customOrderMinBudgetMinor: true,
         shopCountry: true,
         encryptedShopState: true,
         shopStateIV: true,
@@ -124,7 +147,7 @@ export const getSellerInfo = async () => {
         user: {
           select: {
             status: true,
-          }
+          },
         },
       },
     });
@@ -143,9 +166,23 @@ export const getSellerInfo = async () => {
       citySalt: seller.shopCitySalt || undefined,
     });
 
+    const prefCur = seller.preferredCurrency || "USD";
+    const minor = seller.customOrderMinBudgetMinor;
+    let customOrderMinBudgetInput = "";
+    if (minor != null && minor >= 0) {
+      const major = minorToMajorAmount(minor, prefCur);
+      const d = getCurrencyDecimals(prefCur);
+      customOrderMinBudgetInput =
+        d === 0
+          ? String(Math.round(major))
+          : String(parseFloat(major.toFixed(d)));
+    }
+
     const data = {
       isVacationMode: seller.user.status === "VACATION",
       acceptsCustom: seller.acceptsCustom,
+      preferredCurrency: prefCur,
+      customOrderMinBudgetInput,
       shopCountry: seller.shopCountry || "US",
       shopState: decryptedLocation.state || "",
       shopCity: decryptedLocation.city || "",
@@ -158,6 +195,8 @@ export const getSellerInfo = async () => {
     return { data };
   } catch (error) {
     console.error("Error fetching seller info:", error);
-    return { error: "Something went wrong while fetching location information." };
+    return {
+      error: "Something went wrong while fetching location information.",
+    };
   }
-}; 
+};

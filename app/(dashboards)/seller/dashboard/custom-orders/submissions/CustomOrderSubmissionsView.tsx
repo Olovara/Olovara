@@ -31,10 +31,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import CustomOrderSubmissionDetailModal from "@/components/seller/CustomOrderSubmissionDetailModal";
 import RejectCustomOrderSubmissionDialog from "@/components/seller/RejectCustomOrderSubmissionDialog";
+import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
 import { updateSubmissionStatus } from "@/actions/customOrderFormActions";
 import { ensureConversationForCustomOrderSubmission } from "@/actions/conversationActions";
 import { toast } from "sonner";
-import { Check, Eye, Inbox, MessageCircle, MoreHorizontal, XCircle } from "lucide-react";
+import {
+  Check,
+  Eye,
+  Inbox,
+  MessageCircle,
+  MoreHorizontal,
+  Send,
+  XCircle,
+} from "lucide-react";
 
 export type SubmissionListItem = {
   id: string;
@@ -62,6 +71,7 @@ function statusBadgeVariant(
   switch (status) {
     case "PENDING":
       return "secondary";
+    case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
     case "READY_FOR_FINAL_PAYMENT":
@@ -94,18 +104,22 @@ function SubmissionActionsDropdown({
   onView,
   onAccept,
   onOpenRejectDialog,
+  onOpenQuoteDialog,
   onMessageBuyer,
   acceptDisabled: acceptOff,
   rejectDisabled: rejectOff,
+  quoteDisabled: quoteOff,
 }: {
   s: SubmissionListItem;
   busySubmissionId: string | null;
   onView: (id: string) => void;
   onAccept: (id: string) => void;
   onOpenRejectDialog: (id: string) => void;
+  onOpenQuoteDialog: (id: string, currency: string) => void;
   onMessageBuyer: (id: string) => void;
   acceptDisabled: (status: string) => boolean;
   rejectDisabled: (status: string) => boolean;
+  quoteDisabled: (status: string) => boolean;
 }) {
   return (
     <DropdownMenu>
@@ -133,6 +147,14 @@ function SubmissionActionsDropdown({
           View details
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={busySubmissionId === s.id || quoteOff(s.status)}
+          onClick={() => onOpenQuoteDialog(s.id, s.currency)}
+          className="cursor-pointer data-[highlighted]:bg-brand-primary-700 data-[highlighted]:text-brand-light-neutral-50 focus:bg-brand-primary-700 focus:text-brand-light-neutral-50"
+        >
+          <Send className="mr-2 h-4 w-4" />
+          {s.status === "QUOTED" ? "Update quote" : "Send quote"}
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={busySubmissionId === s.id || acceptOff(s.status)}
           onClick={() => void onAccept(s.id)}
@@ -181,6 +203,9 @@ export default function CustomOrderSubmissionsView({
   const [busySubmissionId, setBusySubmissionId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
+  const [quoteTargetId, setQuoteTargetId] = useState<string | null>(null);
+  const [quoteCurrency, setQuoteCurrency] = useState("USD");
   const [detailRefreshTrigger, setDetailRefreshTrigger] = useState(0);
 
   const filterValue = initialFormId ?? "all";
@@ -193,6 +218,12 @@ export default function CustomOrderSubmissionsView({
   const openSubmissionDetail = (id: string) => {
     setDetailSubmissionId(id);
     setDetailOpen(true);
+  };
+
+  const openQuoteDialog = (id: string, currency: string) => {
+    setQuoteTargetId(id);
+    setQuoteCurrency(currency?.trim() || "USD");
+    setQuoteDialogOpen(true);
   };
 
   const handleAccept = async (submissionId: string) => {
@@ -238,7 +269,15 @@ export default function CustomOrderSubmissionsView({
   const acceptDisabled = (status: string) =>
     status === "APPROVED" ||
     status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED";
+    status === "COMPLETED" ||
+    status !== "QUOTED";
+
+  const quoteDisabled = (status: string) =>
+    status === "APPROVED" ||
+    status === "REVIEWED" ||
+    status === "READY_FOR_FINAL_PAYMENT" ||
+    status === "COMPLETED" ||
+    status === "REJECTED";
 
   const rejectDisabled = (status: string) =>
     status === "REJECTED" || status === "COMPLETED";
@@ -268,6 +307,19 @@ export default function CustomOrderSubmissionsView({
         }}
         submissionId={rejectTargetId}
         onRejected={() => {
+          router.refresh();
+          setDetailRefreshTrigger((n) => n + 1);
+        }}
+      />
+      <SendCustomOrderQuoteDialog
+        open={quoteDialogOpen}
+        onOpenChange={(next) => {
+          setQuoteDialogOpen(next);
+          if (!next) setQuoteTargetId(null);
+        }}
+        submissionId={quoteTargetId}
+        currency={quoteCurrency}
+        onSent={() => {
           router.refresh();
           setDetailRefreshTrigger((n) => n + 1);
         }}
@@ -425,9 +477,11 @@ export default function CustomOrderSubmissionsView({
                             onView={openSubmissionDetail}
                             onAccept={handleAccept}
                             onOpenRejectDialog={openRejectDialog}
+                            onOpenQuoteDialog={openQuoteDialog}
                             onMessageBuyer={handleMessageBuyer}
                             acceptDisabled={acceptDisabled}
                             rejectDisabled={rejectDisabled}
+                            quoteDisabled={quoteDisabled}
                           />
                         </TableCell>
                       </TableRow>
@@ -459,9 +513,11 @@ export default function CustomOrderSubmissionsView({
                           onView={openSubmissionDetail}
                           onAccept={handleAccept}
                           onOpenRejectDialog={openRejectDialog}
+                          onOpenQuoteDialog={openQuoteDialog}
                           onMessageBuyer={handleMessageBuyer}
                           acceptDisabled={acceptDisabled}
                           rejectDisabled={rejectDisabled}
+                          quoteDisabled={quoteDisabled}
                         />
                       </div>
 
