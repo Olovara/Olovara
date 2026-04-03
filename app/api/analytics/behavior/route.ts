@@ -7,6 +7,8 @@ import {
   EnhancedAnalyticsService,
 } from "@/lib/analytics";
 import { logError } from "@/lib/error-logger";
+import { getUserAnalytics } from "@/lib/ipinfo";
+import { extractLocationData } from "@/lib/search-analytics";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = 'force-dynamic';
@@ -55,6 +57,24 @@ export async function POST(req: NextRequest) {
       "unknown";
     const userAgent = req.headers.get("user-agent") || undefined;
 
+    // One IP lookup per batch — same pipeline as search analytics (minimal { country, region })
+    let sessionLocation: { country?: string | null; region?: string | null } | null =
+      null;
+    if (clientIP && clientIP !== "unknown") {
+      try {
+        const fullGeo = await getUserAnalytics(clientIP);
+        const extracted = extractLocationData(fullGeo);
+        if (extracted?.country || extracted?.region) {
+          sessionLocation = extracted;
+        }
+      } catch (e) {
+        console.warn(
+          "[analytics/behavior] IP geolocation for product/shop interactions failed:",
+          e
+        );
+      }
+    }
+
     // Process each event based on its type
     const processedEvents = [];
 
@@ -92,6 +112,7 @@ export async function POST(req: NextRequest) {
               deviceId,
               ipAddress: clientIP,
               userAgent,
+              location: sessionLocation ?? undefined,
             });
           }
           break;
@@ -114,6 +135,7 @@ export async function POST(req: NextRequest) {
               deviceId,
               ipAddress: clientIP,
               userAgent,
+              location: sessionLocation ?? undefined,
             });
           }
           break;
