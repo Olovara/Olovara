@@ -37,7 +37,7 @@ const nextConfig = {
       // Allow server actions to work with custom server
       allowedOrigins:
         process.env.NODE_ENV === "production"
-          ? ["https://yarnnu.com", "https://www.yarnnu.com"]
+          ? ["https://olovara.com", "https://www.olovara.com"]
           : ["http://localhost:3000"],
     },
   },
@@ -62,7 +62,7 @@ const nextConfig = {
             value: "http",
           },
         ],
-        destination: "https://yarnnu.com/:path*",
+        destination: "https://olovara.com/:path*",
         permanent: true,
       },
       // Redirect www to non-www
@@ -71,10 +71,10 @@ const nextConfig = {
         has: [
           {
             type: "host",
-            value: "www.yarnnu.com",
+            value: "www.olovara.com",
           },
         ],
-        destination: "https://yarnnu.com/:path*",
+        destination: "https://olovara.com/:path*",
         permanent: true,
       },
     ];

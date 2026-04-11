@@ -85,9 +85,9 @@ const SellerApplicationForm = () => {
         // Clear any cached permissions to force fresh fetch
         console.log("SellerApplicationForm - Clearing cached permissions...");
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('yarnnu_user_permissions');
-          localStorage.removeItem('yarnnu_user_role');
-          localStorage.removeItem('yarnnu_permissions_timestamp');
+          localStorage.removeItem('olovara_user_permissions');
+          localStorage.removeItem('olovara_user_role');
+          localStorage.removeItem('olovara_permissions_timestamp');
         }
         
         // Show the first name modal instead of redirecting
@@ -123,7 +123,7 @@ const SellerApplicationForm = () => {
             <CardHeader className="space-y-4">
               <CardTitle className="text-3xl font-bold text-brand-dark-neutral-900">Seller Application</CardTitle>
               <CardDescription className="text-lg text-brand-dark-neutral-600">
-              We&apos;re proud to showcase only authentic handmade products. Your application helps us understand your work, your story, and how we can help your brand grow. Whether you&apos;re just starting or already selling worldwide, Yarnnu is your platform to shine.
+              We&apos;re proud to showcase only authentic handmade products. Your application helps us understand your work, your story, and how we can help your brand grow. Whether you&apos;re just starting or already selling worldwide, OLOVARA is your platform to shine.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-y-8">
@@ -221,15 +221,15 @@ const SellerApplicationForm = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <h3 className="text-xl font-semibold text-brand-primary-800">Why Join Yarnnu?</h3>
+                <h3 className="text-xl font-semibold text-brand-primary-800">Why Join OLOVARA?</h3>
                 
                 <div className="flex flex-col gap-y-3">
                   <Label htmlFor="seller-application-interestInJoining" className="text-lg font-semibold text-brand-dark-neutral-900">
-                    What is your interest in joining Yarnnu? *
+                    What is your interest in joining OLOVARA? *
                   </Label>
                   <Textarea
                     id="seller-application-interestInJoining"
-                    placeholder="Tell us why you want to sell on Yarnnu and what makes your products special."
+                    placeholder="Tell us why you want to sell on OLOVARA and what makes your products special."
                     {...form.register("interestInJoining")}
                     disabled={isPending}
                     className="min-h-[120px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
@@ -274,14 +274,14 @@ const SellerApplicationForm = () => {
                   </Label>
                   <Input
                     id="seller-application-referralCode"
-                    placeholder="Enter a referral code if you have one (e.g., YARNNU-ABCD-1234)"
+                    placeholder="Enter a referral code if you have one (e.g., OLOVARA-ABCD-1234)"
                     {...form.register("referralCode")}
                     disabled={isPending}
                     type="text"
                     className="text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                   />
                   <p className="text-sm text-brand-dark-neutral-600">
-                    If someone referred you to Yarnnu, enter their referral code here. You get a 2% reduction on commission fees for a month!
+                    If someone referred you to OLOVARA, enter their referral code here. You get a 2% reduction on commission fees for a month!
                   </p>
                   {form.formState.errors.referralCode && (
                     <p className="text-sm text-brand-error-500">{form.formState.errors.referralCode.message}</p>

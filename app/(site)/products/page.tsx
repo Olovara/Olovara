@@ -58,18 +58,18 @@ export async function generateMetadata({
     : "/products";
 
   // Generate dynamic title and description based on filters
-  let title = "Handmade Products | Yarnnu - Unique Artisan Goods";
+  let title = "Handmade Products | OLOVARA - Unique Artisan Goods";
   let description =
     "Browse our collection of unique handcrafted products from talented artisans. Find crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and discover one-of-a-kind treasures.";
 
   if (q) {
-    title = `Search Results for "${q}" | Handmade Products | Yarnnu`;
-    description = `Search results for "${q}" - Find unique handmade products from talented artisans on Yarnnu.`;
+    title = `Search Results for "${q}" | Handmade Products | OLOVARA`;
+    description = `Search results for "${q}" - Find unique handmade products from talented artisans on OLOVARA.`;
   } else if (categories.length > 0) {
     const categoryLabels = categories
       .map((cat) => cat.charAt(0).toUpperCase() + cat.slice(1))
       .join(", ");
-    title = `${categoryLabels} Products | Handmade Goods | Yarnnu`;
+    title = `${categoryLabels} Products | Handmade Goods | OLOVARA`;
     description = `Discover unique ${categoryLabels.toLowerCase()} handmade products from talented artisans. Find one-of-a-kind items crafted with care and attention to detail.`;
   }
 

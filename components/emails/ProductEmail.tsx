@@ -39,7 +39,7 @@ import {
               <Text className="text-2xl font-semibold">Hi there,</Text>
               
               <Text className="text-lg text-gray-600">
-                Thank you for your purchase at Yarnnu!
+                Thank you for your purchase at OLOVARA!
               </Text>
 
               <Section className="mt-6">
@@ -97,7 +97,7 @@ import {
               </Section>
 
               <Text className="text-lg mt-6">
-                Best regards, <br /> The Yarnnu Team
+                Best regards, <br /> The OLOVARA Team
               </Text>
             </Container>
           </Body>

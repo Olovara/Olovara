@@ -15,7 +15,7 @@ export default async function SellerReferralsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Referrals</h1>
           <p className="text-gray-600">
-            Track your referrals and earn rewards for bringing new sellers to Yarnnu
+            Track your referrals and earn rewards for bringing new sellers to OLOVARA
           </p>
         </div>
         

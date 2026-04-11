@@ -51,9 +51,9 @@ const SellerOnboardingDashboard = () => {
   const handleGoToDashboard = async () => {
     // Clear permission cache to force fresh role fetch
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('yarnnu_user_permissions');
-      localStorage.removeItem('yarnnu_user_role');
-      localStorage.removeItem('yarnnu_permissions_timestamp');
+      localStorage.removeItem('olovara_user_permissions');
+      localStorage.removeItem('olovara_user_role');
+      localStorage.removeItem('olovara_permissions_timestamp');
     }
     // Refresh permissions to get latest role
     await refreshPermissions();

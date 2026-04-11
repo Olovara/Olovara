@@ -6,12 +6,12 @@ interface WebsiteStructuredDataProps {
 }
 
 export function WebsiteStructuredData({ pageType, categoryName }: WebsiteStructuredDataProps) {
-  const baseUrl = "https://yarnnu.com";
+  const baseUrl = "https://olovara.com";
   
   const baseStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "Yarnnu",
+    "name": "OLOVARA",
     "description": "Your marketplace for high-quality handcrafted goods",
     "url": baseUrl,
     "potentialAction": {
@@ -27,7 +27,7 @@ export function WebsiteStructuredData({ pageType, categoryName }: WebsiteStructu
         return {
           "@context": "https://schema.org",
           "@type": "Organization",
-          "name": "Yarnnu",
+          "name": "OLOVARA",
           "description": "Your marketplace for high-quality handcrafted goods",
           "url": baseUrl,
           "logo": `${baseUrl}/logo.png`,
@@ -55,7 +55,7 @@ export function WebsiteStructuredData({ pageType, categoryName }: WebsiteStructu
         return {
           "@context": "https://schema.org",
           "@type": "Blog",
-          "name": "Yarnnu Blog",
+          "name": "OLOVARA Blog",
           "description": "Discover articles, guides, and insights about handmade crafts, selling tips, and marketplace updates",
           "url": `${baseUrl}/blog`
         };
@@ -64,7 +64,7 @@ export function WebsiteStructuredData({ pageType, categoryName }: WebsiteStructu
           "@context": "https://schema.org",
           "@type": "WebPage",
           "name": "Feature Suggestions & Feedback",
-          "description": "Share your ideas and feedback to help improve Yarnnu",
+          "description": "Share your ideas and feedback to help improve OLOVARA",
           "url": `${baseUrl}/suggestions`
         };
       case 'categories':

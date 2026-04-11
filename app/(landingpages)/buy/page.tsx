@@ -27,9 +27,9 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Why Shop on Yarnnu – Real Handmade Only",
+  title: "Why Shop on OLOVARA – Real Handmade Only",
   description:
-    "Discover real handmade goods from verified independent makers. No dropshipping, no factories – just authentic craft and unique gifts on Yarnnu.",
+    "Discover real handmade goods from verified independent makers. No dropshipping, no factories – just authentic craft and unique gifts on OLOVARA.",
 };
 
 export default function BuyLandingPage() {
@@ -94,7 +94,7 @@ export default function BuyLandingPage() {
               <div className="aspect-[4/3] relative">
                 <Image
                   src="/images/handmade-lifestyle.jpg"
-                  alt="Lifestyle scene of handmade products from independent makers on Yarnnu"
+                  alt="Lifestyle scene of handmade products from independent makers on OLOVARA"
                   fill
                   className="object-cover"
                   priority
@@ -186,7 +186,7 @@ export default function BuyLandingPage() {
         </div>
       </section>
 
-      {/* Yarnnu Difference */}
+      {/* OLOVARA Difference */}
       <section className="py-16 md:py-20 bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-900 text-white">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
           <div className="max-w-2xl mb-10">
@@ -194,7 +194,7 @@ export default function BuyLandingPage() {
               A Marketplace Built for Real Handmade
             </h2>
             <p className="text-lg text-purple-100">
-              Yarnnu is designed from the ground up to protect buyers and makers
+              OLOVARA is designed from the ground up to protect buyers and makers
               who care about authenticity, quality, and story.
             </p>
           </div>
@@ -455,7 +455,7 @@ export default function BuyLandingPage() {
             <p className="text-base text-gray-600 mb-2">— Sarah M.</p>
             <p className="text-sm text-gray-500">
               Bought a hand-knit baby blanket and custom ceramic mug set on
-              Yarnnu.
+              OLOVARA.
             </p>
           </div>
 
@@ -496,7 +496,7 @@ export default function BuyLandingPage() {
               Our Handmade Promise
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl">
-              Yarnnu is built for genuine handmade work. We aggressively remove
+              OLOVARA is built for genuine handmade work. We aggressively remove
               anything that doesn&apos;t belong.
             </p>
           </div>

@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Yarnnu - Handmade Marketplace',
-    short_name: 'Yarnnu',
+    name: 'OLOVARA - Handmade Marketplace',
+    short_name: 'OLOVARA',
     description: 'Discover unique handmade products from talented artisans around the world',
     start_url: '/',
     display: 'standalone',

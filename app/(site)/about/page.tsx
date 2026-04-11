@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Our Story | Yarnnu - Where Human Creativity Finds a Home",
+  title: "Our Story | OLOVARA - Where Human Creativity Finds a Home",
   description:
-    "Yarnnu was built to protect the soul of handmade. Discover why we're building a marketplace that puts people above algorithms and artisans above investors.",
+    "OLOVARA was built to protect the soul of handmade. Discover why we're building a marketplace that puts people above algorithms and artisans above investors.",
 };
 
 export default function AboutUs() {
@@ -28,7 +28,7 @@ export default function AboutUs() {
               variant="outline"
               className="mb-6 px-4 py-1 text-sm font-medium border-brand-primary-300 text-brand-primary-800 bg-white"
             >
-              The Yarnnu Mission
+              The OLOVARA Mission
             </Badge>
 
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-brand-dark-neutral-900 mb-6 leading-tight">
@@ -101,7 +101,7 @@ export default function AboutUs() {
                   </div>
                   <p className="text-brand-dark-neutral-700">
                     <strong>No Dropshipping:</strong> If it&apos;s not handmade
-                    by you, it&apos;s not on Yarnnu.
+                    by you, it&apos;s not on OLOVARA.
                   </p>
                 </div>
                 <div className="flex gap-4">
@@ -228,12 +228,12 @@ export default function AboutUs() {
                 artistry.&quot;
               </p>
               <p className="text-lg text-brand-dark-neutral-700 mb-6">
-                I built Yarnnu because I believe the world needs more things
+                I built OLOVARA because I believe the world needs more things
                 made with love and fewer things made by machines. We aren&apos;t
                 here to be the biggest marketplace just the most authentic one.
               </p>
               <p className="font-bold text-brand-dark-neutral-900">
-                — Simeon, Founder of Yarnnu
+                — Simeon, Founder of OLOVARA
               </p>
             </div>
           </div>

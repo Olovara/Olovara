@@ -208,7 +208,7 @@ export type WebsitePreviewProps = {
   page?: WebsitePage
 }
 
-// Subscription Plan Features for Yarnnu
+// Subscription Plan Features for OLOVARA
 export const SUBSCRIPTION_FEATURES = {
   STARTER: [
     'Marketplace access',
@@ -253,6 +253,6 @@ export const WEBSITE_BUILDER_LIMITS = {
 } as const
 
 // Media Types (placeholder for future implementation)
-// TODO: Implement media types for Yarnnu
+// TODO: Implement media types for OLOVARA
 // export type GetMediaFiles = Prisma.PromiseReturnType<typeof getMedia>
 // export type CreateMediaType = Prisma.MediaCreateWithoutSubaccountInput

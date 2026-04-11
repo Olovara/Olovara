@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Yarnnu marketplace implements a comprehensive payment processing system with fraud prevention, seller protection, and secure digital delivery. This document covers all aspects of the payment flow, from checkout to seller payout.
+The OLOVARA marketplace implements a comprehensive payment processing system with fraud prevention, seller protection, and secure digital delivery. This document covers all aspects of the payment flow, from checkout to seller payout.
 
 ## Table of Contents
 

@@ -6,7 +6,7 @@ import { currentUserWithPermissions } from "@/lib/auth";
 import { logError } from "@/lib/error-logger";
 
 // Send email response to a contact submission
-// Always sends from support@yarnnu.com regardless of which admin sends it
+// Always sends from support@olovara.com regardless of which admin sends it
 export async function sendContactResponse(
   submissionId: string,
   responseMessage: string
@@ -85,7 +85,7 @@ export async function sendContactResponse(
       originalMessageLength: submission.helpDescription?.length,
     });
 
-    // Send the email response (always from support@yarnnu.com)
+    // Send the email response (always from support@olovara.com)
     // IMPORTANT: First parameter is customerEmail - the person who submitted the form
     await sendContactResponseEmail(
       customerEmail, // Customer's email (the person who submitted contact form)

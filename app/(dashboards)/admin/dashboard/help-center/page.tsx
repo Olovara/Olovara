@@ -309,7 +309,7 @@ export default function HelpCenterDashboard() {
             Help Center Management
           </h1>
           <p className="text-muted-foreground">
-            Manage help articles and categories for the Yarnnu marketplace
+            Manage help articles and categories for the OLOVARA marketplace
           </p>
         </div>
         <div className="flex items-center space-x-2">

@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
-  title: "Setting Up Your Shop | Help Center | Yarnnu",
+  title: "Setting Up Your Shop | Help Center | OLOVARA",
   description:
-    "Complete guide to setting up and customizing your Yarnnu shop. Learn about shop profiles, branding, and optimization.",
+    "Complete guide to setting up and customizing your OLOVARA shop. Learn about shop profiles, branding, and optimization.",
 };
 
 const setupSteps = [
@@ -134,7 +134,7 @@ const setupSteps = [
 const shopElements = [
   {
     title: "Shop Name",
-    description: "Your unique identifier on Yarnnu",
+    description: "Your unique identifier on OLOVARA",
     importance: "Critical",
     tips: [
       "Must be unique across the platform",
@@ -297,7 +297,7 @@ export default function ShopSetupPage() {
         </h1>
         <p className="text-lg text-gray-600">
           Complete guide to creating and customizing your shop profile on
-          Yarnnu. Learn how to build a professional, discoverable shop that
+          OLOVARA. Learn how to build a professional, discoverable shop that
           attracts customers and builds trust.
         </p>
       </div>
@@ -319,7 +319,7 @@ export default function ShopSetupPage() {
         </h2>
         <p className="text-gray-600">
           Your shop profile consists of several key elements that work together
-          to create a professional, trustworthy presence on Yarnnu:
+          to create a professional, trustworthy presence on OLOVARA:
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

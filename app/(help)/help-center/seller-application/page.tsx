@@ -15,15 +15,15 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export const metadata: Metadata = {
-  title: "Seller Application Process | Help Center | Yarnnu",
-  description: "Complete step-by-step guide to applying as a seller on Yarnnu. Learn about requirements, verification, and approval process.",
+  title: "Seller Application Process | Help Center | OLOVARA",
+  description: "Complete step-by-step guide to applying as a seller on OLOVARA. Learn about requirements, verification, and approval process.",
 }
 
 const applicationSteps = [
   {
     step: 1,
     title: "Create Your Account",
-    description: "Start by creating a Yarnnu account if you don't have one already",
+    description: "Start by creating a OLOVARA account if you don't have one already",
     details: [
       "Sign up with your email address",
       "Verify your email through the confirmation link",
@@ -31,7 +31,7 @@ const applicationSteps = [
     ],
     tips: [
       "Use a professional email address that you check regularly",
-      "Keep your password secure and unique to Yarnnu",
+      "Keep your password secure and unique to OLOVARA",
     ],
     estimatedTime: "5 minutes"
   },
@@ -50,7 +50,7 @@ const applicationSteps = [
       "Be detailed and honest in your responses",
       "Include specific examples of your work",
       "Demonstrate your passion for handmade crafts",
-      "Show understanding of Yarnnu's handmade-only policy",
+      "Show understanding of OLOVARA's handmade-only policy",
       "Don't worry if you don't have an online presence yet"
     ],
     estimatedTime: "15-20 minutes"
@@ -162,7 +162,7 @@ const commonReasons = [
   },
   {
     reason: "Policy Violations",
-    description: "Application violates Yarnnu's terms or policies",
+    description: "Application violates OLOVARA's terms or policies",
     solution: "Review and comply with all platform policies"
   }
 ]
@@ -184,7 +184,7 @@ export default function SellerApplicationPage() {
           Seller Application Process
         </h1>
         <p className="text-lg text-gray-600">
-          Complete step-by-step guide to becoming a seller on Yarnnu. Learn about requirements, the application process, and what to expect.
+          Complete step-by-step guide to becoming a seller on OLOVARA. Learn about requirements, the application process, and what to expect.
         </p>
       </div>
 

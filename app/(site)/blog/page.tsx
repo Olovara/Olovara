@@ -143,15 +143,15 @@ export async function generateMetadata({
 
   // Generate dynamic title and description based on category filter
   let title =
-    "Blog - Handmade Crafts, Selling Tips & Marketplace Updates | Yarnnu";
+    "Blog - Handmade Crafts, Selling Tips & Marketplace Updates | OLOVARA";
   let description =
     "Discover expert articles, guides, and insights about handmade crafts, selling tips, and marketplace updates. Learn from experienced artisans and grow your handmade business.";
 
   if (category) {
     const categoryLabel =
       category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, " ");
-    title = `${categoryLabel} Articles | Handmade Crafts Blog | Yarnnu`;
-    description = `Browse ${categoryLabel.toLowerCase()} articles and guides for handmade crafts and selling tips. Expert advice from experienced artisans on Yarnnu.`;
+    title = `${categoryLabel} Articles | Handmade Crafts Blog | OLOVARA`;
+    description = `Browse ${categoryLabel.toLowerCase()} articles and guides for handmade crafts and selling tips. Expert advice from experienced artisans on OLOVARA.`;
   }
 
   return {

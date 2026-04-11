@@ -110,7 +110,7 @@ model User {
   passwordHash          String?
   image                 String?
   preferredCurrency     String                 @default("USD") // Store user's preferred currency
-  referralCode          String?                @unique // Unique referral code in format YARNNU-XXXX-XXXX
+  referralCode          String?                @unique // Unique referral code in format OLOVARA-XXXX-XXXX
   referredBy            String?                // referralCode of referrer
   referralCount         Int                    @default(0) // how many people they've referred
   
@@ -1782,7 +1782,7 @@ model Wishlist {
   name            String
   description     String?
   coverImage      String?        // Auto-generated from first item if blank
-  slug            String         @unique // For clean URLs like yarnnu.com/w/xmas2025-abc123
+  slug            String         @unique // For clean URLs like olovara.com/w/xmas2025-abc123
   privacy         WishlistPrivacy @default(PRIVATE)
   allowPurchases  Boolean        @default(false) // Can others buy directly from this wishlist?
   hideOnPurchase  Boolean        @default(false) // Hide items when purchased (surprise mode)
@@ -1855,7 +1855,7 @@ model Website {
   name          String
   description   String?
   published     Boolean      @default(false)
-  subDomainName String?      @unique // For subdomain like seller.yarnnu.com
+  subDomainName String?      @unique // For subdomain like seller.olovara.com
   customDomain  String?      @unique // Custom domain if available
   favicon       String?      // Favicon URL
   websiteSlug   String?      @unique // URL slug for the website
@@ -1899,7 +1899,7 @@ model WebsitePage {
   @@index([order])
 }
 
-// Subscription Plans for Yarnnu (Starter, Maker, Studio)
+// Subscription Plans for OLOVARA (Starter, Maker, Studio)
 model SubscriptionPlan {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String   @unique // "STARTER", "MAKER", "STUDIO"
@@ -1935,7 +1935,7 @@ model SellerSubscription {
   
   // Website Builder specific (only available in Studio plan)
   customDomain          String?
-  websiteSlug           String?           @unique // For subdomain like seller.yarnnu.com
+  websiteSlug           String?           @unique // For subdomain like seller.olovara.com
   
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt

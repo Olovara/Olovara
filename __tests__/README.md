@@ -1,7 +1,7 @@
-# Testing Setup for Yarnnu Marketplace
+# Testing Setup for OLOVARA Marketplace
 
 ## Overview
-This directory contains tests for the Yarnnu marketplace application. We're setting up Jest with React Testing Library for comprehensive component and integration testing.
+This directory contains tests for the OLOVARA marketplace application. We're setting up Jest with React Testing Library for comprehensive component and integration testing.
 
 ## Setup Instructions
 

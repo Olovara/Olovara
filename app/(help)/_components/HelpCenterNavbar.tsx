@@ -27,13 +27,13 @@ export async function HelpCenterNavbar() {
             {/* Divider */}
             <div className="w-px h-6 bg-gray-300" />
 
-            {/* Back to Yarnnu Home */}
+            {/* Back to OLOVARA Home */}
             <Link
               href="/"
               className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors"
             >
               <Home className="h-4 w-4" />
-              <span className="text-sm font-medium">Yarnnu Home</span>
+              <span className="text-sm font-medium">OLOVARA Home</span>
             </Link>
           </div>
 

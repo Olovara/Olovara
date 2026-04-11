@@ -42,7 +42,7 @@ export default function MemberDashboardTopNavbar({
           >
             <SheetHeader>
               <Link href="/">
-                <SheetTitle>Yarnnu</SheetTitle>
+                <SheetTitle>OLOVARA</SheetTitle>
               </Link>
             </SheetHeader>
             <div className="flex flex-col space-y-3 mt-[1rem]">

@@ -37,7 +37,7 @@ export async function generateMetadata({
     : "/shops";
 
   // Generate dynamic title and description based on filters
-  let title = "Handmade Shops | Yarnnu - Discover Artisan Marketplaces";
+  let title = "Handmade Shops | OLOVARA - Discover Artisan Marketplaces";
   let description =
     "Browse our curated collection of handcrafted shops from talented artisans worldwide. Find woman-owned, minority-owned, LGBTQ+ owned, veteran-owned, sustainable, and charitable businesses. Support independent creators and discover unique handmade products.";
 
@@ -54,8 +54,8 @@ export async function generateMetadata({
     const filterLabels = values
       .map((v) => valueLabels[v as keyof typeof valueLabels])
       .join(", ");
-    title = `${filterLabels} Handmade Shops | Yarnnu - Support Diverse Artisans`;
-    description = `Discover ${filterLabels.toLowerCase()} handmade shops and support diverse artisans on Yarnnu. Find unique handcrafted products from talented creators who align with your values.`;
+    title = `${filterLabels} Handmade Shops | OLOVARA - Support Diverse Artisans`;
+    description = `Discover ${filterLabels.toLowerCase()} handmade shops and support diverse artisans on OLOVARA. Find unique handcrafted products from talented creators who align with your values.`;
   }
 
   return {

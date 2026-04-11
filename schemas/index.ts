@@ -143,7 +143,7 @@ export const RegisterSchema = z
     message: "Passwords do not match.",
     path: ["passwordConfirmation"],
   })
-  .refine((data) => !data.username.toLowerCase().includes("yarnnu"), {
-    message: "Username cannot contain 'Yarnnu'.",
+  .refine((data) => !data.username.toLowerCase().includes("OLOVARA"), {
+    message: "Username cannot contain 'OLOVARA'.",
     path: ["username"],
   });

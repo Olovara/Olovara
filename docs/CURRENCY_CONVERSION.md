@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Yarnnu marketplace implements a highly optimized multi-currency conversion system that supports real-time price conversion for products across 45+ supported currencies. The system uses intelligent caching, batching, and rate limiting to ensure fast performance even with hundreds of products.
+The OLOVARA marketplace implements a highly optimized multi-currency conversion system that supports real-time price conversion for products across 45+ supported currencies. The system uses intelligent caching, batching, and rate limiting to ensure fast performance even with hundreds of products.
 
 ## Table of Contents
 

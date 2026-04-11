@@ -124,10 +124,10 @@ export default function ShopNamingForm() {
           "Shop name can only contain letters, numbers, spaces, hyphens, underscores, and ampersands",
         type: "error",
       });
-    } else if (trimmedName.toLowerCase().includes("yarnnu")) {
+    } else if (trimmedName.toLowerCase().includes("OLOVARA")) {
       setNameValidation({
         isValid: false,
-        message: "Shop name cannot contain 'Yarnnu'",
+        message: "Shop name cannot contain 'OLOVARA'",
         type: "error",
       });
     } else {
@@ -291,7 +291,7 @@ export default function ShopNamingForm() {
                   • Letters, numbers, spaces, hyphens, underscores, and
                   ampersands only
                 </li>
-                <li>• Cannot contain &quot;Yarnnu&quot;</li>
+                <li>• Cannot contain &quot;OLOVARA&quot;</li>
                 <li>• Should reflect your style and products</li>
                 <li>• Easy to remember and spell</li>
               </ul>

@@ -9,8 +9,8 @@ import { decryptData } from "@/lib/encryption";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Seller Dashboard | Manage Your Handmade Business | Yarnnu",
-  description: "Manage your handmade business on Yarnnu. Track sales, manage products, handle orders, and grow your artisan shop. Complete dashboard for handmade sellers.",
+  title: "Seller Dashboard | Manage Your Handmade Business | OLOVARA",
+  description: "Manage your handmade business on OLOVARA. Track sales, manage products, handle orders, and grow your artisan shop. Complete dashboard for handmade sellers.",
   keywords: [
     "seller dashboard",
     "handmade business management",

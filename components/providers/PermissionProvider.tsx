@@ -34,9 +34,9 @@ const PermissionContext = createContext<PermissionContextType | undefined>(
 );
 
 // localStorage keys
-const PERMISSIONS_STORAGE_KEY = "yarnnu_user_permissions";
-const ROLE_STORAGE_KEY = "yarnnu_user_role";
-const PERMISSIONS_TIMESTAMP_KEY = "yarnnu_permissions_timestamp";
+const PERMISSIONS_STORAGE_KEY = "olovara_user_permissions";
+const ROLE_STORAGE_KEY = "olovara_user_role";
+const PERMISSIONS_TIMESTAMP_KEY = "olovara_permissions_timestamp";
 const PERMISSIONS_CACHE_DURATION = 1 * 60 * 1000; // 1 minute (reduced from 5 to prevent stale data)
 
 export function PermissionProvider({ children }: { children: ReactNode }) {

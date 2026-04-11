@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { EditorBtns } from '@/lib/constants'
 import { getWebsiteDetails } from '@/lib/queries'
-// TODO: Implement contact form functionality for Yarnnu
+// TODO: Implement contact form functionality for OLOVARA
 // import {
 //   getWebsite,
 //   saveActivityLogsNotification,
@@ -78,7 +78,7 @@ const ContactFormComponent = (props: Props) => {
     if (!state.editor.liveMode) return
 
     try {
-      // TODO: Implement contact form submission for Yarnnu
+      // TODO: Implement contact form submission for OLOVARA
       console.log('Contact form submitted:', values)
       toast({
         title: 'Success',

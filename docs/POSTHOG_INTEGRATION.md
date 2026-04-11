@@ -1,6 +1,6 @@
 # PostHog Analytics Integration
 
-This document explains how PostHog analytics is integrated into your Yarnnu marketplace and how to use it effectively.
+This document explains how PostHog analytics is integrated into your OLOVARA marketplace and how to use it effectively.
 
 ## Setup
 

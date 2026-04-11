@@ -37,7 +37,7 @@ export const SellerApplicationInformationRequestEmail = ({
             <Text style={text}>Hello {sellerName},</Text>
 
             <Text style={text}>
-              Thank you for your interest in becoming a seller on Yarnnu.
+              Thank you for your interest in becoming a seller on OLOVARA.
               We&apos;ve reviewed your application and need some additional
               information to complete our review process.
             </Text>

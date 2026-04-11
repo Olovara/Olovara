@@ -131,8 +131,8 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
     return { error: "Invalid fields." };
   }
 
-  // Check if username contains "yarnnu" (case-insensitive)
-  if (username.toLowerCase().includes("yarnnu")) {
+  // Check if username contains "OLOVARA" (case-insensitive)
+  if (username.toLowerCase().includes("OLOVARA")) {
     logError({
       code: "REGISTER_INVALID_USERNAME",
       route: "actions/register",
@@ -143,11 +143,11 @@ export const register = async (values: z.infer<typeof RegisterSchema>, redirectT
         clientIP,
         userAgent,
         timestamp: new Date().toISOString(),
-        reason: "Username contains 'yarnnu' which is not allowed",
+        reason: "Username contains 'OLOVARA' which is not allowed",
       },
       message: "Invalid username attempted",
     });
-    return { error: "Username cannot contain 'Yarnnu'." };
+    return { error: "Username cannot contain 'OLOVARA'." };
   }
 
   // Get location preferences for the user

@@ -2480,7 +2480,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                       product will appear in{" "}
                       <strong>{selectedSeller.shopName}</strong>&apos;s shop and
                       will be associated with their Stripe account. All sales
-                      will go to the seller, not to Yarnnu.
+                      will go to the seller, not to OLOVARA.
                     </p>
                   </div>
                 </div>

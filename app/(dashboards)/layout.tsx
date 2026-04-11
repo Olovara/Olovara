@@ -7,9 +7,9 @@ import { FONTS } from "@/lib/fonts";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Dashboard | Yarnnu - Manage Your Account",
+  title: "Dashboard | OLOVARA - Manage Your Account",
   description:
-    "Access your Yarnnu dashboard to manage your account, shop, products, and business settings.",
+    "Access your OLOVARA dashboard to manage your account, shop, products, and business settings.",
   robots: {
     index: false,
     follow: false,

@@ -74,7 +74,7 @@ export function encryptData(data: string): {
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
 
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from("YarnnuMarketplace"));
+    cipher.setAAD(Buffer.from("OlovaraMarketplace"));
 
     // Encrypt the data
     let encrypted = cipher.update(data, "utf8", "hex");
@@ -132,7 +132,7 @@ export function decryptData(
       decipher.setAuthTag(authTag);
 
       // Add associated data for authentication (must match encryption)
-      decipher.setAAD(Buffer.from("YarnnuMarketplace"));
+      decipher.setAAD(Buffer.from("OlovaraMarketplace"));
 
       // Decrypt the data
       let decrypted = decipher.update(encrypted, "hex", "utf8");
@@ -265,7 +265,7 @@ export function encryptOrderData(data: string): {
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
 
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from("YarnnuMarketplace"));
+    cipher.setAAD(Buffer.from("OlovaraMarketplace"));
 
     // Encrypt the data
     let encrypted = cipher.update(data, "utf8", "hex");
@@ -312,7 +312,7 @@ export function decryptOrderData(
     decipher.setAuthTag(authTag);
 
     // Add associated data for authentication (must match encryption)
-    decipher.setAAD(Buffer.from("YarnnuMarketplace"));
+    decipher.setAAD(Buffer.from("OlovaraMarketplace"));
 
     // Decrypt the data
     let decrypted = decipher.update(encrypted, "hex", "utf8");

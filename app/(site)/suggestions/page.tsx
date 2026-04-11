@@ -20,13 +20,13 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     : "/suggestions";
 
   // Generate dynamic title and description based on filters
-  let title = "Feature Suggestions & Feedback | Yarnnu - Help Shape Our Marketplace";
-  let description = "Share your ideas and feedback to help improve Yarnnu. Submit feature requests, bug reports, and suggestions to make our handmade marketplace better for artisans and customers.";
+  let title = "Feature Suggestions & Feedback | OLOVARA - Help Shape Our Marketplace";
+  let description = "Share your ideas and feedback to help improve OLOVARA. Submit feature requests, bug reports, and suggestions to make our handmade marketplace better for artisans and customers.";
   
   if (types.length > 0) {
     const typeLabels = types.map(type => type.charAt(0).toUpperCase() + type.slice(1)).join(", ");
-    title = `${typeLabels} Suggestions | Yarnnu - Help Improve Our Marketplace`;
-    description = `Browse ${typeLabels.toLowerCase()} suggestions and feedback for Yarnnu. Help us improve our handmade marketplace by reviewing and upvoting ideas from our community.`;
+    title = `${typeLabels} Suggestions | OLOVARA - Help Improve Our Marketplace`;
+    description = `Browse ${typeLabels.toLowerCase()} suggestions and feedback for OLOVARA. Help us improve our handmade marketplace by reviewing and upvoting ideas from our community.`;
   }
 
   return {
@@ -119,7 +119,7 @@ export default async function Suggestions({ searchParams }: PageProps) {
             <div>
               <h1 className="text-3xl font-bold">Feature Suggestions</h1>
               <p className="text-muted-foreground mt-1">
-                Help shape Yarnnu by sharing your ideas
+                Help shape OLOVARA by sharing your ideas
               </p>
             </div>
             {session?.user && <CreateSuggestionButton />}
@@ -130,7 +130,7 @@ export default async function Suggestions({ searchParams }: PageProps) {
               <div className="max-w-2xl mx-auto">
                 <h2 className="text-2xl font-semibold mb-4">Be the First to Share Your Ideas!</h2>
                 <p className="text-gray-600 mb-6">
-                  Help us build a better marketplace for artisans and customers. Your feedback and suggestions are invaluable in shaping the future of Yarnnu.
+                  Help us build a better marketplace for artisans and customers. Your feedback and suggestions are invaluable in shaping the future of OLOVARA.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
                   <div className="p-4 bg-gray-50 rounded-lg">

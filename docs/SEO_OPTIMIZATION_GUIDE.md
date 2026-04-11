@@ -1,7 +1,7 @@
-# SEO Optimization Guide for Yarnnu Marketplace
+# SEO Optimization Guide for OLOVARA Marketplace
 
 ## Overview
-This document outlines the comprehensive SEO strategy implemented for the Yarnnu handmade marketplace, including technical optimizations, content strategies, and best practices for both web and AI search engines.
+This document outlines the comprehensive SEO strategy implemented for the OLOVARA handmade marketplace, including technical optimizations, content strategies, and best practices for both web and AI search engines.
 
 ## 🚀 Implemented SEO Features
 
@@ -38,7 +38,7 @@ This document outlines the comprehensive SEO strategy implemented for the Yarnnu
 ### 2. Metadata Optimization
 
 #### Root Layout Metadata
-- **Enhanced title template**: `%s | Yarnnu`
+- **Enhanced title template**: `%s | OLOVARA`
 - **Comprehensive keywords**: Handmade marketplace, artisan products, etc.
 - **Open Graph optimization**: Better social sharing
 - **Twitter Card optimization**: Enhanced Twitter sharing
@@ -252,4 +252,4 @@ This document outlines the comprehensive SEO strategy implemented for the Yarnnu
 - **E-A-T**: Expertise, Authoritativeness, Trustworthiness
 - **User experience**: Prioritize user satisfaction
 
-This comprehensive SEO strategy ensures that Yarnnu marketplace is optimized for both traditional search engines and AI-powered search, providing the best possible visibility and user experience for our handmade marketplace. 
+This comprehensive SEO strategy ensures that OLOVARA marketplace is optimized for both traditional search engines and AI-powered search, providing the best possible visibility and user experience for our handmade marketplace. 

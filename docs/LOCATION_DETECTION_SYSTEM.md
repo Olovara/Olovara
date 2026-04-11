@@ -1,6 +1,6 @@
 # Location Detection System
 
-This document explains how the automatic location and currency detection system works in the Yarnnu marketplace.
+This document explains how the automatic location and currency detection system works in the OLOVARA marketplace.
 
 ## Overview
 

@@ -99,9 +99,9 @@ export default function PaymentSetupForm() {
   const handleContinue = async () => {
     // Clear permissions cache before redirecting
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('yarnnu_user_permissions');
-      localStorage.removeItem('yarnnu_user_role');
-      localStorage.removeItem('yarnnu_permissions_timestamp');
+      localStorage.removeItem('olovara_user_permissions');
+      localStorage.removeItem('olovara_user_role');
+      localStorage.removeItem('olovara_permissions_timestamp');
     }
     // Force a full page reload to ensure fresh permissions
     window.location.href = "/seller/dashboard";
@@ -117,9 +117,9 @@ export default function PaymentSetupForm() {
     try {
       // Clear permissions cache
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('yarnnu_user_permissions');
-        localStorage.removeItem('yarnnu_user_role');
-        localStorage.removeItem('yarnnu_permissions_timestamp');
+        localStorage.removeItem('olovara_user_permissions');
+        localStorage.removeItem('olovara_user_role');
+        localStorage.removeItem('olovara_permissions_timestamp');
       }
       
       // Call clear-cache API to ensure server-side cache is cleared

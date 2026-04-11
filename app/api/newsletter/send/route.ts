@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         const unsubscribeUrl = `${process.env.NEXT_PUBLIC_APP_URL}/newsletter/unsubscribe?email=${encodeURIComponent(subscriber.email)}`;
 
         const { data, error } = await resend.emails.send({
-          from: "Yarnnu <newsletter@yarnnu.com>",
+          from: "OLOVARA <newsletter@olovara.com>",
           to: [subscriber.email],
           subject: validatedData.subject,
           react: NewsletterEmail({

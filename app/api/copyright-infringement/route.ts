@@ -13,7 +13,7 @@ const defaultPolicy = {
     <p>Last updated: ${new Date().toLocaleDateString()}</p>
 
     <h2>1. Intellectual Property Rights</h2>
-    <p>Yarnnu respects intellectual property rights and expects all users to do the same. We prohibit the sale of items that infringe on copyrights, trademarks, or other intellectual property rights.</p>
+    <p>OLOVARA respects intellectual property rights and expects all users to do the same. We prohibit the sale of items that infringe on copyrights, trademarks, or other intellectual property rights.</p>
 
     <h2>2. Reporting Copyright Infringement</h2>
     <p>If you believe your intellectual property rights have been violated, please follow these steps:</p>
@@ -48,14 +48,14 @@ const defaultPolicy = {
     <h2>6. Contact Us</h2>
     <p>To report copyright infringement, please contact us at:</p>
     <ul>
-      <li>Email: copyright@yarnnu.com</li>
+      <li>Email: copyright@olovara.com</li>
       <li>Address: [Your Business Address]</li>
     </ul>
   `,
   text: `Copyright Infringement Policy - Last updated: ${new Date().toLocaleDateString()}
 
 1. Intellectual Property Rights
-Yarnnu respects intellectual property rights and expects all users to do the same. We prohibit the sale of items that infringe on copyrights, trademarks, or other intellectual property rights.
+OLOVARA respects intellectual property rights and expects all users to do the same. We prohibit the sale of items that infringe on copyrights, trademarks, or other intellectual property rights.
 
 2. Reporting Copyright Infringement
 If you believe your intellectual property rights have been violated, please follow these steps:
@@ -83,7 +83,7 @@ We maintain a policy of terminating the accounts of repeat infringers in appropr
 
 6. Contact Us
 To report copyright infringement, please contact us at:
-- Email: copyright@yarnnu.com
+- Email: copyright@olovara.com
 - Address: [Your Business Address]`,
 };
 

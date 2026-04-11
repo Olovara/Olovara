@@ -39,7 +39,7 @@ export const SellerApplicationRejectedEmail = ({
             </Text>
             
             <Text style={text}>
-              Thank you for your interest in becoming a seller on Yarnnu. After careful review of your application, 
+              Thank you for your interest in becoming a seller on OLOVARA. After careful review of your application, 
               we regret to inform you that we are unable to approve your seller application at this time.
             </Text>
             

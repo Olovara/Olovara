@@ -23,7 +23,7 @@ export class UploadThingAdapter implements StorageAdapter {
       // Fetch the image from the URL
       const response: Response = await fetch(imageUrl, {
         headers: {
-          "User-Agent": "Yarnnu-BulkImport/1.0",
+          "User-Agent": "Olovara-BulkImport/1.0",
         },
       });
 

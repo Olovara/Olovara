@@ -69,7 +69,7 @@ Disallow: /payment/
 Disallow: /unauthorized/
 
 # Disallow test content
-Disallow: /shops/yarnnu-test-shop
+Disallow: /shops/olovara-test-shop
 
 # Allow important pages
 Allow: /products
@@ -82,7 +82,7 @@ Allow: /terms-of-service
 Allow: /privacy-policy
 
 # Sitemap location
-Sitemap: https://yarnnu.com/sitemap.xml
+Sitemap: https://olovara.com/sitemap.xml
 
 # Crawl-delay (optional; Google ignores it; some crawlers may honor it)
 Crawl-delay: 1

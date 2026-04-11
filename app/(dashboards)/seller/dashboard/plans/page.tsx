@@ -48,7 +48,7 @@ export default async function SubscriptionPage() {
           <p className="text-muted-foreground">
             {subscriptionsNotSetup 
               ? "Subscription plans are coming soon!" 
-              : "Manage your Yarnnu subscription and access features"
+              : "Manage your OLOVARA subscription and access features"
             }
           </p>
         </div>

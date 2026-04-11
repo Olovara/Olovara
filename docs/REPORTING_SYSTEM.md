@@ -1,6 +1,6 @@
 # Reporting System
 
-The Yarnnu marketplace includes a comprehensive reporting system that allows users to report sellers and products for various violations. This system helps maintain quality standards and community safety.
+The OLOVARA marketplace includes a comprehensive reporting system that allows users to report sellers and products for various violations. This system helps maintain quality standards and community safety.
 
 ## Overview
 

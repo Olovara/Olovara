@@ -52,7 +52,7 @@ export default function FirstNameModal({ isOpen, onClose }: FirstNameModalProps)
       onClose();
       
       // Show success toast
-      toast.success("Welcome to Yarnnu!");
+      toast.success("Welcome to OLOVARA!");
       
       // Redirect to welcome page (use replace to avoid adding to history)
       router.replace("/onboarding/welcome");
@@ -86,7 +86,7 @@ export default function FirstNameModal({ isOpen, onClose }: FirstNameModalProps)
           </motion.div>
           
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            🎉 Welcome to Yarnnu!
+            🎉 Welcome to OLOVARA!
           </DialogTitle>
           
           <DialogDescription className="text-lg text-gray-600 mt-2">

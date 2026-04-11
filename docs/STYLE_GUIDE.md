@@ -1,8 +1,8 @@
-# Yarnnu Style Guide
+# OLOVARA Style Guide
 
 ## Brand positioning
 
-Yarnnu is a premium handmade marketplace. The design should feel **calm**, **spacious**, **refined**, and **intentional**.
+OLOVARA is a premium handmade marketplace. The design should feel **calm**, **spacious**, **refined**, and **intentional**.
 
 - Avoid the chaotic look common in marketplaces like Etsy or Amazon.
 - Minimal UI, generous white space, clear hierarchy.
@@ -103,7 +103,7 @@ Swiss design relies on space for clarity.
 
 ### White space
 
-White space creates hierarchy and luxury. Yarnnu should feel breathable; avoid filling every inch.
+White space creates hierarchy and luxury. OLOVARA should feel breathable; avoid filling every inch.
 
 ### Content width
 
@@ -171,7 +171,7 @@ Avoid heavy shadows.
 
 ## Marketplace UX
 
-Typical marketplaces overwhelm users. Yarnnu should prioritize **clarity**, **discovery**, and **calm browsing**. Design should encourage slow browsing and appreciation of handmade work, not frantic clicking.
+Typical marketplaces overwhelm users. OLOVARA should prioritize **clarity**, **discovery**, and **calm browsing**. Design should encourage slow browsing and appreciation of handmade work, not frantic clicking.
 
 ---
 

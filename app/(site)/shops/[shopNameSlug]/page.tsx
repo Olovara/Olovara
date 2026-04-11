@@ -168,7 +168,7 @@ export async function generateMetadata({
 
   if (!seller) {
     return {
-      title: "Shop Not Found | Yarnnu",
+      title: "Shop Not Found | OLOVARA",
       description: "The requested shop could not be found.",
     };
   }
@@ -193,7 +193,7 @@ export async function generateMetadata({
 
   // Use custom SEO fields if available, fallback to generated ones
   const seoTitle =
-    seller.metaTitle || `${seller.shopName} | Handmade Shop | Yarnnu`;
+    seller.metaTitle || `${seller.shopName} | Handmade Shop | OLOVARA`;
   const seoDescription =
     seller.metaDescription ||
     seller.shopDescription ||
@@ -205,7 +205,7 @@ export async function generateMetadata({
   const ogTitle =
     seller.ogTitle ||
     seller.metaTitle ||
-    `${seller.shopName} | Handmade Shop | Yarnnu`;
+    `${seller.shopName} | Handmade Shop | OLOVARA`;
   const ogDescription =
     seller.ogDescription ||
     seller.metaDescription ||
@@ -240,7 +240,7 @@ export async function generateMetadata({
       images: ogImage ? [ogImage] : [],
     },
     alternates: {
-      canonical: `https://yarnnu.com/shops/${seller.shopNameSlug}`,
+      canonical: `https://olovara.com/shops/${seller.shopNameSlug}`,
     },
   };
 }

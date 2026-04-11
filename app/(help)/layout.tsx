@@ -7,9 +7,9 @@ import { HelpCenterFooter } from "./_components/HelpCenterFooter";
 const jost = Jost({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Help Center | Yarnnu",
+  title: "Help Center | OLOVARA",
   description:
-    "Get help with selling on Yarnnu. Find guides, tutorials, and support for sellers.",
+    "Get help with selling on OLOVARA. Find guides, tutorials, and support for sellers.",
 };
 
 export default function HelpLayout({
@@ -30,7 +30,7 @@ export default function HelpLayout({
               Help Center
             </h1>
             <p className="text-gray-600">
-              Everything you need to know about selling on Yarnnu
+              Everything you need to know about selling on OLOVARA
             </p>
           </div>
 

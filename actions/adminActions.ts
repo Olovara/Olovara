@@ -2862,7 +2862,7 @@ export async function getProductsForSocialMedia({
     ]);
 
     // Generate product URLs and format data
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://olovara.com";
     const formattedProducts = products.map((product) => {
       // Generate product URL
       const productUrl = `${baseUrl}/product/${product.id}`;

@@ -389,7 +389,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
 
   if (!product) {
     return {
-      title: "Product Not Found | Yarnnu",
+      title: "Product Not Found | OLOVARA",
       description: "The requested product could not be found.",
     };
   }
@@ -420,7 +420,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
   // Use custom SEO fields if available, fallback to generated ones
   const seoTitle =
     product.metaTitle ||
-    `${product.name} by ${product.seller?.shopName || "Artisan"} | Yarnnu`;
+    `${product.name} by ${product.seller?.shopName || "Artisan"} | OLOVARA`;
   const seoDescription = product.metaDescription || cleanDescription;
   const seoKeywords =
     product.keywords && product.keywords.length > 0
@@ -482,7 +482,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
           : [],
     },
     alternates: {
-      canonical: `https://yarnnu.com/product/${product.id}`,
+      canonical: `https://olovara.com/product/${product.id}`,
     },
     other: {
       "product:price:amount": (currentPrice / 100).toString(),

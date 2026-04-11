@@ -291,7 +291,7 @@ export async function generateMetadata({
 
   if (!post || post.status !== "PUBLISHED" || post.isPrivate) {
     return {
-      title: "Blog Post Not Found | Yarnnu",
+      title: "Blog Post Not Found | OLOVARA",
       description: "The requested blog post could not be found.",
     };
   }
@@ -317,7 +317,7 @@ export async function generateMetadata({
 
   // Use custom SEO fields if available, fallback to generated ones
   const seoTitle =
-    post.metaTitle || `${post.title} | Handmade Crafts Blog | Yarnnu`;
+    post.metaTitle || `${post.title} | Handmade Crafts Blog | OLOVARA`;
   const seoDescription =
     post.metaDescription ||
     post.description

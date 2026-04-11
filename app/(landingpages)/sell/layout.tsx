@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Become a Founding Seller - Yarnnu",
-  description: "Join Yarnnu as one of our first 50 founding sellers. Get lifetime 8% commission (vs 10%), priority placement, early feature access, and showcase opportunities. Built by artisans, for artisans.",
+  title: "Become a Founding Seller - OLOVARA",
+  description: "Join OLOVARA as one of our first 50 founding sellers. Get lifetime 8% commission (vs 10%), priority placement, early feature access, and showcase opportunities. Built by artisans, for artisans.",
 };
 
 export default function SellLayout({

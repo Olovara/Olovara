@@ -38,7 +38,7 @@ export const SellerApplicationApprovedEmail = ({
             
             <Text style={text}>
               Great news! Your seller application has been reviewed and <strong>approved</strong>. 
-              You&apos;re now ready to start setting up your shop and selling your handmade items on Yarnnu.
+              You&apos;re now ready to start setting up your shop and selling your handmade items on OLOVARA.
             </Text>
             
             <Section style={infoSection}>
@@ -74,7 +74,7 @@ export const SellerApplicationApprovedEmail = ({
             </Text>
             
             <Text style={footerText}>
-              Welcome to the Yarnnu seller community! We&apos;re excited to see your handmade creations.
+              Welcome to the OLOVARA seller community! We&apos;re excited to see your handmade creations.
             </Text>
           </Section>
         </Container>

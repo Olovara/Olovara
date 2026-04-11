@@ -623,5 +623,5 @@ export const getDomainContent = async (subDomainName: string) => {
 };
 
 // Media Queries (placeholder for future implementation)
-// TODO: Implement media functionality for Yarnnu
-// This will need to be adapted to work with Yarnnu's Seller model instead of SubAccount
+// TODO: Implement media functionality for OLOVARA
+// This will need to be adapted to work with OLOVARA's Seller model instead of SubAccount

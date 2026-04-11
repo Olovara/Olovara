@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the comprehensive analytics implementation plan for your Yarnnu marketplace. The system is designed to combat fraud, track seller and product performance, identify trends, and provide actionable insights to both you and your sellers.
+This document outlines the comprehensive analytics implementation plan for your OLOVARA marketplace. The system is designed to combat fraud, track seller and product performance, identify trends, and provide actionable insights to both you and your sellers.
 
 ## Goals & Objectives
 

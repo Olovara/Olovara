@@ -90,13 +90,13 @@ export default function ReferralDashboard({ userId }: ReferralDashboardProps) {
   const shareReferralCode = async () => {
     if (!stats?.referralCode) return;
     
-    const shareText = `Join me on Yarnnu! Use my referral code: ${stats.referralCode}`;
+    const shareText = `Join me on OLOVARA! Use my referral code: ${stats.referralCode}`;
     const shareUrl = `${window.location.origin}?ref=${stats.referralCode}`;
     
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join Yarnnu',
+          title: 'Join OLOVARA',
           text: shareText,
           url: shareUrl,
         });
@@ -313,7 +313,7 @@ export default function ReferralDashboard({ userId }: ReferralDashboardProps) {
                 Recent Seller Referrals
               </CardTitle>
               <CardDescription>
-                Approved sellers you&apos;ve recently referred to Yarnnu
+                Approved sellers you&apos;ve recently referred to OLOVARA
               </CardDescription>
             </CardHeader>
             <CardContent>

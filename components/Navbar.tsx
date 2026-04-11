@@ -24,7 +24,7 @@ export async function Navbar() {
         {/* Logo */}
         <div className="flex-shrink-0">
           <Link href="/">
-            <h1 className="text-2xl font-semibold">Yarnnu</h1>
+            <h1 className="text-2xl font-semibold">OLOVARA</h1>
           </Link>
         </div>
 

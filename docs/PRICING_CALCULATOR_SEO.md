@@ -6,7 +6,7 @@ The pricing calculator page has been updated with comprehensive SEO optimization
 ## Changes Made
 
 ### 1. Layout Metadata (`app/(site)/pricing-calculator/layout.tsx`)
-- **Title**: "Pricing Calculator for Handmade Products | Yarnnu"
+- **Title**: "Pricing Calculator for Handmade Products | OLOVARA"
 - **Description**: Comprehensive description targeting handmade product creators
 - **Keywords**: 17 relevant keywords including "pricing calculator", "handmade products", "craft pricing", etc.
 - **Open Graph**: Complete OG tags for social media sharing
@@ -59,7 +59,7 @@ The pricing calculator page has been updated with comprehensive SEO optimization
 Create an optimized image at `/og-pricing-calculator.jpg` (1200x630px) featuring:
 - Calculator interface preview
 - "Pricing Calculator for Handmade Products" text
-- Yarnnu branding
+- OLOVARA branding
 - Professional design for social sharing
 
 ### 2. Additional SEO Opportunities

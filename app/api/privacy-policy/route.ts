@@ -13,7 +13,7 @@ const defaultPolicy = {
     <p>Last updated: ${new Date().toLocaleDateString()}</p>
 
     <h2>1. Introduction</h2>
-    <p>Welcome to Yarnnu. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
+    <p>Welcome to OLOVARA. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
 
     <h2>2. Information We Collect</h2>
     <p>We may collect, use, store and transfer different kinds of personal data about you, including:</p>
@@ -61,14 +61,14 @@ const defaultPolicy = {
     <h2>8. Contact Us</h2>
     <p>If you have any questions about this Privacy Policy, please contact us at:</p>
     <ul>
-      <li>Email: privacy@yarnnu.com</li>
+      <li>Email: privacy@olovara.com</li>
       <li>Address: [Reminder to Add Our Business Address]</li>
     </ul>
   `,
   text: `Privacy Policy - Last updated: ${new Date().toLocaleDateString()}
 
 1. Introduction
-Welcome to Yarnnu. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
+Welcome to OLOVARA. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
 
 2. Information We Collect
 We may collect, use, store and transfer different kinds of personal data about you, including:
@@ -109,7 +109,7 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 
 8. Contact Us
 If you have any questions about this Privacy Policy, please contact us at:
-- Email: privacy@yarnnu.com
+- Email: privacy@olovara.com
 - Address: [Reminder to Add Our Business Address]`,
 };
 

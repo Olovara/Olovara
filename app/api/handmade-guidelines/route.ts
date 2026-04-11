@@ -36,7 +36,7 @@ const defaultGuidelines = {
     <h2>5. Contact Us</h2>
     <p>If you have any questions about these guidelines, please contact us at:</p>
     <ul>
-      <li>Email: guidelines@yarnnu.com</li>
+      <li>Email: guidelines@olovara.com</li>
       <li>Address: [Your Business Address]</li>
     </ul>
   `,
@@ -61,7 +61,7 @@ The following items are not considered handmade and are not allowed:
 
 5. Contact Us
 If you have any questions about these guidelines, please contact us at:
-- Email: guidelines@yarnnu.com
+- Email: guidelines@olovara.com
 - Address: [Your Business Address]`,
 };
 

@@ -1,7 +1,7 @@
-# Jest Testing Setup for Yarnnu Marketplace
+# Jest Testing Setup for OLOVARA Marketplace
 
 ## 🎯 Overview
-I've set up a comprehensive testing framework for your Yarnnu marketplace using Jest, React Testing Library, and TypeScript. This will help you catch bugs early and ensure your code works as expected before deployment.
+I've set up a comprehensive testing framework for your OLOVARA marketplace using Jest, React Testing Library, and TypeScript. This will help you catch bugs early and ensure your code works as expected before deployment.
 
 ## 📦 Installation
 

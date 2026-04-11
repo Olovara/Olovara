@@ -32,7 +32,7 @@ export const AuthEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoSection}>
-            <Text style={logoText}>Yarnnu</Text>
+            <Text style={logoText}>OLOVARA</Text>
           </Section>
           <Section style={contentSection}>
             <Text style={heading}>{title}</Text>
@@ -46,7 +46,7 @@ export const AuthEmail = ({
               If you didn&apos;t request this email, you can safely ignore it.
             </Text>
             <Text style={copyrightText}>
-              © 2025 Yarnnu. All rights reserved.
+              © 2025 OLOVARA. All rights reserved.
             </Text>
           </Section>
         </Container>

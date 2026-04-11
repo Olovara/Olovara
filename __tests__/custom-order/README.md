@@ -254,7 +254,7 @@ it('should process successful payment', async () => {
 4. **Database Connection Issues**
    ```bash
    # Use test database
-   export DATABASE_URL="mongodb://localhost:27017/yarnnu_test"
+   export DATABASE_URL="mongodb://localhost:27017/olovara_test"
    ```
 
 ### Debug Mode

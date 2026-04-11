@@ -139,7 +139,7 @@ export async function PUT(
     }
 
     // For help articles, any admin with the correct permission can edit them
-    // since they're all written by "The Yarnnu Team"
+    // since they're all written by "The OLOVARA Team"
 
     // Generate new slug if title changed
     let newSlug = slug;
@@ -261,7 +261,7 @@ export async function DELETE(
     }
 
     // For help articles, any admin with the correct permission can delete them
-    // since they're all written by "The Yarnnu Team"
+    // since they're all written by "The OLOVARA Team"
 
     // Delete the article
     await db.helpArticle.delete({

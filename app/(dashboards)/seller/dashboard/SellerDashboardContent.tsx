@@ -115,7 +115,7 @@ export function SellerDashboardContent({
     if (session?.user?.id && !permissionsLoading) {
       // Check if cache might be stale (older than 30 seconds)
       if (typeof window !== 'undefined') {
-        const timestamp = localStorage.getItem('yarnnu_permissions_timestamp');
+        const timestamp = localStorage.getItem('olovara_permissions_timestamp');
         if (timestamp) {
           const age = Date.now() - parseInt(timestamp);
           // If cache is older than 30 seconds, refresh

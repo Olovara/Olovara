@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
-  title: "Shipping Options | Help Center | Yarnnu",
+  title: "Shipping Options | Help Center | OLOVARA",
   description:
-    "Complete guide to setting up shipping options and rates on Yarnnu. Learn how to configure domestic and international shipping options.",
+    "Complete guide to setting up shipping options and rates on OLOVARA. Learn how to configure domestic and international shipping options.",
 };
 
 const shippingZones = [

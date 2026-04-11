@@ -25,7 +25,7 @@ export const sendTwoFactorTokenEmail = async (email: string, token: string) => {
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: email,
       subject: "2FA Code",
       react: TwoFactorEmail({ token }),
@@ -70,7 +70,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: email,
       subject: "Reset your password",
       react: PasswordResetEmail({ resetLink }),
@@ -121,7 +121,7 @@ export const sendVerificationEmail = async (
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: email,
       subject: "Verify your email",
       react: VerificationEmail({ confirmLink }),
@@ -189,7 +189,7 @@ export const sendSellerApplicationNotificationEmail = async (
     );
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: adminEmail,
       subject: "New Seller Application Requires Review",
       react: SellerApplicationNotificationEmail({
@@ -248,7 +248,7 @@ export const sendSellerApplicationApprovedEmail = async (
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: sellerEmail,
       subject: "🎉 Your Seller Application Has Been Approved!",
       react: SellerApplicationApprovedEmail({
@@ -305,7 +305,7 @@ export const sendSellerApplicationRejectedEmail = async (
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to: sellerEmail,
       subject: "Update on Your Seller Application",
       react: SellerApplicationRejectedEmail({
@@ -349,7 +349,7 @@ export const sendSellerApplicationRejectedEmail = async (
 };
 
 // Send email to seller requesting additional information about their application
-// Always sends from support@yarnnu.com
+// Always sends from support@olovara.com
 export const sendSellerApplicationInformationRequestEmail = async (
   sellerEmail: string,
   sellerName: string,
@@ -381,7 +381,7 @@ export const sendSellerApplicationInformationRequestEmail = async (
     }
 
     const response = await resend.emails.send({
-      from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
+      from: "OLOVARA Support <support@olovara.com>", // Always from support@olovara.com
       to: sellerEmail,
       subject: "Additional Information Needed for Your Seller Application",
       react: SellerApplicationInformationRequestEmail({
@@ -390,7 +390,7 @@ export const sendSellerApplicationInformationRequestEmail = async (
         applicationUrl,
         requestMessage,
       }),
-      replyTo: "support@yarnnu.com", // Allow replies to go to support email
+      replyTo: "support@olovara.com", // Allow replies to go to support email
     });
 
     if (!response) {
@@ -426,7 +426,7 @@ export const sendSellerApplicationInformationRequestEmail = async (
 };
 
 // Send response email to customer who submitted contact form
-// Always sends from support@yarnnu.com regardless of which admin sends it
+// Always sends from support@olovara.com regardless of which admin sends it
 export const sendContactResponseEmail = async (
   customerEmail: string,
   customerName: string,
@@ -474,7 +474,7 @@ export const sendContactResponseEmail = async (
     });
 
     const response = await resend.emails.send({
-      from: "Yarnnu Support <support@yarnnu.com>", // Always from support@yarnnu.com
+      from: "OLOVARA Support <support@olovara.com>", // Always from support@olovara.com
       to: customerEmail, // Sending TO the customer who submitted the form - VERIFY THIS IS CORRECT
       subject: `Your ${reasonLabel} Inquiry`,
       react: ContactResponseEmail({
@@ -483,7 +483,7 @@ export const sendContactResponseEmail = async (
         adminResponse,
         reason: reasonLabel,
       }),
-      replyTo: "support@yarnnu.com", // Allow replies to go to support email
+      replyTo: "support@olovara.com", // Allow replies to go to support email
     });
 
     if (!response) {
@@ -545,7 +545,7 @@ export const sendCustomOrderRejectionEmail = async (params: {
   }
   try {
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to,
       subject: `Update on your custom order request — ${shopName}`,
       react: CustomOrderRejectionEmail({
@@ -609,7 +609,7 @@ export const sendCustomOrderQuoteEmail = async (params: {
   }
   try {
     const response = await resend.emails.send({
-      from: "Yarnnu <noreply@yarnnu.com>",
+      from: "OLOVARA <noreply@olovara.com>",
       to,
       subject: `Quote for your custom order — ${shopName}`,
       react: CustomOrderQuoteEmail({

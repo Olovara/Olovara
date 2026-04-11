@@ -2,7 +2,7 @@ import * as z from "zod";
 
 export const CustomerFeedbackSchema = z.object({
   heardFrom: z.string({
-    required_error: "Please select how you heard about Yarnnu",
+    required_error: "Please select how you heard about OLOVARA",
   }),
   overallExperience: z.number().min(1).max(5, {
     message: "Please rate your overall experience from 1 to 5",

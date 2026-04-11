@@ -49,10 +49,10 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${primaryCategory.name} | Yarnnu`,
+    title: `${primaryCategory.name} | OLOVARA`,
     description: `Browse our collection of ${primaryCategory.name.toLowerCase()} products.`,
     alternates: {
-      canonical: `https://yarnnu.com/categories/${params.primaryCategoryId.toLowerCase()}`,
+      canonical: `https://olovara.com/categories/${params.primaryCategoryId.toLowerCase()}`,
     },
   };
 }

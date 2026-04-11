@@ -1,6 +1,6 @@
 Project uses shadcn/ui components.
 
-Follow Yarnnu design principles:
+Follow OLOVARA design principles:
 - Minimal Swiss design
 - Lots of white space
 - Do not add excessive UI clutter

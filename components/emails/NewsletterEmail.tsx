@@ -34,7 +34,7 @@ export default function NewsletterEmail({
             {/* Header */}
             <Section className="text-center py-8">
               <Text className="text-2xl font-bold text-gray-900 mb-2">
-                Yarnnu
+                OLOVARA
               </Text>
               <Text className="text-sm text-gray-600">
                 Handmade with love, delivered with care

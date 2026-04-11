@@ -39,7 +39,7 @@ Each address field is encrypted independently:
 - Country
 
 ### Authentication & Integrity
-- **Associated Authenticated Data (AAD)**: "YarnnuMarketplace" string
+- **Associated Authenticated Data (AAD)**: "OlovaraMarketplace" string
 - **Authentication Tag**: Prevents tampering and ensures data integrity
 - **IV Uniqueness**: Each encryption uses a unique IV
 

@@ -9,7 +9,7 @@ export function HelpCenterFooter() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Help Center</h3>
             <p className="text-gray-600 text-sm">
-              Everything you need to know about selling on Yarnnu. Find guides,
+              Everything you need to know about selling on OLOVARA. Find guides,
               tutorials, and support for sellers.
             </p>
           </div>
@@ -45,9 +45,9 @@ export function HelpCenterFooter() {
             </ul>
           </div>
 
-          {/* Yarnnu Links */}
+          {/* OLOVARA Links */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Yarnnu</h3>
+            <h3 className="text-lg font-semibold text-gray-900">OLOVARA</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
@@ -80,7 +80,7 @@ export function HelpCenterFooter() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} Yarnnu. All rights reserved.
+            © {new Date().getFullYear()} OLOVARA. All rights reserved.
           </p>
           <p className="text-gray-500 text-sm mt-2 md:mt-0">
             Handmade with ❤️ for creators

@@ -13,7 +13,7 @@ const defaultPolicy = {
     <p>Last updated: ${new Date().toLocaleDateString()}</p>
 
     <h2>1. General Prohibitions</h2>
-    <p>The following items are strictly prohibited on Yarnnu:</p>
+    <p>The following items are strictly prohibited on OLOVARA:</p>
     <ul>
       <li>Items that violate intellectual property rights</li>
       <li>Counterfeit or replica items</li>
@@ -50,14 +50,14 @@ const defaultPolicy = {
     <h2>5. Contact Us</h2>
     <p>If you have any questions about our prohibited items policy, please contact us at:</p>
     <ul>
-      <li>Email: compliance@yarnnu.com</li>
+      <li>Email: compliance@olovara.com</li>
       <li>Address: [Your Business Address]</li>
     </ul>
   `,
   text: `Prohibited Items Policy - Last updated: ${new Date().toLocaleDateString()}
 
 1. General Prohibitions
-The following items are strictly prohibited on Yarnnu:
+The following items are strictly prohibited on OLOVARA:
 - Items that violate intellectual property rights
 - Counterfeit or replica items
 - Items that promote hate, violence, or discrimination
@@ -85,7 +85,7 @@ Items that are age-restricted or require special handling:
 
 5. Contact Us
 If you have any questions about our prohibited items policy, please contact us at:
-- Email: compliance@yarnnu.com
+- Email: compliance@olovara.com
 - Address: [Your Business Address]`,
 };
 

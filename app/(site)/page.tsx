@@ -11,7 +11,7 @@ import { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+  title: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
   description:
     "Discover unique handmade products from talented artisans around the world. Shop crochet patterns, handmade jewelry, home decor, accessories, and more. Support independent creators and find one-of-a-kind treasures.",
   keywords: [
@@ -27,19 +27,19 @@ export const metadata: Metadata = {
     "handmade accessories",
   ],
   openGraph: {
-    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    title: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
     description:
       "Discover unique handmade products from talented artisans around the world. Shop crochet patterns, handmade jewelry, home decor, accessories, and more.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    title: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
     description:
       "Discover unique handmade products from talented artisans around the world.",
   },
   alternates: {
-    canonical: "https://yarnnu.com/",
+    canonical: "https://olovara.com/",
   },
 };
 
@@ -56,7 +56,7 @@ export default function Home() {
             <span className="text-brand-primary-700">handcrafted goods</span>.
           </h1>
           <p className="mt-6 max-w-prose text-lg text-brand-dark-neutral-600">
-            Welcome to Yarnnu. Every shop on our platform is verified by our
+            Welcome to OLOVARA. Every shop on our platform is verified by our
             team to ensure the highest quality standards.
           </p>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row">
@@ -78,7 +78,7 @@ export default function Home() {
         {/* Mini landing section */}
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold text-brand-dark-neutral-900">
-            Why Yarnnu
+            Why OLOVARA
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-brand-dark-neutral-600">
             Calm, curated shopping built for handmade.

@@ -40,7 +40,7 @@ export default function SellerOrderEmail({ orderDetails }: SellerOrderEmailProps
             <Text className="text-2xl font-semibold">Congratulations!</Text>
             
             <Text className="text-lg text-gray-600">
-              You have received a new order on Yarnnu!
+              You have received a new order on OLOVARA!
             </Text>
 
             <Section className="mt-6">
@@ -95,12 +95,12 @@ export default function SellerOrderEmail({ orderDetails }: SellerOrderEmailProps
 
             {/*<Section className="mt-6">
               <Text className="text-gray-600">
-                Please package and ship this order as soon as possible. Don&apos;t forget to update the tracking information in your Yarnnu dashboard.
+                Please package and ship this order as soon as possible. Don&apos;t forget to update the tracking information in your OLOVARA dashboard.
               </Text>
             </Section> */}
 
             <Text className="text-lg mt-6">
-              Best regards, <br /> The Yarnnu Team
+              Best regards, <br /> The OLOVARA Team
             </Text>
           </Container>
         </Body>

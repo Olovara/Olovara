@@ -319,7 +319,7 @@ export function shopNameSlugify(text: string) {
 }
 
 /**
- * Generates a unique referral code in the format YARNNU-XXXX-XXXX
+ * Generates a unique referral code in the format OLOVARA-XXXX-XXXX
  * @returns A referral code string
  */
 export function generateReferralCode(): string {
@@ -328,5 +328,5 @@ export function generateReferralCode(): string {
   const part1 = Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
   const part2 = Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
   
-  return `YARNNU-${part1}-${part2}`;
+  return `OLOVARA-${part1}-${part2}`;
 }

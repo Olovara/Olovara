@@ -176,7 +176,7 @@ export function logError(options: LogErrorOptions): string {
       "Invalid registration information. Please check your details and try again.",
     REGISTER_BOT_DETECTED: "Please check your information and try again.",
     REGISTER_INVALID_USERNAME:
-      "Username cannot contain 'Yarnnu'. Please choose a different username.",
+      "Username cannot contain 'OLOVARA'. Please choose a different username.",
     REGISTER_RECAPTCHA_FAILED:
       "Security verification failed. Please try again.",
     REGISTER_RATE_LIMIT_EXCEEDED:

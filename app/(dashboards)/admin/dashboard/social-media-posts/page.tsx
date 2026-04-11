@@ -232,7 +232,7 @@ function ProductCard({ product }: { product: any }) {
                 const isKnownDomain = 
                   imageUrl.includes("utfs.io") ||
                   imageUrl.includes(".ufs.sh") ||
-                  imageUrl.includes(process.env.NEXT_PUBLIC_APP_URL || "yarnnu.com");
+                  imageUrl.includes(process.env.NEXT_PUBLIC_APP_URL || "olovara.com");
                 
                 return (
                   <div key={index} className="space-y-1">
@@ -260,7 +260,7 @@ function ProductCard({ product }: { product: any }) {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <ExternalLink className="h-4 w-4" />
-            Product URL on Yarnnu
+            Product URL on OLOVARA
           </h3>
           <CopyableUrl url={product.productUrl} label="Product URL" />
         </div>

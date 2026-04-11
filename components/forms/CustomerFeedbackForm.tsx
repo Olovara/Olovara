@@ -153,7 +153,7 @@ const CustomerFeedbackFormContent = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-lg font-semibold text-brand-dark-neutral-900">
-                      How did you hear about Yarnnu?
+                      How did you hear about OLOVARA?
                     </FormLabel>
                     <Select
                       value={field.value || undefined}
@@ -282,7 +282,7 @@ const CustomerFeedbackFormContent = () => {
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Share your experience with Yarnnu..."
+                        placeholder="Share your experience with OLOVARA..."
                         {...field}
                         className="min-h-[120px] text-lg p-4 rounded-lg border-brand-light-neutral-200 focus:border-brand-primary-400 focus:ring-brand-primary-400 bg-brand-light-neutral-50"
                       />

@@ -1219,7 +1219,7 @@ export async function POST(req: Request) {
               // Send buyer email
               const { data: buyerEmailData, error: buyerEmailError } =
                 await resend.emails.send({
-                  from: "Yarnnu <noreply@yarnnu.com>",
+                  from: "OLOVARA <noreply@olovara.com>",
                   to: [buyerEmail],
                   subject: product.isDigital
                     ? "Your digital product is ready!"
@@ -1288,7 +1288,7 @@ export async function POST(req: Request) {
 
               const { data: sellerEmailData, error: sellerEmailError } =
                 await resend.emails.send({
-                  from: "Yarnnu <noreply@yarnnu.com>",
+                  from: "OLOVARA <noreply@olovara.com>",
                   to: [product.seller.user.email],
                   subject: `New Sale Alert! Order #${order.id}`,
                   react: SellerOrderEmail({
@@ -2298,7 +2298,7 @@ export async function POST(req: Request) {
               // Send buyer email
               const { data: buyerEmailData, error: buyerEmailError } =
                 await resend.emails.send({
-                  from: "Yarnnu <noreply@yarnnu.com>",
+                  from: "OLOVARA <noreply@olovara.com>",
                   to: [buyerEmail],
                   subject: product.isDigital
                     ? "Your digital product is ready!"
@@ -2367,7 +2367,7 @@ export async function POST(req: Request) {
 
               const { data: sellerEmailData, error: sellerEmailError } =
                 await resend.emails.send({
-                  from: "Yarnnu <noreply@yarnnu.com>",
+                  from: "OLOVARA <noreply@olovara.com>",
                   to: [product.seller.user.email],
                   subject: `New Sale Alert! Order #${order.id}`,
                   react: SellerOrderEmail({

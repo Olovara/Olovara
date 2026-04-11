@@ -113,7 +113,7 @@ export async function deleteProduct(productId: string) {
       process.env.NEXT_PUBLIC_APP_URL ||
       (process.env.NODE_ENV === "development"
         ? "http://localhost:3000"
-        : "https://yarnnu.com");
+        : "https://olovara.com");
     
     // Forward cookies to maintain authentication session
     const fetchHeaders: HeadersInit = {

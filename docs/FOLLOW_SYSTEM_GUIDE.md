@@ -1,6 +1,6 @@
 # Seller Follow System Guide
 
-This guide explains how to use the seller follow system in Yarnnu. The system allows users to follow their favorite sellers and see their latest products in a personalized feed.
+This guide explains how to use the seller follow system in OLOVARA. The system allows users to follow their favorite sellers and see their latest products in a personalized feed.
 
 ## 🏗️ Architecture Overview
 

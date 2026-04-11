@@ -61,7 +61,7 @@ export const ContactResponseEmail = ({
             
             <Text style={footerText}>
               Best regards,<br />
-              The Yarnnu Support Team
+              The OLOVARA Support Team
             </Text>
           </Section>
         </Container>

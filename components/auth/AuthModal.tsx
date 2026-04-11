@@ -114,7 +114,7 @@ export default function AuthModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">
-            {activeTab === "login" ? "Welcome Back" : "Join Yarnnu"}
+            {activeTab === "login" ? "Welcome Back" : "Join OLOVARA"}
           </DialogTitle>
         </DialogHeader>
         

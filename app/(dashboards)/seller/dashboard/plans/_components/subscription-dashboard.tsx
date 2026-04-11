@@ -116,7 +116,7 @@ export default function SubscriptionDashboard({
           <CardHeader>
             <CardTitle>No Active Subscription</CardTitle>
             <CardDescription>
-              Choose a plan to unlock Yarnnu features
+              Choose a plan to unlock OLOVARA features
             </CardDescription>
           </CardHeader>
         </Card>

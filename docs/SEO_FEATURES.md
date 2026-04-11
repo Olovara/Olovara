@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the SEO (Search Engine Optimization) features implemented for both shops and products on the Yarnnu marketplace.
+This document outlines the SEO (Search Engine Optimization) features implemented for both shops and products on the OLOVARA marketplace.
 
 ## Shop SEO Features
 

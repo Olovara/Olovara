@@ -204,7 +204,7 @@ import FoundingSellerStatus from '@/components/seller/FoundingSellerStatus';
 ## Marketing Materials
 
 ### Landing Page Copy
-- "Join Yarnnu as one of our first 50 founding sellers"
+- "Join OLOVARA as one of our first 50 founding sellers"
 - "Lifetime 8% commission (vs 10% for regular sellers)"
 - "Priority placement, early feature access, showcase opportunities"
 - "Built by artisans, for artisans"

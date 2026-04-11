@@ -47,18 +47,18 @@ export async function generateMetadata({
 
   if (!primaryCategory || !secondaryCategory) {
     return {
-      title: "Category Not Found | Yarnnu",
+      title: "Category Not Found | OLOVARA",
     };
   }
 
   return {
-    title: `${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
+    title: `${secondaryCategory.name} ${primaryCategory.name} | OLOVARA`,
     description: `Shop our collection of ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
     alternates: {
-      canonical: `https://yarnnu.com/categories/${params.primaryCategoryId.toLowerCase()}/${params.secondaryCategoryId.toLowerCase()}`,
+      canonical: `https://olovara.com/categories/${params.primaryCategoryId.toLowerCase()}/${params.secondaryCategoryId.toLowerCase()}`,
     },
     openGraph: {
-      title: `${secondaryCategory.name} ${primaryCategory.name} | Yarnnu`,
+      title: `${secondaryCategory.name} ${primaryCategory.name} | OLOVARA`,
       description: `Shop our collection of ${secondaryCategory.name.toLowerCase()} ${primaryCategory.name.toLowerCase()}. Find unique handmade items in this category.`,
     },
   };

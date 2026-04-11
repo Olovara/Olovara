@@ -24,7 +24,7 @@ const calculateAge = (birthDate: Date): number => {
 
 // Helper function to validate referral code format
 const isValidReferralCodeFormat = (code: string): boolean => {
-  const pattern = /^YARNNU-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+  const pattern = /^OLOVARA-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
   return pattern.test(code);
 };
 
@@ -37,7 +37,7 @@ export const SellerApplicationSchema = z.object({
     message: "Please describe the types of products you make (at least 10 characters)." 
   }),
   interestInJoining: z.string().min(6, {
-    message: "Please provide a more detailed explanation of your interest in joining Yarnnu (at least 6 characters).",
+    message: "Please provide a more detailed explanation of your interest in joining OLOVARA (at least 6 characters).",
   }),
   
   // Optional online presence (single field)
@@ -51,7 +51,7 @@ export const SellerApplicationSchema = z.object({
     if (!code) return true; // Empty is valid (optional field)
     return isValidReferralCodeFormat(code);
   }, { 
-    message: "Please enter a valid referral code in the format YARNNU-XXXX-XXXX" 
+    message: "Please enter a valid referral code in the format OLOVARA-XXXX-XXXX" 
   }),
   
   // Age verification (required for legal protection)

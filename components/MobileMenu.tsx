@@ -123,7 +123,7 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
           {/* Header */}
           <div className="p-6 border-b border-brand-dark-neutral-200 bg-brand-primary-50">
             <SheetTitle className="text-xl font-semibold text-left">
-              Yarnnu
+              OLOVARA
             </SheetTitle>
             <SheetDescription className="text-left mt-1">
               Find your favorite products
@@ -218,7 +218,7 @@ export function MobileMenu({ userInfo }: MobileMenuProps) {
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-100">
             <p className="text-xs text-gray-500 text-center">
-              &copy; {new Date().getFullYear()} Yarnnu. All Rights Reserved
+              &copy; {new Date().getFullYear()} OLOVARA. All Rights Reserved
             </p>
           </div>
         </div>

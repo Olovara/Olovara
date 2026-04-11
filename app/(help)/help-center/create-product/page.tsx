@@ -15,9 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
-  title: "Creating Your First Product | Help Center | Yarnnu",
+  title: "Creating Your First Product | Help Center | OLOVARA",
   description:
-    "Complete step-by-step guide to creating your first product listing on Yarnnu. Learn about photos, descriptions, pricing, and optimization.",
+    "Complete step-by-step guide to creating your first product listing on OLOVARA. Learn about photos, descriptions, pricing, and optimization.",
 };
 
 const productSteps = [
@@ -349,7 +349,7 @@ export default function CreateProductPage() {
         </h1>
         <p className="text-lg text-gray-600">
           Complete step-by-step guide to creating compelling product listings on
-          Yarnnu. Learn how to showcase your handmade items with professional
+          OLOVARA. Learn how to showcase your handmade items with professional
           photos, compelling descriptions, and optimal pricing.
         </p>
       </div>

@@ -64,7 +64,7 @@ const timelineSteps = [
   },
 ];
 
-// Key benefits of selling on Yarnnu
+// Key benefits of selling on OLOVARA
 const benefits = [
   {
     icon: Users,
@@ -134,13 +134,13 @@ export default function WelcomePage() {
               transition={{ delay: 0.4, duration: 0.5 }}
             >
               <CardTitle className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
-                {firstName ? `Welcome, ${firstName}!` : "Welcome to Yarnnu!"}
+                {firstName ? `Welcome, ${firstName}!` : "Welcome to OLOVARA!"}
               </CardTitle>
 
               <CardDescription className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
                 {firstName
-                  ? `Thanks for choosing Yarnnu! We're excited to help you start your handmade business journey, ${firstName}! Let's get you set up in just a few simple steps. Ready to bring your vison to life?`
-                  : "Thanks for choosing Yarnnu! We're excited to help you start your handmade business journey! Let's get you set up in just a few simple steps. Ready to bring your vison to life?"}
+                  ? `Thanks for choosing OLOVARA! We're excited to help you start your handmade business journey, ${firstName}! Let's get you set up in just a few simple steps. Ready to bring your vison to life?`
+                  : "Thanks for choosing OLOVARA! We're excited to help you start your handmade business journey! Let's get you set up in just a few simple steps. Ready to bring your vison to life?"}
               </CardDescription>
             </motion.div>
           </CardHeader>
@@ -208,7 +208,7 @@ export default function WelcomePage() {
               className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200"
             >
               <h3 className="text-xl font-semibold text-center text-gray-800 mb-6">
-                Why sell on Yarnnu?
+                Why sell on OLOVARA?
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

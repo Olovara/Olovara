@@ -63,7 +63,7 @@ export const CustomOrderQuoteEmail = ({
 
             <Text style={text}>
               {shopName} reviewed your request
-              {formTitle ? ` (“${formTitle}”)` : ""} on Yarnnu and sent a quote.
+              {formTitle ? ` (“${formTitle}”)` : ""} on OLOVARA and sent a quote.
             </Text>
 
             <Section style={box}>
@@ -87,7 +87,7 @@ export const CustomOrderQuoteEmail = ({
             </Section>
 
             <Text style={text}>
-              Sign in to Yarnnu to view the full request and reply to the seller
+              Sign in to OLOVARA to view the full request and reply to the seller
               if you have questions.
             </Text>
           </Section>

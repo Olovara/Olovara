@@ -13,7 +13,7 @@ const defaultPolicy = {
     <p>Last updated: ${new Date().toLocaleDateString()}</p>
 
     <h2>1. Order Processing</h2>
-    <p>When you place an order on Yarnnu, the following process occurs:</p>
+    <p>When you place an order on OLOVARA, the following process occurs:</p>
     <ul>
       <li>You will receive an order confirmation email</li>
       <li>The seller will be notified of your order</li>
@@ -60,21 +60,21 @@ const defaultPolicy = {
     <p>If you encounter any issues:</p>
     <ul>
       <li>First, try to resolve directly with the seller</li>
-      <li>If unresolved, contact Yarnnu support</li>
+      <li>If unresolved, contact OLOVARA support</li>
       <li>We will mediate and help find a fair solution</li>
     </ul>
 
     <h2>7. Contact Us</h2>
     <p>If you have any questions about our buyer and returns policy, please contact us at:</p>
     <ul>
-      <li>Email: support@yarnnu.com</li>
+      <li>Email: support@olovara.com</li>
       <li>Address: [Your Business Address]</li>
     </ul>
   `,
   text: `Buyer and Returns Policy - Last updated: ${new Date().toLocaleDateString()}
 
 1. Order Processing
-When you place an order on Yarnnu, the following process occurs:
+When you place an order on OLOVARA, the following process occurs:
 - You will receive an order confirmation email
 - The seller will be notified of your order
 - The seller will prepare and ship your item
@@ -110,12 +110,12 @@ Refunds are processed as follows:
 6. Disputes and Resolution
 If you encounter any issues:
 - First, try to resolve directly with the seller
-- If unresolved, contact Yarnnu support
+- If unresolved, contact OLOVARA support
 - We will mediate and help find a fair solution
 
 7. Contact Us
 If you have any questions about our buyer and returns policy, please contact us at:
-- Email: support@yarnnu.com
+- Email: support@olovara.com
 - Address: [Your Business Address]`,
 };
 

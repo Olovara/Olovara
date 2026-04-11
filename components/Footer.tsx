@@ -104,7 +104,7 @@ const Footer = () => {
                         href="/sell"
                         className="text-xs text-brand-dark-neutral-600 hover:text-brand-primary-700"
                       >
-                        SELL ON YARNNU
+                        SELL ON OLOVARA
                       </AnimatedFooterLink>
                     </li>
                     {/**<li>
@@ -112,7 +112,7 @@ const Footer = () => {
                         href="/buy"
                         className="text-xs text-brand-dark-neutral-600 hover:text-brand-primary-700"
                       >
-                        WHY BUY ON YARNNU
+                        WHY BUY ON OLOVARA
                       </AnimatedFooterLink>
                     </li> **/}
                   </ul>
@@ -227,7 +227,7 @@ const Footer = () => {
                     </h4>
                     <div className="flex justify-center sm:justify-start space-x-3">
                       <a
-                        href="https://www.reddit.com/r/Yarnnu/"
+                        href="https://www.reddit.com/r/Olovara/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-brand-light-neutral-100 hover:bg-brand-primary-50 text-brand-dark-neutral-900 rounded-full transition-colors"
@@ -236,7 +236,7 @@ const Footer = () => {
                         <RedditIcon className="w-4 h-4" />
                       </a>
                       <a
-                        href="https://www.pinterest.com/yarnnumarketplace/"
+                        href="https://www.pinterest.com/olovara/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-brand-light-neutral-100 hover:bg-brand-primary-50 text-brand-dark-neutral-900 rounded-full transition-colors"
@@ -245,7 +245,7 @@ const Footer = () => {
                         <PinterestIcon className="w-4 h-4" />
                       </a>
                       <a
-                        href="https://www.instagram.com/yarnnu_/"
+                        href="https://www.instagram.com/olovara/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-brand-light-neutral-100 hover:bg-brand-primary-50 text-brand-dark-neutral-900 rounded-full transition-colors"

@@ -171,7 +171,7 @@ export default function HandmadeVerificationForm() {
               Verify Your Handmade Products
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
-              Help us ensure all sellers on Yarnnu create authentic handmade
+              Help us ensure all sellers on OLOVARA create authentic handmade
               items. Please upload photos of your products and workspace.
             </CardDescription>
           </CardHeader>
@@ -247,7 +247,7 @@ export default function HandmadeVerificationForm() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
                 <strong>Why we need these photos:</strong> We want to ensure all
-                sellers on Yarnnu create authentic handmade items. These photos
+                sellers on OLOVARA create authentic handmade items. These photos
                 help us verify that you&apos;re a real maker creating genuine
                 handmade products. Your photos will be kept private and only
                 used for verification purposes.

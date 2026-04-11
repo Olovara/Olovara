@@ -37,7 +37,7 @@ export const CustomOrderRejectionEmail = ({
 
             <Text style={text}>
               {shopName} has declined your custom order request
-              {formTitle ? ` (“${formTitle}”)` : ""} on Yarnnu.
+              {formTitle ? ` (“${formTitle}”)` : ""} on OLOVARA.
             </Text>
 
             <Section style={reasonSection}>
@@ -49,7 +49,7 @@ export const CustomOrderRejectionEmail = ({
 
             <Text style={text}>
               If you have questions, please message the
-              seller from your Yarnnu account.
+              seller from your OLOVARA account.
             </Text>
           </Section>
         </Container>

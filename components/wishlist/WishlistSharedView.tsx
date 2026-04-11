@@ -253,7 +253,7 @@ export function WishlistSharedView({ wishlist }: WishlistSharedViewProps) {
               href="/"
               className="text-pink-600 hover:text-pink-700 font-medium"
             >
-              Yarnnu
+              OLOVARA
             </Link>
           </p>
         </div>

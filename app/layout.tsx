@@ -21,8 +21,8 @@ const notoSerifDisplay = Noto_Serif_Display({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
-    template: "%s | Yarnnu",
+    default: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
+    template: "%s | OLOVARA",
   },
   description:
     "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more. Support independent creators and find one-of-a-kind treasures.",
@@ -38,16 +38,16 @@ export const metadata: Metadata = {
     "support small business",
     "handmade accessories",
   ],
-  authors: [{ name: "Yarnnu Team" }],
-  creator: "Yarnnu",
-  publisher: "Yarnnu",
+  authors: [{ name: "OLOVARA Team" }],
+  creator: "OLOVARA",
+  publisher: "OLOVARA",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://yarnnu.com"
+    process.env.NEXT_PUBLIC_APP_URL || "https://olovara.com"
   ),
   alternates: {
     canonical: "/",
@@ -56,8 +56,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: process.env.NEXT_PUBLIC_APP_URL,
-    siteName: "Yarnnu",
-    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    siteName: "OLOVARA",
+    title: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
     description:
       "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: [
@@ -65,15 +65,15 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Yarnnu - Handmade Marketplace featuring unique artisan products",
+        alt: "OLOVARA - Handmade Marketplace featuring unique artisan products",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@yarnnu",
-    creator: "@yarnnu",
-    title: "Yarnnu - Handmade Marketplace | Unique Artisan Products",
+    site: "@olovara",
+    creator: "@olovara",
+    title: "OLOVARA - Handmade Marketplace | Unique Artisan Products",
     description:
       "Discover unique handmade products from talented artisans around the world. Shop crochet, knitting, jewelry, home decor, and more.",
     images: ["/og-image.jpg"],

@@ -13,10 +13,10 @@ const defaultTerms = {
     <p>Last updated: ${new Date().toLocaleDateString()}</p>
 
     <h2>1. Acceptance of Terms</h2>
-    <p>By accessing and using Yarnnu, you accept and agree to be bound by the terms and provision of this agreement.</p>
+    <p>By accessing and using OLOVARA, you accept and agree to be bound by the terms and provision of this agreement.</p>
 
     <h2>2. Description of Service</h2>
-    <p>Yarnnu provides a platform for users to buy and sell handmade products. We are not involved in the actual transaction between buyers and sellers.</p>
+    <p>OLOVARA provides a platform for users to buy and sell handmade products. We are not involved in the actual transaction between buyers and sellers.</p>
 
     <h2>3. User Accounts</h2>
     <p>To use certain features of the Service, you must register for an account. You agree to provide accurate, current, and complete information during the registration process.</p>
@@ -32,10 +32,10 @@ const defaultTerms = {
     </ul>
 
     <h2>5. Intellectual Property</h2>
-    <p>The Service and its original content, features, and functionality are owned by Yarnnu and are protected by international copyright, trademark, and other intellectual property laws.</p>
+    <p>The Service and its original content, features, and functionality are owned by OLOVARA and are protected by international copyright, trademark, and other intellectual property laws.</p>
 
     <h2>6. Limitation of Liability</h2>
-    <p>In no event shall Yarnnu, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.</p>
+    <p>In no event shall OLOVARA, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.</p>
 
     <h2>7. Changes to Terms</h2>
     <p>We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.</p>
@@ -43,17 +43,17 @@ const defaultTerms = {
     <h2>8. Contact Us</h2>
     <p>If you have any questions about these Terms, please contact us at:</p>
     <ul>
-      <li>Email: legal@yarnnu.com</li>
+      <li>Email: legal@olovara.com</li>
       <li>Address: [Reminder to Add Our Business Address]</li>
     </ul>
   `,
   text: `Terms of Service - Last updated: ${new Date().toLocaleDateString()}
 
 1. Acceptance of Terms
-By accessing and using Yarnnu, you accept and agree to be bound by the terms and provision of this agreement.
+By accessing and using OLOVARA, you accept and agree to be bound by the terms and provision of this agreement.
 
 2. Description of Service
-Yarnnu provides a platform for users to buy and sell handmade products. We are not involved in the actual transaction between buyers and sellers.
+OLOVARA provides a platform for users to buy and sell handmade products. We are not involved in the actual transaction between buyers and sellers.
 
 3. User Accounts
 To use certain features of the Service, you must register for an account. You agree to provide accurate, current, and complete information during the registration process.
@@ -67,17 +67,17 @@ You agree not to:
 - Attempt to gain unauthorized access to the Service
 
 5. Intellectual Property
-The Service and its original content, features, and functionality are owned by Yarnnu and are protected by international copyright, trademark, and other intellectual property laws.
+The Service and its original content, features, and functionality are owned by OLOVARA and are protected by international copyright, trademark, and other intellectual property laws.
 
 6. Limitation of Liability
-In no event shall Yarnnu, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
+In no event shall OLOVARA, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
 
 7. Changes to Terms
 We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.
 
 8. Contact Us
 If you have any questions about these Terms, please contact us at:
-- Email: legal@yarnnu.com
+- Email: legal@olovara.com
 - Address: [Reminder to Add Our Business Address]`,
 };
 

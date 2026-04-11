@@ -511,8 +511,8 @@ export const saveShopName = async (data: z.infer<typeof ShopNameSchema>) => {
     const shopName = validatedData.shopName.trim();
 
     // Basic validation
-    if (shopName.toLowerCase().includes("yarnnu")) {
-      return { error: "Shop name cannot contain 'Yarnnu'." };
+    if (shopName.toLowerCase().includes("OLOVARA")) {
+      return { error: "Shop name cannot contain 'OLOVARA'." };
     }
 
     // Check if shop name is already taken (excluding current user's own shop)

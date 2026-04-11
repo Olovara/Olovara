@@ -76,7 +76,7 @@ const Checkout = (props: Props) => {
             <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium mb-2">Checkout Component</p>
             <p className="text-sm">
-              This component will integrate with Yarnnu&apos;s e-commerce system
+              This component will integrate with OLOVARA&apos;s e-commerce system
             </p>
             <p className="text-xs mt-2">
               TODO: Connect to product catalog and Stripe payment processing

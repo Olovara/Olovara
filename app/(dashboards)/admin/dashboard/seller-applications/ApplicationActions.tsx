@@ -433,7 +433,7 @@ export function ApplicationActions({
             {/* Motivation */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                Why Join Yarnnu?
+                Why Join OLOVARA?
               </h3>
               <div>
                 <strong className="text-sm text-gray-600">
@@ -652,7 +652,7 @@ export function ApplicationActions({
             <DialogDescription>
               Send an email to {application.email || application.username}{" "}
               requesting additional information about their seller application.
-              The email will be sent from support@yarnnu.com.
+              The email will be sent from support@olovara.com.
             </DialogDescription>
           </DialogHeader>
 

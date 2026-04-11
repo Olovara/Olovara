@@ -178,7 +178,7 @@ export function HelpCenterMobileNav() {
               Help Center
             </SheetTitle>
             <SheetDescription className="text-left mt-1">
-              Everything you need to know about selling on Yarnnu
+              Everything you need to know about selling on OLOVARA
             </SheetDescription>
           </div>
 
@@ -221,10 +221,10 @@ export function HelpCenterMobileNav() {
                 href="/"
                 className="text-sm text-gray-600 hover:text-gray-900 text-center"
               >
-                Back to Yarnnu Home
+                Back to OLOVARA Home
               </Link>
               <p className="text-xs text-gray-500 text-center">
-                &copy; {new Date().getFullYear()} Yarnnu. All Rights Reserved
+                &copy; {new Date().getFullYear()} OLOVARA. All Rights Reserved
               </p>
             </div>
           </div>

@@ -81,7 +81,7 @@ export default function RejectCustomOrderSubmissionDialog({
           <DialogTitle>Reject this request?</DialogTitle>
           <DialogDescription>
             The buyer will receive an email with the message below. Be clear and
-            professional - they can reply or contact you on Yarnnu.
+            professional - they can reply or contact you on OLOVARA.
           </DialogDescription>
         </DialogHeader>
 

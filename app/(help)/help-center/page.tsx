@@ -35,25 +35,25 @@ export async function generateMetadata({
     : "/help-center";
 
   // Generate dynamic title and description based on filters
-  let title = "Help Center | Yarnnu - Get Support for Our Handmade Marketplace";
+  let title = "Help Center | OLOVARA - Get Support for Our Handmade Marketplace";
   let description =
-    "Get help with selling on Yarnnu. Find guides, tutorials, and support for sellers. Learn how to set up your shop, manage products, handle shipping, and grow your handmade business.";
+    "Get help with selling on OLOVARA. Find guides, tutorials, and support for sellers. Learn how to set up your shop, manage products, handle shipping, and grow your handmade business.";
 
   if (search) {
-    title = `Help Search: "${search}" | Yarnnu Help Center`;
-    description = `Search results for "${search}" in our help center. Find answers to your questions about selling on Yarnnu.`;
+    title = `Help Search: "${search}" | OLOVARA Help Center`;
+    description = `Search results for "${search}" in our help center. Find answers to your questions about selling on OLOVARA.`;
   } else if (category) {
     const categoryLabel =
       category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, " ");
-    title = `${categoryLabel} Help | Yarnnu Help Center`;
-    description = `Browse ${categoryLabel.toLowerCase()} help articles and guides for Yarnnu sellers. Get expert advice and support.`;
+    title = `${categoryLabel} Help | OLOVARA Help Center`;
+    description = `Browse ${categoryLabel.toLowerCase()} help articles and guides for OLOVARA sellers. Get expert advice and support.`;
   }
 
   return {
     title,
     description,
     keywords: [
-      "Yarnnu help",
+      "OLOVARA help",
       "seller support",
       "handmade marketplace help",
       "artisan business support",
@@ -141,7 +141,7 @@ export default async function HelpCenterPage({
           <h1 className="text-4xl font-bold text-gray-900">Help Center</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Find answers to your questions and learn how to make the most of
-            Yarnnu.
+            OLOVARA.
           </p>
         </div>
 

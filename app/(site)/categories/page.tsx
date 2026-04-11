@@ -3,10 +3,10 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Shop by Category | Yarnnu",
+  title: "Shop by Category | OLOVARA",
   description: "Browse our wide selection of handcrafted goods by category. Find unique handmade items in accessories, toys, clothing, craft supplies, and patterns.",
   openGraph: {
-    title: "Shop by Category | Yarnnu",
+    title: "Shop by Category | OLOVARA",
     description: "Browse our wide selection of handcrafted goods by category. Find unique handmade items in accessories, toys, clothing, craft supplies, and patterns.",
   },
 };

@@ -19,8 +19,8 @@ export async function generateMetadata({ searchParams }: RegisterPageProps): Pro
     : "/register";
 
   return {
-    title: "Create Account | Yarnnu - Join Our Handmade Marketplace",
-    description: "Join Yarnnu and discover unique handmade products from talented artisans worldwide. Create your account to start shopping, selling, or supporting independent creators.",
+    title: "Create Account | OLOVARA - Join Our Handmade Marketplace",
+    description: "Join OLOVARA and discover unique handmade products from talented artisans worldwide. Create your account to start shopping, selling, or supporting independent creators.",
     keywords: [
       "create account",
       "sign up",
@@ -30,14 +30,14 @@ export async function generateMetadata({ searchParams }: RegisterPageProps): Pro
       "register account"
     ],
     openGraph: {
-      title: "Create Account | Yarnnu - Join Our Handmade Marketplace",
-      description: "Join Yarnnu and discover unique handmade products from talented artisans worldwide.",
+      title: "Create Account | OLOVARA - Join Our Handmade Marketplace",
+      description: "Join OLOVARA and discover unique handmade products from talented artisans worldwide.",
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Create Account | Yarnnu - Join Our Handmade Marketplace",
-      description: "Join Yarnnu and discover unique handmade products from talented artisans worldwide.",
+      title: "Create Account | OLOVARA - Join Our Handmade Marketplace",
+      description: "Join OLOVARA and discover unique handmade products from talented artisans worldwide.",
     },
     alternates: {
       canonical: canonicalUrl,

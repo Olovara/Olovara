@@ -8,7 +8,7 @@ const structuredData = {
   name: "Pricing Calculator for Handmade Products",
   description:
     "A comprehensive pricing calculator designed specifically for handmade product creators and artisans. Calculate materials, labor, packaging, and marketplace fees to determine optimal pricing for your crafts.",
-  url: "https://yarnnu.com/pricing-calculator",
+  url: "https://olovara.com/pricing-calculator",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web Browser",
   offers: {
@@ -33,8 +33,8 @@ const structuredData = {
   },
   creator: {
     "@type": "Organization",
-    name: "Yarnnu",
-    url: "https://yarnnu.com",
+    name: "OLOVARA",
+    url: "https://olovara.com",
   },
 };
 

@@ -251,7 +251,7 @@ export function ContactSubmissionDetail({ submission }: ContactSubmissionDetailP
                 Send Response
               </CardTitle>
               <CardDescription>
-                Send an email response to {submission.name}. The email will be sent from support@yarnnu.com
+                Send an email response to {submission.name}. The email will be sent from support@olovara.com
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

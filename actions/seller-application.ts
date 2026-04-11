@@ -43,11 +43,11 @@ export const sellerApplication = async (
     // Validate referral code if provided
     if (values.referralCode) {
       // First check the format
-      const pattern = /^YARNNU-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+      const pattern = /^OLOVARA-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
       if (!pattern.test(values.referralCode)) {
         return {
           error:
-            "Invalid referral code format. Please use the format YARNNU-XXXX-XXXX.",
+            "Invalid referral code format. Please use the format OLOVARA-XXXX-XXXX.",
         };
       }
 

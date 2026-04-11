@@ -57,9 +57,9 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
               
               // Clear any cached permissions to force fresh fetch
               if (typeof window !== 'undefined') {
-                localStorage.removeItem('yarnnu_user_permissions');
-                localStorage.removeItem('yarnnu_user_role');
-                localStorage.removeItem('yarnnu_permissions_timestamp');
+                localStorage.removeItem('olovara_user_permissions');
+                localStorage.removeItem('olovara_user_role');
+                localStorage.removeItem('olovara_permissions_timestamp');
               }
               
               // Wait a bit longer to ensure database update completes, then refresh
@@ -73,9 +73,9 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
               
               // Still clear cache and reload
               if (typeof window !== 'undefined') {
-                localStorage.removeItem('yarnnu_user_permissions');
-                localStorage.removeItem('yarnnu_user_role');
-                localStorage.removeItem('yarnnu_permissions_timestamp');
+                localStorage.removeItem('olovara_user_permissions');
+                localStorage.removeItem('olovara_user_role');
+                localStorage.removeItem('olovara_permissions_timestamp');
               }
               
               setTimeout(() => {
@@ -139,9 +139,9 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
       
       // Still clear cache and reload to show current state
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('yarnnu_user_permissions');
-        localStorage.removeItem('yarnnu_user_role');
-        localStorage.removeItem('yarnnu_permissions_timestamp');
+        localStorage.removeItem('olovara_user_permissions');
+        localStorage.removeItem('olovara_user_role');
+        localStorage.removeItem('olovara_permissions_timestamp');
       }
       
       setTimeout(() => {
@@ -164,7 +164,7 @@ export default function ReturnUrlStripe({ params }: ReturnUrlStripeProps) {
               Linking was Successful
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Congrats on linking your account to Yarnnu. You can now start
+              Congrats on linking your account to OLOVARA. You can now start
               selling your products!
             </p>
 

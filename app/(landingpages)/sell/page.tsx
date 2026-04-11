@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Sell on Yarnnu - The Marketplace for Real Makers",
+  title: "Sell on OLOVARA - The Marketplace for Real Makers",
   description:
     "Join a community of authentic artisans. No listing fees, no AI-generated junk, and no corporate investors. Just handmade goods by real people.",
 };
@@ -47,7 +47,7 @@ export default function SellPage() {
               </h1>
 
               <p className="text-xl md:text-2xl text-brand-dark-neutral-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Yarnnu is the marketplace where humans come first. We’ve banned AI-generated goods and mass-produced dropshipping so your handmade work actually gets seen.
+                OLOVARA is the marketplace where humans come first. We’ve banned AI-generated goods and mass-produced dropshipping so your handmade work actually gets seen.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -111,7 +111,7 @@ export default function SellPage() {
                   Transparent Pricing. <br />No Hidden Costs.
                 </h2>
                 <p className="text-lg text-brand-dark-neutral-600 mb-8">
-                  Most platforms nickel-and-dime you with listing fees, renewal fees, and forced advertising. On Yarnnu, our interests are perfectly aligned with yours.
+                  Most platforms nickel-and-dime you with listing fees, renewal fees, and forced advertising. On OLOVARA, our interests are perfectly aligned with yours.
                 </p>
                 <ul className="space-y-4">
                   {[
@@ -131,7 +131,7 @@ export default function SellPage() {
               <div className="bg-white rounded-3xl p-8 shadow-xl border border-brand-light-neutral-200">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between pb-4 border-b border-brand-light-neutral-100">
-                    <span className="text-brand-dark-neutral-600 font-medium">Yarnnu Commission</span>
+                    <span className="text-brand-dark-neutral-600 font-medium">OLOVARA Commission</span>
                     <span className="text-3xl font-bold text-brand-primary-700">10%</span>
                   </div>
                   <div className="flex items-center justify-between pb-4 border-b border-brand-light-neutral-100">
@@ -291,7 +291,7 @@ export default function SellPage() {
           Do I have control over my own shop policies?
         </h3>
         <p className="text-brand-dark-neutral-600">
-          Yes! You set your own shipping rates, return policies, and processing times. Yarnnu provides the tools, but you run your business your way.
+          Yes! You set your own shipping rates, return policies, and processing times. OLOVARA provides the tools, but you run your business your way.
         </p>
       </div>
     </div>

@@ -72,7 +72,7 @@ export default function SellerDashboardMobileNav() {
       >
         <SheetHeader>
           <Link href="/">
-            <SheetTitle>Yarnnu</SheetTitle>
+            <SheetTitle>OLOVARA</SheetTitle>
           </Link>
         </SheetHeader>
 
