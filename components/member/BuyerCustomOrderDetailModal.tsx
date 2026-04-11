@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -14,16 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  getCustomOrderSubmissionDetail,
-  updateSubmissionStatus,
-} from "@/actions/customOrderFormActions";
-import type { CustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
+import { getBuyerCustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
+import type { BuyerCustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { cn, formatPriceInCurrency } from "@/lib/utils";
-import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
 
+// Maps workflow status to badge style (same idea as seller dashboard)
 function detailStatusVariant(
   status: string,
 ): "default" | "secondary" | "outline" | "destructive" {
@@ -38,63 +34,34 @@ function detailStatusVariant(
     case "COMPLETED":
       return "outline";
     case "REJECTED":
+    case "DECLINED_BY_BUYER":
+    case "BUYER_DECLINED":
       return "destructive";
     default:
       return "outline";
   }
 }
 
-function acceptDisabled(status: string) {
-  // Approve only after a quote was sent (status QUOTED)
-  return (
-    status === "APPROVED" ||
-    status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED" ||
-    status !== "QUOTED"
-  );
-}
-
-function quoteActionDisabled(status: string) {
-  return (
-    status === "APPROVED" ||
-    status === "REVIEWED" ||
-    status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED" ||
-    status === "REJECTED"
-  );
-}
-
-function rejectDisabled(status: string) {
-  return status === "REJECTED" || status === "COMPLETED";
-}
-
-export default function CustomOrderSubmissionDetailModal({
+export default function BuyerCustomOrderDetailModal({
   submissionId,
   open,
   onOpenChange,
-  onRequestReject,
-  refreshTrigger = 0,
 }: {
   submissionId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Opens parent reject confirmation (reason + email to buyer). */
-  onRequestReject?: () => void;
-  /** Increment after reject to reload detail while modal stays open. */
-  refreshTrigger?: number;
 }) {
-  const router = useRouter();
-  const [detail, setDetail] = useState<CustomOrderSubmissionDetail | null>(null);
+  const [detail, setDetail] = useState<BuyerCustomOrderSubmissionDetail | null>(
+    null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [statusAction, setStatusAction] = useState<"accept" | null>(null);
-  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
     setLoadError(null);
     setDetail(null);
-    const res = await getCustomOrderSubmissionDetail(id);
+    const res = await getBuyerCustomOrderSubmissionDetail(id);
     setLoading(false);
     if (res.error) {
       setLoadError(res.error);
@@ -117,56 +84,23 @@ export default function CustomOrderSubmissionDetailModal({
     }
   }, [open, submissionId, load]);
 
-  useEffect(() => {
-    if (refreshTrigger > 0 && open && submissionId) {
-      void load(submissionId);
-    }
-  }, [refreshTrigger, open, submissionId, load]);
-
-  const handleAccept = async () => {
-    if (!submissionId) return;
-    setStatusAction("accept");
-    try {
-      const res = await updateSubmissionStatus({
-        submissionId,
-        status: "APPROVED",
-      });
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Submission accepted");
-      await load(submissionId);
-      router.refresh();
-    } finally {
-      setStatusAction(null);
-    }
-  };
-
-  const statusBusy = statusAction !== null;
-
   return (
-    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
           "flex flex-col gap-0 overflow-hidden border-brand-dark-neutral-200 bg-brand-light-neutral-50 p-0",
-          // Mobile: full screen using dynamic viewport (fits under browser chrome / notches)
           "max-sm:fixed max-sm:inset-0 max-sm:z-50 max-sm:m-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none",
-          // Desktop: centered dialog
           "sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg",
-          // Radix close button: respect safe area on small screens
           "[&>button.absolute]:max-sm:top-[max(1rem,env(safe-area-inset-top,0px))] [&>button.absolute]:max-sm:right-[max(1rem,env(safe-area-inset-right,0px))]",
         )}
       >
         <DialogHeader className="shrink-0 space-y-1 border-b border-brand-dark-neutral-200 px-4 py-4 text-left max-sm:pt-[max(1rem,env(safe-area-inset-top,0px))] sm:px-6">
-          <DialogTitle>Submission details</DialogTitle>
+          <DialogTitle>Your custom order request</DialogTitle>
           <DialogDescription>
-            What the customer entered on your custom order form.
+            What you submitted and any quote or update from the seller.
           </DialogDescription>
         </DialogHeader>
 
-        {/* flex-1 + min-h-0 + overflow-y-auto: scrolls full body; Radix ScrollArea h-full was clipping content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -179,6 +113,20 @@ export default function CustomOrderSubmissionDetailModal({
           )}
           {!loading && !loadError && detail && (
             <div className="space-y-6 pb-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Shop
+                </p>
+                <p className="mt-1 font-medium">{detail.shopName}</p>
+                <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                  <Link href={`/shops/${detail.shopNameSlug}`}>
+                    Visit shop
+                  </Link>
+                </Button>
+              </div>
+
+              <Separator />
+
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Form
@@ -198,29 +146,22 @@ export default function CustomOrderSubmissionDetailModal({
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Buyer budget
+                  Your budget
                 </p>
                 {detail.customerBudgetMinor != null ? (
                   <div className="mt-2 space-y-1 text-sm">
                     <p className="font-medium">
                       {formatPriceInCurrency(
                         detail.customerBudgetMinor,
-                        (detail.customerBudgetCurrency || detail.currency || "USD")
+                        (
+                          detail.customerBudgetCurrency ||
+                          detail.currency ||
+                          "USD"
+                        )
                           .trim()
                           .toUpperCase(),
                         true,
                       )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Buyer entered this in{" "}
-                      {detail.customerBudgetCurrency || detail.currency || "USD"}.
-                      {detail.customerBudgetCurrency &&
-                        detail.customerBudgetCurrency !== detail.currency && (
-                          <>
-                            {" "}
-                            Shop pricing currency: {detail.currency}.
-                          </>
-                        )}
                     </p>
                     <p className="text-muted-foreground">
                       Flexible on budget:{" "}
@@ -243,13 +184,17 @@ export default function CustomOrderSubmissionDetailModal({
                     <Separator />
                     <div className="rounded-md border border-brand-dark-neutral-200 bg-brand-light-neutral-100/80 p-3">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Quote sent to buyer
+                        Seller quote
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {format(
                           new Date(detail.quoteSentAt),
                           "MMM d, yyyy h:mm a",
                         )}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Amounts are in the seller&apos;s shop currency (
+                        {detail.currency}).
                       </p>
                       <dl className="mt-3 space-y-2 text-sm">
                         <div>
@@ -316,7 +261,7 @@ export default function CustomOrderSubmissionDetailModal({
                   <Separator />
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-destructive">
-                      Message sent to buyer
+                      Message from the seller
                     </p>
                     <p className="mt-2 whitespace-pre-wrap text-sm">
                       {detail.rejectionReason}
@@ -329,51 +274,11 @@ export default function CustomOrderSubmissionDetailModal({
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Contact
-                </p>
-                <div className="mt-2 space-y-1 text-sm">
-                  {detail.customerName && (
-                    <p>
-                      <span className="text-muted-foreground">Name: </span>
-                      {detail.customerName}
-                    </p>
-                  )}
-                  <p className="break-all">
-                    <span className="text-muted-foreground">Email: </span>
-                    {detail.customerEmail || "—"}
-                  </p>
-                  {(detail.buyerUsername || detail.buyerEmail) && (
-                    <p className="text-muted-foreground">
-                      Account:{" "}
-                      {detail.buyerUsername
-                        ? `@${detail.buyerUsername}`
-                        : detail.buyerEmail}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {detail.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Your notes
-                    </p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm">{detail.notes}</p>
-                  </div>
-                </>
-              )}
-
-              <Separator />
-
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Customer request
+                  Your answers
                 </p>
                 {detail.answers.length === 0 ? (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    No field responses were saved for this submission.
+                    No field responses were saved for this request.
                   </p>
                 ) : (
                   <ul className="mt-3 space-y-4">
@@ -395,51 +300,7 @@ export default function CustomOrderSubmissionDetailModal({
           )}
         </div>
 
-        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-brand-dark-neutral-200 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end sm:gap-2 sm:px-6 sm:pb-4">
-          {detail && submissionId && (
-            <>
-              <Button
-                type="button"
-                variant="outlinePrimary"
-                disabled={
-                  statusBusy ||
-                  loading ||
-                  quoteActionDisabled(detail.status)
-                }
-                onClick={() => setQuoteDialogOpen(true)}
-              >
-                {detail.status === "QUOTED" ? "Update quote" : "Send quote"}
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                disabled={
-                  statusBusy ||
-                  loading ||
-                  acceptDisabled(detail.status)
-                }
-                onClick={() => void handleAccept()}
-              >
-                {statusAction === "accept" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Accept"
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={
-                  loading ||
-                  rejectDisabled(detail.status) ||
-                  !onRequestReject
-                }
-                onClick={() => onRequestReject?.()}
-              >
-                Reject
-              </Button>
-            </>
-          )}
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-brand-dark-neutral-200 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end sm:px-6 sm:pb-4">
           <Button
             type="button"
             variant="outlinePrimary"
@@ -450,17 +311,5 @@ export default function CustomOrderSubmissionDetailModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
-    <SendCustomOrderQuoteDialog
-      open={quoteDialogOpen}
-      onOpenChange={setQuoteDialogOpen}
-      submissionId={submissionId}
-      currency={detail?.currency ?? "USD"}
-      onSent={() => {
-        if (submissionId) void load(submissionId);
-        router.refresh();
-      }}
-    />
-  </>
   );
 }

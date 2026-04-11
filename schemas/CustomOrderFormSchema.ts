@@ -1,4 +1,9 @@
 import * as z from "zod";
+import { SUPPORTED_CURRENCIES } from "@/data/units";
+
+const SUBMISSION_CURRENCY_CODES = SUPPORTED_CURRENCIES.map(
+  (c) => c.code,
+) as [string, ...string[]];
 
 // Schema for individual form fields
 export const CustomOrderFormFieldSchema = z.object({
@@ -30,6 +35,13 @@ export const CustomOrderSubmissionSchema = z.object({
   formId: z.string().min(1, "Form ID is required"),
   customerEmail: z.string().email("Valid email is required"), // Will be set from authenticated user
   customerName: z.string().max(100, "Name must be less than 100 characters").optional(), // Optional since we have user data
+  /** Major-unit amount in the buyer’s selected (footer) currency. */
+  customerBudgetMajor: z
+    .number()
+    .positive("Enter a budget greater than zero"),
+  /** ISO code matching the site footer currency selector when the buyer submitted. */
+  customerBudgetCurrency: z.enum(SUBMISSION_CURRENCY_CODES),
+  budgetFlexible: z.boolean().default(false),
   responses: z.array(z.object({
     fieldId: z.string().min(1, "Field ID is required"),
     value: z.string().min(1, "Response is required"),

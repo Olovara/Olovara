@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { isZeroDecimalCurrency, majorToMinorAmount } from "@/data/units";
+import { useCurrency } from "@/hooks/useCurrency";
 
 /** Portal may render outside the site layout’s next/font wrapper — keep Jost explicit here. */
 const MODAL_FONT = "font-jost";
@@ -80,6 +82,16 @@ export default function CustomOrderButton({
   className = "",
 }: CustomOrderButtonProps) {
   const { data: session, status } = useSession();
+  const buyerCurrency = useCurrency((s) => s.currency);
+  const formatPriceForBuyer = useCurrency((s) => s.formatPrice);
+  const [sellerMinAsBuyerText, setSellerMinAsBuyerText] = useState<string | null>(
+    null,
+  );
+  /** Seller minimum converted to buyer footer currency (minor units); null if none or convert failed. */
+  const [sellerMinInBuyerMinor, setSellerMinInBuyerMinor] = useState<number | null>(
+    null,
+  );
+  const [minConvertLoading, setMinConvertLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<any>(null);
@@ -87,6 +99,8 @@ export default function CustomOrderButton({
     customerEmail: session?.user?.email || "",
     customerName: session?.user?.name || "",
     responses: [] as Array<{ fieldId: string; value: string }>,
+    budgetMajor: "",
+    budgetFlexible: false,
   });
 
   useEffect(() => {
@@ -96,6 +110,71 @@ export default function CustomOrderButton({
       customerName: session?.user?.name || prev.customerName,
     }));
   }, [session?.user?.email, session?.user?.name]);
+
+  const resetSubmissionState = () => {
+    setSubmissionData({
+      customerEmail: session?.user?.email || "",
+      customerName: session?.user?.name || "",
+      responses: [],
+      budgetMajor: "",
+      budgetFlexible: false,
+    });
+  };
+
+  // Seller minimum in buyer’s currency: display string + numeric minor units for submit validation.
+  useEffect(() => {
+    const minM = formData?.seller?.customOrderMinBudgetMinor;
+    const sellerCur = formData?.seller?.preferredCurrency || "USD";
+    if (minM == null || minM <= 0) {
+      setSellerMinAsBuyerText(null);
+      setSellerMinInBuyerMinor(null);
+      setMinConvertLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMinConvertLoading(true);
+    setSellerMinInBuyerMinor(null);
+
+    void formatPriceForBuyer(minM, true, sellerCur).then((text) => {
+      if (!cancelled) setSellerMinAsBuyerText(text);
+    });
+
+    void fetch("/api/currency/convert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: minM,
+        fromCurrency: sellerCur,
+        toCurrency: buyerCurrency,
+        isCents: true,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<{ convertedAmount?: number }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data && typeof data.convertedAmount === "number") {
+          setSellerMinInBuyerMinor(data.convertedAmount);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+      })
+      .finally(() => {
+        if (!cancelled) setMinConvertLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    formData?.seller?.customOrderMinBudgetMinor,
+    formData?.seller?.preferredCurrency,
+    buyerCurrency,
+    formatPriceForBuyer,
+  ]);
 
   const handleCustomOrderClick = async () => {
     if (!acceptsCustom) {
@@ -137,6 +216,21 @@ export default function CustomOrderButton({
       return;
     }
 
+    const budgetParsed = parseFloat(
+      submissionData.budgetMajor.trim().replace(",", "."),
+    );
+    if (!Number.isFinite(budgetParsed) || budgetParsed <= 0) {
+      toast.error("Enter your budget for this custom order");
+      return;
+    }
+
+    if (budgetBlocksSubmit) {
+      toast.error(
+        "Your budget is below this seller's minimum. Increase it or select flexible budget.",
+      );
+      return;
+    }
+
     const requiredFields = formData.fields.filter((field: any) => field.required);
     for (const field of requiredFields) {
       const response = submissionData.responses.find((r) => r.fieldId === field.id);
@@ -152,19 +246,26 @@ export default function CustomOrderButton({
         formId: formData.id,
         customerEmail: submissionData.customerEmail.trim(),
         customerName: submissionData.customerName.trim(),
+        customerBudgetMajor: budgetParsed,
+        customerBudgetCurrency: buyerCurrency,
+        budgetFlexible: submissionData.budgetFlexible,
         responses: submissionData.responses,
       });
 
       if (result.error) {
         toast.error(result.error);
+      } else if ("autoRejected" in result && result.autoRejected) {
+        toast.error(
+          "This shop requires a higher minimum budget for custom orders. Check your email for details.",
+        );
+        setIsModalOpen(false);
+        setFormData(null);
+        resetSubmissionState();
       } else {
         toast.success("Custom order request submitted successfully!");
         setIsModalOpen(false);
-        setSubmissionData({
-          customerEmail: "",
-          customerName: "",
-          responses: [],
-        });
+        setFormData(null);
+        resetSubmissionState();
       }
     } catch (error) {
       toast.error("Failed to submit custom order request");
@@ -190,6 +291,28 @@ export default function CustomOrderButton({
 
   const getResponseValue = (fieldId: string) =>
     submissionData.responses.find((r) => r.fieldId === fieldId)?.value ?? "";
+
+  const minMinorSeller = formData?.seller?.customOrderMinBudgetMinor;
+  const sellerHasMinimum =
+    typeof minMinorSeller === "number" && minMinorSeller > 0;
+  const budgetMajorParsed = parseFloat(
+    submissionData.budgetMajor.trim().replace(",", "."),
+  );
+  const buyerBudgetMinor =
+    Number.isFinite(budgetMajorParsed) && budgetMajorParsed > 0
+      ? majorToMinorAmount(budgetMajorParsed, buyerCurrency)
+      : null;
+  const belowSellerMinimum =
+    sellerHasMinimum &&
+    !submissionData.budgetFlexible &&
+    sellerMinInBuyerMinor != null &&
+    buyerBudgetMinor != null &&
+    buyerBudgetMinor < sellerMinInBuyerMinor;
+  const budgetBlocksSubmit =
+    belowSellerMinimum ||
+    (sellerHasMinimum &&
+      !submissionData.budgetFlexible &&
+      minConvertLoading);
 
   if (!acceptsCustom) {
     return null;
@@ -224,7 +347,16 @@ export default function CustomOrderButton({
         Custom Order
       </Button>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(next) => {
+          setIsModalOpen(next);
+          if (!next) {
+            setFormData(null);
+            resetSubmissionState();
+          }
+        }}
+      >
         <DialogContent
           className={cn(
             MODAL_FONT,
@@ -277,6 +409,82 @@ export default function CustomOrderButton({
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Your budget</h3>
+                <div className="rounded-lg border border-brand-light-neutral-200 bg-brand-light-neutral-100 p-4 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-order-budget">
+                      How much are you planning to spend?{" "}
+                      <span className="text-red-500">*</span>
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        ({buyerCurrency})
+                      </span>
+                    </Label>
+                    <Input
+                      id="custom-order-budget"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={
+                        isZeroDecimalCurrency(buyerCurrency) ? 1 : "0.01"
+                      }
+                      value={submissionData.budgetMajor}
+                      onChange={(e) =>
+                        setSubmissionData((prev) => ({
+                          ...prev,
+                          budgetMajor: e.target.value,
+                        }))
+                      }
+                      className={INPUT_BRAND}
+                      placeholder="Amount"
+                      required
+                    />
+                    {sellerMinAsBuyerText && (
+                      <p className="text-xs text-muted-foreground">
+                        This seller typically accepts custom requests of at least{" "}
+                        <span className="font-medium text-foreground">
+                          {sellerMinAsBuyerText}
+                        </span>{" "}
+                        or higher{" "}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="custom-order-budget-flexible"
+                      checked={submissionData.budgetFlexible}
+                      onCheckedChange={(checked) =>
+                        setSubmissionData((prev) => ({
+                          ...prev,
+                          budgetFlexible: checked === true,
+                        }))
+                      }
+                      className={CHECKBOX_BRAND}
+                    />
+                    <Label
+                      htmlFor="custom-order-budget-flexible"
+                      className="text-sm font-normal leading-snug"
+                    >
+                      I&apos;m flexible on budget if the project needs it
+                    </Label>
+                  </div>
+                  {sellerHasMinimum && !submissionData.budgetFlexible && minConvertLoading && (
+                    <p className="text-xs text-muted-foreground">
+                      Verifying minimum budget…
+                    </p>
+                  )}
+                  {sellerHasMinimum &&
+                    !submissionData.budgetFlexible &&
+                    belowSellerMinimum &&
+                    !minConvertLoading && (
+                      <p className="text-xs text-destructive">
+                        Your budget is below this seller&apos;s minimum. Raise it
+                        or check flexible budget to submit.
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -468,7 +676,10 @@ export default function CustomOrderButton({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  disabled={isLoading || budgetBlocksSubmit}
+                >
                   {isLoading ? "Submitting..." : "Submit Request"}
                 </Button>
               </div>

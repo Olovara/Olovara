@@ -16,11 +16,16 @@ import {
   withDecryptedCustomerContact,
 } from "@/lib/custom-order-submission-contact";
 import { majorToMinorAmount } from "@/data/units";
+import { convertCurrencyAmount } from "@/lib/currency-convert";
 import { formatCustomOrderFieldValue } from "@/lib/custom-order-response-display";
 import {
   sendCustomOrderQuoteEmail,
   sendCustomOrderRejectionEmail,
 } from "@/lib/mail";
+
+/** Emailed to the buyer when the server auto-rejects for budget below seller minimum. */
+const AUTO_REJECT_BUDGET_BELOW_MIN_REASON =
+  'Automatically declined: your budget is below this seller\'s minimum for custom orders. You may submit a new request with a higher budget or select "I\'m flexible on budget" if that applies.';
 
 // Get all custom order forms for a seller
 export async function getCustomOrderForms() {
@@ -344,6 +349,9 @@ export type CustomOrderSubmissionDetail = {
   buyerUsername: string | null;
   buyerEmail: string | null;
   answers: CustomOrderSubmissionDetailAnswer[];
+  customerBudgetMinor: number | null;
+  customerBudgetCurrency: string | null;
+  budgetFlexible: boolean;
   currency: string;
   quotePriceType: string | null;
   quotePriceFixedMinor: number | null;
@@ -396,6 +404,13 @@ export async function getCustomOrderSubmissionDetail(
       return { error: "Submission not found or unauthorized" };
     }
 
+    // Prisma payload type with `include` can lag new scalars in the IDE; fields exist at runtime.
+    const rowWithBudget = row as typeof row & {
+      customerBudgetMinor?: number | null;
+      customerBudgetCurrency?: string | null;
+      budgetFlexible?: boolean;
+    };
+
     const decrypted = withDecryptedCustomerContact(row);
     const rejectionReason =
       (decrypted as { rejectionReason?: string | null }).rejectionReason ??
@@ -424,6 +439,9 @@ export async function getCustomOrderSubmissionDetail(
         buyerUsername: decrypted.user?.username ?? null,
         buyerEmail: decrypted.user?.email ?? null,
         answers,
+        customerBudgetMinor: rowWithBudget.customerBudgetMinor ?? null,
+        customerBudgetCurrency: rowWithBudget.customerBudgetCurrency ?? null,
+        budgetFlexible: Boolean(rowWithBudget.budgetFlexible),
         currency: decrypted.currency || "USD",
         quotePriceType: decrypted.quotePriceType ?? null,
         quotePriceFixedMinor: decrypted.quotePriceFixedMinor ?? null,
@@ -437,6 +455,184 @@ export async function getCustomOrderSubmissionDetail(
     };
   } catch (error) {
     console.error("Error fetching submission detail:", error);
+    return { error: "Failed to load submission" };
+  }
+}
+
+/** One row for the member dashboard custom-order list. */
+export type MyCustomOrderSubmissionRow = {
+  id: string;
+  formId: string;
+  formTitle: string;
+  shopName: string;
+  shopNameSlug: string;
+  status: string;
+  createdAt: string;
+  quoteSentAt: string | null;
+};
+
+/** Buyer-facing detail (no seller-only fields like internal notes). */
+export type BuyerCustomOrderSubmissionDetail = {
+  id: string;
+  formId: string;
+  formTitle: string;
+  shopName: string;
+  shopNameSlug: string;
+  status: string;
+  rejectionReason: string | null;
+  createdAt: string;
+  answers: CustomOrderSubmissionDetailAnswer[];
+  customerBudgetMinor: number | null;
+  customerBudgetCurrency: string | null;
+  budgetFlexible: boolean;
+  currency: string;
+  quotePriceType: string | null;
+  quotePriceFixedMinor: number | null;
+  quotePriceMinMinor: number | null;
+  quotePriceMaxMinor: number | null;
+  quoteDepositMinor: number | null;
+  quoteTimeline: string | null;
+  quoteNotes: string | null;
+  quoteSentAt: string | null;
+};
+
+export async function getMyCustomOrderSubmissions(): Promise<
+  | { error: string; data?: undefined }
+  | { data: MyCustomOrderSubmissionRow[]; error?: undefined }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const rows = await db.customOrderSubmission.findMany({
+      where: { userId: session.user.id },
+      select: {
+        id: true,
+        formId: true,
+        status: true,
+        createdAt: true,
+        quoteSentAt: true,
+        form: {
+          select: {
+            title: true,
+            seller: {
+              select: { shopName: true, shopNameSlug: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const data: MyCustomOrderSubmissionRow[] = rows.map((r) => ({
+      id: r.id,
+      formId: r.formId,
+      formTitle: r.form.title,
+      shopName: r.form.seller.shopName,
+      shopNameSlug: r.form.seller.shopNameSlug,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      quoteSentAt: r.quoteSentAt?.toISOString() ?? null,
+    }));
+
+    return { data };
+  } catch (error) {
+    console.error("getMyCustomOrderSubmissions:", error);
+    return { error: "Failed to load custom orders" };
+  }
+}
+
+// Decrypted answers + quote for the buyer who submitted (not seller tools)
+export async function getBuyerCustomOrderSubmissionDetail(
+  submissionId: string,
+): Promise<
+  | { error: string; data?: undefined }
+  | { data: BuyerCustomOrderSubmissionDetail; error?: undefined }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const row = await db.customOrderSubmission.findFirst({
+      where: { id: submissionId, userId: session.user.id },
+      include: {
+        form: {
+          select: {
+            id: true,
+            title: true,
+            seller: { select: { shopName: true, shopNameSlug: true } },
+          },
+        },
+        responses: {
+          include: {
+            field: {
+              select: {
+                id: true,
+                label: true,
+                type: true,
+                order: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!row) {
+      return { error: "Request not found" };
+    }
+
+    const rowWithBudget = row as typeof row & {
+      customerBudgetMinor?: number | null;
+      customerBudgetCurrency?: string | null;
+      budgetFlexible?: boolean;
+    };
+
+    const decrypted = withDecryptedCustomerContact(row);
+    const rejectionReason =
+      (decrypted as { rejectionReason?: string | null }).rejectionReason ??
+      null;
+    const answers: CustomOrderSubmissionDetailAnswer[] = decrypted.responses
+      .slice()
+      .sort((a, b) => a.field.order - b.field.order)
+      .map((r) => ({
+        fieldId: r.fieldId,
+        label: r.field.label,
+        type: r.field.type,
+        displayValue: formatCustomOrderFieldValue(r.value, r.field.type),
+      }));
+
+    return {
+      data: {
+        id: decrypted.id,
+        formId: decrypted.formId,
+        formTitle: decrypted.form.title,
+        shopName: decrypted.form.seller.shopName,
+        shopNameSlug: decrypted.form.seller.shopNameSlug,
+        status: decrypted.status,
+        rejectionReason,
+        createdAt: decrypted.createdAt.toISOString(),
+        answers,
+        customerBudgetMinor: rowWithBudget.customerBudgetMinor ?? null,
+        customerBudgetCurrency: rowWithBudget.customerBudgetCurrency ?? null,
+        budgetFlexible: Boolean(rowWithBudget.budgetFlexible),
+        currency: decrypted.currency || "USD",
+        quotePriceType: decrypted.quotePriceType ?? null,
+        quotePriceFixedMinor: decrypted.quotePriceFixedMinor ?? null,
+        quotePriceMinMinor: decrypted.quotePriceMinMinor ?? null,
+        quotePriceMaxMinor: decrypted.quotePriceMaxMinor ?? null,
+        quoteDepositMinor: decrypted.quoteDepositMinor ?? null,
+        quoteTimeline: decrypted.quoteTimeline ?? null,
+        quoteNotes: decrypted.quoteNotes ?? null,
+        quoteSentAt: decrypted.quoteSentAt?.toISOString() ?? null,
+      },
+    };
+  } catch (error) {
+    console.error("getBuyerCustomOrderSubmissionDetail:", error);
     return { error: "Failed to load submission" };
   }
 }
@@ -543,6 +739,7 @@ export async function sendCustomOrderQuote(values: unknown) {
 
     revalidatePath("/seller/dashboard/custom-orders");
     revalidatePath("/seller/dashboard/custom-orders/submissions");
+    revalidatePath("/member/dashboard/custom-orders");
     return { success: "Quote sent to the buyer" };
   } catch (error) {
     console.error("sendCustomOrderQuote:", error);
@@ -616,6 +813,7 @@ export async function updateSubmissionStatus(values: unknown) {
 
     revalidatePath("/seller/dashboard/custom-orders");
     revalidatePath("/seller/dashboard/custom-orders/submissions");
+    revalidatePath("/member/dashboard/custom-orders");
     return { success: "Status updated successfully", data: submission };
   } catch (error) {
     console.error("Error updating submission status:", error);
@@ -639,6 +837,8 @@ export async function getPublicCustomOrderForm(sellerId: string) {
         seller: {
           select: {
             shopName: true,
+            preferredCurrency: true,
+            customOrderMinBudgetMinor: true,
           },
         },
       },
@@ -668,7 +868,7 @@ export async function submitCustomOrderForm(values: any) {
   try {
     const validatedData = CustomOrderSubmissionSchema.parse(values);
 
-    // Get the form and its fields for validation
+    // Form + seller (for min budget, shop name, payment currency)
     const form = await db.customOrderForm.findFirst({
       where: {
         id: validatedData.formId,
@@ -679,11 +879,41 @@ export async function submitCustomOrderForm(values: any) {
           where: { isActive: true },
           orderBy: { order: "asc" },
         },
+        seller: {
+          select: {
+            shopName: true,
+            customOrderMinBudgetMinor: true,
+            preferredCurrency: true,
+          },
+        },
       },
     });
 
     if (!form) {
       return { error: "Form not found or inactive" };
+    }
+
+    const prefCur = form.seller.preferredCurrency?.trim() || "USD";
+    const buyerCur = validatedData.customerBudgetCurrency.trim().toUpperCase();
+    const customerBudgetMinor = majorToMinorAmount(
+      validatedData.customerBudgetMajor,
+      buyerCur,
+    );
+    const minMinor = form.seller.customOrderMinBudgetMinor ?? null;
+    const hasEffectiveMin = minMinor != null && minMinor > 0;
+    let autoRejectBelowMin = false;
+    if (hasEffectiveMin && !validatedData.budgetFlexible) {
+      try {
+        const minInBuyerMinor = await convertCurrencyAmount(
+          minMinor,
+          prefCur,
+          buyerCur,
+          true,
+        );
+        autoRejectBelowMin = customerBudgetMinor < minInBuyerMinor;
+      } catch (e) {
+        console.error("[submitCustomOrderForm] min budget currency convert:", e);
+      }
     }
 
     // Validate that all required fields are provided
@@ -721,6 +951,14 @@ export async function submitCustomOrderForm(values: any) {
           formId: validatedData.formId,
           userId: userId,
           ...contactPayload,
+          customerBudgetMinor,
+          customerBudgetCurrency: buyerCur,
+          budgetFlexible: validatedData.budgetFlexible,
+          currency: prefCur,
+          status: autoRejectBelowMin ? "REJECTED" : "PENDING",
+          rejectionReason: autoRejectBelowMin
+            ? AUTO_REJECT_BUDGET_BELOW_MIN_REASON
+            : null,
         } as unknown as Prisma.CustomOrderSubmissionUncheckedCreateInput,
       });
 
@@ -738,9 +976,26 @@ export async function submitCustomOrderForm(values: any) {
       return submission;
     });
 
+    if (autoRejectBelowMin) {
+      await sendCustomOrderRejectionEmail({
+        to: validatedData.customerEmail.trim(),
+        buyerName: validatedData.customerName?.trim() || "there",
+        shopName: form.seller.shopName || "The seller",
+        formTitle: form.title,
+        rejectionReason: AUTO_REJECT_BUDGET_BELOW_MIN_REASON,
+      });
+    }
+
     revalidatePath("/seller/dashboard/custom-orders");
     revalidatePath("/seller/dashboard/custom-orders/submissions");
-    return { success: "Form submitted successfully", data: result };
+    revalidatePath("/member/dashboard/custom-orders");
+    return {
+      success: autoRejectBelowMin
+        ? "Request recorded but did not meet this shop's minimum budget"
+        : "Form submitted successfully",
+      data: result,
+      autoRejected: autoRejectBelowMin,
+    };
   } catch (error) {
     console.error("Error submitting form:", error);
     return { error: "Failed to submit form" };

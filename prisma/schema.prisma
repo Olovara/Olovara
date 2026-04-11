@@ -1204,6 +1204,11 @@ model CustomOrderSubmission {
   responses CustomOrderSubmissionResponse[]
   notes     String? // Seller's notes on the submission
 
+  // Buyer-stated budget (minor units + ISO code = buyer’s footer currency at submit time)
+  customerBudgetMinor     Int?
+  customerBudgetCurrency  String?
+  budgetFlexible          Boolean @default(false)
+
   // Pre-approval quote (seller → buyer)
   quotePriceType      String?   // "FIXED" | "RANGE"
   quotePriceFixedMinor Int?

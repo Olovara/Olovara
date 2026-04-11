@@ -19,6 +19,7 @@ import {
   Star,
   FileText,
   Heart,
+  ClipboardList,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -58,6 +59,14 @@ export default function MemberDashboardTopNavbar({
                   <Button variant="outline" className="w-full">
                     <PackageOpen className="mr-2 h-4 w-4" />
                     My Purchases
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link href="/member/dashboard/custom-orders">
+                  <Button variant="outline" className="w-full">
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Custom orders
                   </Button>
                 </Link>
               </DialogClose>
