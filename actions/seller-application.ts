@@ -10,7 +10,10 @@ import {
   INITIAL_SELLER_PERMISSIONS,
 } from "@/data/roles-and-permissions";
 import { getAdminsForSellerApplicationNotification } from "./adminActions";
-import { sendSellerApplicationNotificationEmail } from "@/lib/mail";
+import {
+  sendSellerApplicationNotificationEmail,
+  sendSellerApplicationWelcomeEmail,
+} from "@/lib/mail";
 import { encryptData, encryptBirthdate } from "@/lib/encryption";
 import { logError } from "@/lib/error-logger";
 
@@ -402,15 +405,15 @@ export const sellerApplication = async (
     );
 
     // Send notifications to admins (outside of transaction to avoid blocking)
+    const applicant = await db.user.findUnique({
+      where: { id: userId },
+      select: { username: true, email: true },
+    });
+
     try {
       console.log("Starting admin notification process...");
       const admins = await getAdminsForSellerApplicationNotification();
       console.log(`Found ${admins.length} admins to notify`);
-
-      const applicant = await db.user.findUnique({
-        where: { id: userId },
-        select: { username: true, email: true },
-      });
 
       console.log("Applicant details:", {
         username: applicant?.username,
@@ -462,6 +465,14 @@ export const sellerApplication = async (
     } catch (notificationError) {
       console.error("Error sending admin notifications:", notificationError);
       // Don't fail the application submission if notifications fail
+    }
+
+    // Founder welcome email to the applicant (does not block or fail the action)
+    if (applicant?.email) {
+      void sendSellerApplicationWelcomeEmail({
+        to: applicant.email,
+        sellerDisplayName: applicant.username || "there",
+      });
     }
 
     return { success: "Application submitted successfully!" };

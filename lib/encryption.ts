@@ -7,34 +7,36 @@ const IV_LENGTH = 12; // 96 bits for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits for GCM
 const SALT_LENGTH = 16; // 128 bits for key derivation
 
-// Get encryption key from environment
-const ENCRYPTION_KEY =
-  process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
-console.log("Encryption key exists:", !!ENCRYPTION_KEY);
-console.log("Encryption key length:", ENCRYPTION_KEY?.length);
+// Lazy-load the master key so `next build` can import this module when ENCRYPTION_KEY
+// is only present at runtime (Docker/CI image) — validation runs on first encrypt/decrypt.
+let cachedMasterKey: Buffer | null = null;
 
-if (!ENCRYPTION_KEY) {
-  if (typeof window === "undefined") {
-    // Server-side error
-    throw new Error(
-      "ENCRYPTION_KEY environment variable is not set. Please add it to your .env file."
-    );
-  } else {
-    // Client-side error
-    console.error("ENCRYPTION_KEY environment variable is not set");
+function getMasterKey(): Buffer {
+  if (cachedMasterKey) {
+    return cachedMasterKey;
+  }
+
+  const encryptionKey =
+    process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
+
+  if (!encryptionKey) {
+    if (typeof window === "undefined") {
+      throw new Error(
+        "ENCRYPTION_KEY environment variable is not set. Please add it to your .env file."
+      );
+    }
     throw new Error("Encryption key is not configured properly");
   }
-}
 
-// Validate key length
-const key = Buffer.from(ENCRYPTION_KEY!, "hex");
-if (key.length !== KEY_LENGTH) {
-  console.error(
-    `Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`
-  );
-  throw new Error(
-    `Invalid key length: ${key.length} bytes. Expected ${KEY_LENGTH} bytes.`
-  );
+  const keyBuffer = Buffer.from(encryptionKey, "hex");
+  if (keyBuffer.length !== KEY_LENGTH) {
+    throw new Error(
+      `Invalid key length: ${keyBuffer.length} bytes. Expected ${KEY_LENGTH} bytes.`
+    );
+  }
+
+  cachedMasterKey = keyBuffer;
+  return cachedMasterKey;
 }
 
 // Generate a random IV
@@ -64,7 +66,7 @@ export function encryptData(data: string): {
     const saltBuffer = Buffer.from(salt, "hex");
 
     // Derive a unique key for this encryption
-    const derivedKey = deriveKey(key, saltBuffer);
+    const derivedKey = deriveKey(getMasterKey(), saltBuffer);
 
     // Generate a random IV
     const iv = generateIV();
@@ -119,7 +121,7 @@ export function decryptData(
       const ivBuffer = Buffer.from(iv, "hex");
 
       // Derive the same key used for encryption
-      const derivedKey = deriveKey(key, saltBuffer);
+      const derivedKey = deriveKey(getMasterKey(), saltBuffer);
 
       // Extract auth tag from the end of encrypted data
       const authTag = Buffer.from(encryptedData.slice(-32), "hex");
@@ -255,7 +257,7 @@ export function encryptOrderData(data: string): {
     const saltBuffer = Buffer.from(salt, "hex");
 
     // Derive a unique key for this encryption
-    const derivedKey = deriveKey(key, saltBuffer);
+    const derivedKey = deriveKey(getMasterKey(), saltBuffer);
 
     // Generate a random IV
     const iv = generateIV();
@@ -299,7 +301,7 @@ export function decryptOrderData(
     const ivBuffer = Buffer.from(iv, "hex");
 
     // Derive the same key used for encryption
-    const derivedKey = deriveKey(key, saltBuffer);
+    const derivedKey = deriveKey(getMasterKey(), saltBuffer);
 
     // Extract auth tag from the end of encrypted data
     const authTag = Buffer.from(encryptedData.slice(-32), "hex");

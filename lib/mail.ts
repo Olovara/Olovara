@@ -6,6 +6,7 @@ import { SellerApplicationNotificationEmail } from "@/components/emails/SellerAp
 import { SellerApplicationApprovedEmail } from "@/components/emails/SellerApplicationApprovedEmail";
 import { SellerApplicationRejectedEmail } from "@/components/emails/SellerApplicationRejectedEmail";
 import { SellerApplicationInformationRequestEmail } from "@/components/emails/SellerApplicationInformationRequestEmail";
+import { SellerApplicationWelcomeEmail } from "@/components/emails/SellerApplicationWelcomeEmail";
 import { ContactResponseEmail } from "@/components/emails/ContactResponseEmail";
 import { CustomOrderRejectionEmail } from "@/components/emails/CustomOrderRejectionEmail";
 import { CustomOrderQuoteEmail } from "@/components/emails/CustomOrderQuoteEmail";
@@ -231,6 +232,58 @@ export const sendSellerApplicationNotificationEmail = async (
       },
     });
     throw new Error(userMessage);
+  }
+};
+
+/** Personal welcome from the founder after someone submits a seller application (non-throwing). */
+export const sendSellerApplicationWelcomeEmail = async (params: {
+  to: string;
+  sellerDisplayName: string;
+}) => {
+  const { to, sellerDisplayName } = params;
+  const replyTo =
+    process.env.FOUNDER_REPLY_TO_EMAIL?.trim() || "simeon.willey@olovara.com";
+
+  if (!apiKey) {
+    console.warn(
+      "[SELLER_APP_WELCOME] RESEND_API_KEY missing, skip welcome email"
+    );
+    return;
+  }
+  if (!to?.includes("@")) {
+    console.warn("[SELLER_APP_WELCOME] Invalid recipient:", to);
+    return;
+  }
+
+  const displayName =
+    sellerDisplayName?.trim() && sellerDisplayName.trim().length > 0
+      ? sellerDisplayName.trim()
+      : "there";
+
+  try {
+    const response = await resend.emails.send({
+      from: "Simeon from Olovara <simeon.willey@olovara.com>",
+      to,
+      replyTo,
+      subject: "Welcome to Olovara",
+      react: SellerApplicationWelcomeEmail({ sellerDisplayName: displayName }),
+    });
+    if (response?.error) {
+      throw new Error(JSON.stringify(response.error));
+    }
+    console.log("[SELLER_APP_WELCOME] Sent successfully:", {
+      to,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logError({
+      code: "SELLER_APP_WELCOME_EMAIL_FAILED",
+      userId: undefined,
+      route: "lib/mail",
+      method: "sendSellerApplicationWelcomeEmail",
+      error,
+      metadata: { to, note: "Application saved; welcome email failed" },
+    });
   }
 };
 

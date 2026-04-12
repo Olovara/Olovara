@@ -236,7 +236,7 @@ const Footer = () => {
                         <RedditIcon className="w-4 h-4" />
                       </a>
                       <a
-                        href="https://www.pinterest.com/olovara/"
+                        href="https://www.pinterest.com/olovaramarketplace/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-brand-light-neutral-100 hover:bg-brand-primary-50 text-brand-dark-neutral-900 rounded-full transition-colors"
@@ -245,7 +245,7 @@ const Footer = () => {
                         <PinterestIcon className="w-4 h-4" />
                       </a>
                       <a
-                        href="https://www.instagram.com/olovara/"
+                        href="https://www.instagram.com/olovara_marketplace/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-8 h-8 bg-brand-light-neutral-100 hover:bg-brand-primary-50 text-brand-dark-neutral-900 rounded-full transition-colors"
