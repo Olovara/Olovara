@@ -12,7 +12,7 @@ const f = createUploadthing();
 // FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
   // Define as many FileRoutes as you like, each with a unique routeSlug
-  imageUploader: f({ image: { maxFileSize: "4MB", maxFileCount: 10 } })
+  imageUploader: f({ image: { maxFileSize: "16MB", maxFileCount: 10 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
       const session = await auth();
@@ -64,7 +64,7 @@ export const ourFileRouter = {
     }),
 
   // Single image uploader for profile images, banners, logos, etc.
-  singleImageUploader: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+  singleImageUploader: f({ image: { maxFileSize: "16MB", maxFileCount: 1 } })
     // Set permissions and file types for this FileRoute
     .middleware(async ({ req }) => {
       const session = await auth();
@@ -166,14 +166,14 @@ export const ourFileRouter = {
     }),
 
   dmcaDocumentUpload: f({
-    "application/pdf": { maxFileSize: "8MB", maxFileCount: 1 },
-    "application/msword": { maxFileSize: "8MB", maxFileCount: 1 },
+    "application/pdf": { maxFileSize: "16MB", maxFileCount: 1 },
+    "application/msword": { maxFileSize: "16MB", maxFileCount: 1 },
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-      maxFileSize: "8MB",
+      maxFileSize: "16MB",
       maxFileCount: 1,
     },
-    "image/jpeg": { maxFileSize: "8MB", maxFileCount: 1 },
-    "image/png": { maxFileSize: "8MB", maxFileCount: 1 },
+    "image/jpeg": { maxFileSize: "16MB", maxFileCount: 1 },
+    "image/png": { maxFileSize: "16MB", maxFileCount: 1 },
   })
     .middleware(async ({ req }) => {
       // For DMCA documents, we don't require authentication since it's a public form

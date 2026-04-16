@@ -46,9 +46,9 @@ export function ProductFileSection({
     }
 
     // Validate file size (check if there's a max size limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB (adjust as needed)
+    const maxSize = 16 * 1024 * 1024; // 16MB
     if (file.size > maxSize) {
-      toast.error("File size must be less than 10MB");
+      toast.error("File size must be less than 16MB");
       return;
     }
 

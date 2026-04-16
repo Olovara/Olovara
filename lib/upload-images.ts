@@ -52,7 +52,7 @@ export async function uploadProcessedImages(
   }
 
   // Validate each file before upload
-  const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
+  const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB
   const validFiles: File[] = [];
   const invalidFiles: Array<{ file: File; reason: string }> = [];
 
@@ -70,7 +70,7 @@ export async function uploadProcessedImages(
     if (file.size > MAX_FILE_SIZE) {
       invalidFiles.push({
         file,
-        reason: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum (4MB)`,
+        reason: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum (16MB)`,
       });
       continue;
     }

@@ -12,7 +12,7 @@ import { normalizeCsvHeader } from "@/lib/bulk-import/normalize-header";
 
 export const dynamic = "force-dynamic";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB
 const MAX_PREVIEW_ROWS = 10; // Show first 10 rows in preview
 
 export async function POST(request: NextRequest) {

@@ -258,7 +258,7 @@ const DMCAFormContent = () => {
                           />
                           <div className="text-sm text-gray-600 mt-2">
                             <p className="text-xs">
-                              PDF, DOC, DOCX, JPG, PNG (max 8MB)
+                              PDF, DOC, DOCX, JPG, PNG (max 16MB)
                             </p>
                           </div>
                         </div>

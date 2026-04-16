@@ -40,8 +40,8 @@ export type ProcessedImage = {
   uploadSessionId?: string; // Unique ID for the upload session to prevent replacing images from different sessions
 };
 
-// Same limit as lib/upload-images.ts and Uploadthing imageUploader (4MB)
-const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+// Same limit as lib/upload-images.ts and Uploadthing imageUploader (16MB)
+const MAX_IMAGE_FILE_SIZE = 16 * 1024 * 1024;
 
 type ImageProcessorProps = {
   onImagesProcessed: (images: ProcessedImage[]) => void; // Callback when images are ready
@@ -270,8 +270,8 @@ export function ImageProcessor({
       if (oversized.length > 0) {
         toast.warning(
           oversized.length === 1
-            ? `${oversized[0].name} is over 4MB and was skipped. Use a smaller image.`
-            : `${oversized.length} image(s) over 4MB were skipped. Max size per image: 4MB.`
+            ? `${oversized[0].name} is over 16MB and was skipped. Use a smaller image.`
+            : `${oversized.length} image(s) over 16MB were skipped. Max size per image: 16MB.`
         );
       }
       if (withinSize.length === 0) {
