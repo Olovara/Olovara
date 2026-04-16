@@ -8,6 +8,7 @@ import {
 } from "@/lib/founding-seller";
 import { generateBatchNumber } from "@/lib/batchNumber";
 import { logError } from "@/lib/error-logger";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 /**
  * Create a new product and check for founding seller eligibility
@@ -37,6 +38,9 @@ export async function createProduct(productData: any) {
       data: {
         ...productData,
         userId: currentUserId,
+        urlSlug: slugifyOrDefault(
+          String(productData?.name != null ? productData.name : "product")
+        ),
       },
     });
 

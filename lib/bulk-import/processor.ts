@@ -16,6 +16,7 @@ import {
 import { SUPPORTED_CURRENCIES } from "@/data/units";
 import { generateUniqueSKU } from "@/lib/sku-generator";
 import { getRowValueByHeader } from "@/lib/bulk-import/normalize-header";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 const BATCH_SIZE = 50; // Process 50 rows at a time
 const MAX_ROWS = 500; // Maximum rows per job
@@ -994,6 +995,8 @@ async function processRowWithNormalizedData(
     }
 
     cleanedProductData.sku = finalSku;
+
+    cleanedProductData.urlSlug = slugifyOrDefault(validated.name);
 
     // Create product in database
     const product = await db.product.create({

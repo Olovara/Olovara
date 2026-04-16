@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
+import { revalidateProductPublicPaths } from "@/lib/revalidate-product-public";
 
 // Create a new wishlist
 export async function createWishlist(data: {
@@ -143,7 +144,7 @@ export async function addToWishlist(data: {
     await updateProductWishlistCount(data.productId);
 
     revalidatePath("/dashboard");
-    revalidatePath(`/product/${data.productId}`);
+    await revalidateProductPublicPaths(data.productId);
     return { success: true, wishlistItem };
   } catch (error) {
     console.error("Error adding to wishlist:", error);
@@ -187,7 +188,7 @@ export async function removeFromWishlist(data: {
     await updateProductWishlistCount(data.productId, -1);
 
     revalidatePath("/dashboard");
-    revalidatePath(`/product/${data.productId}`);
+    await revalidateProductPublicPaths(data.productId);
     return { success: true };
   } catch (error) {
     console.error("Error removing from wishlist:", error);
@@ -562,7 +563,7 @@ export async function toggleWishlistItem(data: {
       await updateProductWishlistCount(data.productId, -1);
 
       revalidatePath("/dashboard");
-      revalidatePath(`/product/${data.productId}`);
+      await revalidateProductPublicPaths(data.productId);
       return { success: true, action: "removed" };
     } else {
       // Add to wishlist
@@ -585,7 +586,7 @@ export async function toggleWishlistItem(data: {
       await updateProductWishlistCount(data.productId);
 
       revalidatePath("/dashboard");
-      revalidatePath(`/product/${data.productId}`);
+      await revalidateProductPublicPaths(data.productId);
       return { success: true, action: "added", wishlistItem };
     }
   } catch (error) {

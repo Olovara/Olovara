@@ -204,7 +204,13 @@ export async function getFollowedSellers(userId?: string) {
             totalProducts: true,
             products: {
               where: { status: "ACTIVE" },
-              select: { id: true, name: true, images: true, price: true },
+              select: {
+                id: true,
+                name: true,
+                urlSlug: true,
+                images: true,
+                price: true,
+              },
               take: 3,
               orderBy: { createdAt: "desc" },
             },

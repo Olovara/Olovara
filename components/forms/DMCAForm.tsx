@@ -190,7 +190,7 @@ const DMCAFormContent = () => {
                   <FormLabel>Link to Infringing Product *</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="https://example.com/product/123"
+                      placeholder="https://example.com/products/handmade-mug-507f1f77bcf86cd799439011"
                       {...form.register("productLink")}
                       disabled={isPending}
                     />

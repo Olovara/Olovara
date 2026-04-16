@@ -1,9 +1,11 @@
 import Script from 'next/script'
+import { absoluteProductPageUrl } from '@/lib/product-public-path'
 
 interface ProductStructuredDataProps {
   product: {
     id: string
     name: string
+    urlSlug?: string | null
     description: string
     price: number
     currency: string
@@ -88,7 +90,11 @@ export function ProductStructuredData({ product }: ProductStructuredDataProps) {
           "url": `${process.env.NEXT_PUBLIC_APP_URL}/shops/${product.seller.shopNameSlug}`
         }
       }),
-      "url": `${process.env.NEXT_PUBLIC_APP_URL}/product/${product.id}`
+      "url": absoluteProductPageUrl({
+        id: product.id,
+        name: product.name,
+        urlSlug: product.urlSlug,
+      })
     },
     "category": product.tags?.[0] || "Handmade Product",
     "keywords": product.tags?.join(', ') || "handmade, artisan",

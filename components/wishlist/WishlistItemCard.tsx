@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 
 interface WishlistItemCardProps {
   item: any;
@@ -98,7 +99,11 @@ export function WishlistItemCard({
 
         <div className="flex-1 min-w-0">
           <Link
-            href={`/product/${item.productId}`}
+            href={productPublicPathFromFields({
+              id: item.productId,
+              name: item.product.name,
+              urlSlug: item.product.urlSlug,
+            })}
             className="text-sm font-medium hover:underline truncate block"
           >
             {item.product.name}
@@ -164,7 +169,11 @@ export function WishlistItemCard({
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/product/${item.productId}`}
+                  href={productPublicPathFromFields({
+                    id: item.productId,
+                    name: item.product.name,
+                    urlSlug: item.product.urlSlug,
+                  })}
                   className="font-medium hover:underline truncate block"
                 >
                   {item.product.name}
@@ -197,7 +206,13 @@ export function WishlistItemCard({
               {/* Actions */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/product/${item.productId}`}>
+                  <Link
+                    href={productPublicPathFromFields({
+                      id: item.productId,
+                      name: item.product.name,
+                      urlSlug: item.product.urlSlug,
+                    })}
+                  >
                     <ExternalLink className="h-4 w-4" />
                   </Link>
                 </Button>

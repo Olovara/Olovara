@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { productPublicPathFromFields } from '@/lib/product-public-path'
 import { db } from '@/lib/db'
 import { Categories } from '@/data/categories'
 
@@ -113,13 +114,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     select: {
       id: true,
+      name: true,
+      urlSlug: true,
       updatedAt: true,
     },
     take: 10000, // Limit to prevent timeout
   })
 
   const productPages = products.map(product => ({
-    url: `${baseUrl}/product/${product.id}`,
+    url: `${baseUrl}${productPublicPathFromFields(product)}`,
     lastModified: product.updatedAt.toISOString(),
     changeFrequency: 'weekly' as const,
     priority: 0.8,

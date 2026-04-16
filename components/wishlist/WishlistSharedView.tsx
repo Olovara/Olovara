@@ -19,6 +19,7 @@ import { markItemAsPurchased } from "@/actions/wishlistActions";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 
 interface WishlistSharedViewProps {
   wishlist: any;
@@ -174,7 +175,11 @@ export function WishlistSharedView({ wishlist }: WishlistSharedViewProps) {
                   <div className="space-y-3">
                     <div>
                       <Link
-                        href={`/product/${item.productId}`}
+                        href={productPublicPathFromFields({
+                          id: item.productId,
+                          name: item.product.name,
+                          urlSlug: item.product.urlSlug,
+                        })}
                         className="text-lg font-semibold hover:text-pink-600 transition-colors line-clamp-2"
                       >
                         {item.product.name}
@@ -218,7 +223,13 @@ export function WishlistSharedView({ wishlist }: WishlistSharedViewProps) {
                         asChild
                         className="flex-1"
                       >
-                        <Link href={`/product/${item.productId}`}>
+                        <Link
+                          href={productPublicPathFromFields({
+                            id: item.productId,
+                            name: item.product.name,
+                            urlSlug: item.product.urlSlug,
+                          })}
+                        >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           View Product
                         </Link>

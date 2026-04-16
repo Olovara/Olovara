@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, Package, Users } from "lucide-react";
 import Link from "next/link";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 import Image from "next/image";
 import { toggleWishlistItem, getUserWishlists } from "@/actions/wishlistActions";
 import { toast } from "sonner";
@@ -209,7 +210,13 @@ export default function FollowedSellersList({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {seller.products.map((product: any) => (
                     <div key={product.id} className="group block">
-                      <Link href={`/product/${product.id}`}>
+                      <Link
+                        href={productPublicPathFromFields({
+                          id: product.id,
+                          name: product.name,
+                          urlSlug: product.urlSlug,
+                        })}
+                      >
                         <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
                           {product.images && product.images.length > 0 ? (
                             <Image
@@ -243,7 +250,13 @@ export default function FollowedSellersList({
                         </div>
                       </Link>
                       <div className="mt-2">
-                        <Link href={`/product/${product.id}`}>
+                        <Link
+                          href={productPublicPathFromFields({
+                            id: product.id,
+                            name: product.name,
+                            urlSlug: product.urlSlug,
+                          })}
+                        >
                           <h5 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
                             {product.name}
                           </h5>

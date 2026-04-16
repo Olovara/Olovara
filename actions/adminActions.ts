@@ -21,6 +21,7 @@ import {
 } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
 import { ProductInteractionService } from "@/lib/analytics";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 
 interface GetUsersParams {
   role?: string;
@@ -2826,6 +2827,7 @@ export async function getProductsForSocialMedia({
         select: {
           id: true,
           name: true,
+          urlSlug: true,
           shortDescription: true,
           shortDescriptionBullets: true,
           description: true,
@@ -2865,7 +2867,7 @@ export async function getProductsForSocialMedia({
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://olovara.com";
     const formattedProducts = products.map((product) => {
       // Generate product URL
-      const productUrl = `${baseUrl}/product/${product.id}`;
+      const productUrl = `${baseUrl.replace(/\/$/, "")}${productPublicPathFromFields(product)}`;
 
       // Format price
       const formattedPrice = (product.price / 100).toFixed(2);

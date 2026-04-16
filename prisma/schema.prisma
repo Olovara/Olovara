@@ -528,6 +528,9 @@ model Product {
   // Test environment
   isTestProduct Boolean @default(false) // Whether this is a test product (only visible to test users)
 
+  // URL slug (name-based, without id); public path is `/products/{urlSlug}-{id}`
+  urlSlug         String?
+
   // SEO fields
   metaTitle       String? // Custom SEO title for product page
   metaDescription String? // Custom meta description for product page

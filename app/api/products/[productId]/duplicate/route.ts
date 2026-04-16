@@ -6,6 +6,7 @@ import { generateBatchNumber } from "@/lib/batchNumber";
 import { ObjectId } from "mongodb";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -151,9 +152,11 @@ export async function POST(
 
     // Create the duplicate product data
     // Append " (Copy)" to the name and set status to DRAFT
+    const duplicateName = `${originalProduct.name} (Copy)`;
     const duplicateData = {
       userId: session.user.id,
-      name: `${originalProduct.name} (Copy)`,
+      name: duplicateName,
+      urlSlug: slugifyOrDefault(duplicateName),
       sku: newSku,
       shortDescription: originalProduct.shortDescription,
       shortDescriptionBullets: originalProduct.shortDescriptionBullets,

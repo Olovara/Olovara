@@ -9,6 +9,7 @@ import { Heart, Users, Package } from "lucide-react";
 import { getFollowedSellersFeed } from "@/actions/followActions";
 import { useCurrency } from "@/hooks/useCurrency";
 import Link from "next/link";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 import Image from "next/image";
 import {
   toggleWishlistItem,
@@ -19,6 +20,7 @@ import { toast } from "sonner";
 interface Product {
   id: string;
   name: string;
+  urlSlug?: string | null;
   price: number;
   images: string[];
   createdAt: Date;
@@ -218,7 +220,13 @@ export default function FollowedSellersFeed({
             key={product.id}
             className="overflow-hidden hover:shadow-lg transition-shadow group"
           >
-            <Link href={`/product/${product.id}`}>
+            <Link
+              href={productPublicPathFromFields({
+                id: product.id,
+                name: product.name,
+                urlSlug: product.urlSlug,
+              })}
+            >
               <div className="relative h-48 bg-gray-100">
                 {product.images[0] ? (
                   <Image
@@ -284,7 +292,13 @@ export default function FollowedSellersFeed({
                 )}
               </div>
 
-              <Link href={`/product/${product.id}`}>
+              <Link
+                href={productPublicPathFromFields({
+                  id: product.id,
+                  name: product.name,
+                  urlSlug: product.urlSlug,
+                })}
+              >
                 <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 hover:text-blue-600">
                   {product.name}
                 </h3>

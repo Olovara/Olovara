@@ -12,6 +12,7 @@ import {
   assignFoundingSellerStatus,
   checkFoundingSellerEligibility,
 } from "@/lib/founding-seller";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 /**
  * Recalculate onboarding steps when seller settings change
@@ -674,6 +675,7 @@ export const createFirstProduct = async (
         data: {
           userId: currentUserId,
           name: validatedData.name,
+          urlSlug: slugifyOrDefault(validatedData.name),
           shortDescription: validatedData.shortDescription,
           shortDescriptionBullets: validatedData.shortDescriptionBullets || [],
           description: {

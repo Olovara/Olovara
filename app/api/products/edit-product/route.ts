@@ -4,6 +4,7 @@ import { UTApi } from "uploadthing/server";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -184,7 +185,7 @@ export async function PATCH(req: Request) {
     }
 
     // --- Step 3: Prepare clean data for update (including CORRECT images array) ---
-    const cleanData = {
+    const cleanData: Record<string, unknown> = {
       ...updateData,
       // Ensure images array from the input data is used for the update
       images: updateData.images,
@@ -198,13 +199,20 @@ export async function PATCH(req: Request) {
       discount: updateData.discount ? Number(updateData.discount) : null,
       // Explicitly exclude fields that shouldn't be directly updated if necessary
     };
+    if (
+      updateData.name !== undefined &&
+      typeof updateData.name === "string" &&
+      updateData.name.trim() !== ""
+    ) {
+      cleanData.urlSlug = slugifyOrDefault(updateData.name.trim());
+    }
     console.log("[PRE-UPDATE] Data prepared for db.product.update:", cleanData);
 
     // --- Step 4: Update the product in the database ---
     const result = await db.$transaction(async (tx) => {
       const product = await tx.product.update({
         where: { id },
-        data: cleanData,
+        data: cleanData as never,
       });
 
       console.log("[DEBUG] Product updated successfully:", product.id);

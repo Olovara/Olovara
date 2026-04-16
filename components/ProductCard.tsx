@@ -22,10 +22,12 @@ import {
   useWishlistSync,
 } from "@/hooks/useWishlistSync";
 import { useAnalyticsTracking } from "@/hooks/use-analytics-tracking";
+import { productPublicPathFromFields } from "@/lib/product-public-path";
 
 interface SimplifiedProduct {
   name: string;
   id: string;
+  urlSlug?: string | null;
   status: string;
   isDigital: boolean;
   discount: number | null;
@@ -321,7 +323,11 @@ const ProductCard = ({ product, index }: ProductListingProps) => {
       className={cn("invisible h-full w-full cursor-pointer group/main", {
         "visible animate-in fade-in-5": isVisible,
       })}
-      href={`/product/${product.id}`}
+      href={productPublicPathFromFields({
+        id: product.id,
+        name: product.name,
+        urlSlug: product.urlSlug,
+      })}
       onClick={handleProductClick}
     >
       <div className="flex flex-col w-full">

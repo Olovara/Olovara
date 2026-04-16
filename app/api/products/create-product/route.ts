@@ -17,6 +17,7 @@ import {
   assignFoundingSellerStatus,
   checkFoundingSellerEligibility,
 } from "@/lib/founding-seller";
+import { slugifyOrDefault } from "@/lib/slugify";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = "force-dynamic";
@@ -406,6 +407,7 @@ export async function POST(req: NextRequest) {
     // --- Step 2: Prepare clean data for product creation ---
     const productData = {
       name: name.trim(),
+      urlSlug: slugifyOrDefault(name.trim()),
       sku: finalSku,
       // CRITICAL: Prisma requires shortDescription to be non-null
       // If it's empty or null, use empty string instead of null
