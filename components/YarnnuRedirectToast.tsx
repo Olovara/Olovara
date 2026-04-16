@@ -16,6 +16,17 @@ function isFromYarnnuReferrer(referrer: string): boolean {
   }
 }
 
+function isFromYarnnuQuery(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const from = (params.get("from") || "").toLowerCase();
+    const utmSource = (params.get("utm_source") || "").toLowerCase();
+    return from === "yarnnu" || utmSource === "yarnnu";
+  } catch {
+    return false;
+  }
+}
+
 export function YarnnuRedirectToast() {
   useEffect(() => {
     try {
@@ -23,7 +34,9 @@ export function YarnnuRedirectToast() {
       if (alreadyShown) return;
 
       const referrer = document.referrer;
-      if (!isFromYarnnuReferrer(referrer)) return;
+      const fromYarnnu =
+        isFromYarnnuReferrer(referrer) || isFromYarnnuQuery();
+      if (!fromYarnnu) return;
 
       toast("Redirected from Yarnnu", {
         description:
