@@ -15,6 +15,7 @@ import { PostHogProvider, PostHogPageview } from "./providers";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { FONTS } from "@/lib/fonts";
 import ModalProvider from "@/providers/modal-provider";
+import { YarnnuRedirectToast } from "@/components/YarnnuRedirectToast";
 
 const jost = Jost({ subsets: ["latin"] });
 const notoSerifDisplay = Noto_Serif_Display({ subsets: ["latin"] });
@@ -141,6 +142,7 @@ export default async function RootLayout({
               </LocationProvider>
             </PermissionProvider>
             <Toaster position="top-center" richColors />
+            <YarnnuRedirectToast />
           </SessionProvider>
         </PostHogProvider>
       </body>

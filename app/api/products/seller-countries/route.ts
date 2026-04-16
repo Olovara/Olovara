@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCountryByCode } from "@/data/countries";
 
+// This route depends on request.url (query params) and DB access.
+// Mark as dynamic so Next doesn't try to prerender it during build/export.
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/products/seller-countries
  * Returns distinct country codes (shopCountry) for sellers who have at least one ACTIVE product.

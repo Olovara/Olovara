@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { getUserCountryCode } from "@/actions/locationFilterActions";
 import { createProductFilterWhereClause, getProductFilterConfig } from "@/lib/product-filtering";
 
+// This route depends on request.url and DB access.
+// Mark as dynamic so Next doesn't try to prerender it during build/export.
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

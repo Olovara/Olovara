@@ -21,6 +21,7 @@ const nextConfig = {
       const { execSync } = require("child_process");
       const gitHash = execSync("git rev-parse --short HEAD", {
         encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"], // suppress "not a git repository" noise on platforms like Railway
       }).trim();
       return `build-${gitHash}`;
     } catch {

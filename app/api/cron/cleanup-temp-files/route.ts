@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 
 const utapi = new UTApi();
 
+// This cron route depends on DB + external API calls; never prerender it.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     // Find temporary uploads older than 30 minutes

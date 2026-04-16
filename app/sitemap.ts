@@ -3,6 +3,9 @@ import { productPublicPathFromFields } from '@/lib/product-public-path'
 import { db } from '@/lib/db'
 import { Categories } from '@/data/categories'
 
+// This sitemap is generated from the database; force runtime generation.
+export const dynamic = 'force-dynamic'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://olovara.com'
   
@@ -106,66 +109,78 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]
   })
 
-  // Get all active products
-  const products = await db.product.findMany({
-    where: {
-      status: 'ACTIVE',
-      isTestProduct: false,
-    },
-    select: {
-      id: true,
-      name: true,
-      urlSlug: true,
-      updatedAt: true,
-    },
-    take: 10000, // Limit to prevent timeout
-  })
+  // If DATABASE_URL is missing/misconfigured (common during CI/build), don't fail the build.
+  // Railway/runtime MUST still provide a valid Mongo URL for the full sitemap.
+  const databaseUrl = process.env.DATABASE_URL || ''
 
-  const productPages = products.map(product => ({
-    url: `${baseUrl}${productPublicPathFromFields(product)}`,
-    lastModified: product.updatedAt.toISOString(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }))
+  let productPages: MetadataRoute.Sitemap = []
+  let blogPages: MetadataRoute.Sitemap = []
+  let shopPages: MetadataRoute.Sitemap = []
 
-  // Get all published blog posts
-  const blogPosts = await db.blogPost.findMany({
-    where: {
-      status: 'PUBLISHED',
-      isPrivate: false,
-    },
-    select: {
-      slug: true,
-      updatedAt: true,
-    },
-    take: 1000, // Limit to prevent timeout
-  })
+  if (!databaseUrl.startsWith('mongodb')) {
+    console.warn('[sitemap] DATABASE_URL missing/invalid; returning static-only sitemap')
+  } else {
+    // Get all active products
+    const products = await db.product.findMany({
+      where: {
+        status: 'ACTIVE',
+        isTestProduct: false,
+      },
+      select: {
+        id: true,
+        name: true,
+        urlSlug: true,
+        updatedAt: true,
+      },
+      take: 10000, // Limit to prevent timeout
+    })
 
-  const blogPages = blogPosts.map(post => ({
-    url: `${baseUrl}/blog/${post.slug}`,
-    lastModified: post.updatedAt.toISOString(),
-    changeFrequency: 'monthly' as const,
-    priority: 0.6,
-  }))
+    productPages = products.map(product => ({
+      url: `${baseUrl}${productPublicPathFromFields(product)}`,
+      lastModified: product.updatedAt.toISOString(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    }))
 
-  // Get all active sellers/shops
-  const sellers = await db.seller.findMany({
-    where: {
-      isFullyActivated: true,
-    },
-    select: {
-      shopNameSlug: true,
-      updatedAt: true,
-    },
-    take: 1000, // Limit to prevent timeout
-  })
+    // Get all published blog posts
+    const blogPosts = await db.blogPost.findMany({
+      where: {
+        status: 'PUBLISHED',
+        isPrivate: false,
+      },
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      take: 1000, // Limit to prevent timeout
+    })
 
-  const shopPages = sellers.map(seller => ({
-    url: `${baseUrl}/shops/${seller.shopNameSlug}`,
-    lastModified: seller.updatedAt.toISOString(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }))
+    blogPages = blogPosts.map(post => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastModified: post.updatedAt.toISOString(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    }))
+
+    // Get all active sellers/shops
+    const sellers = await db.seller.findMany({
+      where: {
+        isFullyActivated: true,
+      },
+      select: {
+        shopNameSlug: true,
+        updatedAt: true,
+      },
+      take: 1000, // Limit to prevent timeout
+    })
+
+    shopPages = sellers.map(seller => ({
+      url: `${baseUrl}/shops/${seller.shopNameSlug}`,
+      lastModified: seller.updatedAt.toISOString(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }))
+  }
 
   return [
     ...staticPages,
