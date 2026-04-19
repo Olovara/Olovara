@@ -3,7 +3,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Cropper, CropperRef, ImageRestriction } from "react-advanced-cropper";
 import "react-advanced-cropper/dist/style.css";
-import imageCompression from "browser-image-compression";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -477,36 +476,6 @@ export function ImageProcessor({
     ]
   );
 
-  // Compress image
-  const compressImage = useCallback(async (file: File): Promise<File> => {
-    try {
-      const options = {
-        maxSizeMB: 1, // Max 1MB
-        maxWidthOrHeight: 1920, // Max dimension
-        useWebWorker: true,
-        fileType: file.type,
-      };
-
-      const compressedFile = await imageCompression(file, options);
-      return compressedFile;
-    } catch (error) {
-      console.error("Compression error:", error);
-      toast.error("Failed to compress image");
-      logClientError({
-        code: "IMAGE_PROCESSOR_COMPRESSION_FAILED",
-        message:
-          error instanceof Error ? error.message : "Failed to compress image",
-        metadata: {
-          component: "ImageProcessor",
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-        },
-      });
-      return file; // Return original on error
-    }
-  }, []);
-
   // Get cropped image from cropper
   const getCroppedImage = useCallback(async (): Promise<File | null> => {
     if (!cropperRef.current || !currentCropFile) {
@@ -657,7 +626,7 @@ export function ImageProcessor({
     saveCurrentImageState,
   ]);
 
-  // Process current image: crop -> watermark -> compress
+  // Process current image: crop -> watermark (WebP compression runs in uploadProcessedImages)
   const processCurrentImage = useCallback(async () => {
     if (!currentCropFile) return;
 
@@ -689,13 +658,10 @@ export function ImageProcessor({
       // Step 2: Apply watermark if enabled
       processedFile = await applyWatermark(processedFile);
 
-      // Step 3: Compress image
-      processedFile = await compressImage(processedFile);
-
-      // Step 4: Create preview
+      // Step 3: Create preview
       const preview = URL.createObjectURL(processedFile);
 
-      // Step 5: Add to processed images (or replace if already exists in SAME upload session)
+      // Step 4: Add to processed images (or replace if already exists in SAME upload session)
       const newProcessedImage: ProcessedImage = {
         id: `processed-${Date.now()}-${Math.random()}`,
         file: processedFile,
@@ -782,7 +748,7 @@ export function ImageProcessor({
         }
       });
 
-      // Step 6: Move to next file in queue if available
+      // Step 5: Move to next file in queue if available
       if (currentFileIndex < fileQueue.length - 1) {
         // State already saved at the start of this function
         const nextIndex = currentFileIndex + 1;
@@ -823,7 +789,6 @@ export function ImageProcessor({
     fileQueue,
     getCroppedImage,
     applyWatermark,
-    compressImage,
     saveCurrentImageState,
     navigateToImage,
     processedImages.length,

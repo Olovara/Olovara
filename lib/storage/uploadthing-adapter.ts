@@ -4,6 +4,7 @@
  */
 
 import { UTApi } from "uploadthing/server";
+import { processImageBufferToWebP } from "@/lib/images/process-image-server";
 import type { StorageAdapter } from "./interface";
 
 export class UploadThingAdapter implements StorageAdapter {
@@ -39,17 +40,25 @@ export class UploadThingAdapter implements StorageAdapter {
         throw new Error(`Invalid content type: ${contentType}. Expected image/*`);
       }
 
-      // Convert response to buffer
+      // Convert response to buffer, then normalize to WebP (same policy as browser uploads)
       const arrayBuffer: ArrayBuffer = await response.arrayBuffer();
-      const buffer: Buffer = Buffer.from(arrayBuffer);
+      let buffer: Buffer = Buffer.from(arrayBuffer);
+      try {
+        buffer = await processImageBufferToWebP(buffer);
+      } catch (e) {
+        console.warn("[UPLOADTHING ADAPTER] WebP processing skipped, using original bytes:", e);
+      }
 
       // Generate filename from URL or use timestamp
       const urlParts: string[] = imageUrl.split("/");
-      const originalFilename: string = urlParts[urlParts.length - 1].split("?")[0] || `image-${Date.now()}.jpg`;
-      
+      const rawName: string =
+        urlParts[urlParts.length - 1].split("?")[0] || `image-${Date.now()}`;
+      const baseName = rawName.replace(/\.[^/.]+$/, "") || `image-${Date.now()}`;
+      const webpFilename = `${baseName}.webp`;
+
       // Upload to UploadThing - convert Buffer to Uint8Array for File constructor
       const uint8Array = new Uint8Array(buffer);
-      const file = new File([uint8Array], originalFilename, { type: contentType });
+      const file = new File([uint8Array], webpFilename, { type: "image/webp" });
       const uploadedFiles = await this.utapi.uploadFiles([file]);
 
       if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -102,12 +111,32 @@ export class UploadThingAdapter implements StorageAdapter {
       let fileToUpload: File;
 
       if (Buffer.isBuffer(file)) {
-        // Convert buffer to File - convert Buffer to Uint8Array for File constructor
-        const name = filename || `file-${Date.now()}.jpg`;
-        const uint8Array = new Uint8Array(file);
-        fileToUpload = new File([uint8Array], name, { type: "image/jpeg" });
+        let buf: Buffer = file;
+        try {
+          buf = await processImageBufferToWebP(buf);
+        } catch (e) {
+          console.warn("[UPLOADTHING ADAPTER] WebP processing skipped (buffer upload):", e);
+        }
+        const base = (filename || `file-${Date.now()}`).replace(/\.[^/.]+$/, "");
+        const name = `${base}.webp`;
+        const uint8Array = new Uint8Array(buf);
+        fileToUpload = new File([uint8Array], name, { type: "image/webp" });
       } else {
-        fileToUpload = file;
+        if (file.type.startsWith("image/") && file.type !== "image/svg+xml") {
+          try {
+            const ab = await file.arrayBuffer();
+            const processed = await processImageBufferToWebP(Buffer.from(ab));
+            const base = file.name.replace(/\.[^/.]+$/, "") || `file-${Date.now()}`;
+            fileToUpload = new File([new Uint8Array(processed)], `${base}.webp`, {
+              type: "image/webp",
+            });
+          } catch (e) {
+            console.warn("[UPLOADTHING ADAPTER] WebP processing skipped (file upload):", e);
+            fileToUpload = file;
+          }
+        } else {
+          fileToUpload = file;
+        }
       }
 
       const uploadedFiles = await this.utapi.uploadFiles([fileToUpload]);

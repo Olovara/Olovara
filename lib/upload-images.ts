@@ -1,5 +1,8 @@
+"use client";
+
 import { genUploader } from "uploadthing/client";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import { compressImageForUpload } from "@/lib/images/compress-client-image";
 
 // Create uploader instance
 const { uploadFiles } = genUploader<OurFileRouter>();
@@ -111,18 +114,22 @@ export async function uploadProcessedImages(
   }
 
   try {
+    const filesToSend = await Promise.all(
+      validFiles.map((f) => compressImageForUpload(f))
+    );
+
     console.log("[UPLOAD IMAGES] Starting upload:", {
       totalFiles: files.length,
       validFiles: validFiles.length,
       skippedFiles: skipped.length,
-      fileNames: validFiles.map((f) => f.name),
-      fileSizes: validFiles.map((f) => `${(f.size / 1024).toFixed(2)}KB`),
+      fileNames: filesToSend.map((f) => f.name),
+      fileSizes: filesToSend.map((f) => `${(f.size / 1024).toFixed(2)}KB`),
       timestamp: new Date().toISOString(),
     });
 
-    // Upload files using UploadThing client SDK
+    // Upload files using UploadThing client SDK (already WebP-compressed client-side)
     const response = await uploadFiles("imageUploader", {
-      files: validFiles,
+      files: filesToSend,
       onUploadProgress: (progress) => {
         console.log(`[UPLOAD IMAGES] Upload progress: ${progress}%`);
       },
@@ -144,7 +151,7 @@ export async function uploadProcessedImages(
 
     for (let i = 0; i < response.length; i++) {
       const fileResponse = response[i];
-      const file = validFiles[i];
+      const file = filesToSend[i];
 
       if (!fileResponse) {
         failedUploads.push({ file, reason: "No response from upload service" });

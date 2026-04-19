@@ -3,7 +3,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Cropper, CropperRef, ImageRestriction } from "react-advanced-cropper";
 import "react-advanced-cropper/dist/style.css";
-import imageCompression from "browser-image-compression";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -112,35 +111,6 @@ export function SingleImageProcessor({
     []
   );
 
-  // Compress image
-  const compressImage = useCallback(async (file: File): Promise<File> => {
-    try {
-      const options = {
-        maxSizeMB: 1, // Max 1MB
-        maxWidthOrHeight: 1920, // Max dimension
-        useWebWorker: true,
-        fileType: file.type,
-      };
-
-      const compressedFile = await imageCompression(file, options);
-      
-      // Ensure we return a File instance (imageCompression might return a Blob)
-      if (compressedFile instanceof File) {
-        return compressedFile;
-      }
-      
-      // Convert Blob to File if needed
-      return new File([compressedFile], file.name, {
-        type: file.type,
-        lastModified: Date.now(),
-      });
-    } catch (error) {
-      console.error("Compression error:", error);
-      toast.error("Failed to compress image");
-      return file; // Return original on error
-    }
-  }, []);
-
   // Get cropped image from cropper
   const getCroppedImage = useCallback(async (): Promise<File | null> => {
     if (!cropperRef.current || !currentCropFile) {
@@ -199,7 +169,7 @@ export function SingleImageProcessor({
     }
   }, [savedCoordinates, currentCropFile, isCropping]);
 
-  // Process current image: crop -> compress
+  // Process current image: crop only (WebP compression runs in uploadProcessedImages)
   const processCurrentImage = useCallback(async () => {
     if (!currentCropFile) return;
 
@@ -211,13 +181,10 @@ export function SingleImageProcessor({
         return;
       }
 
-      // Step 2: Compress image (no watermark for seller images)
-      processedFile = await compressImage(processedFile);
-
-      // Step 3: Create preview
+      // Step 2: Create preview
       const preview = URL.createObjectURL(processedFile);
 
-      // Step 4: Set processed image
+      // Step 3: Set processed image
       const newProcessedImage: SingleProcessedImage = {
         file: processedFile,
         preview,
@@ -232,7 +199,7 @@ export function SingleImageProcessor({
       console.error("Error processing image:", error);
       toast.error("Failed to process image");
     }
-  }, [currentCropFile, getCroppedImage, compressImage]);
+  }, [currentCropFile, getCroppedImage]);
 
   // Remove processed image or existing image
   const removeImage = useCallback(() => {
