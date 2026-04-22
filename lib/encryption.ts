@@ -7,6 +7,13 @@ const IV_LENGTH = 12; // 96 bits for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits for GCM
 const SALT_LENGTH = 16; // 128 bits for key derivation
 
+const DEFAULT_AAD = "OlovaraMarketplace";
+const LEGACY_AAD_CANDIDATES = [
+  // If you rebranded, old ciphertext may be bound to the old AAD.
+  "YarnnuMarketplace",
+  "OlovaraMarketplace",
+];
+
 // Lazy-load the master key so `next build` can import this module when ENCRYPTION_KEY
 // is only present at runtime (Docker/CI image) — validation runs on first encrypt/decrypt.
 let cachedMasterKey: Buffer | null = null;
@@ -54,6 +61,18 @@ function deriveKey(masterKey: Buffer, salt: Buffer): Buffer {
   return crypto.pbkdf2Sync(masterKey, salt, 100000, KEY_LENGTH, "sha256");
 }
 
+function getAadCandidates(): string[] {
+  const envAad = process.env.ENCRYPTION_AAD;
+  const candidates = [
+    ...(envAad ? [envAad] : []),
+    DEFAULT_AAD,
+    ...LEGACY_AAD_CANDIDATES,
+  ];
+
+  // Unique, stable order (avoid Set iteration for older TS targets)
+  return Array.from(new Set(candidates)).filter(Boolean);
+}
+
 // Encrypt data with additional security measures
 export function encryptData(data: string): {
   encrypted: string;
@@ -76,7 +95,7 @@ export function encryptData(data: string): {
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
 
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from("OlovaraMarketplace"));
+    cipher.setAAD(Buffer.from(DEFAULT_AAD));
 
     // Encrypt the data
     let encrypted = cipher.update(data, "utf8", "hex");
@@ -114,36 +133,34 @@ export function decryptData(
       return "Temporary Data - Please Update";
     }
 
-    // Try GCM decryption first (current method)
-    try {
-      // Convert salt and IV to buffers
-      const saltBuffer = Buffer.from(salt, "hex");
-      const ivBuffer = Buffer.from(iv, "hex");
+    // Convert salt and IV to buffers
+    const saltBuffer = Buffer.from(salt, "hex");
+    const ivBuffer = Buffer.from(iv, "hex");
 
-      // Derive the same key used for encryption
-      const derivedKey = deriveKey(getMasterKey(), saltBuffer);
+    // Derive the same key used for encryption
+    const derivedKey = deriveKey(getMasterKey(), saltBuffer);
 
-      // Extract auth tag from the end of encrypted data
-      const authTag = Buffer.from(encryptedData.slice(-32), "hex");
-      const encrypted = encryptedData.slice(0, -32);
+    // Extract auth tag from the end of encrypted data
+    const authTag = Buffer.from(encryptedData.slice(-32), "hex");
+    const encrypted = encryptedData.slice(0, -32);
 
-      // Create decipher
-      const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
+    // Try candidate AAD values (rebrand-safe)
+    let lastError: unknown = null;
+    for (const aad of getAadCandidates()) {
+      try {
+        const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
+        decipher.setAuthTag(authTag);
+        decipher.setAAD(Buffer.from(aad));
 
-      // Set authentication tag
-      decipher.setAuthTag(authTag);
-
-      // Add associated data for authentication (must match encryption)
-      decipher.setAAD(Buffer.from("OlovaraMarketplace"));
-
-      // Decrypt the data
-      let decrypted = decipher.update(encrypted, "hex", "utf8");
-      decrypted += decipher.final("utf8");
-
-      return decrypted;
-    } catch (error) {
-      throw error; // Re-throw the GCM error
+        let decrypted = decipher.update(encrypted, "hex", "utf8");
+        decrypted += decipher.final("utf8");
+        return decrypted;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    throw lastError;
   } catch (error) {
     console.error("Decryption error:", error);
     // Return a fallback value instead of throwing an error
@@ -267,7 +284,7 @@ export function encryptOrderData(data: string): {
     const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, ivBuffer);
 
     // Add associated data for authentication (optional)
-    cipher.setAAD(Buffer.from("OlovaraMarketplace"));
+    cipher.setAAD(Buffer.from(DEFAULT_AAD));
 
     // Encrypt the data
     let encrypted = cipher.update(data, "utf8", "hex");
@@ -307,20 +324,23 @@ export function decryptOrderData(
     const authTag = Buffer.from(encryptedData.slice(-32), "hex");
     const encrypted = encryptedData.slice(0, -32);
 
-    // Create decipher
-    const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
+    // Try candidate AAD values (rebrand-safe)
+    let lastError: unknown = null;
+    for (const aad of getAadCandidates()) {
+      try {
+        const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, ivBuffer);
+        decipher.setAuthTag(authTag);
+        decipher.setAAD(Buffer.from(aad));
 
-    // Set authentication tag
-    decipher.setAuthTag(authTag);
+        let decrypted = decipher.update(encrypted, "hex", "utf8");
+        decrypted += decipher.final("utf8");
+        return decrypted;
+      } catch (error) {
+        lastError = error;
+      }
+    }
 
-    // Add associated data for authentication (must match encryption)
-    decipher.setAAD(Buffer.from("OlovaraMarketplace"));
-
-    // Decrypt the data
-    let decrypted = decipher.update(encrypted, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    return decrypted;
+    throw lastError;
   } catch (error) {
     console.error("Decryption error:", error);
     throw new Error("Failed to decrypt data");
