@@ -13,7 +13,7 @@ import { setPaymentAmounts } from "@/actions/customOrderPaymentActions";
 import { Loader2, Calculator } from "lucide-react";
 
 const SetPaymentAmountsSchema = z.object({
-  materialsDepositAmount: z.number().min(0.01, "Materials deposit must be at least $0.01"),
+  quoteDepositAmount: z.number().min(0.01, "Deposit must be at least $0.01"),
   finalPaymentAmount: z.number().min(0.01, "Final payment must be at least $0.01"),
   shippingCost: z.number().min(0, "Shipping cost cannot be negative").optional(),
 });
@@ -36,25 +36,28 @@ export default function SetPaymentAmountsForm({
   const form = useForm<FormData>({
     resolver: zodResolver(SetPaymentAmountsSchema),
     defaultValues: {
-      materialsDepositAmount: 0,
+      quoteDepositAmount: 0,
       finalPaymentAmount: 0,
       shippingCost: 0,
     },
   });
 
-  const materialsDeposit = form.watch("materialsDepositAmount");
+  const deposit = form.watch("quoteDepositAmount");
   const finalPayment = form.watch("finalPaymentAmount");
   const shippingCost = form.watch("shippingCost") || 0;
-  const totalAmount = materialsDeposit + finalPayment + shippingCost;
+  const totalAmount = deposit + finalPayment + shippingCost;
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
       const result = await setPaymentAmounts({
         submissionId,
-        materialsDepositAmount: data.materialsDepositAmount,
+        quoteDepositAmount: data.quoteDepositAmount,
         finalPaymentAmount: data.finalPaymentAmount,
-        totalAmount: data.materialsDepositAmount + data.finalPaymentAmount + (data.shippingCost || 0),
+        totalAmount:
+          data.quoteDepositAmount +
+          data.finalPaymentAmount +
+          (data.shippingCost || 0),
         currency,
         shippingCost: data.shippingCost,
       });
@@ -92,20 +95,20 @@ export default function SetPaymentAmountsForm({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="materialsDepositAmount">
-                Materials Deposit *
+              <Label htmlFor="quoteDepositAmount">
+                Deposit *
               </Label>
               <Input
-                id="materialsDepositAmount"
+                id="quoteDepositAmount"
                 type="number"
                 step="0.01"
                 min="0.01"
                 placeholder="0.00"
-                {...form.register("materialsDepositAmount", { valueAsNumber: true })}
+                {...form.register("quoteDepositAmount", { valueAsNumber: true })}
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground">
-                Non-refundable deposit to cover materials
+                Upfront deposit to secure the order
               </p>
             </div>
 
@@ -151,8 +154,8 @@ export default function SetPaymentAmountsForm({
             <h4 className="font-medium">Payment Summary</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>Materials Deposit:</span>
-                <span>{formatCurrency(materialsDeposit)}</span>
+                <span>Deposit:</span>
+                <span>{formatCurrency(deposit)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Final Payment:</span>

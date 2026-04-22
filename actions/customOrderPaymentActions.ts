@@ -9,9 +9,7 @@ import { withDecryptedCustomerContact } from "@/lib/custom-order-submission-cont
 // Schema for setting payment amounts
 const SetPaymentAmountsSchema = z.object({
   submissionId: z.string().min(1, "Submission ID is required"),
-  materialsDepositAmount: z
-    .number()
-    .min(1, "Materials deposit must be at least $0.01"),
+  quoteDepositAmount: z.number().min(1, "Deposit must be at least $0.01"),
   finalPaymentAmount: z.number().min(1, "Final payment must be at least $0.01"),
   totalAmount: z.number().min(1, "Total amount must be at least $0.01"),
   currency: z.string().default("USD"),
@@ -47,7 +45,7 @@ export async function setPaymentAmounts(
       select: {
         id: true,
         status: true,
-        materialsDepositPaid: true,
+        quoteDepositPaid: true,
         finalPaymentPaid: true,
         form: { select: { sellerId: true } },
       },
@@ -56,19 +54,18 @@ export async function setPaymentAmounts(
       return { error: "Submission not found or unauthorized" };
     }
 
-    if (existing.materialsDepositPaid) {
+    if (existing.quoteDepositPaid) {
       return {
-        error:
-          "Cannot modify payment amounts after materials deposit has been paid",
+        error: "Cannot modify payment amounts after deposit has been paid",
       };
     }
 
-    // Validate that total equals materials + final payment
+    // Validate that total equals deposit + final payment
     const calculatedTotal =
-      validatedData.materialsDepositAmount + validatedData.finalPaymentAmount;
+      validatedData.quoteDepositAmount + validatedData.finalPaymentAmount;
     if (Math.abs(calculatedTotal - validatedData.totalAmount) > 0.01) {
       return {
-        error: "Total amount must equal materials deposit plus final payment",
+        error: "Total amount must equal deposit plus final payment",
       };
     }
 
@@ -76,9 +73,7 @@ export async function setPaymentAmounts(
     await db.customOrderSubmission.update({
       where: { id: validatedData.submissionId },
       data: {
-        materialsDepositAmount: Math.round(
-          validatedData.materialsDepositAmount * 100,
-        ), // Convert to cents
+        quoteDepositMinor: Math.round(validatedData.quoteDepositAmount * 100), // Convert to cents
         finalPaymentAmount: Math.round(validatedData.finalPaymentAmount * 100), // Convert to cents
         totalAmount: Math.round(validatedData.totalAmount * 100), // Convert to cents
         currency: validatedData.currency,
@@ -115,7 +110,7 @@ export async function markReadyForFinalPayment(
       select: {
         id: true,
         status: true,
-        materialsDepositPaid: true,
+        quoteDepositPaid: true,
         finalPaymentPaid: true,
         finalPaymentAmount: true,
         form: { select: { sellerId: true } },
@@ -125,10 +120,9 @@ export async function markReadyForFinalPayment(
       return { error: "Submission not found or unauthorized" };
     }
 
-    if (!existingMark.materialsDepositPaid) {
+    if (!existingMark.quoteDepositPaid) {
       return {
-        error:
-          "Materials deposit must be paid before marking ready for final payment",
+        error: "Deposit must be paid before marking ready for final payment",
       };
     }
 
@@ -141,6 +135,13 @@ export async function markReadyForFinalPayment(
       return {
         error:
           "Final payment amount must be set before marking ready for final payment",
+      };
+    }
+
+    if (existingMark.status !== "IN_PROGRESS") {
+      return {
+        error:
+          "Confirm that you have started work on this order before requesting the final payment.",
       };
     }
 
@@ -175,14 +176,14 @@ export async function getSubmissionPaymentDetails(submissionId: string) {
       select: {
         id: true,
         status: true,
-        materialsDepositAmount: true,
+        quoteDepositMinor: true,
         finalPaymentAmount: true,
         totalAmount: true,
         currency: true,
-        materialsDepositPaid: true,
+        quoteDepositPaid: true,
         finalPaymentPaid: true,
         shippingCost: true,
-        materialsDepositSessionId: true,
+        quoteDepositSessionId: true,
         finalPaymentSessionId: true,
         customerEmail: true,
         customerName: true,
@@ -272,11 +273,11 @@ export async function getSubmissionsWithPaymentStatus(options?: {
         formId: true,
         userId: true,
         status: true,
-        materialsDepositAmount: true,
+        quoteDepositMinor: true,
         finalPaymentAmount: true,
         totalAmount: true,
         currency: true,
-        materialsDepositPaid: true,
+        quoteDepositPaid: true,
         finalPaymentPaid: true,
         customerEmail: true,
         customerName: true,

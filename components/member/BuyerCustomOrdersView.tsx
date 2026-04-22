@@ -31,6 +31,8 @@ function statusBadgeVariant(
     case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
+    case "PENDING_SELLER_START":
+    case "IN_PROGRESS":
     case "READY_FOR_FINAL_PAYMENT":
       return "default";
     case "COMPLETED":
@@ -47,7 +49,9 @@ function statusBadgeVariant(
 const TAB_LABELS: Record<BuyerCustomOrderTabId, string> = {
   requests: "Requests",
   quotes: "Quotes",
-  active: "Active",
+  pending_seller_start: "Pending seller start",
+  in_progress: "In progress",
+  awaiting_final_payment: "Awaiting final payment",
   completed: "Completed",
   declined: "Declined",
 };
@@ -55,13 +59,16 @@ const TAB_LABELS: Record<BuyerCustomOrderTabId, string> = {
 /** Per-tab copy when the list is empty but the user has other submissions. */
 const TAB_EMPTY_HINT: Record<BuyerCustomOrderTabId, string> = {
   requests:
-    "Nothing waiting on the seller right now. Check Quotes or Active for updates.",
-  quotes: "No open quotes. The seller will send an estimate here when ready.",
-  active:
-    "No orders in progress. After you accept a quote, work in progress appears here.",
+    "No new requests. Submissions waiting on the seller's first response appear here.",
+  quotes: "No open quotes. Estimates from sellers show up here when sent.",
+  pending_seller_start:
+    "Nothing here. After you pay the deposit, the seller confirms before work begins.",
+  in_progress: "No orders being worked on right now.",
+  awaiting_final_payment:
+    "Nothing here. When the seller is ready for the last payment, those orders appear here.",
   completed: "No completed custom orders yet.",
   declined:
-    "Nothing here yet. Seller rejections and quotes you decline will appear in this tab.",
+    "Nothing here yet. Seller rejections and declined quotes appear in this tab.",
 };
 
 function SubmissionsTable({
@@ -138,7 +145,9 @@ export default function BuyerCustomOrdersView({
     const map: Record<BuyerCustomOrderTabId, MyCustomOrderSubmissionRow[]> = {
       requests: [],
       quotes: [],
-      active: [],
+      pending_seller_start: [],
+      in_progress: [],
+      awaiting_final_payment: [],
       completed: [],
       declined: [],
     };

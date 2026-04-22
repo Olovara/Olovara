@@ -131,12 +131,14 @@ export async function POST(req: Request) {
         // Update submission payment status
         const updateData: any = {};
 
-        if (paymentType === "MATERIALS_DEPOSIT") {
-          updateData.materialsDepositPaid = true;
-          updateData.status = "APPROVED"; // Move to approved status after materials paid
+        if (paymentType === "QUOTE_DEPOSIT" || paymentType === "MATERIALS_DEPOSIT") {
+          // MATERIALS_DEPOSIT is legacy; we now treat all deposits as quote deposits.
+          updateData.quoteDepositPaid = true;
+          updateData.status = "PENDING_SELLER_START";
         } else if (paymentType === "FINAL_PAYMENT") {
           updateData.finalPaymentPaid = true;
           updateData.status = "COMPLETED";
+          updateData.completedAt = new Date();
 
           // Store shipping address if provided
           if (session.shipping_details?.address) {

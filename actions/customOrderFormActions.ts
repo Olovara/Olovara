@@ -22,10 +22,36 @@ import {
   sendCustomOrderQuoteEmail,
   sendCustomOrderRejectionEmail,
 } from "@/lib/mail";
+import { CUSTOM_ORDER_MAX_REFERENCE_IMAGES } from "@/lib/custom-order-reference-config";
 
 /** Emailed to the buyer when the server auto-rejects for budget below seller minimum. */
 const AUTO_REJECT_BUDGET_BELOW_MIN_REASON =
   'Automatically declined: your budget is below this seller\'s minimum for custom orders. You may submit a new request with a higher budget or select "I\'m flexible on budget" if that applies.';
+
+/** Only persist image URLs from our UploadThing hosts (blocks arbitrary URL injection). */
+function isTrustedUploadThingImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    const h = u.hostname.toLowerCase();
+    if (h === "utfs.io" || h.endsWith(".utfs.io")) return true;
+    if (h === "ufs.sh" || h.endsWith(".ufs.sh")) return true;
+    if (h.includes("uploadthing")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeCustomOrderReferenceImageUrls(urls: string[]): string[] {
+  const out: string[] = [];
+  for (const url of urls) {
+    if (out.length >= CUSTOM_ORDER_MAX_REFERENCE_IMAGES) break;
+    if (!isTrustedUploadThingImageUrl(url)) continue;
+    out.push(url);
+  }
+  return out;
+}
 
 // Get all custom order forms for a seller
 export async function getCustomOrderForms() {
@@ -358,9 +384,11 @@ export type CustomOrderSubmissionDetail = {
   quotePriceMinMinor: number | null;
   quotePriceMaxMinor: number | null;
   quoteDepositMinor: number | null;
+  quoteDepositPaid: boolean;
   quoteTimeline: string | null;
   quoteNotes: string | null;
   quoteSentAt: string | null;
+  referenceImageUrls: string[];
 };
 
 // Single submission with decrypted contact and ordered field responses (seller-owned only)
@@ -409,6 +437,8 @@ export async function getCustomOrderSubmissionDetail(
       customerBudgetMinor?: number | null;
       customerBudgetCurrency?: string | null;
       budgetFlexible?: boolean;
+      quoteDepositPaid?: boolean;
+      quoteDepositSessionId?: string | null;
     };
 
     const decrypted = withDecryptedCustomerContact(row);
@@ -448,9 +478,15 @@ export async function getCustomOrderSubmissionDetail(
         quotePriceMinMinor: decrypted.quotePriceMinMinor ?? null,
         quotePriceMaxMinor: decrypted.quotePriceMaxMinor ?? null,
         quoteDepositMinor: decrypted.quoteDepositMinor ?? null,
+        quoteDepositPaid: Boolean(rowWithBudget.quoteDepositPaid),
         quoteTimeline: decrypted.quoteTimeline ?? null,
         quoteNotes: decrypted.quoteNotes ?? null,
         quoteSentAt: decrypted.quoteSentAt?.toISOString() ?? null,
+        referenceImageUrls: Array.isArray(
+          (row as { referenceImageUrls?: string[] }).referenceImageUrls,
+        )
+          ? (row as { referenceImageUrls: string[] }).referenceImageUrls
+          : [],
       },
     };
   } catch (error) {
@@ -491,9 +527,13 @@ export type BuyerCustomOrderSubmissionDetail = {
   quotePriceMinMinor: number | null;
   quotePriceMaxMinor: number | null;
   quoteDepositMinor: number | null;
+  quoteDepositPaid: boolean;
+  finalPaymentAmount: number | null;
+  finalPaymentPaid: boolean;
   quoteTimeline: string | null;
   quoteNotes: string | null;
   quoteSentAt: string | null;
+  referenceImageUrls: string[];
 };
 
 export async function getMyCustomOrderSubmissions(): Promise<
@@ -590,6 +630,8 @@ export async function getBuyerCustomOrderSubmissionDetail(
       customerBudgetMinor?: number | null;
       customerBudgetCurrency?: string | null;
       budgetFlexible?: boolean;
+      quoteDepositPaid?: boolean;
+      quoteDepositSessionId?: string | null;
     };
 
     const decrypted = withDecryptedCustomerContact(row);
@@ -626,9 +668,17 @@ export async function getBuyerCustomOrderSubmissionDetail(
         quotePriceMinMinor: decrypted.quotePriceMinMinor ?? null,
         quotePriceMaxMinor: decrypted.quotePriceMaxMinor ?? null,
         quoteDepositMinor: decrypted.quoteDepositMinor ?? null,
+        quoteDepositPaid: Boolean(rowWithBudget.quoteDepositPaid),
+        finalPaymentAmount: row.finalPaymentAmount ?? null,
+        finalPaymentPaid: Boolean(row.finalPaymentPaid),
         quoteTimeline: decrypted.quoteTimeline ?? null,
         quoteNotes: decrypted.quoteNotes ?? null,
         quoteSentAt: decrypted.quoteSentAt?.toISOString() ?? null,
+        referenceImageUrls: Array.isArray(
+          (row as { referenceImageUrls?: string[] }).referenceImageUrls,
+        )
+          ? (row as { referenceImageUrls: string[] }).referenceImageUrls
+          : [],
       },
     };
   } catch (error) {
@@ -678,6 +728,8 @@ export async function sendCustomOrderQuote(values: unknown) {
     const blocked = new Set([
       "APPROVED",
       "REVIEWED",
+      "PENDING_SELLER_START",
+      "IN_PROGRESS",
       "READY_FOR_FINAL_PAYMENT",
       "COMPLETED",
       "REJECTED",
@@ -703,6 +755,7 @@ export async function sendCustomOrderQuote(values: unknown) {
         ? majorToMinorAmount(data.quotePriceMaxMajor!, cur)
         : null;
     const quoteDepositMinor = majorToMinorAmount(data.quoteDepositMajor, cur);
+    const quotedAt = new Date();
 
     await db.customOrderSubmission.update({
       where: { id: data.submissionId },
@@ -714,8 +767,22 @@ export async function sendCustomOrderQuote(values: unknown) {
         quoteDepositMinor,
         quoteTimeline: data.quoteTimeline.trim(),
         quoteNotes: data.quoteNotes?.trim() || null,
-        quoteSentAt: new Date(),
+        quoteSentAt: quotedAt,
         status: "QUOTED",
+      },
+    });
+
+    await db.customOrderQuoteSnapshot.create({
+      data: {
+        submissionId: data.submissionId,
+        sentAt: quotedAt,
+        quotePriceType: data.quotePriceType,
+        quotePriceFixedMinor,
+        quotePriceMinMinor,
+        quotePriceMaxMinor,
+        quoteDepositMinor,
+        quoteTimeline: data.quoteTimeline.trim(),
+        quoteNotes: data.quoteNotes?.trim() || null,
       },
     });
 
@@ -744,6 +811,52 @@ export async function sendCustomOrderQuote(values: unknown) {
   } catch (error) {
     console.error("sendCustomOrderQuote:", error);
     return { error: "Failed to send quote" };
+  }
+}
+
+/** After the buyer pays the deposit, status is PENDING_SELLER_START; seller confirms here → IN_PROGRESS. */
+export async function sellerStartCustomOrderWork(submissionId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  const id = submissionId.trim();
+  if (!id) {
+    return { error: "Submission ID is required" };
+  }
+
+  try {
+    const row = await db.customOrderSubmission.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        form: { select: { sellerId: true } },
+      },
+    });
+    if (!row || row.form.sellerId !== session.user.id) {
+      return { error: "Submission not found" };
+    }
+    if (row.status !== "PENDING_SELLER_START") {
+      return {
+        error:
+          "You can only start work when the deposit is paid and the order is waiting for you to begin.",
+      };
+    }
+
+    await db.customOrderSubmission.update({
+      where: { id },
+      data: { status: "IN_PROGRESS" },
+    });
+
+    revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
+    revalidatePath("/member/dashboard/custom-orders");
+    return { success: "Order marked as in progress" };
+  } catch (error) {
+    console.error("sellerStartCustomOrderWork:", error);
+    return { error: "Failed to update status" };
   }
 }
 
@@ -940,6 +1053,10 @@ export async function submitCustomOrderForm(values: any) {
       }
     }
 
+    const referenceImageUrls = sanitizeCustomOrderReferenceImageUrls(
+      validatedData.referenceImageUrls ?? [],
+    );
+
     const contactPayload = buildEncryptedCustomerContactPayload(
       validatedData.customerEmail,
       validatedData.customerName ?? null,
@@ -954,6 +1071,7 @@ export async function submitCustomOrderForm(values: any) {
           customerBudgetMinor,
           customerBudgetCurrency: buyerCur,
           budgetFlexible: validatedData.budgetFlexible,
+          referenceImageUrls,
           currency: prefCur,
           status: autoRejectBelowMin ? "REJECTED" : "PENDING",
           rejectionReason: autoRejectBelowMin

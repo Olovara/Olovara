@@ -37,6 +37,13 @@ interface EmbeddedPaymentFormProps {
     postal: string;
     country: string;
   };
+  /** Return URL for 3DS / redirect-based methods (Stripe appends PI params). */
+  paymentReturnUrl?: string;
+  /**
+   * When false, only the Payment Element is shown (use when addresses were collected on a prior step).
+   * Defaults to true so existing product checkout behavior is unchanged.
+   */
+  showAddressElements?: boolean;
   onSuccess: (paymentIntentId: string) => void;
   onError: (error: string) => void;
   onPaymentAttempt?: () => void;
@@ -50,6 +57,8 @@ function PaymentForm({
   currency,
   shippingAddress,
   billingAddress,
+  paymentReturnUrl,
+  showAddressElements = true,
   onSuccess,
   onError,
   onPaymentAttempt,
@@ -76,10 +85,13 @@ function PaymentForm({
     // Track payment processing
     onPaymentProcessing?.();
 
+    const returnUrl =
+      paymentReturnUrl ?? `${window.location.origin}/checkout/success`;
+
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/checkout/success`,
+        return_url: returnUrl,
       },
       redirect: 'if_required',
     });
@@ -123,11 +135,13 @@ function PaymentForm({
     },
   };
 
+  const showAddr = showAddressElements !== false;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
-        {/* Address Elements - only show if addresses aren't provided */}
-        {!shippingAddress && (
+        {/* Address Elements - only when enabled and parent did not pass addresses */}
+        {showAddr && !shippingAddress && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Shipping Address</CardTitle>
@@ -143,7 +157,7 @@ function PaymentForm({
           </Card>
         )}
 
-        {!billingAddress && (
+        {showAddr && !billingAddress && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Billing Address</CardTitle>
@@ -222,7 +236,7 @@ export default function EmbeddedPaymentForm(props: EmbeddedPaymentFormProps) {
         appearance: {
           theme: 'stripe',
           variables: {
-            colorPrimary: '#9333ea', // Purple to match your theme
+            colorPrimary: '#5c1881',
             colorBackground: '#ffffff',
             colorText: '#1f2937',
             colorDanger: '#ef4444',

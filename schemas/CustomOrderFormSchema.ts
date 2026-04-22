@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { SUPPORTED_CURRENCIES } from "@/data/units";
+import { CUSTOM_ORDER_MAX_REFERENCE_IMAGES } from "@/lib/custom-order-reference-config";
 
 const SUBMISSION_CURRENCY_CODES = SUPPORTED_CURRENCIES.map(
   (c) => c.code,
@@ -42,6 +43,11 @@ export const CustomOrderSubmissionSchema = z.object({
   /** ISO code matching the site footer currency selector when the buyer submitted. */
   customerBudgetCurrency: z.enum(SUBMISSION_CURRENCY_CODES),
   budgetFlexible: z.boolean().default(false),
+  /** Reference image URLs from the standard upload (UploadThing), capped per `CUSTOM_ORDER_MAX_REFERENCE_IMAGES`. */
+  referenceImageUrls: z
+    .array(z.string().url())
+    .max(CUSTOM_ORDER_MAX_REFERENCE_IMAGES)
+    .default([]),
   responses: z.array(z.object({
     fieldId: z.string().min(1, "Field ID is required"),
     value: z.string().min(1, "Response is required"),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { FileText, LogIn } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  ImageIcon,
+  Loader2,
+  LogIn,
+  X,
+} from "lucide-react";
+import { CUSTOM_ORDER_MAX_REFERENCE_IMAGES } from "@/lib/custom-order-reference-config";
+import { compressImageForUpload } from "@/lib/images/compress-client-image";
+import { uploadCustomOrderReferenceImages } from "@/lib/upload-custom-order-reference-images";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +56,19 @@ const INPUT_BRAND =
 
 const SELECT_TRIGGER_BRAND =
   "w-full border-brand-light-neutral-200 bg-background text-brand-dark-neutral-900 hover:border-brand-primary-300 focus:ring-brand-primary-400 data-[state=open]:border-brand-primary-400";
+
+/** Compressed file kept locally for thumbnail; uploaded to storage only after the form passes validation on submit. */
+type CustomOrderReferenceItem = {
+  id: string;
+  /** Blob URL for the compressed image thumbnail. */
+  previewUrl: string;
+  /** Same pipeline as product photos — uploaded on submit only. */
+  file: File;
+};
+
+function newReferenceItemId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `ref-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 function parseYyyyMmDd(value: string): Date | undefined {
   if (!value?.trim()) return undefined;
@@ -103,6 +127,11 @@ export default function CustomOrderButton({
     budgetFlexible: false,
   });
 
+  /** Local previews + upload state; order is submission order for the seller. */
+  const [referenceImageItems, setReferenceImageItems] = useState<CustomOrderReferenceItem[]>([]);
+  const referenceImageItemsRef = useRef(referenceImageItems);
+  referenceImageItemsRef.current = referenceImageItems;
+
   useEffect(() => {
     setSubmissionData((prev) => ({
       ...prev,
@@ -112,6 +141,12 @@ export default function CustomOrderButton({
   }, [session?.user?.email, session?.user?.name]);
 
   const resetSubmissionState = () => {
+    setReferenceImageItems((prev) => {
+      for (const item of prev) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+      return [];
+    });
     setSubmissionData({
       customerEmail: session?.user?.email || "",
       customerName: session?.user?.name || "",
@@ -119,6 +154,70 @@ export default function CustomOrderButton({
       budgetMajor: "",
       budgetFlexible: false,
     });
+  };
+
+  const referenceFileInputRef = useRef<HTMLInputElement>(null);
+  const referenceListRef = useRef<HTMLUListElement>(null);
+  const referenceSectionRef = useRef<HTMLDivElement>(null);
+  /** True while compressing newly picked files into WebP thumbnails (not server upload). */
+  const [referenceCompressBusy, setReferenceCompressBusy] = useState(false);
+
+  useEffect(() => {
+    if (referenceImageItems.length > 0) {
+      referenceListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [referenceImageItems.length]);
+
+  const removeReferenceItem = useCallback((id: string) => {
+    setReferenceImageItems((prev) =>
+      prev.filter((item) => {
+        if (item.id !== id) return true;
+        URL.revokeObjectURL(item.previewUrl);
+        return false;
+      }),
+    );
+  }, []);
+
+  const moveReferenceItem = useCallback((index: number, delta: -1 | 1) => {
+    setReferenceImageItems((prev) => {
+      const j = index + delta;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  }, []);
+
+  const handleReferenceFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList?.length) return;
+    const picked = Array.from(fileList);
+    e.target.value = "";
+
+    const prev = referenceImageItemsRef.current;
+    const remaining = CUSTOM_ORDER_MAX_REFERENCE_IMAGES - prev.length;
+    const batch = picked.slice(0, remaining);
+    if (!batch.length) return;
+
+    setReferenceCompressBusy(true);
+    try {
+      const compressedFiles = await Promise.all(batch.map((f) => compressImageForUpload(f)));
+      const newItems: CustomOrderReferenceItem[] = compressedFiles.map((file) => ({
+        id: newReferenceItemId(),
+        previewUrl: URL.createObjectURL(file),
+        file,
+      }));
+      setReferenceImageItems((p) => [...p, ...newItems].slice(0, CUSTOM_ORDER_MAX_REFERENCE_IMAGES));
+    } catch (err) {
+      console.error("[CustomOrder] reference image compress:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not prepare images. Try different files or formats.",
+      );
+    } finally {
+      setReferenceCompressBusy(false);
+    }
   };
 
   // Seller minimum in buyer’s currency: display string + numeric minor units for submit validation.
@@ -240,8 +339,27 @@ export default function CustomOrderButton({
       }
     }
 
+    const referenceFiles = referenceImageItems.map((item) => item.file);
+
     setIsLoading(true);
     try {
+      let referenceImageUrls: string[] = [];
+      if (referenceFiles.length > 0) {
+        try {
+          const { urls } = await uploadCustomOrderReferenceImages(referenceFiles, {
+            alreadyCompressed: true,
+          });
+          referenceImageUrls = urls;
+        } catch (uploadErr) {
+          toast.error(
+            uploadErr instanceof Error
+              ? uploadErr.message
+              : "Could not upload reference images. Check your connection and try again.",
+          );
+          return;
+        }
+      }
+
       const result = await submitCustomOrderForm({
         formId: formData.id,
         customerEmail: submissionData.customerEmail.trim(),
@@ -249,6 +367,7 @@ export default function CustomOrderButton({
         customerBudgetMajor: budgetParsed,
         customerBudgetCurrency: buyerCurrency,
         budgetFlexible: submissionData.budgetFlexible,
+        referenceImageUrls,
         responses: submissionData.responses,
       });
 
@@ -488,6 +607,126 @@ export default function CustomOrderButton({
                 </div>
               </div>
 
+              <div ref={referenceSectionRef} className="space-y-4 scroll-mt-4">
+                <h3 className="text-lg font-medium">Reference images</h3>
+                <p className="text-xs text-muted-foreground">
+                  Thumbnails show below after you pick files.
+                </p>
+                <div className="rounded-lg border border-brand-light-neutral-200 bg-brand-light-neutral-100 p-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Add up to {CUSTOM_ORDER_MAX_REFERENCE_IMAGES} images for style or inspiration.
+                    Not required.
+                  </p>
+                  {referenceImageItems.length > 0 && (
+                    <ul
+                      ref={referenceListRef}
+                      className="flex flex-wrap gap-4 list-none p-0 m-0 overflow-visible"
+                    >
+                      {referenceImageItems.map((item, index) => (
+                          <li
+                            key={item.id}
+                            className="flex w-[8.5rem] flex-col gap-1.5"
+                          >
+                            <div
+                              className="relative h-32 w-32 shrink-0 overflow-hidden rounded-md border border-brand-light-neutral-200 bg-muted/30"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- local blob preview */}
+                              <img
+                                src={item.previewUrl}
+                                alt={`Reference ${index + 1}`}
+                                className="block h-32 w-32 object-cover"
+                                width={128}
+                                height={128}
+                                loading="eager"
+                                decoding="async"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeReferenceItem(item.id)}
+                                className="absolute right-1 top-1 z-10 rounded-full bg-brand-dark-neutral-900/85 p-1 text-brand-light-neutral-50 hover:bg-brand-dark-neutral-900"
+                                aria-label="Remove image"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outlinePrimary"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                disabled={index === 0}
+                                onClick={() => moveReferenceItem(index, -1)}
+                                aria-label="Move image earlier"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outlinePrimary"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                disabled={index === referenceImageItems.length - 1}
+                                onClick={() => moveReferenceItem(index, 1)}
+                                aria-label="Move image later"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                      ))}
+                    </ul>
+                  )}
+                  {referenceImageItems.length < CUSTOM_ORDER_MAX_REFERENCE_IMAGES && (
+                    <div className="border border-dashed border-brand-light-neutral-200 rounded-lg p-4 text-center space-y-3">
+                      <input
+                        ref={referenceFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="sr-only"
+                        onChange={handleReferenceFilesChange}
+                      />
+                      <Button
+                        type="button"
+                        variant="outlinePrimary"
+                        className={INPUT_BRAND}
+                        disabled={
+                          referenceCompressBusy ||
+                          referenceImageItems.length >= CUSTOM_ORDER_MAX_REFERENCE_IMAGES
+                        }
+                        onClick={() => {
+                          referenceSectionRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                          referenceFileInputRef.current?.click();
+                        }}
+                      >
+                        {referenceCompressBusy ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Preparing…
+                          </>
+                        ) : (
+                          "Choose images"
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG, WebP, etc. (max 16MB each).
+                      </p>
+                    </div>
+                  )}
+                  {referenceImageItems.length >= CUSTOM_ORDER_MAX_REFERENCE_IMAGES && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                      Maximum of {CUSTOM_ORDER_MAX_REFERENCE_IMAGES} reference images. Remove one
+                      to add another.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">{formData.title}</h3>
                 {formData.description && (
@@ -678,7 +917,7 @@ export default function CustomOrderButton({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading || budgetBlocksSubmit}
+                  disabled={isLoading || budgetBlocksSubmit || referenceCompressBusy}
                 >
                   {isLoading ? "Submitting..." : "Submit Request"}
                 </Button>

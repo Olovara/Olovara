@@ -16,13 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   getCustomOrderSubmissionDetail,
-  updateSubmissionStatus,
+  sellerStartCustomOrderWork,
 } from "@/actions/customOrderFormActions";
 import type { CustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatPriceInCurrency } from "@/lib/utils";
 import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
+import CustomOrderProjectThread from "@/components/custom-order/CustomOrderProjectThread";
 
 function detailStatusVariant(
   status: string,
@@ -33,6 +34,8 @@ function detailStatusVariant(
     case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
+    case "PENDING_SELLER_START":
+    case "IN_PROGRESS":
     case "READY_FOR_FINAL_PAYMENT":
       return "default";
     case "COMPLETED":
@@ -44,20 +47,12 @@ function detailStatusVariant(
   }
 }
 
-function acceptDisabled(status: string) {
-  // Approve only after a quote was sent (status QUOTED)
-  return (
-    status === "APPROVED" ||
-    status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED" ||
-    status !== "QUOTED"
-  );
-}
-
 function quoteActionDisabled(status: string) {
   return (
     status === "APPROVED" ||
     status === "REVIEWED" ||
+    status === "PENDING_SELLER_START" ||
+    status === "IN_PROGRESS" ||
     status === "READY_FOR_FINAL_PAYMENT" ||
     status === "COMPLETED" ||
     status === "REJECTED"
@@ -87,8 +82,8 @@ export default function CustomOrderSubmissionDetailModal({
   const [detail, setDetail] = useState<CustomOrderSubmissionDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [statusAction, setStatusAction] = useState<"accept" | null>(null);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
+  const [startWorkBusy, setStartWorkBusy] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -123,27 +118,7 @@ export default function CustomOrderSubmissionDetailModal({
     }
   }, [refreshTrigger, open, submissionId, load]);
 
-  const handleAccept = async () => {
-    if (!submissionId) return;
-    setStatusAction("accept");
-    try {
-      const res = await updateSubmissionStatus({
-        submissionId,
-        status: "APPROVED",
-      });
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Submission accepted");
-      await load(submissionId);
-      router.refresh();
-    } finally {
-      setStatusAction(null);
-    }
-  };
-
-  const statusBusy = statusAction !== null;
+  const statusBusy = false;
 
   return (
     <>
@@ -233,6 +208,39 @@ export default function CustomOrderSubmissionDetailModal({
                   <p className="mt-2 text-sm text-muted-foreground">
                     Not provided (submitted before budget was required)
                   </p>
+                )}
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Reference images
+                </p>
+                {detail.referenceImageUrls.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No reference images uploaded.
+                  </p>
+                ) : (
+                  <ul className="mt-2 flex flex-wrap gap-3">
+                    {detail.referenceImageUrls.map((url, index) => (
+                      <li key={`${url}-${index}`}>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-md border border-brand-dark-neutral-200 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-400"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Reference ${index + 1}`}
+                            className="h-28 w-28 rounded-md object-cover"
+                          />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
@@ -367,6 +375,10 @@ export default function CustomOrderSubmissionDetailModal({
 
               <Separator />
 
+              <CustomOrderProjectThread submissionId={detail.id} />
+
+              <Separator />
+
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Customer request
@@ -398,33 +410,47 @@ export default function CustomOrderSubmissionDetailModal({
         <DialogFooter className="shrink-0 flex-col gap-2 border-t border-brand-dark-neutral-200 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end sm:gap-2 sm:px-6 sm:pb-4">
           {detail && submissionId && (
             <>
+              {detail.status === "PENDING_SELLER_START" && (
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={loading || startWorkBusy}
+                  onClick={async () => {
+                    setStartWorkBusy(true);
+                    try {
+                      const res = await sellerStartCustomOrderWork(submissionId);
+                      if (res.error) {
+                        toast.error(res.error);
+                        return;
+                      }
+                      toast.success(res.success ?? "Work started");
+                      await load(submissionId);
+                      router.refresh();
+                    } finally {
+                      setStartWorkBusy(false);
+                    }
+                  }}
+                >
+                  {startWorkBusy ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting…
+                    </>
+                  ) : (
+                    "Confirm & start work"
+                  )}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outlinePrimary"
                 disabled={
-                  statusBusy ||
                   loading ||
                   quoteActionDisabled(detail.status)
                 }
                 onClick={() => setQuoteDialogOpen(true)}
               >
                 {detail.status === "QUOTED" ? "Update quote" : "Send quote"}
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                disabled={
-                  statusBusy ||
-                  loading ||
-                  acceptDisabled(detail.status)
-                }
-                onClick={() => void handleAccept()}
-              >
-                {statusAction === "accept" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Accept"
-                )}
               </Button>
               <Button
                 type="button"

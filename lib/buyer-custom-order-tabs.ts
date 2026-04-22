@@ -5,7 +5,9 @@
 export type BuyerCustomOrderTabId =
   | "requests"
   | "quotes"
-  | "active"
+  | "pending_seller_start"
+  | "in_progress"
+  | "awaiting_final_payment"
   | "completed"
   | "declined";
 
@@ -20,24 +22,21 @@ export function buyerCustomOrderTabForStatus(status: string): BuyerCustomOrderTa
   const s = status.trim().toUpperCase();
   if (DECLINED_STATUSES.has(s)) return "declined";
   if (s === "COMPLETED") return "completed";
-  if (s === "QUOTED") return "quotes";
   if (s === "PENDING") return "requests";
-  // In progress after quote acceptance / payments (and legacy REVIEWED)
-  if (
-    s === "APPROVED" ||
-    s === "READY_FOR_FINAL_PAYMENT" ||
-    s === "REVIEWED"
-  ) {
-    return "active";
-  }
-  // Unknown future statuses: show under Active so they are not lost
-  return "active";
+  if (s === "QUOTED" || s === "REVIEWED" || s === "APPROVED") return "quotes";
+  if (s === "PENDING_SELLER_START") return "pending_seller_start";
+  if (s === "IN_PROGRESS") return "in_progress";
+  if (s === "READY_FOR_FINAL_PAYMENT") return "awaiting_final_payment";
+  // Unknown future mid-pipeline statuses: keep visible on In progress
+  return "in_progress";
 }
 
 export const BUYER_CUSTOM_ORDER_TAB_ORDER: BuyerCustomOrderTabId[] = [
   "requests",
   "quotes",
-  "active",
+  "pending_seller_start",
+  "in_progress",
+  "awaiting_final_payment",
   "completed",
   "declined",
 ];

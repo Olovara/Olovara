@@ -3,6 +3,8 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/error-logger";
+import { CUSTOM_ORDER_MAX_REFERENCE_IMAGES } from "@/lib/custom-order-reference-config";
+import { CUSTOM_ORDER_MAX_PROGRESS_IMAGES } from "@/lib/custom-order-progress-config";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = 'force-dynamic';
@@ -111,6 +113,82 @@ export const ourFileRouter = {
       }
 
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
+    }),
+
+  /** Buyer custom-order modal: optional inspiration / reference images (same max as `CUSTOM_ORDER_MAX_REFERENCE_IMAGES`). */
+  customOrderReferenceImages: f({
+    image: { maxFileSize: "16MB", maxFileCount: CUSTOM_ORDER_MAX_REFERENCE_IMAGES },
+  })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.ufsUrl,
+            userId: metadata.userId,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to record custom order reference upload:", error);
+        logError({
+          code: "IMAGE_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "customOrderReferenceImages",
+          },
+        });
+        throw new UploadThingError("Failed to record upload");
+      }
+      return { uploadedBy: metadata.userId, url: file.ufsUrl };
+    }),
+
+  /** Seller custom-order project thread: progress photos (max 3 per post). */
+  customOrderProgressImages: f({
+    image: { maxFileSize: "16MB", maxFileCount: CUSTOM_ORDER_MAX_PROGRESS_IMAGES },
+  })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      try {
+        await db.temporaryUpload.create({
+          data: {
+            fileKey: file.key,
+            fileUrl: file.ufsUrl,
+            userId: metadata.userId,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to record custom order progress upload:", error);
+        logError({
+          code: "IMAGE_UPLOAD_RECORD_FAILED",
+          userId: metadata.userId,
+          route: "/api/uploadthing",
+          method: "POST",
+          error,
+          metadata: {
+            fileKey: file.key,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: "customOrderProgressImages",
+          },
+        });
+        throw new UploadThingError("Failed to record upload");
+      }
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 

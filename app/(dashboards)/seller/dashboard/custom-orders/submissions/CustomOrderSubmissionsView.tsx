@@ -32,15 +32,17 @@ import {
 import CustomOrderSubmissionDetailModal from "@/components/seller/CustomOrderSubmissionDetailModal";
 import RejectCustomOrderSubmissionDialog from "@/components/seller/RejectCustomOrderSubmissionDialog";
 import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
-import { updateSubmissionStatus } from "@/actions/customOrderFormActions";
+import {
+  sellerStartCustomOrderWork,
+} from "@/actions/customOrderFormActions";
 import { ensureConversationForCustomOrderSubmission } from "@/actions/conversationActions";
 import { toast } from "sonner";
 import {
-  Check,
   Eye,
   Inbox,
   MessageCircle,
   MoreHorizontal,
+  Play,
   Send,
   XCircle,
 } from "lucide-react";
@@ -52,11 +54,11 @@ export type SubmissionListItem = {
   status: string;
   customerEmail: string;
   customerName: string | null;
-  materialsDepositAmount: number | null;
+  quoteDepositMinor: number | null;
   finalPaymentAmount: number | null;
   totalAmount: number | null;
   currency: string;
-  materialsDepositPaid: boolean;
+  quoteDepositPaid: boolean;
   finalPaymentPaid: boolean;
   createdAt: Date;
   form: { title: string };
@@ -66,7 +68,7 @@ export type SubmissionListItem = {
 type FormOption = { id: string; title: string };
 
 function statusBadgeVariant(
-  status: string
+  status: string,
 ): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "PENDING":
@@ -74,6 +76,8 @@ function statusBadgeVariant(
     case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
+    case "PENDING_SELLER_START":
+    case "IN_PROGRESS":
     case "READY_FOR_FINAL_PAYMENT":
       return "default";
     case "COMPLETED":
@@ -102,22 +106,20 @@ function SubmissionActionsDropdown({
   s,
   busySubmissionId,
   onView,
-  onAccept,
   onOpenRejectDialog,
   onOpenQuoteDialog,
   onMessageBuyer,
-  acceptDisabled: acceptOff,
+  onStartWork,
   rejectDisabled: rejectOff,
   quoteDisabled: quoteOff,
 }: {
   s: SubmissionListItem;
   busySubmissionId: string | null;
   onView: (id: string) => void;
-  onAccept: (id: string) => void;
   onOpenRejectDialog: (id: string) => void;
   onOpenQuoteDialog: (id: string, currency: string) => void;
   onMessageBuyer: (id: string) => void;
-  acceptDisabled: (status: string) => boolean;
+  onStartWork: (id: string) => void;
   rejectDisabled: (status: string) => boolean;
   quoteDisabled: (status: string) => boolean;
 }) {
@@ -146,6 +148,19 @@ function SubmissionActionsDropdown({
           <Eye className="mr-2 h-4 w-4" />
           View details
         </DropdownMenuItem>
+        {s.status === "PENDING_SELLER_START" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={busySubmissionId === s.id}
+              onClick={() => onStartWork(s.id)}
+              className="cursor-pointer data-[highlighted]:bg-brand-primary-700 data-[highlighted]:text-brand-light-neutral-50 focus:bg-brand-primary-700 focus:text-brand-light-neutral-50"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {"Confirm & start work"}
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={busySubmissionId === s.id || quoteOff(s.status)}
@@ -154,14 +169,6 @@ function SubmissionActionsDropdown({
         >
           <Send className="mr-2 h-4 w-4" />
           {s.status === "QUOTED" ? "Update quote" : "Send quote"}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={busySubmissionId === s.id || acceptOff(s.status)}
-          onClick={() => void onAccept(s.id)}
-          className="cursor-pointer data-[highlighted]:bg-brand-primary-700 data-[highlighted]:text-brand-light-neutral-50 focus:bg-brand-primary-700 focus:text-brand-light-neutral-50"
-        >
-          <Check className="mr-2 h-4 w-4" />
-          Accept
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={busySubmissionId === s.id || rejectOff(s.status)}
@@ -226,19 +233,19 @@ export default function CustomOrderSubmissionsView({
     setQuoteDialogOpen(true);
   };
 
-  const handleAccept = async (submissionId: string) => {
+  // After deposit: PENDING_SELLER_START → seller confirms start → IN_PROGRESS.
+
+  const handleStartWork = async (submissionId: string) => {
     setBusySubmissionId(submissionId);
     try {
-      const res = await updateSubmissionStatus({
-        submissionId,
-        status: "APPROVED",
-      });
+      const res = await sellerStartCustomOrderWork(submissionId);
       if (res.error) {
         toast.error(res.error);
         return;
       }
-      toast.success("Submission accepted");
+      toast.success(res.success ?? "Order in progress");
       router.refresh();
+      setDetailRefreshTrigger((n) => n + 1);
     } finally {
       setBusySubmissionId(null);
     }
@@ -247,7 +254,8 @@ export default function CustomOrderSubmissionsView({
   const handleMessageBuyer = async (submissionId: string) => {
     setBusySubmissionId(submissionId);
     try {
-      const res = await ensureConversationForCustomOrderSubmission(submissionId);
+      const res =
+        await ensureConversationForCustomOrderSubmission(submissionId);
       if (res.error) {
         toast.error(res.error);
         return;
@@ -266,15 +274,13 @@ export default function CustomOrderSubmissionsView({
     }
   };
 
-  const acceptDisabled = (status: string) =>
-    status === "APPROVED" ||
-    status === "READY_FOR_FINAL_PAYMENT" ||
-    status === "COMPLETED" ||
-    status !== "QUOTED";
+  const acceptDisabled = (_status: string) => true;
 
   const quoteDisabled = (status: string) =>
     status === "APPROVED" ||
     status === "REVIEWED" ||
+    status === "PENDING_SELLER_START" ||
+    status === "IN_PROGRESS" ||
     status === "READY_FOR_FINAL_PAYMENT" ||
     status === "COMPLETED" ||
     status === "REJECTED";
@@ -293,7 +299,7 @@ export default function CustomOrderSubmissionsView({
     router.push(
       q
         ? `/seller/dashboard/custom-orders/submissions?${q}`
-        : "/seller/dashboard/custom-orders/submissions"
+        : "/seller/dashboard/custom-orders/submissions",
     );
   };
 
@@ -386,8 +392,8 @@ export default function CustomOrderSubmissionsView({
               <Inbox className="mb-4 h-12 w-12 opacity-50" />
               <p className="font-medium">Nothing here yet</p>
               <p className="mt-1 max-w-sm text-sm">
-                When customers submit your custom order forms, their requests will
-                show up in this list.
+                When customers submit your custom order forms, their requests
+                will show up in this list.
               </p>
             </div>
           ) : (
@@ -399,10 +405,16 @@ export default function CustomOrderSubmissionsView({
                     <TableRow className="bg-brand-light-neutral-100 hover:bg-brand-light-neutral-100">
                       <TableHead>Form</TableHead>
                       <TableHead>Customer</TableHead>
-                      <TableHead className="whitespace-nowrap">Submitted</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        Submitted
+                      </TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Payments</TableHead>
-                      <TableHead className="hidden md:table-cell">Totals</TableHead>
+                      <TableHead className="hidden lg:table-cell">
+                        Payments
+                      </TableHead>
+                      <TableHead className="hidden md:table-cell">
+                        Totals
+                      </TableHead>
                       <TableHead className="w-[1%] whitespace-nowrap text-right">
                         Actions
                       </TableHead>
@@ -420,7 +432,9 @@ export default function CustomOrderSubmissionsView({
                         <TableCell className="max-w-[14rem]">
                           <div className="text-sm">
                             {s.customerName && (
-                              <div className="font-medium">{s.customerName}</div>
+                              <div className="font-medium">
+                                {s.customerName}
+                              </div>
                             )}
                             <div className="text-muted-foreground break-all">
                               {s.customerEmail || "—"}
@@ -438,7 +452,7 @@ export default function CustomOrderSubmissionsView({
                         <TableCell className="hidden text-sm lg:table-cell">
                           <div className="space-y-0.5">
                             <div>
-                              Deposit: {s.materialsDepositPaid ? "Paid" : "Unpaid"}
+                              Deposit: {s.quoteDepositPaid ? "Paid" : "Unpaid"}
                             </div>
                             <div>
                               Final: {s.finalPaymentPaid ? "Paid" : "Unpaid"}
@@ -455,17 +469,13 @@ export default function CustomOrderSubmissionsView({
                           <div className="space-y-0.5">
                             {s.totalAmount != null && (
                               <div>
-                                Total:{" "}
-                                {formatMoney(s.totalAmount, s.currency)}
+                                Total: {formatMoney(s.totalAmount, s.currency)}
                               </div>
                             )}
-                            {s.materialsDepositAmount != null && (
+                            {s.quoteDepositMinor != null && (
                               <div className="text-muted-foreground">
                                 Deposit:{" "}
-                                {formatMoney(
-                                  s.materialsDepositAmount,
-                                  s.currency
-                                )}
+                                {formatMoney(s.quoteDepositMinor, s.currency)}
                               </div>
                             )}
                           </div>
@@ -475,11 +485,10 @@ export default function CustomOrderSubmissionsView({
                             s={s}
                             busySubmissionId={busySubmissionId}
                             onView={openSubmissionDetail}
-                            onAccept={handleAccept}
                             onOpenRejectDialog={openRejectDialog}
                             onOpenQuoteDialog={openQuoteDialog}
                             onMessageBuyer={handleMessageBuyer}
-                            acceptDisabled={acceptDisabled}
+                            onStartWork={handleStartWork}
                             rejectDisabled={rejectDisabled}
                             quoteDisabled={quoteDisabled}
                           />
@@ -504,18 +513,20 @@ export default function CustomOrderSubmissionsView({
                             {s.form.title}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {format(new Date(s.createdAt), "MMM d, yyyy h:mm a")}
+                            {format(
+                              new Date(s.createdAt),
+                              "MMM d, yyyy h:mm a",
+                            )}
                           </p>
                         </div>
                         <SubmissionActionsDropdown
                           s={s}
                           busySubmissionId={busySubmissionId}
                           onView={openSubmissionDetail}
-                          onAccept={handleAccept}
                           onOpenRejectDialog={openRejectDialog}
                           onOpenQuoteDialog={openQuoteDialog}
                           onMessageBuyer={handleMessageBuyer}
-                          acceptDisabled={acceptDisabled}
+                          onStartWork={handleStartWork}
                           rejectDisabled={rejectDisabled}
                           quoteDisabled={quoteDisabled}
                         />
@@ -538,9 +549,11 @@ export default function CustomOrderSubmissionsView({
 
                       <div className="mt-3 space-y-2 border-t border-brand-dark-neutral-200 pt-3 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Payments: </span>
+                          <span className="text-muted-foreground">
+                            Payments:{" "}
+                          </span>
                           <span>
-                            Deposit {s.materialsDepositPaid ? "paid" : "unpaid"}
+                            Deposit {s.quoteDepositPaid ? "paid" : "unpaid"}
                             {" · "}
                             Final {s.finalPaymentPaid ? "paid" : "unpaid"}
                           </span>
@@ -553,7 +566,7 @@ export default function CustomOrderSubmissionsView({
                           )}
                         </div>
                         {(s.totalAmount != null ||
-                          s.materialsDepositAmount != null) && (
+                          s.quoteDepositMinor != null) && (
                           <div className="flex flex-col gap-1">
                             {s.totalAmount != null && (
                               <div>
@@ -565,13 +578,10 @@ export default function CustomOrderSubmissionsView({
                                 </span>
                               </div>
                             )}
-                            {s.materialsDepositAmount != null && (
+                            {s.quoteDepositMinor != null && (
                               <div className="text-muted-foreground">
                                 Deposit:{" "}
-                                {formatMoney(
-                                  s.materialsDepositAmount,
-                                  s.currency,
-                                )}
+                                {formatMoney(s.quoteDepositMinor, s.currency)}
                               </div>
                             )}
                           </div>

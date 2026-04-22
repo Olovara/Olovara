@@ -189,6 +189,7 @@ model User {
   UserActivityLog   UserActivityLog[]
   temporaryUploads  TemporaryUpload[]
   qaEvents          QaEvent[]
+  customOrderProgressComments CustomOrderProgressComment[]
 }
 
 model RolePermission {
@@ -1203,7 +1204,7 @@ model CustomOrderSubmission {
   encryptedCustomerName  String?
   customerNameIV         String?
   customerNameSalt       String?
-  status    String  @default("PENDING") // "PENDING", "QUOTED", "REVIEWED", "APPROVED", "REJECTED", "COMPLETED", "READY_FOR_FINAL_PAYMENT"
+  status    String  @default("PENDING") // "PENDING", "QUOTED", "REVIEWED", "APPROVED"(legacy), "PENDING_SELLER_START", "IN_PROGRESS", "READY_FOR_FINAL_PAYMENT", "REJECTED", "COMPLETED"
   responses CustomOrderSubmissionResponse[]
   notes     String? // Seller's notes on the submission
 
@@ -1212,12 +1213,17 @@ model CustomOrderSubmission {
   customerBudgetCurrency  String?
   budgetFlexible          Boolean @default(false)
 
+  /// Optional reference images (UploadThing URLs, max 5) — same for every submission, not form fields
+  referenceImageUrls      String[] @default([])
+
   // Pre-approval quote (seller → buyer)
   quotePriceType      String?   // "FIXED" | "RANGE"
   quotePriceFixedMinor Int?
   quotePriceMinMinor   Int?
   quotePriceMaxMinor   Int?
   quoteDepositMinor    Int?
+  quoteDepositPaid     Boolean @default(false)
+  quoteDepositSessionId String? // Stripe session ID for quote deposit (buyer → seller)
   quoteTimeline       String?
   quoteNotes          String?
   quoteSentAt         DateTime?
@@ -1225,15 +1231,13 @@ model CustomOrderSubmission {
   rejectionReason String?
   
   // Payment fields
-  materialsDepositAmount Int? // Amount in cents for materials deposit
-  finalPaymentAmount     Int? // Amount in cents for final payment (excluding materials)
-  totalAmount            Int? // Total amount in cents (materials + final)
+  quoteDepositAmount     Int? // Amount in cents for deposit
+  finalPaymentAmount     Int? // Amount in cents for final payment (excluding deposit)
+  totalAmount            Int? // Total amount in cents (deposit + final)
   currency               String @default("USD")
   
   // Payment status
-  materialsDepositPaid   Boolean @default(false)
   finalPaymentPaid       Boolean @default(false)
-  materialsDepositSessionId String? // Stripe session ID for materials payment
   finalPaymentSessionId     String? // Stripe session ID for final payment
   
   // Shipping information (filled when ready for final payment)
@@ -1244,13 +1248,66 @@ model CustomOrderSubmission {
   
   // Payment records
   payments               CustomOrderPayment[]
-  
+
+  /// Set when status becomes COMPLETED (final payment succeeded).
+  completedAt            DateTime?
+
+  quoteSnapshots         CustomOrderQuoteSnapshot[]
+  progressUpdates        CustomOrderProgressUpdate[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([formId])
   @@index([userId])
   @@index([status])
+}
+
+/// One row each time the seller sends or updates a quote (timeline history).
+model CustomOrderQuoteSnapshot {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId         String
+  submission           CustomOrderSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sentAt               DateTime @default(now())
+  quotePriceType       String?
+  quotePriceFixedMinor Int?
+  quotePriceMinMinor   Int?
+  quotePriceMaxMinor   Int?
+  quoteDepositMinor    Int?
+  quoteTimeline        String?
+  quoteNotes           String?
+
+  @@index([submissionId])
+}
+
+/// Seller progress post: optional text, up to 3 images, optional buyer approval gate.
+model CustomOrderProgressUpdate {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId       String
+  submission         CustomOrderSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  body               String?
+  imageUrls          String[] @default([])
+  requiresApproval   Boolean  @default(false)
+  /// When requiresApproval: PENDING until buyer acts; then APPROVED or REJECTED. Null if not an approval request.
+  approvalStatus     String?
+  approvalDecidedAt  DateTime?
+  buyerRejectionNote String?
+  createdAt          DateTime @default(now())
+  comments           CustomOrderProgressComment[]
+
+  @@index([submissionId])
+}
+
+model CustomOrderProgressComment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  updateId  String
+  update    CustomOrderProgressUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([updateId])
 }
 
 model CustomOrderSubmissionResponse {

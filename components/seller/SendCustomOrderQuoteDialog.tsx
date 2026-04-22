@@ -180,6 +180,10 @@ export default function SendCustomOrderQuoteDialog({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="rounded-md border border-brand-dark-neutral-200 bg-brand-light-neutral-100/70 p-3 text-sm text-muted-foreground">
+              Olovara takes a commission on payments and Stripe has payment processing fees. Price your deposit and final amount
+              accordingly so you receive the amount you expect after fees.
+            </div>
             <div className="space-y-2">
               <Label>Price estimate</Label>
               <RadioGroup

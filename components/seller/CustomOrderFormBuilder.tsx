@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, GripVertical, Trash2, Eye } from "lucide-react";
 import { saveCustomOrderForm } from "@/actions/customOrderFormActions";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CUSTOM_ORDER_MAX_REFERENCE_IMAGES } from "@/lib/custom-order-reference-config";
 
 /** Radix Select highlights options with data-highlighted on hover / keyboard. */
 const FIELD_TYPE_SELECT_ITEM_CLASS =
@@ -417,12 +419,97 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold">{formData.title || "Form Title"}</h3>
+              <p className="text-sm text-muted-foreground">
+                The sections below mirror what buyers see before your custom fields. Name, email,
+                budget, and optional reference images are always on the request form, you do not add
+                them as custom form fields.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-medium">Your Information</h3>
+                  <Badge variant="secondary" className="font-normal">
+                    Always included
+                  </Badge>
+                </div>
+                <div className="rounded-lg border border-brand-light-neutral-200 bg-brand-light-neutral-100 p-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input placeholder="Your name" disabled />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>
+                        Email
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input type="email" placeholder="you@example.com" disabled />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-medium">Your budget</h3>
+                  <Badge variant="secondary" className="font-normal">
+                    Always included
+                  </Badge>
+                </div>
+                <div className="rounded-lg border border-brand-light-neutral-200 bg-brand-light-neutral-100 p-4 space-y-3">
+                  <div className="space-y-2">
+                    <Label>
+                      How much are you planning to spend?{" "}
+                      <span className="text-red-500">*</span>
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        (customer&apos;s currency)
+                      </span>
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="Amount"
+                      disabled
+                      inputMode="decimal"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      If you set a minimum in shop settings, the live form may show that hint here.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="preview-budget-flexible" disabled checked={false} />
+                    <Label
+                      htmlFor="preview-budget-flexible"
+                      className="text-sm font-normal leading-snug"
+                    >
+                      I&apos;m flexible on budget if the project needs it
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-medium">Reference images</h3>
+                  <Badge variant="secondary" className="font-normal">
+                    Optional · always on form
+                  </Badge>
+                </div>
+                <div className="rounded-lg border border-dashed border-brand-light-neutral-200 bg-brand-light-neutral-100 p-4 text-center text-sm text-muted-foreground">
+                  Buyers may upload up to {CUSTOM_ORDER_MAX_REFERENCE_IMAGES} images (style, color,
+                  inspiration). Field is optional.
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t border-brand-dark-neutral-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold">{formData.title || "Form Title"}</h3>
+                  <Badge variant="outline" className="font-normal">
+                    Your form fields
+                  </Badge>
+                </div>
                 {formData.description && (
                   <p className="text-muted-foreground">{formData.description}</p>
                 )}
-              </div>
 
               {fields.filter(f => f.isActive).map((field, index) => (
                 <div key={index} className="space-y-2">
@@ -488,6 +575,7 @@ export default function CustomOrderFormBuilder({ initialData, mode }: CustomOrde
                   )}
                 </div>
               ))}
+              </div>
             </div>
           </CardContent>
         </Card>

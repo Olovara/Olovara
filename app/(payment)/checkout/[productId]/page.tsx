@@ -21,17 +21,17 @@ import QuantitySelector from "@/components/QuantitySelector";
 import { useAbandonedCart, useFormTracking } from "@/hooks/use-abandoned-cart";
 import { useMarketplaceAnalytics } from "@/hooks/use-posthog";
 import {
-  Lock,
   Shield,
   Truck,
   CreditCard,
   CheckCircle,
-  ArrowLeft,
 } from "lucide-react";
 import { useLocation } from "@/hooks/useLocation";
 import { SUPPORTED_COUNTRIES, type Country } from "@/data/countries";
 import { ReCaptcha } from "@/components/ui/recaptcha";
 import EmbeddedPaymentForm from "@/components/EmbeddedPaymentForm";
+import CheckoutPageHeader from "@/components/checkout/CheckoutPageHeader";
+import CheckoutTrustFooter from "@/components/checkout/CheckoutTrustFooter";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 // Placeholder for product fetch (replace with real hook or API call)
@@ -567,26 +567,10 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-brand-light-neutral-50">
-      {/* Header */}
-      <div className="bg-brand-light-neutral-50 border-b border-brand-dark-neutral-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center text-brand-dark-neutral-600 hover:text-brand-primary-700 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to product
-              </button>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-brand-dark-neutral-600">
-              <Lock className="h-4 w-4" />
-              <span>Secure checkout</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CheckoutPageHeader
+        backLabel="Back to product"
+        onBack={() => router.back()}
+      />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -977,22 +961,7 @@ export default function CheckoutPage() {
                     )}
                   </Button>
 
-                  {/* Trust Indicators */}
-                  <div className="mt-4 text-center">
-                    <p className="text-xs text-brand-dark-neutral-600">
-                      Secure payment processing powered by Stripe
-                    </p>
-                    <div className="flex items-center justify-center mt-2 space-x-4">
-                      <div className="flex items-center text-xs text-brand-dark-neutral-600">
-                        <Shield className="h-3 w-3 mr-1" />
-                        <span>SSL secured</span>
-                      </div>
-                      <div className="flex items-center text-xs text-brand-dark-neutral-600">
-                        <Lock className="h-3 w-3 mr-1" />
-                        <span>256-bit encryption</span>
-                      </div>
-                    </div>
-                  </div>
+                  <CheckoutTrustFooter />
                 </div>
               ) : (
                 <div id="payment-form" className="p-6">

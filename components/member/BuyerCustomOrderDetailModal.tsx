@@ -16,8 +16,19 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getBuyerCustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
 import type { BuyerCustomOrderSubmissionDetail } from "@/actions/customOrderFormActions";
+import CustomOrderPaymentButton from "@/components/custom-order/CustomOrderPaymentButton";
+import CustomOrderProjectThread from "@/components/custom-order/CustomOrderProjectThread";
 import { Loader2 } from "lucide-react";
 import { cn, formatPriceInCurrency } from "@/lib/utils";
+
+/** Deposit is due after a quote; seller may leave status as QUOTED or move to REVIEWED after setting amounts. */
+function canPayQuoteDeposit(status: string): boolean {
+  return (
+    status === "QUOTED" ||
+    status === "REVIEWED" ||
+    status === "APPROVED"
+  );
+}
 
 // Maps workflow status to badge style (same idea as seller dashboard)
 function detailStatusVariant(
@@ -29,6 +40,8 @@ function detailStatusVariant(
     case "QUOTED":
     case "REVIEWED":
     case "APPROVED":
+    case "PENDING_SELLER_START":
+    case "IN_PROGRESS":
     case "READY_FOR_FINAL_PAYMENT":
       return "default";
     case "COMPLETED":
@@ -177,6 +190,39 @@ export default function BuyerCustomOrderDetailModal({
                 )}
               </div>
 
+              <Separator />
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Your reference images
+                </p>
+                {detail.referenceImageUrls.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    You did not attach reference images.
+                  </p>
+                ) : (
+                  <ul className="mt-2 flex flex-wrap gap-3">
+                    {detail.referenceImageUrls.map((url, index) => (
+                      <li key={`${url}-${index}`}>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-md border border-brand-dark-neutral-200 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-400"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Reference ${index + 1}`}
+                            className="h-28 w-28 rounded-md object-cover"
+                          />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {detail.quoteSentAt &&
                 (detail.quotePriceType === "FIXED" ||
                   detail.quotePriceType === "RANGE") && (
@@ -235,6 +281,23 @@ export default function BuyerCustomOrderDetailModal({
                             </dd>
                           </div>
                         )}
+                        {detail.quoteDepositMinor != null && (
+                          <div className="pt-2">
+                            {detail.quoteDepositPaid ? (
+                              <p className="text-sm text-muted-foreground">
+                                Deposit paid. Waiting for seller to start.
+                              </p>
+                            ) : canPayQuoteDeposit(detail.status) ? (
+                              <CustomOrderPaymentButton
+                                submissionId={detail.id}
+                                paymentType="QUOTE_DEPOSIT"
+                                amount={detail.quoteDepositMinor}
+                                currency={detail.currency}
+                                onBeforeNavigate={() => onOpenChange(false)}
+                              />
+                            ) : null}
+                          </div>
+                        )}
                         {detail.quoteTimeline && (
                           <div>
                             <dt className="text-muted-foreground">Timeline</dt>
@@ -269,6 +332,10 @@ export default function BuyerCustomOrderDetailModal({
                   </div>
                 </>
               )}
+
+              <Separator />
+
+              <CustomOrderProjectThread submissionId={detail.id} />
 
               <Separator />
 

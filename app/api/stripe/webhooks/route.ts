@@ -11,6 +11,7 @@ import { encryptOrderData, decryptOrderData } from "@/lib/encryption";
 import { PLATFORM_FEE_PERCENT, calculateCommissionRate } from "@/lib/feeConfig";
 import { updateOnboardingStep } from "@/lib/onboarding";
 import { logError } from "@/lib/error-logger";
+import { handleCustomOrderPaymentIntentSucceeded } from "@/lib/stripe/handle-custom-order-payment-intent-succeeded";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -1593,6 +1594,12 @@ export async function POST(req: Request) {
             console.error("❌ Payment intent status:", paymentIntent.status);
             console.error("❌ Payment intent amount:", paymentIntent.amount);
             throw new Error("Metadata missing from payment intent");
+          }
+
+          if (paymentIntent.metadata.customOrderSubmissionId) {
+            return await handleCustomOrderPaymentIntentSucceeded(
+              paymentIntent,
+            );
           }
 
           console.log(
