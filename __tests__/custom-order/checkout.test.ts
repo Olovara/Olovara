@@ -55,6 +55,7 @@ const createMockCustomOrderForm = (overrides = {}) => ({
 const createMockSubmission = (overrides = {}) => ({
   id: 'submission-123',
   formId: 'form-123',
+  sellerId: 'seller-user-123',
   userId: 'user-123',
   customerEmail: 'customer@example.com',
   customerName: 'Test Customer',
@@ -544,6 +545,7 @@ export const createTestCustomOrder = async () => {
   const submission = await db.customOrderSubmission.create({
     data: createMockSubmission({
       formId: form.id,
+      sellerId: seller.userId,
       userId: user.id,
     }),
   })

@@ -1,4 +1,5 @@
 import { getSellerOrders } from "@/actions/orders";
+import CustomOrderCompletedListActions from "@/components/custom-order/CustomOrderCompletedListActions";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -198,7 +199,21 @@ export default async function SellerMyOrders({
                             className="border-brand-dark-neutral-100 hover:bg-brand-primary-50/40"
                           >
                             <TableCell className="font-mono text-xs text-brand-dark-neutral-800 md:text-sm">
-                              {order.id}
+                              <span className="inline-flex flex-wrap items-center gap-1">
+                                {order.source === "custom_order" ? (
+                                  <>
+                                    <span>{order.id.substring(0, 8)}…</span>
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] font-medium text-brand-primary-800"
+                                    >
+                                      Custom
+                                    </Badge>
+                                  </>
+                                ) : (
+                                  order.id
+                                )}
+                              </span>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col">
@@ -221,20 +236,30 @@ export default async function SellerMyOrders({
                               {format(new Date(order.createdAt), "MMM d, yyyy")}
                             </TableCell>
                             <TableCell>
-                              <OrderActions order={{
-                                ...order,
-                                shopName: order.shopName || "Unknown Shop",
-                                seller: {
-                                  id: order.sellerId,
-                                  userId: order.sellerId,
-                                  shopName: order.shopName || "Unknown Shop"
-                                },
-                                product: {
-                                  id: order.productId,
-                                  name: order.productName,
-                                  images: order.product?.images || []
-                                }
-                              }} />
+                              {order.source === "custom_order" ? (
+                                <CustomOrderCompletedListActions role="seller" />
+                              ) : (
+                                <OrderActions
+                                  order={(() => {
+                                    const { source: _s, ...rest } = order;
+                                    return {
+                                      ...rest,
+                                      buyerName: rest.buyerName ?? undefined,
+                                      shopName: rest.shopName || "Unknown Shop",
+                                      seller: {
+                                        id: rest.sellerId,
+                                        userId: rest.sellerId,
+                                        shopName: rest.shopName || "Unknown Shop",
+                                      },
+                                      product: {
+                                        id: rest.productId,
+                                        name: rest.productName,
+                                        images: rest.product?.images || [],
+                                      },
+                                    };
+                                  })()}
+                                />
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

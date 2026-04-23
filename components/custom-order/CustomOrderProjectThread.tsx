@@ -20,12 +20,15 @@ import { uploadCustomOrderProgressImages } from "@/lib/upload-custom-order-progr
 import { CUSTOM_ORDER_MAX_PROGRESS_IMAGES } from "@/lib/custom-order-progress-config";
 import { toast } from "sonner";
 import {
+  Banknote,
+  Bell,
   CheckCircle2,
   CreditCard,
   FileText,
   ImageIcon,
   Loader2,
   MessageCircle,
+  Play,
   Send,
   Sparkles,
 } from "lucide-react";
@@ -63,12 +66,12 @@ function TimelineShell({
 function SellerUpdateCard({
   row,
   role,
-  submissionStatus,
+  threadLocked,
   onChanged,
 }: {
   row: Extract<ProjectTimelineRow, { kind: "seller_update" }>;
   role: "buyer" | "seller";
-  submissionStatus: string;
+  threadLocked: boolean;
   onChanged: () => void;
 }) {
   const u = row.update;
@@ -137,8 +140,7 @@ function SellerUpdateCard({
     }
   };
 
-  const canComment =
-    submissionStatus !== "REJECTED" && submissionStatus !== "COMPLETED";
+  const canComment = !threadLocked;
   const showApproval =
     role === "buyer" &&
     u.requiresApproval &&
@@ -411,11 +413,8 @@ export default function CustomOrderProjectThread({
     );
   }
 
-  const { timeline, role, currency, submissionStatus } = data;
-  const showComposer =
-    role === "seller" &&
-    submissionStatus !== "REJECTED" &&
-    submissionStatus !== "COMPLETED";
+  const { timeline, role, currency, threadLocked, submissionStatus } = data;
+  const showComposer = role === "seller" && !threadLocked;
 
   return (
     <div className="space-y-4">
@@ -427,6 +426,12 @@ export default function CustomOrderProjectThread({
           Full history of your custom order: quotes, payments, updates, and
           completion.
         </p>
+        {threadLocked && submissionStatus === "READY_FOR_FINAL_PAYMENT" && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            New progress posts and thread comments are closed until the final
+            payment is completed.
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -503,6 +508,41 @@ export default function CustomOrderProjectThread({
               </TimelineShell>
             );
           }
+          if (row.kind === "final_payment_requested") {
+            return (
+              <TimelineShell
+                key={key}
+                icon={<Bell className="h-4 w-4" />}
+                title="Final payment requested"
+              >
+                <p className="text-xs text-muted-foreground">
+                  {formatWhen(row.at)}
+                </p>
+                {row.amountMinor > 0 ? (
+                  <p className="text-sm font-medium">
+                    {formatPriceInCurrency(
+                      row.amountMinor,
+                      row.currency || currency,
+                      true,
+                    )}
+                  </p>
+                ) : null}
+              </TimelineShell>
+            );
+          }
+          if (row.kind === "work_started") {
+            return (
+              <TimelineShell
+                key={key}
+                icon={<Play className="h-4 w-4" />}
+                title="Seller started work on the project"
+              >
+                <p className="text-xs text-muted-foreground">
+                  {formatWhen(row.at)}
+                </p>
+              </TimelineShell>
+            );
+          }
           if (row.kind === "deposit_paid") {
             return (
               <TimelineShell
@@ -523,7 +563,7 @@ export default function CustomOrderProjectThread({
             return (
               <TimelineShell
                 key={key}
-                icon={<CreditCard className="h-4 w-4" />}
+                icon={<Banknote className="h-4 w-4" />}
                 title="Final payment received"
               >
                 <p className="text-xs text-muted-foreground">
@@ -554,7 +594,7 @@ export default function CustomOrderProjectThread({
                 <SellerUpdateCard
                   row={row}
                   role={role}
-                  submissionStatus={submissionStatus}
+                  threadLocked={threadLocked}
                   onChanged={() => void load()}
                 />
               </div>

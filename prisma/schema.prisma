@@ -284,6 +284,7 @@ model Seller {
   shippingOptions        ShippingOption[]
   reviews                Review[]
   customOrderForms       CustomOrderForm[]
+  customOrderSubmissions CustomOrderSubmission[]
   discountCodes          DiscountCode[]
   responsiblePerson      ResponsiblePerson?
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1193,6 +1194,9 @@ model CustomOrderSubmission {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   formId    String
   form      CustomOrderForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  /// Denormalized seller user id (same as `form.sellerId`). Set on create for fast seller-scoped queries.
+  sellerId  String?
+  seller    Seller? @relation(fields: [sellerId], references: [userId])
   userId    String // Required - customer must be logged in
   user      User   @relation(fields: [userId], references: [id])
   // Legacy plaintext (older rows). New submissions use encrypted* only and leave these null.
@@ -1251,6 +1255,10 @@ model CustomOrderSubmission {
 
   /// Set when status becomes COMPLETED (final payment succeeded).
   completedAt            DateTime?
+  /// Set when the seller requests the final payment (status → READY_FOR_FINAL_PAYMENT).
+  finalPaymentRequestedAt DateTime?
+  /// Set when the seller confirms start (status → IN_PROGRESS).
+  inProgressAt           DateTime?
 
   quoteSnapshots         CustomOrderQuoteSnapshot[]
   progressUpdates        CustomOrderProgressUpdate[]
@@ -1261,6 +1269,7 @@ model CustomOrderSubmission {
   @@index([formId])
   @@index([userId])
   @@index([status])
+  @@index([sellerId])
 }
 
 /// One row each time the seller sends or updates a quote (timeline history).

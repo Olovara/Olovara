@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { PurchaseActions } from "../../../../../actions/PurchaseActions";
+import CustomOrderCompletedListActions from "@/components/custom-order/CustomOrderCompletedListActions";
 import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -9,44 +10,6 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbS
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
-import { OrderStatus, PaymentStatus } from "@prisma/client";
-
-interface Purchase {
-  id: string;
-  userId: string;
-  sellerId: string;
-  shopName: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  totalAmount: number;
-  productPrice: number;
-  shippingCost: number;
-  stripeFee: number;
-  isDigital: boolean;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
-  stripeSessionId: string;
-  stripeTransferId: string | null;
-  encryptedBuyerEmail: string;
-  buyerEmailIV: string;
-  encryptedBuyerName: string;
-  buyerNameIV: string;
-  encryptedShippingAddress: string;
-  shippingAddressIV: string;
-  discount: any | null;
-  completedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-  product: {
-    name: string;
-    images: string[];
-  };
-  buyerEmail?: string;
-  buyerName?: string;
-  shippingAddress?: any | null;
-}
-
 export const metadata = {
   title: "Member - My Purchases",
 };
@@ -58,9 +21,7 @@ export default async function MyPurchasesPage() {
     redirect("/login");
   }
 
-  console.log("[DEBUG] Current user ID:", session.user.id);
   const purchases = await getBuyerOrders(session.user.id);
-  console.log("[DEBUG] Found purchases:", purchases);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -71,6 +32,7 @@ export default async function MyPurchasesPage() {
       case "SHIPPED":
         return "bg-purple-500";
       case "DELIVERED":
+      case "COMPLETED":
         return "bg-green-500";
       case "CANCELLED":
         return "bg-red-500";
@@ -132,7 +94,16 @@ export default async function MyPurchasesPage() {
                 <TableBody>
                   {purchases.map((purchase) => (
                     <TableRow key={purchase.id}>
-                      <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
+                      <TableCell>
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          {purchase.id.substring(0, 8)}…
+                          {purchase.source === "custom_order" && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Custom
+                            </Badge>
+                          )}
+                        </span>
+                      </TableCell>
                       <TableCell>{purchase.product.name}</TableCell>
                       <TableCell>{purchase.shopName || "Unknown Seller"}</TableCell>
                       <TableCell>
@@ -150,7 +121,19 @@ export default async function MyPurchasesPage() {
                         {format(new Date(purchase.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>
-                        <PurchaseActions purchase={purchase} />
+                        {purchase.source === "custom_order" ? (
+                          <CustomOrderCompletedListActions role="buyer" />
+                        ) : (
+                          <PurchaseActions
+                            purchase={(() => {
+                              const { source: _s, ...rest } = purchase;
+                              return {
+                                ...rest,
+                                buyerName: rest.buyerName ?? undefined,
+                              };
+                            })()}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

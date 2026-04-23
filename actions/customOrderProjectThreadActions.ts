@@ -53,7 +53,14 @@ export type ProjectTimelineRow =
       amountMinor: number;
       currency: string;
     }
+  | { kind: "work_started"; at: string }
   | { kind: "seller_update"; at: string; update: ProgressUpdatePayload }
+  | {
+      kind: "final_payment_requested";
+      at: string;
+      amountMinor: number;
+      currency: string;
+    }
   | {
       kind: "final_payment";
       at: string;
@@ -66,8 +73,82 @@ export type ProjectThreadData = {
   role: ProjectThreadRole;
   currency: string;
   submissionStatus: string;
+  /** When true, no new seller posts or comments/approvals (final payment was requested or order ended). */
+  threadLocked: boolean;
   timeline: ProjectTimelineRow[];
 };
+
+function isThreadLocked(
+  status: string,
+  finalPaymentRequestedAt: Date | null | undefined,
+): boolean {
+  if (
+    status === "READY_FOR_FINAL_PAYMENT" ||
+    status === "COMPLETED" ||
+    status === "REJECTED"
+  ) {
+    return true;
+  }
+  return finalPaymentRequestedAt != null;
+}
+
+/** When timestamps tie, keep a consistent order so “requested” never hides “received”. */
+const TIMELINE_KIND_ORDER: Partial<
+  Record<ProjectTimelineRow["kind"], number>
+> = {
+  submitted: 0,
+  quote: 10,
+  deposit_paid: 20,
+  work_started: 25,
+  seller_update: 30,
+  final_payment_requested: 40,
+  final_payment: 41,
+  project_completed: 50,
+};
+
+function sortTimelineRows(timeline: ProjectTimelineRow[]) {
+  timeline.sort((a, b) => {
+    const ta = new Date(a.at).getTime();
+    const tb = new Date(b.at).getTime();
+    if (ta !== tb) return ta - tb;
+    return (
+      (TIMELINE_KIND_ORDER[a.kind] ?? 100) -
+      (TIMELINE_KIND_ORDER[b.kind] ?? 100)
+    );
+  });
+}
+
+/** Legacy rows may lack `finalPaymentRequestedAt` after final payment — still show both steps. */
+function ensureFinalPaymentRequestedRowIfMissing(
+  timeline: ProjectTimelineRow[],
+  currency: string,
+  submissionCreatedAt: Date,
+  finalPaymentAmountMinor: number | null | undefined,
+) {
+  const hasRequested = timeline.some((e) => e.kind === "final_payment_requested");
+  if (hasRequested) return;
+
+  const paidEntries = timeline.filter(
+    (e): e is Extract<ProjectTimelineRow, { kind: "final_payment" }> =>
+      e.kind === "final_payment",
+  );
+  if (paidEntries.length === 0) return;
+
+  const amt = finalPaymentAmountMinor;
+  if (amt == null || amt <= 0) return;
+
+  const paidAtMs = Math.min(
+    ...paidEntries.map((e) => new Date(e.at).getTime()),
+  );
+  const requestedAtMs = Math.max(submissionCreatedAt.getTime(), paidAtMs - 1);
+
+  timeline.push({
+    kind: "final_payment_requested",
+    at: new Date(requestedAtMs).toISOString(),
+    amountMinor: amt,
+    currency,
+  });
+}
 
 async function assertParticipant(submissionId: string, userId: string) {
   const row = await db.customOrderSubmission.findFirst({
@@ -194,6 +275,40 @@ export async function getCustomOrderProjectThread(submissionId: string): Promise
       }
     }
 
+    const rowEx = row as typeof row & {
+      finalPaymentRequestedAt?: Date | null;
+      finalPaymentAmount?: number | null;
+      inProgressAt?: Date | null;
+    };
+    const finalReqAt = rowEx.finalPaymentRequestedAt;
+    const finalAmt = rowEx.finalPaymentAmount;
+    if (finalReqAt) {
+      timeline.push({
+        kind: "final_payment_requested",
+        at: finalReqAt.toISOString(),
+        amountMinor: finalAmt ?? 0,
+        currency,
+      });
+    } else if (
+      row.status === "READY_FOR_FINAL_PAYMENT" &&
+      finalAmt != null &&
+      finalAmt > 0
+    ) {
+      timeline.push({
+        kind: "final_payment_requested",
+        at: row.updatedAt.toISOString(),
+        amountMinor: finalAmt,
+        currency,
+      });
+    }
+
+    if (rowEx.inProgressAt) {
+      timeline.push({
+        kind: "work_started",
+        at: rowEx.inProgressAt.toISOString(),
+      });
+    }
+
     const sellerUserId = row.form.sellerId;
 
     for (const u of row.progressUpdates) {
@@ -247,15 +362,24 @@ export async function getCustomOrderProjectThread(submissionId: string): Promise
       });
     }
 
-    timeline.sort(
-      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime(),
+    ensureFinalPaymentRequestedRowIfMissing(
+      timeline,
+      currency,
+      row.createdAt,
+      rowEx.finalPaymentAmount,
     );
+
+    sortTimelineRows(timeline);
 
     return {
       data: {
         role,
         currency,
         submissionStatus: row.status,
+        threadLocked: isThreadLocked(
+          row.status,
+          finalReqAt ?? null,
+        ),
         timeline,
       },
     };
@@ -286,10 +410,10 @@ export async function createSellerProgressUpdate(values: unknown) {
 
   const sub = await db.customOrderSubmission.findFirst({
     where: { id: data.data.submissionId },
-    select: { status: true },
+    select: { status: true, finalPaymentRequestedAt: true },
   });
   if (!sub) return { error: "Submission not found" };
-  if (sub.status === "REJECTED" || sub.status === "COMPLETED") {
+  if (isThreadLocked(sub.status, sub.finalPaymentRequestedAt)) {
     return { error: "This order no longer accepts new updates" };
   }
 
@@ -344,6 +468,15 @@ export async function addProgressUpdateComment(values: unknown) {
     return { error: p2.error };
   }
 
+  const sub = await db.customOrderSubmission.findFirst({
+    where: { id: updateRow.submissionId },
+    select: { status: true, finalPaymentRequestedAt: true },
+  });
+  if (!sub) return { error: "Submission not found" };
+  if (isThreadLocked(sub.status, sub.finalPaymentRequestedAt)) {
+    return { error: "Comments are closed for this order" };
+  }
+
   try {
     await db.customOrderProgressComment.create({
       data: {
@@ -375,13 +508,21 @@ export async function respondToProgressApproval(values: unknown) {
     where: { id: data.data.updateId },
     include: {
       submission: {
-        select: { userId: true, id: true },
+        select: { userId: true, id: true, status: true, finalPaymentRequestedAt: true },
       },
     },
   });
   if (!updateRow) return { error: "Update not found" };
   if (updateRow.submission.userId !== session.user.id) {
     return { error: "Only the buyer can respond to approval requests" };
+  }
+  if (
+    isThreadLocked(
+      updateRow.submission.status,
+      updateRow.submission.finalPaymentRequestedAt,
+    )
+  ) {
+    return { error: "This order no longer allows approval actions" };
   }
   if (!updateRow.requiresApproval) {
     return { error: "This update does not ask for approval" };

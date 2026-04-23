@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { cn, formatPriceInCurrency } from "@/lib/utils";
 import SendCustomOrderQuoteDialog from "@/components/seller/SendCustomOrderQuoteDialog";
 import CustomOrderProjectThread from "@/components/custom-order/CustomOrderProjectThread";
+import RequestFinalPaymentDialog from "@/components/seller/RequestFinalPaymentDialog";
 
 function detailStatusVariant(
   status: string,
@@ -84,6 +85,7 @@ export default function CustomOrderSubmissionDetailModal({
   const [loading, setLoading] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   const [startWorkBusy, setStartWorkBusy] = useState(false);
+  const [finalDialogOpen, setFinalDialogOpen] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -452,6 +454,16 @@ export default function CustomOrderSubmissionDetailModal({
               >
                 {detail.status === "QUOTED" ? "Update quote" : "Send quote"}
               </Button>
+              {detail.status === "IN_PROGRESS" && (
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={loading}
+                  onClick={() => setFinalDialogOpen(true)}
+                >
+                  Request final payment
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="destructive"
@@ -483,6 +495,17 @@ export default function CustomOrderSubmissionDetailModal({
       submissionId={submissionId}
       currency={detail?.currency ?? "USD"}
       onSent={() => {
+        if (submissionId) void load(submissionId);
+        router.refresh();
+      }}
+    />
+
+    <RequestFinalPaymentDialog
+      open={finalDialogOpen}
+      onOpenChange={setFinalDialogOpen}
+      submissionId={submissionId}
+      currency={detail?.currency ?? "USD"}
+      onRequested={() => {
         if (submissionId) void load(submissionId);
         router.refresh();
       }}

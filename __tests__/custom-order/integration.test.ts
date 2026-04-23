@@ -70,6 +70,7 @@ describeOrSkip('Custom Order Integration Tests', () => {
     testSubmission = await db.customOrderSubmission.create({
       data: {
         formId: testForm.id,
+        sellerId: testSeller.userId,
         userId: testUser.id,
         customerEmail: 'customer@example.com',
         customerName: 'Test Customer',

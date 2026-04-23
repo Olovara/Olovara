@@ -298,6 +298,19 @@ export default function BuyerCustomOrderDetailModal({
                             ) : null}
                           </div>
                         )}
+                        {detail.status === "READY_FOR_FINAL_PAYMENT" &&
+                          !detail.finalPaymentPaid &&
+                          detail.finalPaymentAmount != null && (
+                            <div className="pt-2">
+                              <CustomOrderPaymentButton
+                                submissionId={detail.id}
+                                paymentType="FINAL_PAYMENT"
+                                amount={detail.finalPaymentAmount}
+                                currency={detail.currency}
+                                onBeforeNavigate={() => onOpenChange(false)}
+                              />
+                            </div>
+                          )}
                         {detail.quoteTimeline && (
                           <div>
                             <dt className="text-muted-foreground">Timeline</dt>

@@ -28,6 +28,16 @@ const MarkReadyForFinalPaymentSchema = z.object({
     .optional(),
 });
 
+// Schema for seller requesting final payment after work is started
+const RequestFinalPaymentSchema = z.object({
+  submissionId: z.string().min(1, "Submission ID is required"),
+  finalPaymentAmount: z.number().min(0.01, "Final payment must be at least $0.01"),
+  notes: z
+    .string()
+    .max(1000, "Notes must be less than 1000 characters")
+    .optional(),
+});
+
 // Set payment amounts for a custom order submission
 export async function setPaymentAmounts(
   values: z.infer<typeof SetPaymentAmountsSchema>,
@@ -145,12 +155,14 @@ export async function markReadyForFinalPayment(
       };
     }
 
+    const now = new Date();
     // Update submission status
     await db.customOrderSubmission.update({
       where: { id: validatedData.submissionId },
       data: {
         status: "READY_FOR_FINAL_PAYMENT",
         notes: validatedData.notes,
+        finalPaymentRequestedAt: now,
       },
     });
 
@@ -160,6 +172,81 @@ export async function markReadyForFinalPayment(
   } catch (error) {
     console.error("Error marking ready for final payment:", error);
     return { error: "Failed to mark order as ready for final payment" };
+  }
+}
+
+/**
+ * Seller sets/updates the final payment amount and marks the submission READY_FOR_FINAL_PAYMENT.
+ * This is used at the "finish project / request final payment" step.
+ */
+export async function requestFinalPayment(
+  values: z.infer<typeof RequestFinalPaymentSchema>,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const validatedData = RequestFinalPaymentSchema.parse(values);
+
+    const existing = await db.customOrderSubmission.findFirst({
+      where: { id: validatedData.submissionId },
+      select: {
+        id: true,
+        status: true,
+        quoteDepositPaid: true,
+        quoteDepositMinor: true,
+        finalPaymentPaid: true,
+        currency: true,
+        form: { select: { sellerId: true } },
+      },
+    });
+    if (!existing || existing.form.sellerId !== session.user.id) {
+      return { error: "Submission not found or unauthorized" };
+    }
+
+    if (!existing.quoteDepositPaid) {
+      return { error: "Deposit must be paid before requesting final payment" };
+    }
+
+    if (existing.status !== "IN_PROGRESS") {
+      return {
+        error:
+          "You can only request the final payment after you have started work (in progress).",
+      };
+    }
+
+    if (existing.finalPaymentPaid) {
+      return { error: "Final payment has already been paid" };
+    }
+
+    if (existing.quoteDepositMinor == null) {
+      return { error: "Deposit amount is missing for this submission" };
+    }
+
+    const finalMinor = Math.round(validatedData.finalPaymentAmount * 100);
+    const totalMinor = existing.quoteDepositMinor + finalMinor;
+    const now = new Date();
+
+    await db.customOrderSubmission.update({
+      where: { id: validatedData.submissionId },
+      data: {
+        finalPaymentAmount: finalMinor,
+        totalAmount: totalMinor,
+        status: "READY_FOR_FINAL_PAYMENT",
+        notes: validatedData.notes,
+        finalPaymentRequestedAt: now,
+      },
+    });
+
+    revalidatePath("/seller/dashboard/custom-orders");
+    revalidatePath("/seller/dashboard/custom-orders/submissions");
+    revalidatePath("/member/dashboard/custom-orders");
+    return { success: "Final payment requested" };
+  } catch (error) {
+    console.error("requestFinalPayment:", error);
+    return { error: "Failed to request final payment" };
   }
 }
 

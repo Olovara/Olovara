@@ -845,9 +845,10 @@ export async function sellerStartCustomOrderWork(submissionId: string) {
       };
     }
 
+    const startedAt = new Date();
     await db.customOrderSubmission.update({
       where: { id },
-      data: { status: "IN_PROGRESS" },
+      data: { status: "IN_PROGRESS", inProgressAt: startedAt },
     });
 
     revalidatePath("/seller/dashboard/custom-orders");
@@ -1066,6 +1067,7 @@ export async function submitCustomOrderForm(values: any) {
       const submission = await tx.customOrderSubmission.create({
         data: {
           formId: validatedData.formId,
+          sellerId: form.sellerId,
           userId: userId,
           ...contactPayload,
           customerBudgetMinor,

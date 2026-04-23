@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { PurchaseActions } from "@/actions/PurchaseActions";
+import CustomOrderCompletedListActions from "@/components/custom-order/CustomOrderCompletedListActions";
 import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +34,12 @@ export default async function MyPurchasesPage({
 
   const purchases = await getBuyerOrders(session.user.id);
 
-  // Filter purchases based on active tab
-  const filteredPurchases = purchases.filter(purchase => {
+  // Filter purchases: marketplace orders match tab by status; completed custom orders appear under All + Delivered
+  const filteredPurchases = purchases.filter((purchase) => {
     if (activeTab === "all") return true;
+    if (purchase.source === "custom_order") {
+      return activeTab === "delivered";
+    }
     return purchase.status.toLowerCase() === activeTab.toLowerCase();
   });
 
@@ -75,6 +79,7 @@ export default async function MyPurchasesPage({
       case "SHIPPED":
         return "bg-purple-500";
       case "DELIVERED":
+      case "COMPLETED":
         return "bg-green-500";
       case "CANCELLED":
         return "bg-red-500";
@@ -173,7 +178,16 @@ export default async function MyPurchasesPage({
                     <TableBody>
                       {paginatedPurchases.map((purchase) => (
                         <TableRow key={purchase.id}>
-                          <TableCell>{purchase.id.substring(0, 8)}...</TableCell>
+                          <TableCell>
+                            <span className="inline-flex flex-wrap items-center gap-1">
+                              {purchase.id.substring(0, 8)}…
+                              {purchase.source === "custom_order" && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Custom
+                                </Badge>
+                              )}
+                            </span>
+                          </TableCell>
                           <TableCell>{purchase.product.name}</TableCell>
                           <TableCell>{purchase.shopName}</TableCell>
                           <TableCell>
@@ -182,20 +196,34 @@ export default async function MyPurchasesPage({
                             </Badge>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {formatPrice(
-                              (purchase.totalAmount -
-                                (() => {
-                                  if (typeof purchase.discount === 'number') return purchase.discount;
-                                  if (typeof purchase.discount === 'string') return parseFloat(purchase.discount) || 0;
-                                  return 0;
-                                })()) / 100
-                            )}
+                            {purchase.source === "custom_order"
+                              ? formatPrice(purchase.totalAmount, { isCents: true })
+                              : formatPrice(
+                                  (purchase.totalAmount -
+                                    (() => {
+                                      if (typeof purchase.discount === "number") return purchase.discount;
+                                      if (typeof purchase.discount === "string") return parseFloat(purchase.discount) || 0;
+                                      return 0;
+                                    })()) / 100
+                                )}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             {format(new Date(purchase.createdAt), "MMM d, yyyy")}
                           </TableCell>
                           <TableCell>
-                            <PurchaseActions purchase={purchase} />
+                            {purchase.source === "custom_order" ? (
+                              <CustomOrderCompletedListActions role="buyer" />
+                            ) : (
+                              <PurchaseActions
+                                purchase={(() => {
+                                  const { source: _s, ...rest } = purchase;
+                                  return {
+                                    ...rest,
+                                    buyerName: rest.buyerName ?? undefined,
+                                  };
+                                })()}
+                              />
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
