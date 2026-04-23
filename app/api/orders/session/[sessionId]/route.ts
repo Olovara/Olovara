@@ -37,6 +37,8 @@ export async function GET(
         id: true,
         totalAmount: true,
         status: true,
+        productName: true,
+        productPrice: true,
         product: {
           select: {
             name: true,
@@ -85,8 +87,8 @@ export async function GET(
       totalAmount: order.totalAmount,
       status: order.status,
       product: {
-        name: order.product.name,
-        price: order.product.price,
+        name: order.product?.name ?? order.productName,
+        price: order.product?.price ?? order.productPrice,
       },
       shippingAddress,
       buyerEmail,

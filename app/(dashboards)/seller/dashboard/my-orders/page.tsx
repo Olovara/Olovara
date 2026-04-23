@@ -24,7 +24,8 @@ function orderStatusBadgeClass(status: string) {
   if (s === "CANCELLED" || s === "FAILED") return "border-brand-error-200 bg-brand-error-50 text-brand-error-800";
   if (s === "REFUNDED") return "border-brand-dark-neutral-300 bg-brand-light-neutral-100 text-brand-dark-neutral-800";
   if (s === "HELD" || s === "PENDING_TRANSFER") return "border-brand-warn-300 bg-brand-warn-50 text-brand-warn-900";
-  if (s === "PROCESSING" || s === "PENDING") return "border-brand-primary-300 bg-brand-primary-50 text-brand-primary-800";
+  if (s === "SHIPPED" || s === "DELIVERED") return "border-brand-primary-200 bg-brand-primary-50 text-brand-primary-900";
+  if (s === "PAID" || s === "PROCESSING" || s === "PENDING") return "border-brand-primary-300 bg-brand-primary-50 text-brand-primary-800";
   return "border-brand-secondary-300 bg-brand-secondary-50 text-brand-secondary-900";
 }
 
@@ -47,9 +48,21 @@ export default async function SellerMyOrders({
 
   const orders = await getSellerOrders(userId);
 
+  const terminal = new Set(["COMPLETED", "CANCELLED", "REFUNDED", "FAILED"]);
+
   // Filter orders based on active tab
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = orders.filter((order) => {
     if (activeTab === "all") return true;
+    const s = order.status.toUpperCase();
+    if (activeTab === "processing") {
+      return !terminal.has(s);
+    }
+    if (activeTab === "cancelled") {
+      return s === "CANCELLED" || s === "FAILED" || s === "REFUNDED";
+    }
+    if (activeTab === "completed") {
+      return s === "COMPLETED";
+    }
     return order.status.toLowerCase() === activeTab.toLowerCase();
   });
 
@@ -200,7 +213,8 @@ export default async function SellerMyOrders({
                           >
                             <TableCell className="font-mono text-xs text-brand-dark-neutral-800 md:text-sm">
                               <span className="inline-flex flex-wrap items-center gap-1">
-                                {order.source === "custom_order" ? (
+                                {order.source === "custom_order" ||
+                                order.source === "custom_fulfillment" ? (
                                   <>
                                     <span>{order.id.substring(0, 8)}…</span>
                                     <Badge
@@ -252,7 +266,7 @@ export default async function SellerMyOrders({
                                         shopName: rest.shopName || "Unknown Shop",
                                       },
                                       product: {
-                                        id: rest.productId,
+                                        id: rest.productId ?? "",
                                         name: rest.productName,
                                         images: rest.product?.images || [],
                                       },

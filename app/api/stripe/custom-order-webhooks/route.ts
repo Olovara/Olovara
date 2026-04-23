@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import type { Stripe } from "stripe";
 import { calculateCommissionRate } from "@/lib/feeConfig";
 import { logError } from "@/lib/error-logger";
+import { createCustomFulfillmentOrderIfNeeded } from "@/lib/orders/create-custom-fulfillment-order";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
 export const dynamic = 'force-dynamic';
@@ -160,6 +161,25 @@ export async function POST(req: Request) {
           where: { id: submissionId },
           data: updateData,
         });
+
+        if (paymentType === "FINAL_PAYMENT") {
+          const piId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent.id;
+          try {
+            await createCustomFulfillmentOrderIfNeeded({
+              submissionId,
+              stripePaymentIntentId: piId,
+              platformFeeCents: payment.platformFee,
+            });
+          } catch (e) {
+            console.error(
+              "[custom-order webhooks] Fulfillment Order create failed:",
+              e,
+            );
+          }
+        }
 
         console.log(`✅ Custom order payment processed: ${payment.id}`);
         break;

@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { POST as createPaymentSession } from '@/app/api/stripe/custom-order-payment/route'
+import { POST as createPaymentSession } from '@/app/api/stripe/custom-order-create-payment-intent/route'
 import { POST as handleWebhook } from '@/app/api/stripe/custom-order-webhooks/route'
 import { db } from '@/lib/db'
-import { stripeCheckout, stripeSecret } from '@/lib/stripe'
+import { stripeCheckout, stripeSecret, stripeWebhook } from '@/lib/stripe'
 import { auth } from '@/auth'
 
 // Mock all external dependencies
@@ -11,9 +11,12 @@ jest.mock('@/lib/stripe')
 jest.mock('@/auth')
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: jest.fn((data, options) => ({ data, status: options?.status || 200 })),
+    json: jest.fn().mockImplementation((body: unknown, init?: globalThis.ResponseInit) => ({
+      data: body,
+      status: typeof init?.status === 'number' ? init.status : 200,
+    })),
   },
-  headers: jest.fn(() => new Map([['stripe-signature', 'test-signature']])),
+  headers: jest.fn().mockImplementation(() => new Map([['stripe-signature', 'test-signature']])),
 }))
 
 // Mock environment variables
@@ -40,6 +43,9 @@ const createMockSeller = (overrides = {}) => ({
   id: 'seller-123',
   userId: 'seller-user-123',
   shopName: 'Test Shop',
+  /** Required on `Seller` for Prisma create / URL routing */
+  shopNameSlug: 'test-shop',
+  shopCountry: 'US',
   connectedAccountId: 'acct_test_seller_123',
   ...overrides,
 })
@@ -107,10 +113,11 @@ const createMockStripeAccount = (overrides = {}) => ({
 
 describe('Custom Order Checkout Process', () => {
   describe('POST /api/stripe/custom-order-payment', () => {
-    const mockAuth = auth as jest.MockedFunction<typeof auth>
-    const mockDb = db as jest.Mocked<typeof db>
-    const mockStripeCheckout = stripeCheckout.instance as jest.Mocked<any>
-    const mockStripeSecret = stripeSecret.instance as jest.Mocked<any>
+    /** Project `types/jest.d.ts` defines `MockedFunction` but not `jest.Mocked<T>` for object mocks. */
+    const mockAuth = auth as unknown as jest.MockedFunction<typeof auth>
+    const mockDb = db as any
+    const mockStripeCheckout = stripeCheckout.instance as any
+    const mockStripeSecret = stripeSecret.instance as any
 
     beforeEach(() => {
       mockAuth.mockResolvedValue({
@@ -188,7 +195,7 @@ describe('Custom Order Checkout Process', () => {
     })
 
     it('should reject payment if user is not authenticated', async () => {
-      mockAuth.mockResolvedValue(null)
+      ;(mockAuth as jest.Mock).mockResolvedValue(null)
 
       const requestBody = {
         submissionId: 'submission-123',
@@ -312,7 +319,7 @@ describe('Custom Order Checkout Process', () => {
 
     it('should handle currency conversion when preferred currency differs', async () => {
       // Mock fetch for currency conversion
-      global.fetch = jest.fn(() =>
+      global.fetch = jest.fn().mockImplementation((_input?: RequestInfo | URL, _init?: RequestInit) =>
         Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ convertedAmount: 2300 }), // Convert $25 USD to EUR
@@ -350,8 +357,8 @@ describe('Custom Order Checkout Process', () => {
   })
 
   describe('POST /api/stripe/custom-order-webhooks', () => {
-    const mockDb = db as jest.Mocked<typeof db>
-    const mockStripeWebhook = stripeWebhook.instance as jest.Mocked<any>
+    const mockDb = db as any
+    const mockStripeWebhook = stripeWebhook.instance as any
 
     beforeEach(() => {
       mockDb.customOrderSubmission.findUnique.mockResolvedValue(createMockSubmission())
@@ -534,8 +541,16 @@ export const createTestCustomOrder = async () => {
     data: createMockUser(),
   })
 
+  const unique = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  const sellerPayload = createMockSeller({
+    userId: user.id,
+    shopName: `Test Shop ${unique}`,
+    shopNameSlug: `test-shop-${unique}`,
+  })
+  const { id: _sellerId, ...sellerCreate } = sellerPayload
+
   const seller = await db.seller.create({
-    data: createMockSeller({ userId: user.id }),
+    data: sellerCreate,
   })
 
   const form = await db.customOrderForm.create({
@@ -543,11 +558,19 @@ export const createTestCustomOrder = async () => {
   })
 
   const submission = await db.customOrderSubmission.create({
-    data: createMockSubmission({
+    data: {
       formId: form.id,
       sellerId: seller.userId,
       userId: user.id,
-    }),
+      customerEmail: 'customer@example.com',
+      customerName: 'Test Customer',
+      status: 'PENDING',
+      quoteDepositAmount: 2500,
+      finalPaymentAmount: 7500,
+      totalAmount: 10000,
+      currency: 'USD',
+      shippingCost: 500,
+    },
   })
 
   return { user, seller, form, submission }

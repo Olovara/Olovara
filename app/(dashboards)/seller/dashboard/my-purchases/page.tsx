@@ -34,19 +34,40 @@ export default async function MyPurchasesPage({
 
   const purchases = await getBuyerOrders(session.user.id);
 
-  // Filter purchases: marketplace orders match tab by status; completed custom orders appear under All + Delivered
   const filteredPurchases = purchases.filter((purchase) => {
     if (activeTab === "all") return true;
+    // Legacy rows (no `Order` document): treat completed custom as "delivered" tab only
     if (purchase.source === "custom_order") {
       return activeTab === "delivered";
     }
-    return purchase.status.toLowerCase() === activeTab.toLowerCase();
+    const s = purchase.status.toLowerCase();
+    if (activeTab === "processing") {
+      return (
+        s === "pending" ||
+        s === "paid" ||
+        s === "pending_transfer" ||
+        s === "held" ||
+        s === "processing"
+      );
+    }
+    if (activeTab === "shipped") {
+      return s === "shipped";
+    }
+    if (activeTab === "delivered") {
+      return s === "delivered" || s === "completed";
+    }
+    if (activeTab === "cancelled") {
+      return s === "cancelled" || s === "refunded" || s === "failed";
+    }
+    return s === activeTab.toLowerCase();
   });
 
   // Filter purchases based on search
   const searchedPurchases = search
     ? filteredPurchases.filter(purchase => 
-        purchase.product.name.toLowerCase().includes(search.toLowerCase()) ||
+        (purchase.product?.name ?? purchase.productName)
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
         purchase.shopName.toLowerCase().includes(search.toLowerCase())
       )
     : filteredPurchases;
@@ -74,6 +95,8 @@ export default async function MyPurchasesPage({
     switch (status) {
       case "PENDING":
         return "bg-yellow-500";
+      case "PAID":
+        return "bg-amber-500";
       case "PROCESSING":
         return "bg-blue-500";
       case "SHIPPED":
@@ -181,14 +204,17 @@ export default async function MyPurchasesPage({
                           <TableCell>
                             <span className="inline-flex flex-wrap items-center gap-1">
                               {purchase.id.substring(0, 8)}…
-                              {purchase.source === "custom_order" && (
+                              {(purchase.source === "custom_order" ||
+                                purchase.source === "custom_fulfillment") && (
                                 <Badge variant="secondary" className="text-[10px]">
                                   Custom
                                 </Badge>
                               )}
                             </span>
                           </TableCell>
-                          <TableCell>{purchase.product.name}</TableCell>
+                          <TableCell>
+                            {purchase.product?.name ?? purchase.productName}
+                          </TableCell>
                           <TableCell>{purchase.shopName}</TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(purchase.status)}>
@@ -196,7 +222,8 @@ export default async function MyPurchasesPage({
                             </Badge>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {purchase.source === "custom_order"
+                            {purchase.source === "custom_order" ||
+                            purchase.source === "custom_fulfillment"
                               ? formatPrice(purchase.totalAmount, { isCents: true })
                               : formatPrice(
                                   (purchase.totalAmount -

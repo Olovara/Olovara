@@ -532,7 +532,7 @@ export async function POST(req: Request) {
             isDigital: product.isDigital || false,
             status: product.isDigital
               ? OrderStatus.COMPLETED
-              : OrderStatus.PENDING_TRANSFER,
+              : OrderStatus.PAID,
             paymentStatus: PaymentStatus.PAID,
             stripeSessionId: session.id,
             stripeTransferId: null,
@@ -1094,17 +1094,12 @@ export async function POST(req: Request) {
             // Continue processing - emails should still be sent even if transfer fails
           }
 
-          // Determine order status based on hold period and product type
+          // Payment captured: physical orders are ready for fulfillment (PAID). Holds are a Stripe/payout concern, not a buyer-facing status.
           let orderStatus: OrderStatus;
           if (product.isDigital) {
-            // Digital products are completed immediately (payment confirmed)
             orderStatus = OrderStatus.COMPLETED;
-          } else if (holdPeriodDays > 0) {
-            // Physical products with holds
-            orderStatus = "HELD" as OrderStatus;
           } else {
-            // Physical products without holds
-            orderStatus = OrderStatus.PENDING;
+            orderStatus = OrderStatus.PAID;
           }
 
           // Update order with transfer ID (if created), currency info, exchange rate, and finalize status
@@ -1905,7 +1900,7 @@ export async function POST(req: Request) {
             isDigital: product.isDigital || false,
             status: product.isDigital
               ? OrderStatus.COMPLETED
-              : OrderStatus.PENDING_TRANSFER,
+              : OrderStatus.PAID,
             paymentStatus: PaymentStatus.PAID,
             stripeSessionId: paymentIntent.id, // Use payment intent ID as session ID
             stripeTransferId: null,
@@ -2256,13 +2251,10 @@ export async function POST(req: Request) {
             }
           }
 
-          // Determine order status based on product type
-          let orderStatus: OrderStatus;
-          if (product.isDigital) {
-            orderStatus = OrderStatus.COMPLETED;
-          } else {
-            orderStatus = OrderStatus.PENDING;
-          }
+          // Payment captured: physical = PAID (fulfillment), digital = completed download.
+          const orderStatus: OrderStatus = product.isDigital
+            ? OrderStatus.COMPLETED
+            : OrderStatus.PAID;
 
           // Update order with final status
           await db.order.update({
@@ -2618,7 +2610,7 @@ export async function POST(req: Request) {
           const transfer = event.data.object as Stripe.Transfer;
           console.log(`💰 Transfer updated: ${transfer.id}`);
 
-          // Update order status from HELD to PENDING when transfer is completed
+          // Legacy: older rows used HELD while a payout was pending. Normalize to PAID (fulfillment) once transfer exists.
           if (transfer.metadata?.orderId && transfer.object === "transfer") {
             try {
               const order = await db.order.findUnique({
@@ -2626,16 +2618,16 @@ export async function POST(req: Request) {
                 select: { id: true, status: true, isDigital: true },
               });
 
-              if (order && order.status === ("HELD" as any)) {
+              if (order && order.status === ("HELD" as OrderStatus)) {
                 await db.order.update({
                   where: { id: order.id },
                   data: {
-                    status: OrderStatus.PENDING,
-                    completedAt: new Date(),
+                    status: OrderStatus.PAID,
+                    completedAt: null,
                   },
                 });
                 console.log(
-                  `✅ Updated order ${order.id} from HELD to PENDING after transfer completed`,
+                  `✅ Updated order ${order.id} from HELD to PAID after transfer completed`,
                 );
               }
             } catch (error) {
@@ -2676,7 +2668,7 @@ export async function POST(req: Request) {
                 await db.order.update({
                   where: { id: order.id },
                   data: {
-                    status: "REFUNDED",
+                    status: OrderStatus.REFUNDED,
                     paymentStatus: "REFUNDED",
                   },
                 });

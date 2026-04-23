@@ -27,6 +27,8 @@ export default async function MyPurchasesPage() {
     switch (status) {
       case "PENDING":
         return "bg-yellow-500";
+      case "PAID":
+        return "bg-amber-500";
       case "PROCESSING":
         return "bg-blue-500";
       case "SHIPPED":
@@ -97,14 +99,17 @@ export default async function MyPurchasesPage() {
                       <TableCell>
                         <span className="inline-flex flex-wrap items-center gap-1">
                           {purchase.id.substring(0, 8)}…
-                          {purchase.source === "custom_order" && (
+                          {(purchase.source === "custom_order" ||
+                            purchase.source === "custom_fulfillment") && (
                             <Badge variant="secondary" className="text-[10px]">
                               Custom
                             </Badge>
                           )}
                         </span>
                       </TableCell>
-                      <TableCell>{purchase.product.name}</TableCell>
+                      <TableCell>
+                        {purchase.product?.name ?? purchase.productName}
+                      </TableCell>
                       <TableCell>{purchase.shopName || "Unknown Seller"}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(purchase.status)}>

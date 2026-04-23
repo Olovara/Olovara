@@ -16,7 +16,7 @@ interface Purchase {
   encryptedShippingAddress: string | null;
   shippingAddressIV: string | null;
   sellerId: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   quantity: number;
   totalAmount: number;
@@ -30,7 +30,7 @@ interface Purchase {
   product: {
     name: string;
     images: string[];
-  };
+  } | null;
   seller?: {
     userId: string;
     shopName: string;

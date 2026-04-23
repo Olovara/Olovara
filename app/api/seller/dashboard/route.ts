@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
       }),
       db.order.findMany({
         where: orderWhere,
-        select: { productId: true, productName: true, quantity: true },
+        select: { id: true, productId: true, productName: true, quantity: true },
       }),
       hasDateRange
         ? db.order.findMany({
@@ -225,12 +225,13 @@ export async function GET(request: NextRequest) {
 
     const qtyByProduct = new Map<string, { name: string; qty: number }>();
     for (const o of ordersForPopular) {
-      const cur = qtyByProduct.get(o.productId) ?? {
+      const key = o.productId ?? `custom:${o.id}`;
+      const cur = qtyByProduct.get(key) ?? {
         name: o.productName,
         qty: 0,
       };
       cur.qty += o.quantity;
-      qtyByProduct.set(o.productId, cur);
+      qtyByProduct.set(key, cur);
     }
     let mostPopularProduct = "—";
     let maxQty = 0;

@@ -7,12 +7,12 @@ import { withDecryptedCustomerContact } from "@/lib/custom-order-submission-cont
 
 /** Product marketplace order row (seller/buyer lists). */
 export type ProductOrderRow = {
-  source: "product";
+  source: "product" | "custom_fulfillment";
   id: string;
   userId: string | null;
   sellerId: string;
   shopName: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   quantity: number;
   totalAmount: number;
@@ -20,6 +20,7 @@ export type ProductOrderRow = {
   shippingCost: number;
   stripeFee: number;
   isDigital: boolean;
+  customOrderSubmissionId: string | null;
   status: string;
   paymentStatus: string;
   stripeSessionId: string;
@@ -39,7 +40,14 @@ export type ProductOrderRow = {
   updatedAt: Date;
   orderInstructions?: string | null;
   batchNumber?: string | null;
-  product: { name: string; images: string[] };
+  /** Populated for shipped physical orders. */
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  shippingService?: string | null;
+  estimatedDeliveryDate?: Date | null;
+  shippedAt?: Date | null;
+  product: { name: string; images: string[] } | null;
   buyerEmail: string;
   buyerName: string | null;
   shippingAddress: unknown | null;
@@ -80,8 +88,47 @@ function customOrderTotalCents(row: {
   return d + f;
 }
 
+/**
+ * Submissions that already have a real `Order` (final payment) must not be duplicated
+ * as legacy synthetic list rows.
+ */
+async function getLinkedCustomSubmissionIdSet(
+  sellerUserId: string,
+): Promise<Set<string>> {
+  const rows = await db.order.findMany({
+    where: {
+      sellerId: sellerUserId,
+      customOrderSubmissionId: { not: null },
+    },
+    select: { customOrderSubmissionId: true },
+  });
+  return new Set(
+    rows
+      .map((r) => r.customOrderSubmissionId)
+      .filter((x): x is string => Boolean(x)),
+  );
+}
+
+async function getLinkedCustomSubmissionIdSetForBuyer(
+  buyerUserId: string,
+): Promise<Set<string>> {
+  const rows = await db.order.findMany({
+    where: {
+      userId: buyerUserId,
+      customOrderSubmissionId: { not: null },
+    },
+    select: { customOrderSubmissionId: true },
+  });
+  return new Set(
+    rows
+      .map((r) => r.customOrderSubmissionId)
+      .filter((x): x is string => Boolean(x)),
+  );
+}
+
 async function completedCustomOrdersForSeller(
   sellerUserId: string,
+  linkedSubmissionIds: Set<string>,
 ): Promise<CustomOrderListRow[]> {
   const submissionSelect = {
     id: true,
@@ -108,14 +155,21 @@ async function completedCustomOrdersForSeller(
     },
   } satisfies Prisma.CustomOrderSubmissionSelect;
 
+  const notLinked =
+    linkedSubmissionIds.size > 0
+      ? { id: { notIn: Array.from(linkedSubmissionIds) } }
+      : {};
+
   const whereIndexed = {
     status: "COMPLETED",
     sellerId: sellerUserId,
+    ...notLinked,
   } as Prisma.CustomOrderSubmissionWhereInput;
 
   const whereViaForm: Prisma.CustomOrderSubmissionWhereInput = {
     status: "COMPLETED",
     form: { sellerId: sellerUserId },
+    ...notLinked,
   };
 
   /** Two queries avoid Prisma OR + nested-relation union bugs in inferred row types; merge + dedupe. */
@@ -171,11 +225,18 @@ async function completedCustomOrdersForSeller(
 
 async function completedCustomOrdersForBuyer(
   buyerUserId: string,
+  linkedSubmissionIds: Set<string>,
 ): Promise<CustomOrderListRow[]> {
+  const notLinked =
+    linkedSubmissionIds.size > 0
+      ? { id: { notIn: Array.from(linkedSubmissionIds) } }
+      : {};
+
   const rows = await db.customOrderSubmission.findMany({
     where: {
       userId: buyerUserId,
       status: "COMPLETED",
+      ...notLinked,
     },
     select: {
       id: true,
@@ -249,6 +310,7 @@ export async function getSellerOrders(userId: string): Promise<SellerOrderListEn
         shippingCost: true,
         stripeFee: true,
         isDigital: true,
+        customOrderSubmissionId: true,
         status: true,
         paymentStatus: true,
         stripeSessionId: true,
@@ -266,6 +328,12 @@ export async function getSellerOrders(userId: string): Promise<SellerOrderListEn
         completedAt: true,
         createdAt: true,
         updatedAt: true,
+        carrier: true,
+        trackingNumber: true,
+        trackingUrl: true,
+        shippingService: true,
+        estimatedDeliveryDate: true,
+        shippedAt: true,
         product: {
           select: {
             name: true,
@@ -279,8 +347,14 @@ export async function getSellerOrders(userId: string): Promise<SellerOrderListEn
     });
 
     const productRows: ProductOrderRow[] = orders.map((order) => ({
-      source: "product",
+      source: order.customOrderSubmissionId
+        ? ("custom_fulfillment" as const)
+        : ("product" as const),
       ...order,
+      product: order.product ?? {
+        name: order.productName,
+        images: [] as string[],
+      },
       buyerEmail: decryptData(
         order.encryptedBuyerEmail,
         order.buyerEmailIV,
@@ -303,7 +377,8 @@ export async function getSellerOrders(userId: string): Promise<SellerOrderListEn
           : null,
     }));
 
-    const customRows = await completedCustomOrdersForSeller(userId);
+    const linkedIds = await getLinkedCustomSubmissionIdSet(userId);
+    const customRows = await completedCustomOrdersForSeller(userId, linkedIds);
 
     const merged: SellerOrderListEntry[] = [...productRows, ...customRows];
     merged.sort(
@@ -335,6 +410,7 @@ export async function getBuyerOrders(userId: string): Promise<BuyerPurchaseListE
         shippingCost: true,
         stripeFee: true,
         isDigital: true,
+        customOrderSubmissionId: true,
         status: true,
         paymentStatus: true,
         stripeSessionId: true,
@@ -354,6 +430,12 @@ export async function getBuyerOrders(userId: string): Promise<BuyerPurchaseListE
         updatedAt: true,
         orderInstructions: true,
         batchNumber: true,
+        carrier: true,
+        trackingNumber: true,
+        trackingUrl: true,
+        shippingService: true,
+        estimatedDeliveryDate: true,
+        shippedAt: true,
         product: {
           select: {
             name: true,
@@ -367,8 +449,14 @@ export async function getBuyerOrders(userId: string): Promise<BuyerPurchaseListE
     });
 
     const productRows: ProductOrderRow[] = orders.map((order) => ({
-      source: "product",
+      source: order.customOrderSubmissionId
+        ? ("custom_fulfillment" as const)
+        : ("product" as const),
       ...order,
+      product: order.product ?? {
+        name: order.productName,
+        images: [] as string[],
+      },
       buyerEmail: decryptData(
         order.encryptedBuyerEmail,
         order.buyerEmailIV,
@@ -391,7 +479,11 @@ export async function getBuyerOrders(userId: string): Promise<BuyerPurchaseListE
           : null,
     }));
 
-    const customRows = await completedCustomOrdersForBuyer(userId);
+    const linkedBuyers = await getLinkedCustomSubmissionIdSetForBuyer(userId);
+    const customRows = await completedCustomOrdersForBuyer(
+      userId,
+      linkedBuyers,
+    );
 
     const merged: BuyerPurchaseListEntry[] = [...productRows, ...customRows];
     merged.sort(

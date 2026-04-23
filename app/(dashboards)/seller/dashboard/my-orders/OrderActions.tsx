@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { OrderShipmentModal } from "./OrderShipmentModal";
 
 interface Order {
   id: string;
@@ -27,7 +28,7 @@ interface Order {
   encryptedShippingAddress: string | null;
   shippingAddressIV: string | null;
   sellerId: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   quantity: number;
   totalAmount: number;
@@ -55,6 +56,13 @@ interface Order {
   shippingAddress?: any | null;
   batchNumber?: string | null;
   orderInstructions?: string | null; // Order instructions from buyer
+  customOrderSubmissionId?: string | null;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  shippingService?: string | null;
+  estimatedDeliveryDate?: Date | string | null;
+  shippedAt?: Date | string | null;
 }
 
 export function OrderActions({
@@ -68,6 +76,8 @@ export function OrderActions({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean | null>(null);
+  const [shipModalOpen, setShipModalOpen] = useState(false);
+  const [editShipOpen, setEditShipOpen] = useState(false);
 
   if (!order) {
     return null;
@@ -144,12 +154,51 @@ export function OrderActions({
   // Determine if refund is available based on order status
   const canRefund = order.paymentStatus === "PAID" && 
                     order.status !== "REFUNDED" && 
-                    order.status !== "CANCELLED";
+                    order.status !== "CANCELLED" &&
+                    order.status !== "SHIPPED" &&
+                    order.status !== "DELIVERED";
 
   // Determine if cancel is available based on order status
   const canCancel = order.status !== "CANCELLED" && 
                     order.status !== "COMPLETED" && 
-                    order.status !== "REFUNDED";
+                    order.status !== "REFUNDED" &&
+                    order.status !== "SHIPPED" &&
+                    order.status !== "DELIVERED";
+
+  const st = order.status.toUpperCase();
+  const notDigital = !order.isDigital;
+  const canMarkProcessing =
+    notDigital && ["PAID", "PENDING", "PENDING_TRANSFER", "HELD"].includes(st);
+  const canMarkShipped =
+    notDigital && ["PAID", "PROCESSING", "PENDING", "PENDING_TRANSFER", "HELD"].includes(st);
+  const canMarkDelivered = notDigital && st === "SHIPPED";
+  // Physical: finalize after at least one shipment step (or delivery).
+  const canMarkComplete =
+    notDigital && (st === "SHIPPED" || st === "DELIVERED");
+  const canEditShipment =
+    notDigital && (st === "SHIPPED" || st === "DELIVERED");
+
+  const totalDisplay = (order.totalAmount / 100).toFixed(2);
+
+  const patchStatus = async (to: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/fulfillment`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Update failed");
+        return;
+      }
+      toast.success("Order updated");
+      window.location.reload();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -168,6 +217,46 @@ export function OrderActions({
           <DropdownMenuItem onClick={handleViewDetails}>
             View Details
           </DropdownMenuItem>
+          {canMarkProcessing && (
+            <DropdownMenuItem
+              onClick={() => patchStatus("PROCESSING")}
+              disabled={loading}
+            >
+              Mark as processing
+            </DropdownMenuItem>
+          )}
+          {canMarkShipped && (
+            <DropdownMenuItem
+              onClick={() => setShipModalOpen(true)}
+              disabled={loading}
+            >
+              Mark as shipped…
+            </DropdownMenuItem>
+          )}
+          {canEditShipment && order.trackingNumber && (
+            <DropdownMenuItem
+              onClick={() => setEditShipOpen(true)}
+              disabled={loading}
+            >
+              Edit shipment
+            </DropdownMenuItem>
+          )}
+          {canMarkDelivered && (
+            <DropdownMenuItem
+              onClick={() => patchStatus("DELIVERED")}
+              disabled={loading}
+            >
+              Mark as delivered
+            </DropdownMenuItem>
+          )}
+          {canMarkComplete && (
+            <DropdownMenuItem
+              onClick={() => patchStatus("COMPLETED")}
+              disabled={loading}
+            >
+              Mark as completed
+            </DropdownMenuItem>
+          )}
           {canCancel && (
             <DropdownMenuItem onClick={handleCancelOrder}>
               Cancel Order
@@ -238,7 +327,7 @@ export function OrderActions({
               Refund Order
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to refund this order? This will process a refund of ${order.totalAmount.toFixed(2)} to the customer.
+              Are you sure you want to refund this order? This will process a refund of ${totalDisplay} to the customer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -253,6 +342,34 @@ export function OrderActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <OrderShipmentModal
+        open={shipModalOpen}
+        onOpenChange={setShipModalOpen}
+        orderId={order.id}
+        mode="ship"
+        initial={null}
+      />
+      <OrderShipmentModal
+        open={editShipOpen}
+        onOpenChange={setEditShipOpen}
+        orderId={order.id}
+        mode="edit"
+        initial={
+          order.trackingNumber
+            ? {
+                trackingNumber: order.trackingNumber,
+                carrier: order.carrier || "USPS",
+                shippingService: order.shippingService || "",
+                estimatedDeliveryDate: order.estimatedDeliveryDate
+                  ? new Date(order.estimatedDeliveryDate)
+                      .toISOString()
+                      .slice(0, 10)
+                  : "",
+              }
+            : null
+        }
+      />
     </>
   );
 }

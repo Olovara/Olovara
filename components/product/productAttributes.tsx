@@ -117,7 +117,7 @@ export function ProductAttributes({
     if (watchedAttributes && typeof watchedAttributes === 'object' && !Array.isArray(watchedAttributes) && watchedAttributes !== null) {
       console.log("[ProductAttributes] Attributes loaded from form:", watchedAttributes);
     }
-  }, []); // Only run once on mount
+  }, [watchedAttributes]); // Re-run when attributes change
 
   return (
     <FormField

@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { stripeSecret } from "@/lib/stripe";
 import { decryptOrderData } from "@/lib/encryption";
+import { createCustomFulfillmentOrderIfNeeded } from "@/lib/orders/create-custom-fulfillment-order";
 
 type DraftPayload = {
   shipping?: {
@@ -249,6 +250,21 @@ export async function handleCustomOrderPaymentIntentSucceeded(
     where: { id: submissionId },
     data: updateData as Prisma.CustomOrderSubmissionUpdateInput,
   });
+
+  if (paymentType === "FINAL_PAYMENT") {
+    try {
+      await createCustomFulfillmentOrderIfNeeded({
+        submissionId,
+        stripePaymentIntentId: paymentIntent.id,
+        platformFeeCents: platformFeeInCents,
+      });
+    } catch (e) {
+      console.error(
+        "[custom-order PI] Fulfillment Order create failed:",
+        e,
+      );
+    }
+  }
 
   console.log(`✅ Custom order PI processed: payment ${payment.id}`);
 

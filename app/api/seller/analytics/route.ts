@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
       db.order.findMany({
         where: orderWhere,
         select: {
+          id: true,
           productId: true,
           productName: true,
           totalAmount: true,
@@ -128,12 +129,14 @@ export async function GET(request: NextRequest) {
       const c = countryKeyFromPurchase(o.buyerLocation, o.taxJurisdiction);
       purchasesByCountry.set(c, (purchasesByCountry.get(c) ?? 0) + 1);
 
-      const prev = revenueByProduct.get(o.productId);
+      // `productId` is null for custom-order fulfillment orders.
+      const productKey = o.productId ?? `custom:${o.id}`;
+      const prev = revenueByProduct.get(productKey);
       const add = Math.round(o.totalAmount);
       if (prev) {
         prev.revenueCents += add;
       } else {
-        revenueByProduct.set(o.productId, {
+        revenueByProduct.set(productKey, {
           productName: o.productName,
           revenueCents: add,
         });

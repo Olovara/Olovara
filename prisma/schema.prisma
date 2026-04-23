@@ -27,15 +27,20 @@ enum SellerApplicationStatus {
   REJECTED
 }
 
+// Canonical lifecycle: PENDING → PAID → (optional PROCESSING) → SHIPPED → DELIVERED → COMPLETED
+// Digital: PAID → COMPLETED immediately. Legacy string values may exist until migration script runs.
 enum OrderStatus {
-  PROCESSING
-  COMPLETED
-  PENDING_TRANSFER
   PENDING
-  HELD
-  FAILED
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
   CANCELLED
   REFUNDED
+  PENDING_TRANSFER
+  HELD
+  FAILED
 }
 
 enum PaymentStatus {
@@ -636,7 +641,8 @@ model Order {
   buyerNameSalt            String
   sellerId                 String
   shopName                 String
-  productId                String
+  /// Marketplace product id; null for custom-order fulfillment rows (see `customOrderSubmissionId`).
+  productId                String?
   productName              String
   quantity                 Int
   totalAmount              Float
@@ -654,8 +660,17 @@ model Order {
   taxCategory              String? // Product tax category
   taxCode                  String? // Stripe tax code used
   isDigital                Boolean       @default(false)
+  /// When this row was created for a completed custom order (final payment). Distinct from marketplace catalog orders.
+  customOrderSubmissionId  String?      @unique
   status                   OrderStatus
   paymentStatus            PaymentStatus
+  /// Carrier code at shipment time (e.g. USPS, UPS, FedEx, DHL, Other)
+  carrier                  String?
+  trackingNumber           String?
+  trackingUrl              String?
+  shippingService          String?
+  estimatedDeliveryDate    DateTime?
+  shippedAt                DateTime?
   stripeSessionId          String
   stripeTransferId         String?
   encryptedShippingAddress String
@@ -681,7 +696,7 @@ model Order {
   updatedAt                DateTime      @updatedAt
   user                     User?         @relation(fields: [userId], references: [id]) // Optional relation for guest checkouts
   seller                   Seller        @relation(fields: [sellerId], references: [userId])
-  product                  Product       @relation(fields: [productId], references: [id])
+  product                  Product?      @relation(fields: [productId], references: [id])
   discountCodeUsage        DiscountCodeUsage?
 
   //Tracability and fraud detection

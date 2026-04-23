@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { OrderStatus } from "@prisma/client";
 import { ObjectId } from "mongodb";
-import { PERMISSIONS } from "@/data/roles-and-permissions";
 import { logError } from "@/lib/error-logger";
 
 // Force dynamic rendering - this route uses auth() which is dynamic
@@ -34,20 +33,6 @@ export async function POST(
 
     const userId = session.user.id;
 
-    // Fetch user permissions from database
-    const dbUser = await db.user.findUnique({
-      where: { id: userId },
-      select: { permissions: true },
-    });
-
-    // Check if user has permission to manage orders
-    if (!dbUser?.permissions?.includes(PERMISSIONS.MANAGE_ORDERS.value)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions to manage orders" },
-        { status: 403 }
-      );
-    }
-
     // Get the order
     order = await db.order.findUnique({
       where: { id: params.orderId },
@@ -77,6 +62,18 @@ export async function POST(
     if (order.status === OrderStatus.COMPLETED) {
       return NextResponse.json(
         { error: "Cannot cancel a completed order." },
+        { status: 400 }
+      );
+    }
+    if (order.status === OrderStatus.SHIPPED) {
+      return NextResponse.json(
+        { error: "Cannot cancel an order that has already shipped." },
+        { status: 400 }
+      );
+    }
+    if (order.status === OrderStatus.DELIVERED) {
+      return NextResponse.json(
+        { error: "Cannot cancel a delivered order." },
         { status: 400 }
       );
     }
