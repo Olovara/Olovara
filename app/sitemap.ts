@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { productPublicPathFromFields } from '@/lib/product-public-path'
 import { db } from '@/lib/db'
 import { Categories } from '@/data/categories'
+import { getAllFeatureSlugs } from '@/lib/marketing/features-data'
 
 // This sitemap is generated from the database; force runtime generation.
 export const dynamic = 'force-dynamic'
@@ -38,6 +39,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily' as const,
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/features`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly' as const,
+      priority: 0.75,
+    },
+    ...getAllFeatureSlugs().map((slug) => ({
+      url: `${baseUrl}/features/${slug}`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly' as const,
+      priority: 0.65,
+    })),
     {
       url: `${baseUrl}/about`,
       lastModified: currentDate,
