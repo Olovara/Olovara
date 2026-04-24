@@ -9,6 +9,7 @@ import { verifyRecaptcha } from "@/lib/recaptcha";
 import { logError } from "@/lib/error-logger";
 import { getDecryptedCustomerContact } from "@/lib/custom-order-submission-contact";
 import { encryptOrderData } from "@/lib/encryption";
+import { computeCustomOrderFinalShippingMinor } from "@/lib/custom-order-final-shipping";
 import type Stripe from "stripe";
 import type { Session } from "next-auth";
 
@@ -149,6 +150,8 @@ export async function POST(req: Request) {
         quoteDepositPaid: true,
         finalPaymentAmount: true,
         finalPaymentPaid: true,
+        finalShippingIncludedInPrice: true,
+        finalShippingOptionId: true,
         currency: true,
         form: {
           select: {
@@ -255,6 +258,27 @@ export async function POST(req: Request) {
         );
       }
       paymentAmountMinor = submission.finalPaymentAmount;
+    }
+
+    /** Shipping (submission currency, minor units) added at checkout when seller chose a profile. */
+    let finalShippingMinorSubmission = 0;
+    if (
+      isFinal &&
+      !submission.finalShippingIncludedInPrice &&
+      submission.finalShippingOptionId
+    ) {
+      const ship = await computeCustomOrderFinalShippingMinor({
+        shippingOptionId: submission.finalShippingOptionId,
+        sellerUserId: sellerRow.userId,
+        destinationCountry: shippingAddress!.country,
+        submissionCurrency: submission.currency,
+      });
+      if ("error" in ship) {
+        return NextResponse.json({ error: ship.error }, { status: 400 });
+      }
+      finalShippingMinorSubmission = ship.shippingMinor;
+      paymentAmountMinor =
+        (paymentAmountMinor as number) + finalShippingMinorSubmission;
     }
 
     let finalAmount = paymentAmountMinor;
@@ -407,6 +431,11 @@ export async function POST(req: Request) {
           (isFinal ? shippingAddress?.name : contactName) ||
           authSession.user.name ||
           "",
+        ...(isFinal && finalShippingMinorSubmission > 0
+          ? {
+              finalShippingMinor: String(finalShippingMinorSubmission),
+            }
+          : {}),
       },
     };
 

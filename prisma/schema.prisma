@@ -1030,6 +1030,7 @@ model ShippingOption {
   seller               Seller         @relation(fields: [sellerId], references: [userId])
   rates                ShippingRate[]
   products             Product[]
+  customOrderSubmissionsFinalShipping CustomOrderSubmission[] @relation("CustomOrderFinalShippingOption")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1212,6 +1213,11 @@ model CustomOrderSubmission {
   /// Denormalized seller user id (same as `form.sellerId`). Set on create for fast seller-scoped queries.
   sellerId  String?
   seller    Seller? @relation(fields: [sellerId], references: [userId])
+  /// When requesting final payment: shipping cost is included in `finalPaymentAmount` (no separate charge).
+  finalShippingIncludedInPrice Boolean @default(false)
+  /// Shipping profile used to add quoted shipping at buyer checkout (when not included in price).
+  finalShippingOptionId       String?
+  finalShippingOption         ShippingOption? @relation("CustomOrderFinalShippingOption", fields: [finalShippingOptionId], references: [id], onDelete: SetNull)
   userId    String // Required - customer must be logged in
   user      User   @relation(fields: [userId], references: [id])
   // Legacy plaintext (older rows). New submissions use encrypted* only and leave these null.
@@ -1285,6 +1291,7 @@ model CustomOrderSubmission {
   @@index([userId])
   @@index([status])
   @@index([sellerId])
+  @@index([finalShippingOptionId])
 }
 
 /// One row each time the seller sends or updates a quote (timeline history).

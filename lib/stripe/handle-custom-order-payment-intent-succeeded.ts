@@ -214,6 +214,14 @@ export async function handleCustomOrderPaymentIntentSucceeded(
     updateData.status = "COMPLETED";
     updateData.completedAt = new Date();
 
+    const shipMinorRaw = meta.finalShippingMinor?.trim();
+    if (shipMinorRaw) {
+      const shipMinor = parseInt(shipMinorRaw, 10);
+      if (!Number.isNaN(shipMinor) && shipMinor >= 0) {
+        updateData.shippingCost = shipMinor;
+      }
+    }
+
     const draftToken = meta.checkoutDraftId?.trim() || "";
     if (draftToken) {
       try {

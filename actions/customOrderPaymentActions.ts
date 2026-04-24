@@ -29,14 +29,42 @@ const MarkReadyForFinalPaymentSchema = z.object({
 });
 
 // Schema for seller requesting final payment after work is started
-const RequestFinalPaymentSchema = z.object({
-  submissionId: z.string().min(1, "Submission ID is required"),
-  finalPaymentAmount: z.number().min(0.01, "Final payment must be at least $0.01"),
-  notes: z
-    .string()
-    .max(1000, "Notes must be less than 1000 characters")
-    .optional(),
-});
+const RequestFinalPaymentSchema = z
+  .object({
+    submissionId: z.string().min(1, "Submission ID is required"),
+    finalPaymentAmount: z
+      .number()
+      .min(0.01, "Final payment must be at least $0.01"),
+    notes: z
+      .string()
+      .max(1000, "Notes must be less than 1000 characters")
+      .optional(),
+    /** If true, do not add profile-based shipping at checkout (shipping baked into the amount). */
+    finalShippingIncludedInPrice: z.boolean(),
+    /** Required when `finalShippingIncludedInPrice` is false. */
+    finalShippingOptionId: z.string().optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.finalShippingIncludedInPrice) {
+      if (data.finalShippingOptionId?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Clear the shipping profile when shipping is included in the price",
+          path: ["finalShippingOptionId"],
+        });
+      }
+      return;
+    }
+    if (!data.finalShippingOptionId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Select a shipping profile, or check that shipping is included in the price",
+        path: ["finalShippingOptionId"],
+      });
+    }
+  });
 
 // Set payment amounts for a custom order submission
 export async function setPaymentAmounts(
@@ -225,6 +253,19 @@ export async function requestFinalPayment(
       return { error: "Deposit amount is missing for this submission" };
     }
 
+    if (!validatedData.finalShippingIncludedInPrice) {
+      const profile = await db.shippingOption.findFirst({
+        where: {
+          id: validatedData.finalShippingOptionId!,
+          sellerId: session.user.id,
+        },
+        select: { id: true },
+      });
+      if (!profile) {
+        return { error: "Invalid shipping profile for your shop" };
+      }
+    }
+
     const finalMinor = Math.round(validatedData.finalPaymentAmount * 100);
     const totalMinor = existing.quoteDepositMinor + finalMinor;
     const now = new Date();
@@ -237,6 +278,11 @@ export async function requestFinalPayment(
         status: "READY_FOR_FINAL_PAYMENT",
         notes: validatedData.notes,
         finalPaymentRequestedAt: now,
+        finalShippingIncludedInPrice:
+          validatedData.finalShippingIncludedInPrice,
+        finalShippingOptionId: validatedData.finalShippingIncludedInPrice
+          ? null
+          : validatedData.finalShippingOptionId!.trim(),
       },
     });
 
@@ -270,6 +316,8 @@ export async function getSubmissionPaymentDetails(submissionId: string) {
         quoteDepositPaid: true,
         finalPaymentPaid: true,
         shippingCost: true,
+        finalShippingIncludedInPrice: true,
+        finalShippingOptionId: true,
         quoteDepositSessionId: true,
         finalPaymentSessionId: true,
         customerEmail: true,
