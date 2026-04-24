@@ -298,6 +298,17 @@ export default function CustomOrderButton({
         return;
       }
 
+      if (
+        result.data &&
+        typeof (result.data as any).sellerAtCustomOrderCapacity === "boolean" &&
+        (result.data as any).sellerAtCustomOrderCapacity
+      ) {
+        toast.error(
+          "This seller is currently at capacity for custom orders. Please try again later.",
+        );
+        return;
+      }
+
       setFormData(result.data);
       setIsModalOpen(true);
     } catch (error) {

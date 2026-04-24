@@ -276,6 +276,9 @@ model Seller {
   acceptsCustom          Boolean           @default(false)
   /// Minimum custom-order budget in minor units (cents, yen, etc.) of `preferredCurrency`; null = no minimum
   customOrderMinBudgetMinor Int?
+  /// Maximum number of "open" custom-order submissions allowed at once; null = unlimited.
+  /// Open = any status except COMPLETED or REJECTED.
+  customOrderMaxOpenOrders Int?
   shopValues             String[]          @default([]) // Array of shop value IDs from shop-values.ts
   valuesPreferNotToSay   Boolean           @default(false)
   // Social media links

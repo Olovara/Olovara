@@ -51,6 +51,7 @@ const SellerInfoForm = () => {
       acceptsCustom: false,
       preferredCurrency: "USD",
       customOrderMinBudgetInput: "",
+      customOrderMaxOpenOrdersInput: "",
       shopCountry: "US",
       shopState: "",
       shopCity: "",
@@ -98,12 +99,19 @@ const SellerInfoForm = () => {
           ? majorToMinorAmount(parseFloat(budgetRaw.replace(",", ".")), cur)
           : null;
 
+      const capRaw = values.customOrderMaxOpenOrdersInput?.trim() ?? "";
+      const customOrderMaxOpenOrders =
+        values.acceptsCustom && capRaw !== ""
+          ? Number.parseInt(capRaw, 10)
+          : null;
+
       const result = await updateSellerInfo({
         shopCountry: values.shopCountry,
         shopState: values.shopState,
         shopCity: values.shopCity,
         acceptsCustom: values.acceptsCustom,
         customOrderMinBudgetMinor,
+        customOrderMaxOpenOrders,
       });
 
       if (result.error) {
@@ -243,6 +251,58 @@ const SellerInfoForm = () => {
                     )}
                     <p className="text-xs text-muted-foreground">
                       Leave empty if you don&apos;t want a minimum.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {form.watch("acceptsCustom") && (
+              <motion.div
+                key="custom-order-max-open"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="overflow-hidden rounded-lg border border-border bg-muted/40"
+              >
+                <div className="space-y-3 p-4">
+                  <div>
+                    <Label
+                      htmlFor="customOrderMaxOpenOrdersInput"
+                      className="text-base"
+                    >
+                      Max open custom orders (optional)
+                    </Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Limit how many custom-order requests you can have active at
+                      once. When you&apos;re at capacity, buyers won&apos;t be able
+                      to submit new requests until you complete or reject one.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-y-2 sm:max-w-xs">
+                    <Input
+                      id="customOrderMaxOpenOrdersInput"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      placeholder="e.g. 5"
+                      disabled={isPending}
+                      {...form.register("customOrderMaxOpenOrdersInput")}
+                    />
+                    {form.formState.errors.customOrderMaxOpenOrdersInput && (
+                      <p className="text-sm text-destructive">
+                        {
+                          form.formState.errors.customOrderMaxOpenOrdersInput
+                            .message
+                        }
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty for unlimited.
                     </p>
                   </div>
                 </div>

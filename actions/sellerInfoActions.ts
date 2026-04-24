@@ -59,6 +59,8 @@ export async function updateSellerInfo(data: {
   acceptsCustom?: boolean;
   /** Minor units in preferredCurrency; omit or null when no minimum or custom orders off */
   customOrderMinBudgetMinor?: number | null;
+  /** Null/omit = unlimited; otherwise positive integer cap */
+  customOrderMaxOpenOrders?: number | null;
 }) {
   try {
     const session = await auth();
@@ -90,6 +92,10 @@ export async function updateSellerInfo(data: {
         customOrderMinBudgetMinor:
           data.acceptsCustom === true
             ? (data.customOrderMinBudgetMinor ?? null)
+            : null,
+        customOrderMaxOpenOrders:
+          data.acceptsCustom === true
+            ? (data.customOrderMaxOpenOrders ?? null)
             : null,
       },
     });
@@ -133,6 +139,7 @@ export const getSellerInfo = async () => {
         acceptsCustom: true,
         preferredCurrency: true,
         customOrderMinBudgetMinor: true,
+        customOrderMaxOpenOrders: true,
         shopCountry: true,
         encryptedShopState: true,
         shopStateIV: true,
@@ -178,11 +185,18 @@ export const getSellerInfo = async () => {
           : String(parseFloat(major.toFixed(d)));
     }
 
+    const customOrderMaxOpenOrdersInput =
+      seller.customOrderMaxOpenOrders != null &&
+      seller.customOrderMaxOpenOrders > 0
+        ? String(seller.customOrderMaxOpenOrders)
+        : "";
+
     const data = {
       isVacationMode: seller.user.status === "VACATION",
       acceptsCustom: seller.acceptsCustom,
       preferredCurrency: prefCur,
       customOrderMinBudgetInput,
+      customOrderMaxOpenOrdersInput,
       shopCountry: seller.shopCountry || "US",
       shopState: decryptedLocation.state || "",
       shopCity: decryptedLocation.city || "",

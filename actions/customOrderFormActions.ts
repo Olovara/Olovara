@@ -953,6 +953,7 @@ export async function getPublicCustomOrderForm(sellerId: string) {
             shopName: true,
             preferredCurrency: true,
             customOrderMinBudgetMinor: true,
+            customOrderMaxOpenOrders: true,
           },
         },
       },
@@ -962,7 +963,25 @@ export async function getPublicCustomOrderForm(sellerId: string) {
       return { error: "No custom order form available" };
     }
 
-    return { data: form };
+    const maxOpen = form.seller.customOrderMaxOpenOrders ?? null;
+    const openCount =
+      maxOpen != null && maxOpen > 0
+        ? await db.customOrderSubmission.count({
+            where: {
+              sellerId,
+              status: { notIn: ["COMPLETED", "REJECTED"] },
+            },
+          })
+        : 0;
+
+    return {
+      data: {
+        ...form,
+        sellerOpenCustomOrdersCount: openCount,
+        sellerAtCustomOrderCapacity:
+          maxOpen != null && maxOpen > 0 ? openCount >= maxOpen : false,
+      } as any,
+    };
   } catch (error) {
     console.error("Error fetching public form:", error);
     return { error: "Failed to fetch form" };
@@ -998,6 +1017,7 @@ export async function submitCustomOrderForm(values: any) {
             shopName: true,
             customOrderMinBudgetMinor: true,
             preferredCurrency: true,
+            customOrderMaxOpenOrders: true,
           },
         },
       },
@@ -1064,6 +1084,21 @@ export async function submitCustomOrderForm(values: any) {
     );
 
     const result = await db.$transaction(async (tx) => {
+      const maxOpen = form.seller.customOrderMaxOpenOrders ?? null;
+      if (maxOpen != null && maxOpen > 0) {
+        const openCount = await tx.customOrderSubmission.count({
+          where: {
+            sellerId: form.sellerId,
+            status: { notIn: ["COMPLETED", "REJECTED"] },
+          },
+        });
+        if (openCount >= maxOpen) {
+          return {
+            __capacityError: true as const,
+          };
+        }
+      }
+
       const submission = await tx.customOrderSubmission.create({
         data: {
           formId: validatedData.formId,
@@ -1095,6 +1130,18 @@ export async function submitCustomOrderForm(values: any) {
 
       return submission;
     });
+
+    if (
+      result &&
+      typeof result === "object" &&
+      "__capacityError" in result &&
+      (result as any).__capacityError
+    ) {
+      return {
+        error:
+          "This seller is currently at capacity for custom orders. Please try again later.",
+      };
+    }
 
     if (autoRejectBelowMin) {
       await sendCustomOrderRejectionEmail({

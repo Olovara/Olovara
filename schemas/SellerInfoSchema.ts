@@ -17,6 +17,8 @@ export const SellerInfoSchema = z
   preferredCurrency: z.string().default("USD"),
   /** Empty = no minimum; otherwise major-unit amount in preferredCurrency */
   customOrderMinBudgetInput: z.string().optional().default(""),
+  /** Empty = unlimited; otherwise positive integer count of open custom orders allowed */
+  customOrderMaxOpenOrdersInput: z.string().optional().default(""),
   // Location fields
   shopCountry: z
     .enum(SUPPORTED_COUNTRY_CODES as [string, ...string[]], {
@@ -58,6 +60,18 @@ export const SellerInfoSchema = z
         code: z.ZodIssueCode.custom,
         message: "Enter a valid minimum budget, or leave blank for no minimum",
         path: ["customOrderMinBudgetInput"],
+      });
+    }
+
+    const capRaw = data.customOrderMaxOpenOrdersInput?.trim() ?? "";
+    if (capRaw === "") return;
+    const cap = Number.parseInt(capRaw, 10);
+    if (!Number.isFinite(cap) || String(cap) !== capRaw || cap < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Enter a whole number of open custom orders (1 or higher), or leave blank for unlimited",
+        path: ["customOrderMaxOpenOrdersInput"],
       });
     }
   });
