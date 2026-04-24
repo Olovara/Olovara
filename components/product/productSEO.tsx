@@ -12,6 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { HelpPrompt } from "@/components/shared/HelpPrompt";
 
 
 interface ProductSEOSectionProps {
@@ -79,7 +80,35 @@ export const ProductSEOSection = ({
 
         {/* Meta Title */}
         <div className="space-y-2">
-          <Label htmlFor="metaTitle" className="text-sm font-medium">Meta Title</Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="metaTitle" className="text-sm font-medium">
+              Meta Title
+            </Label>
+            <HelpPrompt
+              ariaLabel="Meta title help"
+              content={
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong className="text-brand-primary-700">Meta title:</strong> is
+                    the title search engines show for your product (and it often
+                    becomes the browser tab title too).
+                  </p>
+                  <p>
+                    It&apos;s useful because a clear title can improve
+                    visibility and clicks from Google.
+                  </p>
+                  <p>
+                  <strong className="text-brand-primary-700">Structure:</strong> Primary Keyword(s) - Secondary Keyword(s) | Key Detail
+                  </p>
+                  <p className="text-muted-foreground">
+                    Tip: keep it around <strong>50-60 characters</strong> and
+                    include what it is + a key detail (material, style, size,
+                    etc.).
+                  </p>
+                </div>
+              }
+            />
+          </div>
           <Input
             id="metaTitle"
             value={metaTitle}
@@ -99,7 +128,33 @@ export const ProductSEOSection = ({
 
         {/* Meta Description */}
         <div className="space-y-2">
-          <Label htmlFor="metaDescription" className="text-sm font-medium">Meta Description</Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="metaDescription" className="text-sm font-medium">
+              Meta Description
+            </Label>
+            <HelpPrompt
+              ariaLabel="Meta description help"
+              content={
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong className="text-brand-primary-700">
+                      Meta description:
+                    </strong>{" "}
+                    is the short preview text that can show under your title in
+                    Google search results.
+                  </p>
+                  <p>
+                    It helps buyers understand what your product is quickly and
+                    can increase clicks.
+                  </p>
+                  <p className="text-muted-foreground">
+                    Tip: aim for <strong>150-160 characters</strong>. Lead with
+                    what it is, then the main benefit + a key detail.
+                  </p>
+                </div>
+              }
+            />
+          </div>
           <Textarea
             id="metaDescription"
             value={metaDescription}

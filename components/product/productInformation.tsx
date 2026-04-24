@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { X, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -49,6 +49,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HelpPrompt } from "@/components/shared/HelpPrompt";
 
 // Import supported currencies from the centralized units file
 import { SUPPORTED_CURRENCIES } from "@/data/units";
@@ -82,47 +83,7 @@ export const ProductInfoSection = ({
   const [isSellerApproved, setIsSellerApproved] = useState<boolean | null>(
     null
   );
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-
-  // Close tooltip on scroll and reset button state
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-
-    const handleScroll = () => {
-      if (tooltipOpen) {
-        // Clear any pending timeouts
-        clearTimeout(scrollTimeout);
-
-        // Close tooltip immediately
-        setTooltipOpen(false);
-
-        // Reset button state after a brief delay to ensure state is cleared
-        scrollTimeout = setTimeout(() => {
-          if (buttonRef.current) {
-            // Blur the button to remove focus/active state
-            buttonRef.current.blur();
-            // Force a state reset by toggling pointer events
-            const originalPointerEvents = buttonRef.current.style.pointerEvents;
-            buttonRef.current.style.pointerEvents = "none";
-            // Use requestAnimationFrame to ensure the change is processed
-            requestAnimationFrame(() => {
-              if (buttonRef.current) {
-                buttonRef.current.style.pointerEvents =
-                  originalPointerEvents || "auto";
-              }
-            });
-          }
-        }, 50);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      clearTimeout(scrollTimeout);
-    };
-  }, [tooltipOpen]);
+  const [skuTooltipOpen, setSkuTooltipOpen] = useState(false);
 
   const currentStatus = watch("status");
   const selectedCurrency = watch("currency") || "USD";
@@ -567,66 +528,33 @@ export const ProductInfoSection = ({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Label className="text-lg font-semibold">Product Status</Label>
-          <TooltipProvider delayDuration={300} skipDelayDuration={0}>
-            <Tooltip
-              open={tooltipOpen}
-              onOpenChange={(open) => {
-                setTooltipOpen(open);
-                // Reset button state when tooltip closes
-                if (!open && buttonRef.current) {
-                  buttonRef.current.blur();
-                }
-              }}
-              disableHoverableContent
-            >
-              <TooltipTrigger asChild>
-                <button
-                  ref={buttonRef}
-                  type="button"
-                  className="text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors touch-manipulation"
-                  aria-label="Product status help"
-                  onClick={(e) => {
-                    // Prevent form submission when clicking the help button
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                className="max-w-xs"
-                side="top"
-                sideOffset={8}
-                align="start"
-                avoidCollisions={true}
-                collisionPadding={8}
-              >
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <strong className="text-purple-600">Draft:</strong> Save
-                    your product with incomplete information. Not visible on the
-                    site. You can come back anytime to finish it.
-                  </div>
-                  <div>
-                    <strong className="text-purple-600">Hidden:</strong> A
-                    completed product that won&apos;t show on the site. All
-                    required fields must be filled.
-                  </div>
-                  <div>
-                    <strong className="text-purple-600">Active:</strong> A
-                    completed product that is live and shown on the site for
-                    purchase. All required fields must be filled.
-                  </div>
-                  <div>
-                    <strong className="text-purple-600">Disabled:</strong> A
-                    completed product that is temporarily disabled. All required
-                    fields must be filled.
-                  </div>
+          <HelpPrompt
+            ariaLabel="Product status help"
+            content={
+              <div className="space-y-2 text-sm">
+                <div>
+                  <strong className="text-brand-primary-700">Draft:</strong> Save your
+                  product with incomplete information. Not visible on the site.
+                  You can come back anytime to finish it.
                 </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                <div>
+                  <strong className="text-brand-primary-700">Hidden:</strong> A
+                  completed product that won&apos;t show on the site. All
+                  required fields must be filled.
+                </div>
+                <div>
+                  <strong className="text-brand-primary-700">Active:</strong> A
+                  completed product that is live and shown on the site for
+                  purchase. All required fields must be filled.
+                </div>
+                <div>
+                  <strong className="text-brand-primary-700">Disabled:</strong> A
+                  completed product that is temporarily disabled. All required
+                  fields must be filled.
+                </div>
+              </div>
+            }
+          />
         </div>
         <RadioGroup
           value={currentStatus || "DRAFT"}
@@ -751,14 +679,13 @@ export const ProductInfoSection = ({
                     />
                     <TooltipProvider delayDuration={300} skipDelayDuration={0}>
                       <Tooltip
-                        open={tooltipOpen && !watch("name")}
-                        onOpenChange={setTooltipOpen}
+                        open={skuTooltipOpen && !watch("name")}
+                        onOpenChange={setSkuTooltipOpen}
                         disableHoverableContent
                       >
                         <TooltipTrigger asChild>
                           <div>
                             <Button
-                              ref={buttonRef}
                               type="button"
                               variant="outline"
                               onClick={async (e) => {
@@ -807,11 +734,11 @@ export const ProductInfoSection = ({
                               disabled={!watch("name")}
                               onMouseEnter={() => {
                                 if (!watch("name")) {
-                                  setTooltipOpen(true);
+                                  setSkuTooltipOpen(true);
                                 }
                               }}
                               onMouseLeave={() => {
-                                setTooltipOpen(false);
+                                setSkuTooltipOpen(false);
                               }}
                             >
                               Generate
