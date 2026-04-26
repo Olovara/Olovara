@@ -153,6 +153,8 @@ export async function POST(req: NextRequest) {
       taxExempt = false,
       // Shipping option
       shippingOptionId,
+      shippingMode,
+      shippingCarrier,
       // Attributes
       attributes,
     } = data;
@@ -507,6 +509,8 @@ export async function POST(req: NextRequest) {
       taxExempt: taxExempt || false,
       // Shipping option - link to seller's shipping profile
       shippingOptionId: shippingOptionId || null,
+      shippingMode: shippingMode || "MANUAL_PROFILE",
+      shippingCarrier: shippingCarrier || null,
       // Attributes - optional field, can be null or object
       attributes: attributes || null,
     };

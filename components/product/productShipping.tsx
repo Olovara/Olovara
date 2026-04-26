@@ -75,6 +75,13 @@ export const ProductShippingSection = ({
   const selectedOptionId = watch("shippingOptionId");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  // NOTE: Carrier auto-shipping UI is temporarily hidden.
+  // const shippingMode = watch("shippingMode") as
+  //   | "MANUAL_PROFILE"
+  //   | "AUTO_CARRIER"
+  //   | undefined;
+  // const shippingCarrier = watch("shippingCarrier");
+  // const [hasBusinessAddress, setHasBusinessAddress] = useState(false);
 
   // Fetch shipping options when component mounts
   const fetchShippingOptions = useCallback(
@@ -103,6 +110,29 @@ export const ProductShippingSection = ({
   useEffect(() => {
     void fetchShippingOptions();
   }, [fetchShippingOptions, sellerId]);
+
+  // NOTE: Carrier auto-shipping UI is temporarily hidden.
+  // (This was used to gate the Auto toggle behind a default business address.)
+  // Fetch whether seller has a default business address (required to enable AUTO carrier mode)
+  {/*useEffect(() => {
+    const run = async () => {
+      try {
+        const url = sellerId
+          ? `/api/seller/addresses?scope=shipping&sellerId=${sellerId}`
+          : "/api/seller/addresses?scope=shipping";
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          hasDefaultBusinessAddress?: boolean;
+        };
+        setHasBusinessAddress(!!data?.hasDefaultBusinessAddress);
+      } catch {
+        // Non-fatal: just hide auto toggle if we can't confirm
+        setHasBusinessAddress(false);
+      }
+    };
+    void run();
+  }, [sellerId]); */}
 
   // Ensure shippingOptionId is preserved when shipping options load
   // This fixes the issue where editing a product doesn't show the selected shipping option
@@ -135,6 +165,17 @@ export const ProductShippingSection = ({
       setValue("shippingCost", 0);
     }
   }, [freeShipping, setValue]);
+
+  // NOTE: Carrier auto-shipping UI is temporarily hidden.
+  // If switching to AUTO carrier, clear manual profile selection.
+  {/*useEffect(() => {
+    if (shippingMode === "AUTO_CARRIER") {
+      setValue("shippingOptionId", null, { shouldValidate: false });
+      if (!shippingCarrier) {
+        setValue("shippingCarrier", "USPS", { shouldValidate: false });
+      }
+    }
+  }, [shippingMode, setValue, shippingCarrier]); */}
 
   // Populate shipping cost when a shipping option is selected
   useEffect(() => {
@@ -176,6 +217,49 @@ export const ProductShippingSection = ({
 
   return (
     <div className="space-y-6">
+      {/*
+        NOTE: Carrier auto-shipping UI is temporarily hidden.
+        (Toggle + carrier select will be re-enabled once USPS account setup is ready.)
+      */}
+      {/* Shipping mode toggle (manual vs auto)
+      {!freeShipping && (
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Label className="text-sm font-medium">
+                Carrier auto shipping
+              </Label>
+              <p className="text-xs text-gray-600 mt-1">
+                Auto calculates rates at checkout (platform buys the label).
+              </p>
+              {!hasBusinessAddress && (
+                <p className="text-xs text-amber-700 mt-2">
+                  Add a <strong>default business address</strong> to enable auto
+                  shipping.
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="shippingAutoToggle"
+                checked={shippingMode === "AUTO_CARRIER"}
+                disabled={!hasBusinessAddress}
+                onCheckedChange={(checked: boolean) => {
+                  setValue(
+                    "shippingMode",
+                    checked ? "AUTO_CARRIER" : "MANUAL_PROFILE",
+                    { shouldValidate: true },
+                  );
+                }}
+              />
+              <Label htmlFor="shippingAutoToggle" className="text-sm">
+                Auto
+              </Label>
+            </div>
+          </div>
+        </div>
+      )} */}
+
       {/* Free Shipping Checkbox - Always visible */}
       <div className="flex items-center space-x-2">
         <Checkbox
@@ -251,6 +335,41 @@ export const ProductShippingSection = ({
           )}
         </div>
       )}
+
+      {/* Carrier select (AUTO mode) NOTE: Carrier select (AUTO mode) is temporarily hidden.
+      {!freeShipping && shippingMode === "AUTO_CARRIER" && (
+        <div className="space-y-4">
+          <FormField
+            control={control}
+            name="shippingCarrier"
+            render={({ field, fieldState }) => (
+              <FormItem>
+                <FormLabel>Carrier</FormLabel>
+                <Select
+                  onValueChange={(v) => field.onChange(v)}
+                  value={field.value ? String(field.value) : undefined}
+                >
+                  <FormControl>
+                    <SelectTrigger
+                      className={
+                        fieldState.error
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : ""
+                      }
+                    >
+                      <SelectValue placeholder="Select a carrier" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="USPS">USPS</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )} */}
 
       <ShippingOptionModal
         isOpen={isModalOpen}

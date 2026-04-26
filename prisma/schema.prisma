@@ -530,6 +530,13 @@ model Product {
   shippingOptionId      String?
   shippingOption        ShippingOption? @relation(fields: [shippingOptionId], references: [id])
 
+  /// Shipping mode:
+  /// - MANUAL_PROFILE: uses `shippingOptionId` + your existing shipping calculator (seller gets shipping line item via payout rules)
+  /// - AUTO_CARRIER: uses live carrier rates (USPS now; more later) and platform-bought labels (seller does NOT receive shipping line item)
+  shippingMode          String           @default("MANUAL_PROFILE")
+  /// When `shippingMode=AUTO_CARRIER`, choose which carrier to quote/buy labels with (e.g. "USPS")
+  shippingCarrier       String?
+
   // Tax fields
   taxCategory String  @default("PHYSICAL_GOODS")
   taxCode     String?
@@ -652,6 +659,10 @@ model Order {
   currency                 String        @default("USD") // Store the currency code used for the order
   productPrice             Float
   shippingCost             Float
+  /// What the platform paid for the shipping label (minor units, same convention as `shippingCost` from checkout).
+  shippingLabelCost        Float?
+  /// Buyer shipping charged minus label cost (minor units); set when using marketplace-bought labels (e.g. USPS auto).
+  shippingProfit           Float?
   stripeFee                Float         @default(0)
   platformFee              Float         @default(0) // Platform/marketplace fee collected
   taxAmount                Float         @default(0) // Total tax amount collected

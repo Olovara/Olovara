@@ -548,6 +548,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
       productFile: initialData?.productFile || null,
       currency: initialData?.currency || "USD", // Will be updated by useEffect when preferences load
       isTestProduct: initialData?.isTestProduct || false,
+      shippingMode: (initialData as any)?.shippingMode || "MANUAL_PROFILE",
+      shippingCarrier: (initialData as any)?.shippingCarrier || "USPS",
       shippingOptionId: initialData?.shippingOptionId || null,
       taxCategory: initialData?.taxCategory || "PHYSICAL_GOODS",
       // taxCode is optional - convert null/undefined to empty string for form, will be converted to null on submit if empty
@@ -794,7 +796,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
   // Only include fields that are actually required for product submission
   const shippingFields = [
     "shippingCost",
-    "shippingOptionId", // Only required if freeShipping is false and product is not digital
+    "shippingOptionId", // manual-only (auto carrier uses carrier instead) Only required if freeShipping is false and product is not digital
+    // NOTE: Carrier auto-shipping UI is temporarily hidden; don't show these as "missing required fields"
+    // "shippingMode",
+    // "shippingCarrier",
   ];
 
   // Ensure shippingOptionId is set if it's missing

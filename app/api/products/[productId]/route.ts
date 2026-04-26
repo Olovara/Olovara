@@ -196,6 +196,19 @@ export async function PATCH(
     const { productId } = params;
     const updateData = data;
 
+    // Basic sanity/defaults for new shipping fields (older clients may not send them)
+    if ((updateData as any).shippingMode === undefined) {
+      (updateData as any).shippingMode = "MANUAL_PROFILE";
+    }
+    if (
+      typeof (updateData as any).shippingCarrier === "string" &&
+      (updateData as any).shippingCarrier.trim() !== ""
+    ) {
+      (updateData as any).shippingCarrier = (updateData as any).shippingCarrier
+        .trim()
+        .toUpperCase();
+    }
+
     // Check seller approval if trying to set status to ACTIVE
     if (updateData.status === "ACTIVE") {
       const seller = await db.seller.findUnique({
@@ -521,6 +534,8 @@ export async function PATCH(
     const shippingFields = {
       shippingCost: updateData.shippingCost,
       handlingFee: updateData.handlingFee,
+      shippingMode: (updateData as any).shippingMode,
+      shippingCarrier: (updateData as any).shippingCarrier,
       itemWeight: updateData.itemWeight,
       itemWeightUnit: updateData.itemWeightUnit,
       itemLength: updateData.itemLength,

@@ -426,6 +426,13 @@ const baseProductSchema = z.object({
       )
   ),
   taxExempt: z.boolean().default(false),
+  shippingMode: z
+    .enum(["MANUAL_PROFILE", "AUTO_CARRIER"])
+    .default("MANUAL_PROFILE"),
+  shippingCarrier: z
+    .string()
+    .optional()
+    .transform((v) => (typeof v === "string" && v.trim() ? v.trim().toUpperCase() : undefined)),
   shippingOptionId: z.string().nullable().optional(),
   isTestProduct: z.boolean().default(false),
   needsInventoryReview: z.boolean().default(false), // Flag for products with variations that need stock review
@@ -1045,21 +1052,62 @@ export const ProductSchema = baseProductSchema
         });
       }
 
-      // Require shipping option if free shipping is not selected AND product is not digital
+      // Require shipping mode details
+      if (data.shippingMode === "AUTO_CARRIER") {
+        // Force a carrier selection (future: UPS/FedEx/etc)
+        if (!data.shippingCarrier) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Please select a carrier for auto shipping.",
+            path: ["shippingCarrier"],
+          });
+        }
+
+        // Force weight + dimensions for accurate carrier rating
+        if (data.itemWeight === undefined || data.itemWeight === null) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Item weight is required when using auto carrier shipping.",
+            path: ["itemWeight"],
+          });
+        }
+        if (
+          data.itemLength === undefined ||
+          data.itemWidth === undefined ||
+          data.itemHeight === undefined ||
+          data.itemLength === null ||
+          data.itemWidth === null ||
+          data.itemHeight === null
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "Item dimensions (length, width, height) are required when using auto carrier shipping.",
+            path: ["itemLength"],
+          });
+        }
+
+        // Manual profile not required in AUTO mode
+      } else {
+        // Require shipping option if free shipping is not selected AND product is not digital
+        // (manual profile mode)
+        if (
+          !data.isDigital &&
+          !data.freeShipping &&
+          (!data.shippingOptionId || data.shippingOptionId === "")
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "Shipping option is required for physical products when free shipping is not selected.",
+            path: ["shippingOptionId"],
+          });
+        }
+      }
+
+      // Existing manual requirement (kept for backwards-compat, but now gated above)
       // CRITICAL: Digital products don't need shipping options
       // This validation is important for international sellers who may have different shipping setups
-      if (
-        !data.isDigital &&
-        !data.freeShipping &&
-        (!data.shippingOptionId || data.shippingOptionId === "")
-      ) {
-        ctx.addIssue({
-          code: "custom",
-          message:
-            "Shipping option is required for physical products when free shipping is not selected.",
-          path: ["shippingOptionId"],
-        });
-      }
 
       // CRITICAL: Item weight and dimensions validation
       // These fields are OPTIONAL for all products (physical and digital)
