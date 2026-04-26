@@ -311,11 +311,11 @@ const SellerInfoForm = () => {
           </AnimatePresence>
 
           {form.watch("acceptsCustom") && (
-            <div className="bg-purple-50 border-l-4 border-purple-400 p-4">
+            <div className="bg-brand-primary-50 border-l-4 border-brand-primary-700 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-purple-400"
+                    className="h-5 w-5 text-brand-primary-700"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -327,14 +327,18 @@ const SellerInfoForm = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-purple-800">
+                  <h3 className="text-sm font-medium text-brand-primary-900">
                     Custom Orders Enabled
                   </h3>
-                  <div className="mt-2 text-sm text-purple-700">
+                  <div className="mt-2 text-sm text-brand-primary-800">
                     <p>
                       Great! Now you can create a custom order form in your
                       dashboard. This will help you collect all the information
                       you need from customers without back-and-forth messages.
+                    </p>
+                    <p className="mt-2">
+                      You can also add a portfolio gallery to show your style
+                      and boost conversions.
                     </p>
                     <p className="mt-2">
                       <a
@@ -342,6 +346,14 @@ const SellerInfoForm = () => {
                         className="font-medium underline"
                       >
                         Go to Custom Orders →
+                      </a>
+                    </p>
+                    <p className="mt-2">
+                      <a
+                        href="/seller/dashboard/portfolio"
+                        className="font-medium underline"
+                      >
+                        Go to Portfolio →
                       </a>
                     </p>
                   </div>

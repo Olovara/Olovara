@@ -21,6 +21,7 @@ import {
   Globe,
   Truck,
   Upload,
+  Images,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCurrentPermissions } from "@/hooks/use-current-permissions";
 import { useHasFollowedSellers } from "@/hooks/use-has-followed-sellers";
 import { useStudioPlanAccess } from "@/hooks/use-studio-plan-access";
+import { useSession } from "next-auth/react";
 
 export default function SellerDashboardSideNavbar() {
   const pathname = usePathname();
@@ -41,6 +43,8 @@ export default function SellerDashboardSideNavbar() {
   const hasBlogPermission = hasPermission("WRITE_BLOG");
   const { hasFollowedSellers } = useHasFollowedSellers();
   const { hasWebsiteBuilderAccess } = useStudioPlanAccess();
+  const { data: session } = useSession();
+  const [acceptsCustom, setAcceptsCustom] = useState<boolean>(false);
 
   const [navSearchQuery, setNavSearchQuery] = useState("");
   const navRef = useRef<HTMLElement>(null);
@@ -56,6 +60,27 @@ export default function SellerDashboardSideNavbar() {
     window.addEventListener("hashchange", readHash);
     return () => window.removeEventListener("hashchange", readHash);
   }, [pathname]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/seller/dashboard?sellerId=${userId}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (!res.ok) return;
+        // `/api/seller/dashboard` returns seller fields at the top-level (spread via `...seller`)
+        setAcceptsCustom(Boolean(json?.acceptsCustom));
+      } catch {
+        // If this fails, we default to hiding custom-only tabs.
+      }
+    };
+
+    void run();
+  }, [session?.user?.id]);
 
   return (
     <div className="lg:block border-r hidden h-full">
@@ -376,22 +401,42 @@ export default function SellerDashboardSideNavbar() {
               </div>
               Profile
             </Link>
-            <Link
-              data-nav-label="Custom Orders"
-              className={clsx(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-                {
-                  "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
-                    pathname.startsWith("/seller/dashboard/custom-orders"),
-                }
-              )}
-              href="/seller/dashboard/custom-orders"
-            >
-              <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
-                <FileText className="h-3 w-3" />
-              </div>
-              Custom Orders
-            </Link>
+            {acceptsCustom && (
+              <>
+                <Link
+                  data-nav-label="Custom Orders"
+                  className={clsx(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                    {
+                      "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                        pathname.startsWith("/seller/dashboard/custom-orders"),
+                    }
+                  )}
+                  href="/seller/dashboard/custom-orders"
+                >
+                  <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                    <FileText className="h-3 w-3" />
+                  </div>
+                  Custom Orders
+                </Link>
+                <Link
+                  data-nav-label="Portfolio"
+                  className={clsx(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                    {
+                      "flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-purple-900  transition-all hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-100 dark:hover:text-purple-100":
+                        pathname.startsWith("/seller/dashboard/portfolio"),
+                    }
+                  )}
+                  href="/seller/dashboard/portfolio"
+                >
+                  <div className="border rounded-lg dark:bg-black dark:border-gray-800 border-gray-400 p-1 bg-white">
+                    <Images className="h-3 w-3" />
+                  </div>
+                  Portfolio
+                </Link>
+              </>
+            )}
             {navSearchQuery.trim() !== "" &&
               SELLER_SETTINGS_TAB_SEARCH.map((tab) => (
                 <Link

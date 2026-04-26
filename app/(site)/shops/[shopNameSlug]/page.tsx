@@ -25,6 +25,7 @@ import { Metadata } from "next";
 import { WebsiteStructuredData } from "@/components/WebsiteStructuredData";
 import { ShopViewTracker } from "@/components/analytics/ShopViewTracker";
 import { shopValues } from "@/data/shop-values";
+import PortfolioGallery from "@/components/shop/PortfolioGallery";
 
 interface ShopPageProps {
   params: { shopNameSlug: string };
@@ -97,6 +98,25 @@ async function getShopData(
       ogTitle: true,
       ogDescription: true,
       ogImage: true,
+      portfolioItems: {
+        orderBy: [
+          { featured: "desc" },
+          { featuredRank: "asc" },
+          { sortOrder: "asc" },
+          { createdAt: "desc" },
+        ],
+        select: {
+          id: true,
+          title: true,
+          images: true,
+          tags: true,
+          description: true,
+          priceRange: true,
+          complexity: true,
+          featured: true,
+          featuredRank: true,
+        },
+      },
       products: {
         where: productWhere,
         select: {
@@ -487,6 +507,15 @@ export default async function ShopPage({ params }: ShopPageProps) {
         </div>
 
         <div className="container mx-auto px-4 py-6 max-w-7xl">
+          {/* PORTFOLIO SECTION */}
+          {seller.portfolioItems?.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-2xl font-bold mb-6">Custom Portfolio</h2>
+              <div className="bg-brand-light-neutral-50 rounded-lg shadow-sm border border-brand-dark-neutral-200 p-6">
+                <PortfolioGallery items={seller.portfolioItems as any} />
+              </div>
+            </section>
+          )}
           {/* ITEMS SECTION */}
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6">Shop Items</h2>

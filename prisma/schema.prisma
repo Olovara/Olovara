@@ -361,9 +361,45 @@ model Seller {
 
   // Shop analytics - views and buyer behavior
   shopInteractions ShopInteraction[]
+  portfolioItems   PortfolioItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum PortfolioComplexity {
+  easy
+  medium
+  advanced
+}
+
+model PortfolioItem {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId    String
+  title       String
+  images      String[]             // Max 5 (enforced in API/UI)
+  tags        String[]             // Required (enforced in API/UI)
+  description String?
+  priceRange  String?
+  complexity  PortfolioComplexity?
+
+  /// Featured/pinned items appear at the top of the gallery.
+  /// `featuredRank` is used to order featured items (0-3). Null = not featured.
+  featured     Boolean @default(false)
+  featuredRank Int?
+
+  /// General sort order for non-featured items (0..n). Managed by UI/API.
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seller Seller @relation(fields: [sellerId], references: [userId], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([sellerId, featured])
+  @@index([sellerId, featuredRank])
+  @@index([sellerId, sortOrder])
 }
 
 // New OnboardingStep model for flexible onboarding tracking
