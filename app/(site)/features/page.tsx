@@ -28,9 +28,11 @@ export const metadata: Metadata = {
 function FeatureGrid({
   features,
   accentClass,
+  cardClass,
 }: {
   features: MarketingFeature[];
   accentClass: string;
+  cardClass: string;
 }) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -39,7 +41,10 @@ function FeatureGrid({
         return (
           <article
             key={f.slug}
-            className="flex flex-col rounded-2xl border border-brand-light-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            className={cn(
+              "flex flex-col rounded-2xl border border-brand-light-neutral-200 p-6 shadow-sm transition-shadow hover:shadow-md",
+              cardClass,
+            )}
           >
             <div
               className={cn(
@@ -120,7 +125,7 @@ export default function FeaturesPage() {
       {/* Sellers */}
       <section
         id="seller-benefits"
-        className="border-y border-brand-light-neutral-200 bg-white py-16 md:py-24"
+        className="border-y border-brand-light-neutral-200 bg-brand-light-neutral-100 py-16 md:py-24"
       >
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
@@ -135,7 +140,20 @@ export default function FeaturesPage() {
           <FeatureGrid
             features={SELLER_FEATURES}
             accentClass="border-brand-primary-100 bg-brand-primary-50 text-brand-primary-700"
+            cardClass="bg-brand-light-neutral-50"
           />
+          <div className="mt-10 flex justify-center">
+            <Link
+              href="/sell"
+              className={buttonVariants({
+                variant: "outline",
+                className:
+                  "border-brand-primary-700 text-brand-primary-700 hover:bg-brand-primary-700 hover:text-brand-light-neutral-50",
+              })}
+            >
+              Learn more about selling on OLOVARA
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -157,12 +175,13 @@ export default function FeaturesPage() {
           <FeatureGrid
             features={BUYER_FEATURES}
             accentClass="border-brand-secondary-100 bg-brand-secondary-50 text-brand-secondary-700"
+            cardClass="bg-brand-light-neutral-100"
           />
         </div>
       </section>
 
       {/* CTA */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-brand-primary-700 to-brand-primary-600 py-16 md:py-20">
+      <section className="relative overflow-hidden bg-brand-primary-700 py-16 md:py-20">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-30"
@@ -176,7 +195,7 @@ export default function FeaturesPage() {
             Ready to join OLOVARA?
           </h2>
           <p className="mt-4 text-lg text-brand-primary-100">
-            Open a shop and reach buyers who choose handmade—or start exploring
+            Open a shop and reach buyers who choose handmade or start exploring
             independent makers today.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
@@ -184,9 +203,8 @@ export default function FeaturesPage() {
               href="/seller-application"
               className={buttonVariants({
                 size: "lg",
-                variant: "secondary",
                 className:
-                  "w-full bg-brand-light-neutral-50 text-brand-primary-800 hover:bg-white sm:w-auto",
+                  "w-full bg-brand-primary-500 text-brand-light-neutral-50 hover:bg-brand-primary-800 sm:w-auto",
               })}
             >
               Start selling
@@ -197,7 +215,7 @@ export default function FeaturesPage() {
                 size: "lg",
                 variant: "outline",
                 className:
-                  "w-full border-brand-light-neutral-100 bg-transparent text-brand-light-neutral-50 hover:bg-white/10 hover:text-white sm:w-auto",
+                  "w-full border-brand-light-neutral-100 bg-transparent text-brand-light-neutral-50 hover:bg-brand-primary-800/30 hover:text-brand-light-neutral-50 sm:w-auto",
               })}
             >
               Create buyer account

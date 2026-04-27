@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
+  Boxes,
   Globe,
   HeartHandshake,
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
 /** Icons paired to feature slugs for hub + detail pages */
 export const FEATURE_ICONS: Record<string, LucideIcon> = {
   "verified-handmade-marketplace": BadgeCheck,
+  "bulk-import-listings": Boxes,
   "stripe-powered-payouts": Wallet,
   "custom-orders-and-commissions": HeartHandshake,
   "shop-website-builder": Globe,

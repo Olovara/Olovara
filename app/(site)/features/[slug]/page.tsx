@@ -44,7 +44,7 @@ export default async function FeatureDetailPage({ params }: Props) {
     <div className="min-h-screen w-full bg-brand-light-neutral-50">
       <article>
         {/* Hero */}
-        <header className="relative overflow-hidden border-b border-brand-light-neutral-200 bg-gradient-to-br from-brand-primary-50/60 via-white to-brand-secondary-50/30">
+        <header className="relative overflow-hidden border-b border-brand-light-neutral-200 bg-gradient-to-br from-brand-primary-50/60 via-brand-light-neutral-50 to-brand-secondary-50/30">
           <div className="mx-auto max-w-3xl px-4 py-12 md:px-8 md:py-16">
             <nav aria-label="Breadcrumb" className="mb-8">
               <ol className="flex flex-wrap items-center gap-2 text-sm text-brand-dark-neutral-600">
@@ -143,15 +143,27 @@ export default async function FeatureDetailPage({ params }: Props) {
             >
               ← All features
             </Link>
-            <Link
-              href={isSeller ? "/seller-application" : "/register"}
-              className={buttonVariants({
-                className:
-                  "bg-brand-primary-700 text-brand-light-neutral-50 hover:bg-brand-primary-800",
-              })}
-            >
-              {isSeller ? "Apply to sell" : "Create account"}
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <Link
+                href="/sell"
+                className={buttonVariants({
+                  variant: "outline",
+                  className:
+                    "border-brand-primary-700 text-brand-primary-700 hover:bg-brand-primary-700 hover:text-brand-light-neutral-50",
+                })}
+              >
+                Learn more about selling on OLOVARA
+              </Link>
+              <Link
+                href={isSeller ? "/seller-application" : "/register"}
+                className={buttonVariants({
+                  className:
+                    "bg-brand-primary-700 text-brand-light-neutral-50 hover:bg-brand-primary-800",
+                })}
+              >
+                {isSeller ? "Apply to sell" : "Create account"}
+              </Link>
+            </div>
           </div>
         </div>
       </article>

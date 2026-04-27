@@ -45,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.75,
     },
-    ...getAllFeatureSlugs().map((slug) => ({
+    ...getAllFeatureSlugs({ includeFuture: false }).map((slug) => ({
       url: `${baseUrl}/features/${slug}`,
       lastModified: currentDate,
       changeFrequency: 'monthly' as const,

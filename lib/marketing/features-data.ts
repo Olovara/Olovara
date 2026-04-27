@@ -48,6 +48,39 @@ const seller: MarketingFeature[] = [
     ],
   },
   {
+    slug: "bulk-import-listings",
+    audience: "seller",
+    title: "Move your shop over fast (Bulk Import)",
+    summary:
+      "Coming from Etsy or your own site? Upload a CSV and get your products live on OLOVARA in minutes instead of listing one-by-one.",
+    metaTitle: "Bulk Import from Etsy or Your Website | OLOVARA",
+    metaDescription:
+      "Switch to OLOVARA faster. Bulk import your listings via CSV when migrating from Etsy or your own website no tedious manual re-listing.",
+    detailIntro:
+      "If you already have an established catalog on Etsy or your own website, starting over from scratch is the worst part of switching platforms. Bulk Import is built to remove that pain so you can get set up quickly and start selling.",
+    detailSections: [
+      {
+        heading: "Designed for migration",
+        body: [
+          "If your listings already exist elsewhere, you should not have to retype titles, descriptions, pricing, and shipping details one listing at a time. Bulk Import lets you move your catalog using a CSV so you can focus on launch momentum.",
+          "This is the fastest path from “I want to sell on OLOVARA” to “my shop is live”.",
+        ],
+      },
+      {
+        heading: "Cleaner catalog, better conversion",
+        body: [
+          "A spreadsheet workflow makes it easier to standardize titles, tags, materials, and variants. That consistency helps buyers browse your shop confidently and reduces confusion at checkout.",
+        ],
+      },
+      {
+        heading: "Bulk import now; bulk editing later",
+        body: [
+          "Right now, the focus is getting you set up fast with Bulk Import. Bulk editing is planned for the future as part of a paid plan, so you can start free and upgrade when you need power workflows.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "stripe-powered-payouts",
     audience: "seller",
     title: "Stripe-powered payouts",
@@ -102,33 +135,6 @@ const seller: MarketingFeature[] = [
     ],
   },
   {
-    slug: "shop-website-builder",
-    audience: "seller",
-    title: "Your own shop website",
-    summary:
-      "Build a branded storefront that feels like yours so repeat customers recognize your shop beyond a single listing tile.",
-    metaTitle: "Online Shop Website Builder for Artisans | OLOVARA",
-    metaDescription:
-      "Create a branded shop site on OLOVARA. Showcase your handmade business with pages that tell your story and guide buyers to purchase.",
-    detailIntro:
-      "Listings help buyers find products; a shop website helps them remember you. OLOVARA includes tools to publish pages that reflect your brand and present your catalog in a cohesive way.",
-    detailSections: [
-      {
-        heading: "Brand-forward presentation",
-        body: [
-          "Independent makers win on story, style, and trust. A dedicated shop experience gives space for your aesthetic not only a single product card.",
-          "Use your site to highlight bestsellers, categories, policies, and contact points so new visitors understand what you offer at a glance.",
-        ],
-      },
-      {
-        heading: "Discovery plus destination",
-        body: [
-          "Marketplace discovery brings new eyes; your shop website helps convert interest into followers and repeat purchases. Together they support both short-term sales and long-term customer relationships.",
-        ],
-      },
-    ],
-  },
-  {
     slug: "seller-dashboard-insights",
     audience: "seller",
     title: "Dashboard & order workflow",
@@ -178,6 +184,36 @@ const seller: MarketingFeature[] = [
         heading: "Room to iterate",
         body: [
           "Handmade businesses evolve quickly: new materials, new collections, and custom offerings. Pricing that does not rely on heavy fixed listing costs makes iteration less painful.",
+        ],
+      },
+    ],
+  },
+];
+
+const future: MarketingFeature[] = [
+  {
+    slug: "shop-website-builder",
+    audience: "seller",
+    title: "Your own shop website",
+    summary:
+      "Build a branded storefront that feels like yours so repeat customers recognize your shop beyond a single listing tile.",
+    metaTitle: "Online Shop Website Builder for Artisans | OLOVARA",
+    metaDescription:
+      "Create a branded shop site on OLOVARA. Showcase your handmade business with pages that tell your story and guide buyers to purchase.",
+    detailIntro:
+      "Listings help buyers find products; a shop website helps them remember you. OLOVARA includes tools to publish pages that reflect your brand and present your catalog in a cohesive way.",
+    detailSections: [
+      {
+        heading: "Brand-forward presentation",
+        body: [
+          "Independent makers win on story, style, and trust. A dedicated shop experience gives space for your aesthetic not only a single product card.",
+          "Use your site to highlight bestsellers, categories, policies, and contact points so new visitors understand what you offer at a glance.",
+        ],
+      },
+      {
+        heading: "Discovery plus destination",
+        body: [
+          "Marketplace discovery brings new eyes; your shop website helps convert interest into followers and repeat purchases. Together they support both short-term sales and long-term customer relationships.",
         ],
       },
     ],
@@ -348,13 +384,17 @@ const buyer: MarketingFeature[] = [
 
 export const SELLER_FEATURES: MarketingFeature[] = seller;
 export const BUYER_FEATURES: MarketingFeature[] = buyer;
+export const FUTURE_FEATURES: MarketingFeature[] = future;
 
-export const ALL_FEATURES: MarketingFeature[] = [...seller, ...buyer];
+export const ALL_FEATURES: MarketingFeature[] = [...seller, ...buyer, ...future];
 
 export function getFeatureBySlug(slug: string): MarketingFeature | undefined {
   return ALL_FEATURES.find((f) => f.slug === slug);
 }
 
-export function getAllFeatureSlugs(): string[] {
-  return ALL_FEATURES.map((f) => f.slug);
+export function getAllFeatureSlugs(options?: { includeFuture?: boolean }): string[] {
+  const includeFuture = options?.includeFuture ?? true;
+  return includeFuture
+    ? ALL_FEATURES.map((f) => f.slug)
+    : [...seller, ...buyer].map((f) => f.slug);
 }

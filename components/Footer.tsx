@@ -99,14 +99,14 @@ const Footer = () => {
                         BROWSE SHOPS
                       </AnimatedFooterLink>
                     </li>
-                    {/**<li>
+                    <li>
                       <AnimatedFooterLink
                         href="/features"
                         className="text-xs text-brand-dark-neutral-600 hover:text-brand-primary-700"
                       >
                         FEATURES
                       </AnimatedFooterLink>
-                    </li> **/}
+                    </li>
                     <li>
                       <AnimatedFooterLink
                         href="/sell"
